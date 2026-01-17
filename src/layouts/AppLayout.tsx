@@ -1,4 +1,4 @@
-import { AppShell, Burger, Group, Text, UnstyledButton } from '@mantine/core'
+import { AppShell, Burger, Group, Text, UnstyledButton, SimpleGrid, Paper, Stack } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import type { ReactNode } from 'react'
 
@@ -36,7 +36,56 @@ export function AppLayout({ children }: AppLayoutProps) {
         </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main>{children}</AppShell.Main>
+      <AppShell.Main>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mb="xl">
+          
+          {/* Wallet Card */}
+          <Paper p="xl" radius="md" style={{ 
+            background: 'linear-gradient(135deg,  #066f5B 0%,  #10b981 100%)',
+            color: 'white',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <Stack gap={0}>
+              <Text size="sm" opacity={0.8}>Wallet Balance</Text>
+              <Text size="xl" fw={700}>₦0.00</Text>
+            </Stack>
+          </Paper>
+
+          {/* Savings Card */}
+          <Paper p="xl" radius="md" style={{ 
+            background: 'linear-gradient(135deg, #9bb1da 0%, #ccd8f0 100%)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <Stack gap={0}>
+              <Text size="sm" c="dimmed">My Savings</Text>
+              <Text size="xl" fw={700}>₦0.00</Text>
+            </Stack>
+          </Paper>
+
+          {/* Goals Card */}
+          <Paper p="xl" radius="md" style={{ 
+            background: 'linear-gradient(135deg, #a8d0b2 0%, #d1e8d7 100%)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <Stack gap={0}>
+              <Text size="sm" c="dimmed">My Goals</Text>
+              <Text size="xl" fw={700}>₦0.00</Text>
+            </Stack>
+          </Paper>
+
+        </SimpleGrid>
+        
+        
+        
+        
+
+
+
+        {children}
+      </AppShell.Main>
     </AppShell>
   )
 }
