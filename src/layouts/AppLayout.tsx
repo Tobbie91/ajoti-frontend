@@ -30,11 +30,11 @@ export function AppLayout({ children }: AppLayoutProps) {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      {/* <AppShell.Navbar p="md">
         <AppShell.Section grow>
           <NavLink label="Home" href="/" />
         </AppShell.Section>
-      </AppShell.Navbar>
+      </AppShell.Navbar> */}
 
       <AppShell.Main>{children}</AppShell.Main>
     </AppShell>
