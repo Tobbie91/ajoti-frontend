@@ -1,5 +1,6 @@
 import { Title, Text, Card, Group, Button, Stack } from '@mantine/core'
 
+
 export function Home() {
   return (
     <div className="mx-auto max-w-4xl">
@@ -25,7 +26,7 @@ export function Home() {
           </Stack>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* <div className="grid gap-4 md:grid-cols-2">
           <Card withBorder>
             <Title order={4} mb="xs">
               Mantine UI
@@ -43,7 +44,7 @@ export function Home() {
               Utility-first CSS framework for rapid UI development.
             </Text>
           </Card>
-        </div>
+        </div> */}
       </Stack>
     </div>
   )
