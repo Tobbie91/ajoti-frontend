@@ -1,34 +1,38 @@
 // Export your components here
 // Example: export { Button } from './Button'
-import React, {useState} from "react";
+import {useState} from "react";
 
-interface IconButtonProps {
-    defalutIcon: string;
+type IconButtonProps = {
+    defaultIcon: string;
     pressedIcon: string;
-    label: string;
-    onClick?: () => void;
-}
+    alt: string;
+    onClick: () => void;
+    width?: number;
+    height?: number;
+};
 
-export const IconButton: React.FC<IconButtonProps> = ({defalutIcon, pressedIcon, label, onClick}) => {
-    const[isPressed, setIsPressed] = useState(false);
+const IconButton = ({
+    defaultIcon,
+    pressedIcon,
+    alt,
+    onClick,
+    width = 80,
+    height = 80
+    }: IconButtonProps) => {
+    const[pressed, setPressed] = useState(false);
 
-    const handleClick = () => {
-        setIsPressed(!isPressed);
-        if(onClick) onClick();
-    };
-    
     return(
-        <button
-            onClick={handleClick} 
-            className = "flex flex-col items-center gap-2 p-4 border rounded-lg"
-            >
-            <img
-                src={isPressed ? pressedIcon : defalutIcon}
-                alt={label}
-                className="w-16 h-16"
-            />
-            <span className="text-sm">{label}</span>
-        </button>
+        <img
+            src={pressed ? pressedIcon : defaultIcon}
+            alt={alt}
+            width={width}
+            height={height}
+            onMouseDown={() => setPressed(true)}
+            onMouseUp={() => setPressed(false)}
+            onMouseLeave={() => setPressed(false)}
+            onClick={onClick}
+            style={{ cursor: "pointer"}}
+        />
     );
 };
 
