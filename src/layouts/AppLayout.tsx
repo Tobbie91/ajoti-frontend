@@ -55,9 +55,15 @@ export function AppLayout({ children }: AppLayoutProps) {
             position: 'relative',
             overflow: 'hidden'
           }}>
-            <Stack gap={0} style={{ zIndex: 2, position: 'relative' }}>
-              <Text size="sm" opacity={0.8}>Wallet Balance</Text>
-              <Text size="32px" fw={700}>₦0.00</Text>
+            <Stack gap={6} style={{ zIndex: 2, position: 'relative' }}>
+              <Text fz={18} fw={100} c="white" opacity={0.9}>
+                Wallet Balance
+              </Text>
+
+              <Text fz={30} fw={600} c="white" lh={1}>
+                ₦ 0.00
+              </Text>
+
             </Stack>
             {/* Decorative shapes using 24% and 10% transparency of Primary */}
             <CardWaves />
@@ -72,8 +78,13 @@ export function AppLayout({ children }: AppLayoutProps) {
             overflow: 'hidden'
           }}>
             <Stack gap={0} style={{ zIndex: 2, position: 'relative' }}>
-              <Text size="sm" fw={500}>My Savings</Text>
-              <Text size="32px" fw={700}>₦0.00</Text>
+              <Text fz={18} fw={100} c="black" opacity={0.9}>
+               My Savings
+              </Text>
+
+              <Text fz={30} fw={600} c="black" lh={1}>
+                ₦ 0.00
+              </Text>
             </Stack>
             <CardWaves />
 
@@ -87,8 +98,13 @@ export function AppLayout({ children }: AppLayoutProps) {
             overflow: 'hidden'
           }}>
             <Stack gap={0} style={{ zIndex: 2, position: 'relative' }}>
-              <Text size="sm" fw={500}>My Goals</Text>
-              <Text size="32px" fw={700}>₦0.00</Text>
+              <Text fz={18} fw={100} c="black" opacity={0.9}>
+               My Goals
+              </Text>
+
+              <Text fz={30} fw={600} c="black" lh={1}>
+                ₦ 0.00
+              </Text>
             </Stack>
             <CardWaves />
 
