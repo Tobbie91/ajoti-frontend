@@ -1,5 +1,3 @@
-// Export your components here
-// Example: export { Button } from './Button'
 import {useState} from "react";
 
 type IconButtonProps = {

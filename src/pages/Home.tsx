@@ -1,4 +1,5 @@
 import { Title, Text, Card, Group, Button, Stack } from '@mantine/core'
+import {useState} from "react";
 
 import addFunds from "@/assets/AddFunds_default.svg"
 import addFundsPressed from "@/assets/AddFunds_press.svg"
@@ -8,22 +9,28 @@ import withdraw from "@/assets/Withdraw_default.svg"
 import withdrawPressed from "@/assets/Withdraw_press.svg"
 import joinRosca from "@/assets/JoinROSCA_default.svg"
 import joinRoscaPressed from "@/assets/JoinROSCA_press.svg"
-import IconButton from '@/components'
+import IconButton from '@/components/Icon'
+import InvitePopup from '@/components/InvitePopup'
+import transctionIcon from '@/assets/Transaction_Icon.svg'
 
 
 
 export function Home() {
+  const[showInvite, setShowInvite] = useState(true);
+
   return (
     <div className="mx-auto max-w-4xl">
+    {/* // <div className="relative min-h-screen">  */}
+      {/* <div className="mx-auto max-w-4xl"> */}
       <Stack gap="lg">
-        <div>
+        {/* <div>
           <Title order={1}>Welcome to Ajoti</Title>
           <Text c="dimmed" mt="xs">
             Your fintech application is ready to be built.
           </Text>
-        </div>
+        </div> */}
 
-        <Card withBorder>
+        {/* <Card withBorder>
           <Stack gap="md">
             <Title order={3}>Getting Started</Title>
             <Text size="sm">
@@ -35,51 +42,72 @@ export function Home() {
               <Button variant="outline">Secondary Action</Button>
             </Group>
           </Stack>
-        </Card>
-      <div className= "absolute top-[534px] left-[124px] flex flex-row gap-[40px]"
-          // style={{
-          //   position: "absolute",
-          //   top: "534px",
-          //   left: "124px",
-          //   gap: "40px",
-          // }}
-      >
-        <IconButton
-          defaultIcon={addFunds}
-          pressedIcon={addFundsPressed}
-          alt="Add Funds"
-          onClick={() => console.log("Add Funds")}
-          width={105.94}
-          height={124.3}
+        </Card> */}
+      <div className="absolute top-[534px] left-[830px] rounded-[15.63px]">
+        <Card withBorder className="shadow-none  w-[467px] h-[712px]">
+          <Title order={4} mb="xs"  size="20.84px" className = "absolute top-[47px] left-[35px]"  >
+              Transactions
+            </Title>
+          <div className="flex flex-col items-center justify-center h-full">
+      
+              <img src={transctionIcon} alt="transcatioIcon" />
+              <Title order={4} mb="xs" size="23.44px" className = "top-[0.47px] left-[35px] gap"  >
+               No Transactions yet
+              </Title>
+          
+              <Text className="text-[15.63] w-[343.85px] h-[58.61px]">
+              Once you start making payments, you can keep track of your transactions here.
+              </Text>  
+          </div>
+          </Card>
+      </div>
+
+        <div className= "absolute top-[534px] left-[124px] flex flex-row gap-[40px]">
+          <IconButton
+            defaultIcon={addFunds}
+            pressedIcon={addFundsPressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={105.94}
+            height={124.3}
           />
-        <IconButton
-          defaultIcon={withdraw}
-          pressedIcon={withdrawPressed}
-          alt="Add Funds"
-          onClick={() => console.log("Add Funds")}
-           width={110.18}
-          height={124.3}
+
+          <IconButton
+            defaultIcon={withdraw}
+            pressedIcon={withdrawPressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={110.18}
+            height={124.3}
+          />
+
+          <IconButton
+            defaultIcon={explore}
+            pressedIcon={explorePressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={111.59}
+            height={124.3}
+          />
+
+          <IconButton
+            defaultIcon={joinRosca}
+            pressedIcon={joinRoscaPressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={113}
+            height={124.3}
+          />
+        </div>
+        <InvitePopup
+          visible={showInvite}
+          onClose={() => setShowInvite(false)}
         />
-        <IconButton
-          defaultIcon={explore}
-          pressedIcon={explorePressed}
-          alt="Add Funds"
-          onClick={() => console.log("Add Funds")}
-           width={111.59}
-          height={124.3}
-        />
-       <IconButton
-          defaultIcon={joinRosca}
-          pressedIcon={joinRoscaPressed}
-          alt="Add Funds"
-          onClick={() => console.log("Add Funds")}
-          width={113}
-          height={124.3}
-        />
-  </div>
-        
-        {/* <div className="grid gap-4 md:grid-cols-2">
-          <Card withBorder>
+
+       
+
+       
+          {/* <Card withBorder>
             <Title order={4} mb="xs">
               Mantine UI
             </Title>
@@ -97,6 +125,7 @@ export function Home() {
             </Text>
           </Card>
         </div> */}
+       
       </Stack>
     </div>
   )
