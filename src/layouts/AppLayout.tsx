@@ -113,6 +113,14 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <Box style={{ width: 'fit-content' }}>
 
+          <Text
+            fw={600}
+            fz={32}
+            mb={12}
+          >
+            Quick Access
+          </Text>
+
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="12">
             <QuickCard
               title="ROSCA"
