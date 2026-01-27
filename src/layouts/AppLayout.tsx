@@ -148,7 +148,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             />
 
             <QuickCard
-              title="INVESTMENT"
+              title="INSURANCE"
               desc="Explore profitable opportunities"
               iconBg="#6D28D9"
               icon={
