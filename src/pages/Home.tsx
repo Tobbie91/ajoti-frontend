@@ -61,7 +61,9 @@ export function Home() {
           </div>
           </Card>
       </div>
-
+          <div>
+            
+          </div>
         <div className= "absolute top-[534px] left-[124px] flex flex-row gap-[40px]">
           <IconButton
             defaultIcon={addFunds}
