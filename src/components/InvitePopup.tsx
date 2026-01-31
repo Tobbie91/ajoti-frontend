@@ -6,7 +6,7 @@ type InvitePopupProps = {
     onClose: () => void;
 };
 
-const InvitePopup = ({visible, onClose}: InvitePopupProps) => {
+const InvitePopup = ({visible}: InvitePopupProps) => {
     if(!visible) return null;
     return(
         <div className = "absolute top-[699px] left-[120px] w-[571px] h-[104px] rounded-[16px] bg-[#FCBC00]  shadow-lg p-4 w-64">

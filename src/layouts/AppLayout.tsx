@@ -1,6 +1,7 @@
-import { AppShell, Burger, Group, Text, UnstyledButton, SimpleGrid, Paper, Stack, Box } from '@mantine/core'
+import { AppShell, Burger, Text, UnstyledButton, SimpleGrid, Paper, Stack, Box } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import type { ReactNode } from 'react'
+import { AppHeader } from '../components/AppHeader/AppHeader'
 
 const colors = {
   primary: '#066F5B',
@@ -20,30 +21,32 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <AppShell
-      header={{ height: 60 }}
+      header={{ height: 106 }}
       navbar={{
         width: 260,
         breakpoint: 'sm',
-        collapsed: { mobile: !opened },
+        collapsed: { desktop: true, mobile: !opened },
       }}
-      padding="md"
+      
+      padding={0}
     >
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Text fw={600} size="lg">
-              Ajoti
-            </Text>
-          </Group>
-        </Group>
+      <AppShell.Header style={{ padding: 0 }}>
+        <Box pos="relative" h={106}>
+          <AppHeader avatarSrc="/assets/avatar.jpg" accountLabel="My account" />
+
+          {/* Mobile burger overlay */}
+          <Box pos="absolute" left={16} top={36} hiddenFrom="sm">
+            <Burger opened={opened} onClick={toggle} size="sm" />
+          </Box>
+        </Box>
       </AppShell.Header>
 
-      {/* <AppShell.Navbar p="md">
+      {/* Mobile-only drawer */}
+      <AppShell.Navbar p="md">
         <AppShell.Section grow>
-          <NavLink label="Home" href="/" />
+          <NavLink label="Home" href="/" onNavigate={close} />
         </AppShell.Section>
-      </AppShell.Navbar> */}
+      </AppShell.Navbar>
 
       <AppShell.Main>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mb="xl">
@@ -216,6 +219,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 interface NavLinkProps {
   label: string
   href: string
+  onNavigate?: () => void 
 }
 
 

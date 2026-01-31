@@ -1,4 +1,4 @@
-import { Title, Text, Card, Group, Button, Stack } from '@mantine/core'
+import { Title, Text, Card, Stack } from '@mantine/core'
 import {useState} from "react";
 
 import addFunds from "@/assets/AddFunds_default.svg"
@@ -12,6 +12,7 @@ import joinRoscaPressed from "@/assets/JoinROSCA_press.svg"
 import IconButton from '@/components/Icon'
 import InvitePopup from '@/components/InvitePopup'
 import transctionIcon from '@/assets/Transaction_Icon.svg'
+import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
 
 
 
@@ -19,7 +20,18 @@ export function Home() {
   const[showInvite, setShowInvite] = useState(true);
 
   return (
+    
+
     <div className="mx-auto max-w-4xl">
+    <MyDashboard
+        userName="Osho"
+        tierLabel="Tier 2"
+        languageLabel="EN"
+        onFundWallet={() => console.log('Fund Wallet')}
+        onTransfer={() => console.log('Transfer')}
+        onChangeLanguage={(lang: string) => console.log('Language:', lang)}
+      />
+
     {/* // <div className="relative min-h-screen">  */}
       {/* <div className="mx-auto max-w-4xl"> */}
       <Stack gap="lg">
