@@ -1,5 +1,6 @@
 import { Menu } from '@mantine/core'
-import { IconChevronDown, IconWorld, IconSparkles, IconLock } from '@tabler/icons-react'
+import { IconChevronDown, IconWorld, IconLock } from '@tabler/icons-react'
+import { SparkleIcon } from './SparkleIcon'
 import styles from './MyDashboard.module.css'
 
 type MyDashboardProps = {
@@ -47,7 +48,7 @@ export function MyDashboard({
 
           <div className={styles.subRow}>
             <div className={styles.subText}>You&apos;re doing great</div>
-            <IconSparkles className={styles.sparkle} />
+            <SparkleIcon className={styles.sparkle} />
           </div>
         </div>
 
