@@ -59,18 +59,17 @@ export function SummaryCard({
                 alt=""
                 aria-hidden="true"
                 style={{
-                    position: 'absolute',
-                    left: -6.86,
-                    top: 95.51,
-                    width: 800,
-                    height: 126.4,
-                    padding: 12,
-                    right: -100,
-                    objectFit: 'cover',
-                    zIndex: 1,
-                    pointerEvents: 'none',
-                    opacity: 1, // IMPORTANT: SVG already has fill-opacity
-                }}
+    position: 'absolute',
+    left: -6.86,
+    top: 105,
+    bottom: -20,
+    width: 'auto',      // Let SVG natural width
+    height: 'auto',     // Let SVG natural height
+    objectFit: 'contain',
+    zIndex: 1,
+    pointerEvents: 'none',
+    opacity: 1,
+}}
             />
 
             {/* -------- side wave -------- */}
