@@ -25,7 +25,6 @@ import { SummaryCard } from '@/components/SumaryCard'
 // import Icon from '@/components/Icon'
 
 
-
 export function Home() {
     const [showInvite, setShowInvite] = useState(true);
 
@@ -42,8 +41,7 @@ export function Home() {
             <Box
                 style={{
                     maxWidth: 1200,
-                    marginInline: 'auto',
-                    paddingInline: 0,
+                    
                     paddingTop: 300,
                     paddingLeft: 120,
                 }}
