@@ -15,55 +15,69 @@ import transctionIcon from '@/assets/Transaction_Icon.svg'
 import { SimpleGrid, Box } from '@mantine/core'
 import { Paper } from '@mantine/core'
 import { QuickCard } from '@/components/QuickCard'
+import { SummaryCard } from '@/components/SumaryCard'
+// import rosca from '@/assets/icons/rosca.svg'
+// import fixedSave from '@/assets/icons/fixed-save.svg'
+// import insurance from '@/assets/icons/insurance.svg'
+// import invest from '@/assets/icons/invest.svg'
+// import targetSave from '@/assets/icons/target-save.svg'
+// import remittance from '@/assets/icons/remittance.svg'
+// import Icon from '@/components/Icon'
+
+
 
 export function Home() {
     const [showInvite, setShowInvite] = useState(true);
 
 
+ const CARD_W = 378
+  const GAP = 20
+  const ROW_W = CARD_W * 3 + GAP * 2 // 1174px
+
     return (
         <div className="relative mx-auto max-w-4xl">
             {/* // <div className="relative min-h-screen">  */}
             {/* <div className="mx-auto max-w-4xl"> */}
-            <Stack gap="lg">
 
-                <Box style={{ width: 'fit-content', marginLeft: 124, marginTop: 120 }}>
-                    <Group gap={17} wrap="nowrap">
-                        {/* Box 1 */}
-                        <Paper w={378} h={206} radius={13.73} p="xl">
-                            <Stack gap={6}>
-                                <Text fw={600} fz={16}>
-                                    Wallet Balance
-                                </Text>
-                                <Text fw={800} fz={28} lh={1}>
-                                    ₦ 0.00
-                                </Text>
-                            </Stack>
-                        </Paper>
-
-
-                        {/* Box 2 */}
-                        <Paper
-                            w={378}
-                            h={206}
-                            radius={13.73}
-                            p="xl"
-                        >
-                            <Text fw={500}>My Savings</Text>
-                            <Text fw={700} fz={28}>₦ 0.00</Text>
-                        </Paper>
-
-                        {/* Box 3 */}
-                        <Paper
-                            w={378}
-                            h={206}
-                            radius={13.73}
-                            p="xl"
-                        >
-                            <Text fw={500}>My Goals</Text>
-                            <Text fw={700} fz={28}>₦ 0.00</Text>
-                        </Paper>
-                    </Group>
+            <Box
+                style={{
+                    maxWidth: 1200,
+                    marginInline: 'auto',
+                    paddingInline: 0,
+                    paddingTop: 300,
+                    paddingLeft: 120,
+                }}
+            >
+                <Box style={{ width: ROW_W, marginBottom: 28 }}>
+                    <Box
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: `repeat(3, ${CARD_W}px)`,
+                            columnGap: GAP,
+                        }}
+                    >
+                        <SummaryCard
+                            title="Wallet Balance"
+                            amount="₦ 0.00"
+                            gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
+                            to="/transactions"
+                        />
+                        <SummaryCard
+                            title="My Savings"
+                            amount="₦ 0.00"
+                            gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
+                            to="/transactions"
+                        />
+                        <SummaryCard
+                            title="My Goals"
+                            amount="₦ 0.00"
+                            gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
+                            to="/transactions"
+                        />
+                    </Box>
                 </Box>
+
+
 
 
                 {/* <div>
@@ -149,91 +163,15 @@ export function Home() {
 
                 <div style={{ height: 534 }} />
 
-                {/* LEFT: Quick Access */}
-                <Box style={{ width: 'fit-content', marginInline: 'auto' }}>
-                    <Text fw={600} fz={28} mb={24}>
-                        Quick Access
-                    </Text>
-
-                    {/* Hug container */}
-                    <Box style={{ width: 640.36 }}>
-                        <SimpleGrid
-                            cols={3}
-                            spacing={37}
-                            style={{
-                                width: 640.36,
-                                justifyItems: 'start',
-                            }}
-                        >
-                            <QuickCard title="ROSCA" desc="Join ROSCA to save with your peers." iconBg="#10B981" icon={<QuickIcon />} />
-                            <QuickCard title="Fixed Save" desc="Lock amount of money for a long period of time." iconBg="#1E3A8A" icon={<QuickIcon />} />
-                            <QuickCard title="Insurance" desc="Explore profitable opportunities with Superbase." iconBg="#6D28D9" icon={<QuickIcon />} />
-                            <QuickCard title="Invest" desc="Explore profitable opportunities with Superbase." iconBg="#059669" icon={<QuickIcon />} />
-                            <QuickCard title="Target Save" desc="Save towards a target with up to 10% return." iconBg="#F59E0B" icon={<QuickIcon />} />
-                            <QuickCard title="Remittance" desc="Save towards a target with up to 10%." iconBg="#3B82F6" icon={<QuickIcon />} />
-                        </SimpleGrid>
-                    </Box>
-                </Box>
-
-
-
-            </Stack>
-        </div>
+                {/* Quick Access */}
+            
+        </Box>
+        </div >
     )
 }
 
 
-function CardWaves() {
-    return (
-        <>
-            <svg
-                viewBox="0 0 378 104"
-                preserveAspectRatio="none"
-                style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: -6,
-                    width: '100%',
-                    height: '70%',
-                    opacity: 0.24,
-                }}
-            >
-                <path
-                    d="M0 74.5C59 39.5 103.5 116 178.5 74.5C253.5 33 282.5 60 378 24.5V104H0V74.5Z"
-                    fill="currentColor"
-                />
-            </svg>
 
-            <svg
-                viewBox="0 0 378 104"
-                preserveAspectRatio="none"
-                style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: -10,
-                    width: '100%',
-                    height: '60%',
-                    opacity: 0.1,
-                }}
-            >
-                <path
-                    d="M0 90C58 62 116 105 187 78C258 51 300 62 378 40V104H0V90Z"
-                    fill="currentColor"
-                />
-            </svg>
-        </>
-    )
-}
 
-function QuickIcon() {
-    return (
-        <svg width="20" height="20" viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="25.5" cy="25.5" r="25.5" fill="currentColor" opacity="0.2" />
-            <path d="M17 26H34" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-            <path d="M25.5 17V34" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-        </svg>
-    )
-}
+
 
