@@ -1,0 +1,181 @@
+.header {
+  position: relative;
+  width: 100%;
+  height: 106px;
+  background: #ffffff;
+  box-shadow: 0px 4px 12px rgba(209, 217, 230, 0.25);
+}
+
+/* Keep everything aligned to the 1440px canvas */
+.header::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1440px;
+  height: 106px;
+  transform: translateX(-50%);
+}
+
+.logo {
+  position: absolute;
+  left: 119px;
+  top: 38px;
+  width: 120px;
+  height: 35px;
+
+  font-family: "Bodoni MT", serif;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 35px;
+  text-align: center;
+  color: #066f5b;
+}
+
+/* Nav row */
+.nav {
+  position: absolute;
+  left: 379px;
+  top: 43px;
+  width: 681.45px;
+  height: 26px;
+
+  display: flex;
+  align-items: center;
+  gap: 50px;
+}
+
+.navItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.navButton {
+  font: inherit;
+}
+
+.navLabel {
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 27px;
+}
+
+.active {
+  color: #066f5b;
+}
+
+.inactive {
+  color: #bbbaba;
+}
+
+.navIconHome {
+  width: 22px;
+  height: 24.75px;
+}
+
+.navIcon {
+  width: 26px;
+  height: 24.7px;
+}
+
+.navIconRosca {
+  width: 30.75px;
+  height: 19.57px;
+}
+
+.navIconInvest {
+  width: 24.7px;
+  height: 26px;
+}
+
+.chevron {
+  width: 16px;
+  height: 16px;
+  color: #bbbaba;
+}
+
+/* Right side */
+.right {
+  position: absolute;
+  left: 1139.32px;
+  top: 36px;
+
+  width: 185px;
+  height: 46px;
+
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+/* Bell circle */
+.bellWrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(0, 200, 83, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bellIcon {
+  width: 18px;
+  height: 18px;
+  color: #00c853;
+}
+
+/* Account */
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatarRing {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 0.766667px solid #066f5b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.avatarImg {
+  width: 41.4px;
+  height: 41.4px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.accountText {
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 21px;
+  color: #525252;
+}
+
+/* Responsive: hide nav on small screens (burger will handle) */
+@media (max-width: 768px) {
+  .nav {
+    display: none;
+  }
+  .logo {
+    left: 70px;
+  }
+  .right {
+    left: auto;
+    right: 16px;
+  }
+}

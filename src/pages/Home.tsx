@@ -1,168 +1,144 @@
-import { Text, Button, Group, Avatar } from '@mantine/core'
-import { useAuth } from '@/utils/auth'
+import { Title, Text, Card, Stack } from '@mantine/core'
+import {useState} from "react";
+
+import addFunds from "@/assets/AddFunds_default.svg"
+import addFundsPressed from "@/assets/AddFunds_press.svg"
+import explore from "@/assets/Explore_default.svg"
+import explorePressed from "@/assets/Explore_press.svg"
+import withdraw from "@/assets/Withdraw_default.svg"
+import withdrawPressed from "@/assets/Withdraw_press.svg"
+import joinRosca from "@/assets/JoinROSCA_default.svg"
+import joinRoscaPressed from "@/assets/JoinROSCA_press.svg"
+import IconButton from '@/components/Icon'
+import InvitePopup from '@/components/InvitePopup'
+import transctionIcon from '@/assets/Transaction_Icon.svg'
+import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
+
+
 
 export function Home() {
-  const { user } = useAuth()
-  const displayName = user?.name || 'there'
-  const initials = user?.name
-    ? user.name
-        .split(' ')
-        .map((part) => part[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : 'ME'
-  const tabs = ['All Groups', 'Open Groups', 'Invite-Only', 'Request Groups', 'Joined']
-  const cards = [
-    { title: 'Monthly 50K Squad', duration: '6 months · 4 Slots', tag: 'Open', tagColor: '#4ADE80' },
-    {
-      title: 'Hustle, Grind & Win',
-      duration: '10 months · 7 Slots',
-      tag: 'Invite Only',
-      tagColor: '#FBBF24',
-    },
-    { title: 'Monthly 50K Squad', duration: '6 months · 4 Slots', tag: 'Request', tagColor: '#60A5FA' },
-    { title: 'Monthly 50K Squad', duration: '6 months · 4 Slots', tag: 'Open', tagColor: '#4ADE80' },
-    {
-      title: 'Hustle, Grind & Win',
-      duration: '10 months · 7 Slots',
-      tag: 'Invite Only',
-      tagColor: '#FBBF24',
-    },
-    { title: 'Monthly 50K Squad', duration: '6 months · 4 Slots', tag: 'Request', tagColor: '#60A5FA' },
-  ]
+  const[showInvite, setShowInvite] = useState(true);
 
   return (
-    <div className="mx-auto max-w-[1192px] space-y-6 px-4 pb-10 sm:px-6 lg:px-0">
-      <div
-        className="relative flex min-h-[220px] w-full flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl px-6 py-6 sm:min-h-[220px] sm:px-8 sm:py-8 lg:h-[217px] lg:flex-row lg:items-center lg:gap-0 lg:px-10"
-        style={{
-          background: '#0B6B55',
-          boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        <div className="max-w-xl text-white">
-          <Text size="xl" fw={700} className="mb-3">
-            Welcome, {displayName}
+    
+
+    <div className="mx-auto max-w-4xl">
+    <MyDashboard
+        userName="Osho"
+        tierLabel="Tier 2"
+        languageLabel="EN"
+        onFundWallet={() => console.log('Fund Wallet')}
+        onTransfer={() => console.log('Transfer')}
+        onChangeLanguage={(lang: string) => console.log('Language:', lang)}
+      />
+
+    {/* // <div className="relative min-h-screen">  */}
+      {/* <div className="mx-auto max-w-4xl"> */}
+      <Stack gap="lg">
+        {/* <div>
+          <Title order={1}>Welcome to Ajoti</Title>
+          <Text c="dimmed" mt="xs">
+            Your fintech application is ready to be built.
           </Text>
-          <Text size="md" className="text-white/90">
-            Join trusted savings groups and grow your money.
-          </Text>
-        </div>
+        </div> */}
 
-        <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center lg:w-auto">
-          <div className="hidden h-[140px] w-[220px] rounded-2xl bg-white/10 sm:block lg:h-[160px] lg:w-[260px]" />
-          <Button
-            radius="xl"
-            size="md"
-            color="gray"
-            variant="white"
-            className="w-full text-[#0B6B55] sm:w-auto"
-          >
-            How it Works
-          </Button>
-        </div>
-      </div>
-
-      <div className="-mx-4 overflow-x-auto sm:mx-0">
-        <div className="flex min-w-max items-center gap-6 border-b border-gray-100 px-4 text-sm sm:px-0">
-          {tabs.map((tab, index) => (
-            <button
-              key={tab}
-              className={`relative whitespace-nowrap pb-3 transition-colors ${
-                index === 0 ? 'text-[#0B6B55]' : 'text-gray-400'
-              }`}
-              type="button"
-            >
-              {tab}
-              {index === 0 ? (
-                <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-[#0B6B55]" />
-              ) : null}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl bg-[#C9F7D8] px-6 py-5 sm:px-8 sm:py-6 md:flex-row md:items-center">
-        <div>
-          <Text fw={700} className="text-[#0F172A]">
-            Become a ROSCA Admin
-          </Text>
-          <Text size="sm" className="text-[#1F2937]">
-            Manage your own savings group. Apply in 2 mins.
-          </Text>
-        </div>
-        <Button radius="xl" size="sm" className="bg-[#0B6B55] text-white hover:bg-[#095C49]">
-          Request Access
-        </Button>
-      </div>
-
-      <div className="relative">
-        <input
-          className="w-full rounded-lg border border-gray-100 bg-white px-10 py-3 text-sm text-gray-600 shadow-sm"
-          placeholder="Search"
-        />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          <SearchIcon />
-        </span>
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((card, index) => (
-          <div
-            key={`${card.title}-${index}`}
-            className="overflow-hidden rounded-2xl bg-[#C9F7D8] shadow-sm"
-          >
-            <div className="space-y-2 px-5 py-5">
-              <Text fw={700} className="text-[#0F172A]">
-                {card.title}
-              </Text>
-              <Text size="sm" c="dimmed">
-                {card.duration}
-              </Text>
-              <span
-                className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-white"
-                style={{ background: card.tagColor }}
-              >
-                {card.tag}
-              </span>
-            </div>
-            <div className="flex flex-col gap-3 bg-[#0BBE5E] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <Group gap={8}>
-                <Avatar size={28} radius="xl" src={user?.picture} color="green">
-                  {user?.picture ? null : initials}
-                </Avatar>
-                <div className="leading-tight">
-                  <Text size="xs" c="white">
-                    {user?.name || 'Member'}
-                  </Text>
-                  <Text size="xs" c="white">
-                    {user?.email || 'Signed in'}
-                  </Text>
-                </div>
-              </Group>
-              <Button size="xs" radius="md" variant="white" className="w-full text-[#0B6B55] sm:w-auto">
-                Join
-              </Button>
-            </div>
+        {/* <Card withBorder>
+          <Stack gap="md">
+            <Title order={3}>Getting Started</Title>
+            <Text size="sm">
+              This is a minimal boilerplate with React, TypeScript, Mantine UI, and Tailwind CSS.
+              Start building your features by adding components and pages.
+            </Text>
+            <Group>
+              <Button variant="filled">Primary Action</Button>
+              <Button variant="outline">Secondary Action</Button>
+            </Group>
+          </Stack>
+        </Card> */}
+      <div className="absolute top-[534px] left-[830px] rounded-[15.63px]">
+        <Card withBorder className="shadow-none  w-[467px] h-[712px]">
+          <Title order={4} mb="xs"  size="20.84px" className = "absolute top-[47px] left-[35px]"  >
+              Transactions
+            </Title>
+          <div className="flex flex-col items-center justify-center h-full">
+      
+              <img src={transctionIcon} alt="transcatioIcon" />
+              <Title order={4} mb="xs" size="23.44px" className = "top-[0.47px] left-[35px] gap"  >
+               No Transactions yet
+              </Title>
+          
+              <Text className="text-[15.63] w-[343.85px] h-[58.61px]">
+              Once you start making payments, you can keep track of your transactions here.
+              </Text>  
           </div>
-        ))}
+          </Card>
       </div>
 
-      <div className="flex justify-center pt-2">
-        <Button variant="outline" radius="md" className="border-[#0B6B55] text-[#0B6B55]">
-          Show More
-        </Button>
-      </div>
+        <div className= "absolute top-[534px] left-[124px] flex flex-row gap-[40px]">
+          <IconButton
+            defaultIcon={addFunds}
+            pressedIcon={addFundsPressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={105.94}
+            height={124.3}
+          />
+
+          <IconButton
+            defaultIcon={withdraw}
+            pressedIcon={withdrawPressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={110.18}
+            height={124.3}
+          />
+
+          <IconButton
+            defaultIcon={explore}
+            pressedIcon={explorePressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={111.59}
+            height={124.3}
+          />
+
+          <IconButton
+            defaultIcon={joinRosca}
+            pressedIcon={joinRoscaPressed}
+            alt="Add Funds"
+            onClick={() => console.log("Add Funds")}
+            width={113}
+            height={124.3}
+          />
+        </div>
+        <InvitePopup
+          visible={showInvite}
+          onClose={() => setShowInvite(false)}
+        />
+
+       
+
+       
+          {/* <Card withBorder>
+            <Title order={4} mb="xs">
+              Mantine UI
+            </Title>
+            <Text size="sm" c="dimmed">
+              A fully featured React component library with hooks and utilities.
+            </Text>
+          </Card>
+
+          <Card withBorder>
+            <Title order={4} mb="xs">
+              Tailwind CSS
+            </Title>
+            <Text size="sm" c="dimmed">
+              Utility-first CSS framework for rapid UI development.
+            </Text>
+          </Card>
+        </div> */}
+       
+      </Stack>
     </div>
-  )
-}
-
-function SearchIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="11" cy="11" r="7" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
   )
 }

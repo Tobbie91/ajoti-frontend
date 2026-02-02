@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider } from '@/components/AuthProvider'
-import { AppLayout } from '@/layouts'
-import { Home, Login, Signup } from '@/pages'
+import { Home, Login, Signup, CreateNewWallet2 } from '@/pages'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = Boolean(googleClientId)
@@ -12,16 +11,11 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route
-            path="/home"
-            element={
-              <AppLayout>
-                <Home />
-              </AppLayout>
-            }
-          />
+          <Route path="/createNewWallet2" element={<CreateNewWallet2 />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
