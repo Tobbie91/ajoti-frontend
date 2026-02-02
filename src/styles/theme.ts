@@ -1,17 +1,17 @@
 import { createTheme, type MantineColorsTuple } from '@mantine/core'
 
-// Clean, neutral fintech-style primary color (slate blue)
+// Green theme for AJOTI ROSCA
 const primary: MantineColorsTuple = [
-  '#f0f4f8',
-  '#d9e2ec',
-  '#bcccdc',
-  '#9fb3c8',
-  '#829ab1',
-  '#627d98',
-  '#486581',
-  '#334e68',
-  '#243b53',
-  '#102a43',
+  '#E6F4EF',
+  '#C9F7D8',
+  '#9CF2BA',
+  '#6EE89D',
+  '#41D980',
+  '#0B6B55',
+  '#095C49',
+  '#074D3D',
+  '#053E31',
+  '#032F25',
 ]
 
 export const theme = createTheme({

@@ -1,17 +1,38 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+import { AuthProvider } from '@/components/AuthProvider'
 import { AppLayout } from '@/layouts'
-import { Home } from '@/pages'
+import { Home, Login, Signup } from '@/pages'
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const hasGoogleClientId = Boolean(googleClientId)
 
 function App() {
-  return (
+  const app = (
     <BrowserRouter>
-      <AppLayout>
+      <AuthProvider>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/home"
+            element={
+              <AppLayout>
+                <Home />
+              </AppLayout>
+            }
+          />
         </Routes>
-      </AppLayout>
+      </AuthProvider>
     </BrowserRouter>
   )
+
+  // Avoid initializing Google OAuth when no client ID is configured.
+  if (!hasGoogleClientId) {
+    return app
+  }
+
+  return <GoogleOAuthProvider clientId={googleClientId}>{app}</GoogleOAuthProvider>
 }
 
 export default App
