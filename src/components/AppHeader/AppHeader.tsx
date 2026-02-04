@@ -150,3 +150,4 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderP
     </header>
   )
 }
+
