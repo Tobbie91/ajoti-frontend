@@ -22,3 +22,4 @@ export function SparkleIcon({ className, title = 'Sparkle' }: SparkleIconProps) 
     </svg>
   )
 }
+

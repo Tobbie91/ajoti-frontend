@@ -63,3 +63,4 @@
 - Never commit the `.env` file to git (it's already in .gitignore)
 - For production, add your production domain to authorized origins
 - The `.env.example` file shows the format without real credentials
+
