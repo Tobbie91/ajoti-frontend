@@ -1,0 +1,1 @@
+export { RecentActivities } from './RecentActivities'
