@@ -1,244 +1,233 @@
-import { Title, Text, Card, Group, Button, Stack, Box } from '@mantine/core'
+import { Title, Text, Card, Box, Container, Stack } from "@mantine/core";
 import { useState } from "react";
 
-import addFunds from "@/assets/AddFunds_default.svg"
-import addFundsPressed from "@/assets/AddFunds_press.svg"
-import explore from "@/assets/Explore_default.svg"
-import explorePressed from "@/assets/Explore_press.svg"
-import withdraw from "@/assets/Withdraw_default.svg"
-import withdrawPressed from "@/assets/Withdraw_press.svg"
-import joinRosca from "@/assets/JoinROSCA_default.svg"
-import joinRoscaPressed from "@/assets/JoinROSCA_press.svg"
-import IconButton from '@/components/Icon'
-import InvitePopup from '@/components/InvitePopup'
-import transctionIcon from '@/assets/Transaction_Icon.svg'
-import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
+import addFunds from "@/assets/AddFunds_default.svg";
+import addFundsPressed from "@/assets/AddFunds_press.svg";
+import explore from "@/assets/Explore_default.svg";
+import explorePressed from "@/assets/Explore_press.svg";
+import withdraw from "@/assets/Withdraw_default.svg";
+import withdrawPressed from "@/assets/Withdraw_press.svg";
+import joinRosca from "@/assets/JoinROSCA_default.svg";
+import joinRoscaPressed from "@/assets/JoinROSCA_press.svg";
 
-import { QuickCard } from '@/components/QuickCard'
-import { SummaryCard } from '@/components/SumaryCard'
-import FixedSave from '@/assets/FixedSave.svg'
-import Insurance from '@/assets/Insurance.svg'
-import Invest from '@/assets/Invest.svg'
-import Remittance from '@/assets/Remittance.svg'
-import TargetSave from '@/assets/TargetSave.svg'
-import Rosca from '@/assets/Rosca.svg'
+import IconButton from "@/components/Icon";
+import InvitePopup from "@/components/InvitePopup";
+import transctionIcon from "@/assets/Transaction_Icon.svg";
+import { MyDashboard } from "@/components/MyDashBoard/MyDashboard";
 
+import { QuickCard } from "@/components/QuickCard";
+import { SummaryCard } from "@/components/SumaryCard";
+
+import FixedSave from "@/assets/FixedSave.svg";
+import Insurance from "@/assets/Insurance.svg";
+import Invest from "@/assets/Invest.svg";
+import Remittance from "@/assets/Remittance.svg";
+import TargetSave from "@/assets/TargetSave.svg";
+import Rosca from "@/assets/Rosca.svg";
 
 export function Home() {
     const [showInvite, setShowInvite] = useState(true);
 
+    // ====== GLOBAL TUNING KNOBS (these are your “manual adjust” spots) ======
+    const PAGE_MAX_W = 1240; // overall page width
+    const PAGE_PT = 0; // top padding
+    const PAGE_PX = 24; // left/right padding
 
-    const CARD_W = 378
-    const GAP = 20
-    const ROW_W = CARD_W * 3 + GAP * 2 // 1174px
+    const CARD_W = 378; // SummaryCard width
+    const CARD_H = 206; // SummaryCard height (if your SummaryCard supports height)
+    const SUMMARY_GAP = 20;
+
+    const ACTIONS_GAP = 40; // gap between 4 icon buttons
+    const SECTION_GAP = 28; // vertical spacing between sections
+
+    const QUICK_TITLE_SIZE = 29; // "Quick Access" font size
+    const QUICK_TITLE_MB = 18; // space under title
+    const QUICK_GRID_GAP = 37; // spacing between small cards
+    const QUICK_COL_W = 188; // width of each small quick card column
+    const QUICK_GRID_W = 640; // total grid width (optional)
 
     return (
-    
+        <Container size={PAGE_MAX_W} px={PAGE_PX} pt={PAGE_PT}>
+            <Stack gap={SECTION_GAP}>
+                {/* Top dashboard */}
+                <MyDashboard
+                    userName="Osho"
+                    tierLabel="Tier 2"
+                    languageLabel="EN"
+                    onFundWallet={() => console.log("Fund Wallet")}
+                    onTransfer={() => console.log("Transfer")}
+                    onChangeLanguage={(lang: string) => console.log("Language:", lang)}
+                />
 
-        <div className="relative mx-auto max-w-4xl">
-    <MyDashboard
-        userName="Osho"
-        tierLabel="Tier 2"
-        languageLabel="EN"
-        onFundWallet={() => console.log('Fund Wallet')}
-        onTransfer={() => console.log('Transfer')}
-        onChangeLanguage={(lang: string) => console.log('Language:', lang)}
-      />
+                {/* Summary + Transactions (two-column layout) */}
+                <Box
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 467px", // left side flexible, right is fixed width
+                        gap: 24,
+                        alignItems: "start",
+                    }}
+                >
+                    {/* LEFT: Summary cards + action buttons + quick access */}
+                    <Stack gap={SECTION_GAP}>
+                        {/* Summary row */}
+                        <Box
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: `repeat(3, ${CARD_W}px)`,
+                                gap: SUMMARY_GAP,
+                                justifyContent: "start", // change to "center" if you want centered row
+                            }}
+                        >
+                            <SummaryCard
+                                title="Wallet Balance"
+                                amount="₦ 0.00"
+                                gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
+                                to="/transactions"
+                            />
+                            <SummaryCard
+                                title="My Savings"
+                                amount="₦ 0.00"
+                                gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
+                                to="/transactions"
+                            />
+                            <SummaryCard
+                                title="My Goals"
+                                amount="₦ 0.00"
+                                gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
+                                to="/transactions"
+                            />
+                        </Box>
 
-            {/* // <div className="relative min-h-screen">  */}
-            {/* <div className="mx-auto max-w-4xl"> */}
+                        {/* Action buttons row */}
+                        <Box style={{ display: "flex", gap: ACTIONS_GAP }}>
+                            <IconButton
+                                defaultIcon={addFunds}
+                                pressedIcon={addFundsPressed}
+                                alt="Add Funds"
+                                onClick={() => console.log("Add Funds")}
+                                width={105.94}
+                                height={124.3}
+                            />
+                            <IconButton
+                                defaultIcon={withdraw}
+                                pressedIcon={withdrawPressed}
+                                alt="Withdraw"
+                                onClick={() => console.log("Withdraw")}
+                                width={110.18}
+                                height={124.3}
+                            />
+                            <IconButton
+                                defaultIcon={explore}
+                                pressedIcon={explorePressed}
+                                alt="Explore"
+                                onClick={() => console.log("Explore")}
+                                width={111.59}
+                                height={124.3}
+                            />
+                            <IconButton
+                                defaultIcon={joinRosca}
+                                pressedIcon={joinRoscaPressed}
+                                alt="Join ROSCA"
+                                onClick={() => console.log("Join ROSCA")}
+                                width={113}
+                                height={124.3}
+                            />
+                        </Box>
 
-            <Box
-                style={{
-                    maxWidth: 1200,
 
-                    paddingTop: 300,
-                    paddingLeft: 120,
-                }}
-            >
-                <Box style={{ width: ROW_W, marginBottom: 28 }}>
-                    <Box
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: `repeat(3, ${CARD_W}px)`,
-                            columnGap: GAP,
-                        }}
-                    >
-                        <SummaryCard
-                            title="Wallet Balance"
-                            amount="₦ 0.00"
-                            gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
-                            to="/transactions"
+                        <InvitePopup
+                            visible={showInvite}
+                            onClose={() => setShowInvite(false)}
                         />
-                        <SummaryCard
-                            title="My Savings"
-                            amount="₦ 0.00"
-                            gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
-                            to="/transactions"
-                        />
-                        <SummaryCard
-                            title="My Goals"
-                            amount="₦ 0.00"
-                            gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
-                            to="/transactions"
-                        />
-                    </Box>
+                        
+                        {/* Quick Access */}
+                        <Box>
+                            <Text
+                                style={{
+                                    fontFamily: "Poppins, sans-serif",
+                                    fontWeight: 500,
+                                    fontSize: QUICK_TITLE_SIZE,
+                                    lineHeight: "100%",
+                                    color: "#0F172A",
+                                }}
+                                mb={QUICK_TITLE_MB}
+                            >
+                                Quick Access
+                            </Text>
+
+                            <Box
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: `repeat(3, ${QUICK_COL_W}px)`,
+                                    gap: QUICK_GRID_GAP,
+                                    width: QUICK_GRID_W, // remove this line if you want it to stretch naturally
+                                }}
+                            >
+                                <QuickCard
+                                    title="ROSCA"
+                                    desc="Join ROSCA to save with your peers"
+                                    icon={<img src={Rosca} alt="" />}
+                                />
+                                <QuickCard
+                                    title="Fixed Save"
+                                    desc="Lock amount of money for a long period of time"
+                                    icon={<img src={FixedSave} alt="" />}
+                                />
+                                <QuickCard
+                                    title="Insurance"
+                                    desc="Explore profitable opportunities with Suprebase"
+                                    icon={<img src={Insurance} alt="" />}
+                                />
+                                <QuickCard
+                                    title="Invest"
+                                    desc="Explore profitable opportunities with Suprebase"
+                                    icon={<img src={Invest} alt="" />}
+                                />
+                                <QuickCard
+                                    title="Target Save"
+                                    desc="Save towards a target with up to 10% return"
+                                    icon={<img src={TargetSave} alt="" />}
+                                />
+                                <QuickCard
+                                    title="Remittance"
+                                    desc="Save towards a target with up to 10% return"
+                                    icon={<img src={Remittance} alt="" />}
+                                />
+                            </Box>
+                        </Box>
+                    </Stack>
+
+                    {/* RIGHT: Transactions card */}
+                    <Card withBorder radius="md" style={{ height: 712 }}>
+                        <Title order={4} mb="xs" style={{ fontSize: 20.84 }}>
+                            Transactions
+                        </Title>
+
+                        <Box
+                            style={{
+                                height: "100%",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 10,
+                                paddingBottom: 60,
+                            }}
+                        >
+                            <img src={transctionIcon} alt="transaction icon" />
+                            <Title order={4} style={{ fontSize: 23.44 }}>
+                                No Transactions yet
+                            </Title>
+                            <Text style={{ fontSize: 15.63, width: 343.85, textAlign: "center" }}>
+                                Once you start making payments, you can keep track of your transactions here.
+                            </Text>
+                        </Box>
+                    </Card>
                 </Box>
 
 
-
-
-                {/* <div>
-            <Title order={1}>Welcome to Ajoti</Title>
-            <Text c="dimmed" mt="xs">
-                Your fintech application is ready to be built.
-            </Text>
-            </div> */}
-
-                {/* <Card withBorder>
-            <Stack gap="md">
-                <Title order={3}>Getting Started</Title>
-                <Text size="sm">
-                This is a minimal boilerplate with React, TypeScript, Mantine UI, and Tailwind CSS.
-                Start building your features by adding components and pages.
-                </Text>
-                <Group>
-                <Button variant="filled">Primary Action</Button>
-                <Button variant="outline">Secondary Action</Button>
-                </Group>
             </Stack>
-            </Card> */}
-                <div className="absolute top-[534px] left-[830px] rounded-[15.63px]">
-                    <Card withBorder className="shadow-none  w-[467px] h-[712px]">
-                        <Title order={4} mb="xs" size="20.84px" className="absolute top-[47px] left-[35px]"  >
-                            Transactions
-                        </Title>
-                        <div className="flex flex-col items-center justify-center h-full">
-
-                            <img src={transctionIcon} alt="transcatioIcon" />
-                            <Title order={4} mb="xs" size="23.44px" className="top-[0.47px] left-[35px] gap"  >
-                                No Transactions yet
-                            </Title>
-
-                            <Text className="text-[15.63px] w-[343.85px] h-[58.61px]">
-                                Once you start making payments, you can keep track of your transactions here.
-                            </Text>
-                        </div>
-                    </Card>
-                </div>
-
-                <div className="absolute top-[534px] left-[124px] flex flex-row gap-[40px]">
-                    <IconButton
-                        defaultIcon={addFunds}
-                        pressedIcon={addFundsPressed}
-                        alt="Add Funds"
-                        onClick={() => console.log("Add Funds")}
-                        width={105.94}
-                        height={124.3}
-                    />
-
-                    <IconButton
-                        defaultIcon={withdraw}
-                        pressedIcon={withdrawPressed}
-                        alt="Add Funds"
-                        onClick={() => console.log("Add Funds")}
-                        width={110.18}
-                        height={124.3}
-                    />
-
-                    <IconButton
-                        defaultIcon={explore}
-                        pressedIcon={explorePressed}
-                        alt="Add Funds"
-                        onClick={() => console.log("Add Funds")}
-                        width={111.59}
-                        height={124.3}
-                    />
-
-                    <IconButton
-                        defaultIcon={joinRosca}
-                        pressedIcon={joinRoscaPressed}
-                        alt="Add Funds"
-                        onClick={() => console.log("Add Funds")}
-                        width={113}
-                        height={124.3}
-                    />
-                </div>
-                <InvitePopup
-                    visible={showInvite}
-                    onClose={() => setShowInvite(false)}
-                />
-
-                <div style={{ height: 534 }} />
-
-                {/* Quick Access */}
-                <div style={{ marginTop: -235, paddingBottom: 235 }}>
-                    <Text
-                        style={{
-                            fontFamily: 'Poppins, sans-serif',
-                            fontWeight: 500,
-                            fontSize: 25,
-                            lineHeight: '100%',
-                            letterSpacing: '0%',
-                            color: '#0F172A',
-                        }}
-                        mb={24}
-                    >
-                        Quick Access
-                    </Text>
-
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(3, 188px)',
-                            gap: 37,
-                            width: 640,
-                        }}
-                    >
-
-
-
-                        <QuickCard
-                            title="ROSCA"
-                            
-                            desc="Join ROSCA to save with your peers"
-                            icon={<img src={Rosca} alt="" />}
-                        />
-
-                        <QuickCard
-                        
-                            title="Fixed Save"
-                            desc="Lock amount of money for a long period of time"
-                            icon={<img src={FixedSave} alt="" />}
-                        />
-
-                        <QuickCard
-                            title="Insurance"
-                            desc="Explore profitable opportunities with Suprebase"
-                            icon={<img src={Insurance} alt="" />}
-                        />
-
-                        <QuickCard
-                            title="Invest"
-                            desc="Explore profitable opportunities with Suprebase"
-                            icon={<img src={Invest} alt="" />}
-                        />
-
-                        <QuickCard
-                            title="Target Save"
-                            desc="Save towards a target with up to 10% return"
-                            icon={<img src={TargetSave} alt="" />}
-                        />
-
-                        <QuickCard
-                            title="Remittance"
-                            desc="Save towards a target with up to 10% return"
-                            icon={<img src={Remittance} alt="" />}
-                        />
-
-                    </div>
-                </div>
-            </Box>
-        </div >
-    )
+        </Container>
+    );
 }
