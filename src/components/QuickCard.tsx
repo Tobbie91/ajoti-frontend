@@ -1,42 +1,59 @@
-// components/QuickCard.tsx
-import { Paper, Text, Box } from '@mantine/core'
-import type { ReactNode } from 'react'
+import { Paper, Text, Stack, Box } from '@mantine/core';
 
 export function QuickCard({
   title,
   desc,
   icon,
 }: {
-  title: string
-  desc: string
-  icon: ReactNode
+  title: string;
+  desc: string;
+  icon: React.ReactNode;
 }) {
   return (
     <Paper
-      p={12}
-      radius="md"
+      radius={14}
       style={{
-        aspectRatio: '1 / 1',
-        background: '#fff',
-        border: '1px solid rgba(0,0,0,0.06)',
-        boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
+        width: 188,              // ⬅ exact card width
+        height: 195,             // ⬅ exact card height
+        padding: 20,
+        background: '#FFFFFF',
+        boxShadow: '0px 6px 16px rgba(0,0,0,0.12)',
         display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
+        alignItems: 'flex-start',
       }}
     >
-      {/* no icon bg */}
-      <Box style={{ width: 20, height: 20 }}>
-        {icon}
-      </Box>
+      <Stack gap={10}>
+        {/* Icon container */}
+        <Box
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {icon}
+        </Box>
 
-      <Text fw={800} fz={13} lh={1.15}>
-        {title}
-      </Text>
+        {/* Title */}
+        <Text fw={600} fz={14}>
+          {title}
+        </Text>
 
-      <Text fz={12} c="dimmed" lh={1.25}>
-        {desc}
-      </Text>
+        {/* Description */}
+        <Text
+          fz={12}
+          fw={400}
+          lh={1.3}
+          style={{
+            color: '#000000',
+          }}
+        >
+          {desc}
+        </Text>
+      </Stack>
     </Paper>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { Title, Text, Card, Group, Button, Stack } from '@mantine/core'
+import { Title, Text, Card, Group, Button, Stack, Box } from '@mantine/core'
 import { useState } from "react";
 
 import addFunds from "@/assets/AddFunds_default.svg"
@@ -12,26 +12,24 @@ import joinRoscaPressed from "@/assets/JoinROSCA_press.svg"
 import IconButton from '@/components/Icon'
 import InvitePopup from '@/components/InvitePopup'
 import transctionIcon from '@/assets/Transaction_Icon.svg'
-import { SimpleGrid, Box } from '@mantine/core'
-import { Paper } from '@mantine/core'
+
 import { QuickCard } from '@/components/QuickCard'
 import { SummaryCard } from '@/components/SumaryCard'
-// import rosca from '@/assets/icons/rosca.svg'
-// import fixedSave from '@/assets/icons/fixed-save.svg'
-// import insurance from '@/assets/icons/insurance.svg'
-// import invest from '@/assets/icons/invest.svg'
-// import targetSave from '@/assets/icons/target-save.svg'
-// import remittance from '@/assets/icons/remittance.svg'
-// import Icon from '@/components/Icon'
+import FixedSave from '@/assets/FixedSave.svg'
+import Insurance from '@/assets/Insurance.svg'
+import Invest from '@/assets/Invest.svg'
+import Remittance from '@/assets/Remittance.svg'
+import TargetSave from '@/assets/TargetSave.svg'
+import Rosca from '@/assets/Rosca.svg'
 
 
 export function Home() {
     const [showInvite, setShowInvite] = useState(true);
 
 
- const CARD_W = 378
-  const GAP = 20
-  const ROW_W = CARD_W * 3 + GAP * 2 // 1174px
+    const CARD_W = 378
+    const GAP = 20
+    const ROW_W = CARD_W * 3 + GAP * 2 // 1174px
 
     return (
         <div className="relative mx-auto max-w-4xl">
@@ -41,7 +39,7 @@ export function Home() {
             <Box
                 style={{
                     maxWidth: 1200,
-                    
+
                     paddingTop: 300,
                     paddingLeft: 120,
                 }}
@@ -162,8 +160,73 @@ export function Home() {
                 <div style={{ height: 534 }} />
 
                 {/* Quick Access */}
-            
-        </Box>
+                <div style={{ marginTop: -235, paddingBottom: 235 }}>
+                    <Text
+                        style={{
+                            fontFamily: 'Poppins, sans-serif',
+                            fontWeight: 500,
+                            fontSize: 25,
+                            lineHeight: '100%',
+                            letterSpacing: '0%',
+                            color: '#0F172A',
+                        }}
+                        mb={24}
+                    >
+                        Quick Access
+                    </Text>
+
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, 188px)',
+                            gap: 37,
+                            width: 640,
+                        }}
+                    >
+
+
+
+                        <QuickCard
+                            title="ROSCA"
+                            
+                            desc="Join ROSCA to save with your peers"
+                            icon={<img src={Rosca} alt="" />}
+                        />
+
+                        <QuickCard
+                        
+                            title="Fixed Save"
+                            desc="Lock amount of money for a long period of time"
+                            icon={<img src={FixedSave} alt="" />}
+                        />
+
+                        <QuickCard
+                            title="Insurance"
+                            desc="Explore profitable opportunities with Suprebase"
+                            icon={<img src={Insurance} alt="" />}
+                        />
+
+                        <QuickCard
+                            title="Invest"
+                            desc="Explore profitable opportunities with Suprebase"
+                            icon={<img src={Invest} alt="" />}
+                        />
+
+                        <QuickCard
+                            title="Target Save"
+                            desc="Save towards a target with up to 10% return"
+                            icon={<img src={TargetSave} alt="" />}
+                        />
+
+                        <QuickCard
+                            title="Remittance"
+                            desc="Save towards a target with up to 10% return"
+                            icon={<img src={Remittance} alt="" />}
+                        />
+
+                    </div>
+                </div>
+            </Box>
         </div >
     )
 }
