@@ -24,9 +24,11 @@ import Invest from "@/assets/Invest.svg";
 import Remittance from "@/assets/Remittance.svg";
 import TargetSave from "@/assets/TargetSave.svg";
 import Rosca from "@/assets/Rosca.svg";
+import { useNavigate } from "react-router-dom";
 
 export function Home() {
     const [showInvite, setShowInvite] = useState(true);
+     const navigate = useNavigate();
 
     // ====== GLOBAL TUNING KNOBS (these are your “manual adjust” spots) ======
     const PAGE_MAX_W = 1240; // overall page width
@@ -54,7 +56,7 @@ export function Home() {
                     userName="Osho"
                     tierLabel="Tier 2"
                     languageLabel="EN"
-                    onFundWallet={() => console.log("Fund Wallet")}
+                    onFundWallet={() => navigate("/create-wallet")}
                     onTransfer={() => console.log("Transfer")}
                     onChangeLanguage={(lang: string) => console.log("Language:", lang)}
                 />
