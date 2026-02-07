@@ -4,3 +4,5 @@ export { Signup } from './Signup'
 export { CreateNewWallet2 } from './CreateNewWallet2'
 export { Rosca } from './Rosca'
 export { Investments } from './Investments'
+
+export { CreateNewWallet } from "./CreateNewWallet";

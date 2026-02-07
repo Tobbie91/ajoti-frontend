@@ -163,7 +163,7 @@ export function Home() {
                                     display: "grid",
                                     gridTemplateColumns: `repeat(3, ${QUICK_COL_W}px)`,
                                     gap: QUICK_GRID_GAP,
-                                    width: QUICK_GRID_W, // remove this line if you want it to stretch naturally
+                                    width: QUICK_GRID_W, 
                                 }}
                             >
                                 <QuickCard
