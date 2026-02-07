@@ -1,6 +1,5 @@
 import { Menu } from '@mantine/core'
-import { IconChevronDown, IconWorld, IconLock } from '@tabler/icons-react'
-import { SparkleIcon } from './SparkleIcon'
+import { SparkleIcon, WorldIcon, ChevronDownIcon, TierLockIcon } from './DashboardIcons'
 import styles from './MyDashboard.module.css'
 
 type MyDashboardProps = {
@@ -27,9 +26,9 @@ export function MyDashboard({
         <Menu withinPortal position="bottom-end" offset={8}>
           <Menu.Target>
             <button type="button" className={styles.langBtn}>
-              <IconWorld className={styles.langIcon} />
+              <WorldIcon className={styles.langIcon} />
               <span className={styles.langText}>{languageLabel}</span>
-              <IconChevronDown className={styles.langChevron} />
+              <ChevronDownIcon className={styles.langChevron} />
             </button>
           </Menu.Target>
 
@@ -54,7 +53,7 @@ export function MyDashboard({
 
         <div className={styles.tier}>
           <div className={styles.tierInner}>
-            <IconLock className={styles.tierIcon} />
+            <TierLockIcon className={styles.tierIcon} />
             <span className={styles.tierText}>{tierLabel}</span>
           </div>
         </div>
