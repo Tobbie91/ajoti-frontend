@@ -1,0 +1,216 @@
+/* 1440px design canvas wrapper */
+.wrap {
+  position: relative;
+  width: 100%;
+  max-width: 1440px;
+  height: 170px;
+  margin: 0 auto;
+}
+
+/* Language selector (Frame 427321788) */
+.lang {
+  position: absolute;
+  left: 1187px;
+  top: 27px;
+  width: 105px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+.langBtn {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.langIcon {
+  width: 24px;
+  height: 24px;
+  color: #000000;
+}
+
+.langText {
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 36px;
+  color: #000000;
+}
+
+.langChevron {
+  width: 20px;
+  height: 15px;
+  color: #000000;
+}
+
+/* Greeting block (Group 191 / Frame 427319204) */
+.greeting {
+  position: absolute;
+  left: 120px;
+  top: 51px;
+  width: 339px;
+  height: 95.62px;
+}
+
+.greetingInner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6.70732px 13.4146px;
+  gap: 10.73px;
+  width: 254px;
+  height: 95.62px;
+  box-sizing: border-box;
+}
+
+.hello {
+  width: 227.17px;
+  height: 42.93px;
+
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 42px;
+  color: #000000;
+}
+
+.subRow {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6.14px;
+  width: 240.59px;
+  height: 28.55px;
+}
+
+.subText {
+  width: 172.94px;
+  height: 27.45px;
+
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 300;
+  font-size: 18.3006px;
+  line-height: 27px;
+  color: #000000;
+}
+
+.sparkle {
+  width: 27.2px;
+  height: 28.55px;
+  color: #fbbc04;
+}
+
+/* Tier badge (Frame 427319891) */
+.tier {
+  position: absolute;
+  left: 254px; /* 374 - 120 */
+  top: 32px;
+  width: 85px;
+  height: 28px;
+
+  background: #fbbc04;
+  border-radius: 4px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tierInner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tierIcon {
+  width: 13px;
+  height: 13px;
+  color: #ffffff;
+}
+
+.tierText {
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: #000000;
+}
+
+/* Buttons (Frame 427318986 / 427319748) */
+.actions {
+  position: absolute;
+  top: 88px; /* 194 - 106 */
+  left: 959px;
+  display: flex;
+  gap: 23px;
+}
+
+.fundBtn {
+  width: 155px;
+  height: 56px;
+
+  background: #02a36e;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+
+  border: none;
+  cursor: pointer;
+
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 500;
+  font-size: 13.5392px;
+  line-height: 20px;
+  color: #ffffff;
+}
+
+.transferBtn {
+  width: 155px;
+  height: 56px;
+
+  background: transparent;
+  border: 1px solid #066f5b;
+  filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1));
+  border-radius: 10px;
+
+  cursor: pointer;
+
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 500;
+  font-size: 13.5392px;
+  line-height: 20px;
+  color: #066f5b;
+}
+
+/* Responsive fallback */
+@media (max-width: 1200px) {
+  .wrap {
+    height: auto;
+    padding: 16px;
+  }
+
+  .lang,
+  .greeting,
+  .actions {
+    position: static;
+    width: auto;
+    height: auto;
+  }
+
+  .lang {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+
+  .actions {
+    margin-top: 16px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+

@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+@import '@mantine/core/styles.css';
+
+/* Base layer for Tailwind reset that works with Mantine */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+/* Ensure Mantine components are not affected by Tailwind's preflight */
+@layer components {
+  /* Any custom component styles go here */
+}
+
+/* Utility overrides if needed */
+@layer utilities {
+  /* Custom utilities */
+}
+
