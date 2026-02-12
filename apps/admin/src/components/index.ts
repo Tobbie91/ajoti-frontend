@@ -1,1 +1,5 @@
-// Export components here
+export { Sidebar } from './Sidebar'
+export { Header } from './Header'
+export { StatsCard } from './StatsCard'
+export { GroupTable } from './GroupTable'
+export { QuickActions } from './QuickActions'
