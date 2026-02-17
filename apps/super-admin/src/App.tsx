@@ -4,11 +4,12 @@ import {
   Dashboard,
   ManageUsers,
   ManageRosca,
-  SavingsInvestment,
-  SavingsInsurance,
   Transactions,
   SettingsLogs,
 } from '@/pages'
+
+import { FixedSavings } from '@/pages/savings/FixedSavings'
+import { TargetSavings } from '@/pages/savings/TargetSavings'
 
 function App() {
   return (
@@ -18,8 +19,8 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/manage-users" element={<ManageUsers />} />
           <Route path="/manage-rosca" element={<ManageRosca />} />
-          <Route path="/savings/investment" element={<SavingsInvestment />} />
-          <Route path="/savings/insurance" element={<SavingsInsurance />} />
+          <Route path="/savings/FixedSavings" element={<FixedSavings />} />
+          <Route path="/savings/TargetSavings" element={<TargetSavings />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/settings-logs" element={<SettingsLogs />} />
         </Route>

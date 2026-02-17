@@ -1,10 +1,11 @@
+import { useNavigate } from 'react-router-dom'
 import { Paper, Text, Box, Group, ThemeIcon, Divider, Indicator } from '@mantine/core'
 import {
   IconMessage2,
-  IconUserPlus,
   IconTopologyRing,
+  IconUserCheck,
+  IconBell,
   IconAlertTriangle,
-  IconFileText,
 } from '@tabler/icons-react'
 
 const PRIMARY = '#0b6b55'
@@ -13,23 +14,25 @@ interface Action {
   label: string
   icon: React.ElementType
   badge?: number
-  onClick?: () => void
+  path?: string
 }
 
 const actions: Action[] = [
-  { label: 'Messages', icon: IconMessage2, badge: 3 },
-  { label: 'Add New User', icon: IconUserPlus },
-  { label: 'Create ROSCA Group', icon: IconTopologyRing },
+  { label: 'Messages', icon: IconMessage2, badge: 1 },
+  { label: 'Create New Group', icon: IconTopologyRing, path: '/create-group' },
+  { label: 'Manage Join Request', icon: IconUserCheck },
+  { label: 'Send Group Notification', icon: IconBell },
   { label: 'Handle Payment Issues', icon: IconAlertTriangle },
-  { label: 'Generate Report', icon: IconFileText },
 ]
 
 export function QuickActions() {
+  const navigate = useNavigate()
+
   return (
     <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
       <Box px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
         <Text fw={700} fz="md">
-          Quick Actions
+          Group Activity
         </Text>
       </Box>
 
@@ -43,6 +46,7 @@ export function QuickActions() {
                 cursor: 'pointer',
                 transition: 'background 0.15s',
               }}
+              onClick={() => action.path && navigate(action.path)}
               onMouseEnter={(e) => {
                 ;(e.currentTarget as HTMLElement).style.background = '#f8fffe'
               }}

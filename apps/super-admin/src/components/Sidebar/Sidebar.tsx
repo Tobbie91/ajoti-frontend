@@ -19,8 +19,8 @@ const mainLinks = [
 ]
 
 const savingsChildren = [
-  { label: 'Investment', icon: IconChartLine, path: '/savings/investment' },
-  { label: 'Insurance', icon: IconShieldCheck, path: '/savings/insurance' },
+  { label: 'Fixed Savings', icon: IconChartLine, path: '/savings/FixedSavings' },
+  { label: 'Target Savings', icon: IconShieldCheck, path: '/savings/TargetSavings' },
 ]
 
 const bottomLinks = [

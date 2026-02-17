@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AdminLayout } from '@/layouts'
-import { Dashboard } from '@/pages'
+import { Dashboard, CreateGroup } from '@/pages'
 
 function App() {
   return (
@@ -8,6 +8,7 @@ function App() {
       <Routes>
         <Route element={<AdminLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/create-group" element={<CreateGroup />} />
         </Route>
       </Routes>
     </BrowserRouter>
