@@ -15,6 +15,7 @@ import {
   Card,
 } from '@mantine/core'
 import { IconSearch, IconDots, IconX } from '@tabler/icons-react'
+import { useNavigate } from 'react-router-dom'
 
 interface User {
   name: string
@@ -25,6 +26,9 @@ interface User {
   status: 'Active' | 'Inactive'
   role: 'Admin' | 'Regular User' // Added role field for filtering
 }
+
+import { SuspendUserModal } from '@/components/SuspendUserModal'
+import { KycReminderModal } from '@/components/KycReminderModal';
 
 const allUsers: User[] = [
   { name: 'Ayomide Emmanuel', email: 'mide@domain.com', phone: '+234 901 234 5678', activeRosca: '2 Groups', bvn: '2234567899', status: 'Active', role: 'Regular User' },
@@ -57,6 +61,7 @@ const allUsers: User[] = [
 const PAGE_SIZE = 20
 
 export function ManageUsers() {
+  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string[]>([])
   
@@ -65,6 +70,10 @@ export function ManageUsers() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [accountStatus, setAccountStatus] = useState<string | null>(null)
   const [bulkAction, setBulkAction] = useState<string | null>(null)
+
+  //Modal state
+  const [suspendModalOpened, setSuspendModalOpened] = useState(false)
+  const [kycModalOpened, setKycModalOpened] = useState(false);
 
   // Filter users based on all filter criteria
   const filteredUsers = useMemo(() => {
@@ -93,29 +102,70 @@ export function ManageUsers() {
     })
   }, [searchQuery, userRole, accountStatus])
 
+  // Get selected user objects
+  const selectedUsers = useMemo(() => {
+    return allUsers.filter(user => selected.includes(user.email))
+  }, [selected])
+
   // Handle bulk actions
   const handleBulkAction = (action: string | null) => {
     if (!action || selected.length === 0) return
 
     switch (action) {
-      case 'Activate':
-        console.log('Activating users:', selected)
-        // Add API call here
+      case 'Suspend':
+        setSuspendModalOpened(true)
         break
-      case 'Deactivate':
-        console.log('Deactivating users:', selected)
-        // Add API call here
+      case 'Send KYC Reminder':
+        setKycModalOpened(true)
         break
-      case 'Delete':
-        console.log('Deleting users:', selected)
-        // Add API call here
+      case 'Send Notification':
+        console.log('Sending notification to:', selected)
+        // API call here
+        setSelected([])
+        setBulkAction(null)
+        break
+      case 'Export CSV':
+        console.log('Exporting users:', selected)
+        // Export logic here
+        setSelected([])
+        setBulkAction(null)
         break
     }
+  }
+
+  const handleConfirmSuspension = (reason: string, notifyUser: boolean) => {
+    console.log('Suspending users:', selected)
+    console.log('Reason:', reason)
+    console.log('Notify:', notifyUser)
+    
+    // API call here to suspend users
+    // Update user status in your data
+    setUsers(prevUsers => 
+      prevUsers.map((user: { email: string }) => 
+        selected.includes(user.email) 
+          ? { ...user, status: 'Suspended' as const }
+          : user
+      )
+    )
     
     // Clear selection after action
     setSelected([])
     setBulkAction(null)
   }
+
+  const handleKycReminder = (reminderType: string, message: string, sendAs: string) => {
+    console.log('Sending KYC reminder to:', selected)
+    console.log('Reminder type:', reminderType)
+    console.log('Message:', message)
+    console.log('Send as:', sendAs)
+    
+    // API call here to send KYC reminders
+    
+    // Clear selection after action
+    setSelected([])
+    setBulkAction(null)
+  }
+  
 
   // Reset all filters
   const clearFilters = () => {
@@ -196,7 +246,7 @@ export function ManageUsers() {
         />
         <Select
           placeholder="Bulk Action"
-          data={['Activate', 'Deactivate', 'Delete']}
+          data={['Suspend', 'Send KYC Reminder', 'Send Notification', 'Export CSV']}
           value={bulkAction}
           onChange={handleBulkAction}
           size="sm"
@@ -272,6 +322,7 @@ export function ManageUsers() {
                       variant="filled"
                       size="sm"
                       radius="sm"
+                      style={{ padding: '18px' }}
                     >
                       {user.status}
                     </Badge>
@@ -284,7 +335,9 @@ export function ManageUsers() {
                         </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item>View Profile</Menu.Item>
+                        <Menu.Item onClick={() => navigate(`/users/${encodeURIComponent(user.email)}`)}>
+                          View Profile
+                        </Menu.Item>
                         <Menu.Item>Edit User</Menu.Item>
                         <Menu.Item color="red">Deactivate</Menu.Item>
                       </Menu.Dropdown>
@@ -324,6 +377,32 @@ export function ManageUsers() {
           />
         )}
       </Group>
+
+      {/* Suspend User Modal */}
+      <SuspendUserModal
+        opened={suspendModalOpened}
+        onClose={() => {
+          setSuspendModalOpened(false)
+          setBulkAction(null)
+        }}
+        selectedUsers={selectedUsers}
+        onConfirm={handleConfirmSuspension}
+      />
+
+      <KycReminderModal
+        opened={kycModalOpened}
+        onClose={() => {
+          setKycModalOpened(false)
+          setBulkAction(null)
+        }}
+        selectedUsers={selectedUsers}
+        onConfirm={handleKycReminder}
+      />
+
     </Stack>
   )
+}
+
+function setUsers(_updater: (prevUsers: any) => any) {
+  throw new Error('Function not implemented.')
 }

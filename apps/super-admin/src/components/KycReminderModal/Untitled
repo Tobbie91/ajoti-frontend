@@ -1,0 +1,205 @@
+// src/components/KycReminderModal.tsx
+import { Modal, Stack, Text, Group, Button, Checkbox, Badge, Select, Textarea, Paper, Alert, Radio, Table } from '@mantine/core';
+import { IconInfoCircle, IconEye, IconBell, IconMail } from '@tabler/icons-react';
+import { useState } from 'react';
+
+interface User {
+  name: string;
+  email: string;
+}
+
+interface KycReminderModalProps {
+  opened: boolean;
+  onClose: () => void;
+  selectedUsers: User[];
+  onConfirm: (reminderType: string, message: string, sendAs: string) => void;
+}
+
+export function KycReminderModal({ opened, onClose, selectedUsers, onConfirm }: KycReminderModalProps) {
+  const [reminderType, setReminderType] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [sendAs, setSendAs] = useState('in-app');
+  const [usersModalOpened, setUsersModalOpened] = useState(false);
+
+  const handleConfirm = () => {
+    if (reminderType) {
+      onConfirm(reminderType, message, sendAs);
+      onClose();
+      // Reset state
+      setReminderType(null);
+      setMessage('');
+      setSendAs('in-app');
+    }
+  };
+
+  // Get display text for selected users
+  const getSelectedUsersText = () => {
+    if (selectedUsers.length === 0) return '';
+    if (selectedUsers.length === 1) return selectedUsers[0].name;
+    
+    const firstName = selectedUsers[0].name.split(' ')[0];
+    const secondName = selectedUsers[1].name.split(' ')[0];
+    return `${selectedUsers[0].name}, ${selectedUsers[1].name} +${selectedUsers.length - 2}`;
+  };
+
+  // Truncate name for display
+  const truncateName = (fullName: string) => {
+    const parts = fullName.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0]} ${parts[1][0]}.`;
+    }
+    return fullName;
+  };
+
+  return (
+    <>
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        title="Send KYC Reminder"
+        size="lg"
+        radius="md"
+        padding="xl"
+      >
+        <Stack gap="lg">
+          {/* Info Alert */}
+          <Alert
+            icon={<IconInfoCircle size={16} />}
+            color="blue"
+            variant="light"
+          >
+            <Text size="sm">
+              Send a reminder to selected user(s) to complete or update their KYC verification. 
+              This notification will be delivered as an in-app alert.
+            </Text>
+          </Alert>
+
+          {/* Selected Users */}
+          <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" align="center">
+              <Group>
+                <Badge color="blue" size="lg">{selectedUsers.length} users selected</Badge>
+                <Text size="sm" fw={500}>{getSelectedUsersText()}</Text>
+              </Group>
+              {selectedUsers.length > 2 && (
+                <Button 
+                  variant="subtle" 
+                  size="xs" 
+                  leftSection={<IconEye size={14} />}
+                  onClick={() => setUsersModalOpened(true)}
+                >
+                  View all selected
+                </Button>
+              )}
+            </Group>
+          </Paper>
+
+          {/* KYC Reminder Type */}
+          <div>
+            <Text fw={500} mb="xs">KYC Reminder Type <span style={{ color: 'red' }}>*</span></Text>
+            <Select
+              placeholder="Select reminder type"
+              data={[
+                { value: 'incomplete', label: 'Incomplete KYC' },
+                { value: 'expired', label: 'Expired Documents' },
+                { value: 'pending', label: 'Pending Verification' },
+                { value: 'update', label: 'Update Required' },
+                { value: 'additional', label: 'Additional Documents Needed' },
+              ]}
+              value={reminderType}
+              onChange={setReminderType}
+              size="md"
+              required
+            />
+          </div>
+
+          {/* Message */}
+          <div>
+            <Text fw={500} mb="xs">Message</Text>
+            <Textarea
+              placeholder="Type your message here..."
+              value={message}
+              onChange={(event) => setMessage(event.currentTarget.value)}
+              minRows={4}
+              size="md"
+            />
+          </div>
+
+          {/* Send As */}
+          <div>
+            <Text fw={500} mb="xs">Send As</Text>
+            <Radio.Group
+              value={sendAs}
+              onChange={setSendAs}
+            >
+              <Group mt="xs">
+                <Radio 
+                  value="in-app" 
+                  label="In-app Notification" 
+                  icon={IconBell}
+                />
+                <Radio 
+                  value="email" 
+                  label="Email" 
+                  icon={IconMail}
+                />
+                <Radio 
+                  value="both" 
+                  label="Both" 
+                />
+              </Group>
+            </Radio.Group>
+          </div>
+
+          {/* Action Buttons */}
+          <Group justify="flex-end" mt="md">
+            <Button variant="outline" color="gray" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              color="blue"
+              onClick={handleConfirm}
+              disabled={!reminderType}
+            >
+              Send Reminder
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Selected Users List Modal */}
+      <Modal
+        opened={usersModalOpened}
+        onClose={() => setUsersModalOpened(false)}
+        title="Selected Users"
+        size="lg"
+        radius="md"
+      >
+        <Table striped highlightOnHover>
+          <Table.Thead style={{ backgroundColor: '#066F5B' }}>
+            <Table.Tr>
+              <Table.Th style={{ color: 'white' }}>Name</Table.Th>
+              <Table.Th style={{ color: 'white' }}>Email address</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {selectedUsers.map((user, index) => (
+              <Table.Tr key={index}>
+                <Table.Td>
+                  <Text fw={500}>{truncateName(user.name)}</Text>
+                </Table.Td>
+                <Table.Td>{user.email}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+
+        <Group justify="flex-end" mt="md">
+          <Button variant="outline" onClick={() => setUsersModalOpened(false)}>
+            Close
+          </Button>
+        </Group>
+      </Modal>
+    </>
+  );
+}
