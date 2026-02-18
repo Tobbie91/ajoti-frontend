@@ -1,0 +1,1 @@
+export {KycReminderModal} from './KycReminderModal'

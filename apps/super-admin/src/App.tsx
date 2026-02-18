@@ -10,6 +10,7 @@ import {
 
 import { FixedSavings } from '@/pages/savings/FixedSavings'
 import { TargetSavings } from '@/pages/savings/TargetSavings'
+import { UserDetails } from './pages/UserDetails'
 
 function App() {
   return (
@@ -23,6 +24,8 @@ function App() {
           <Route path="/savings/TargetSavings" element={<TargetSavings />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/settings-logs" element={<SettingsLogs />} />
+          <Route path="/users/:userId" element={<UserDetails />} />
+          
         </Route>
       </Routes>
     </BrowserRouter>
