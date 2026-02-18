@@ -20,8 +20,8 @@ interface Action {
 const actions: Action[] = [
   { label: 'Messages', icon: IconMessage2, badge: 1 },
   { label: 'Create New Group', icon: IconTopologyRing, path: '/create-group' },
-  { label: 'Manage Join Request', icon: IconUserCheck },
-  { label: 'Send Group Notification', icon: IconBell },
+  { label: 'Manage Join Request', icon: IconUserCheck, path: '/manage-join-request' },
+  { label: 'Send Group Notification', icon: IconBell, path: '/rosca/groups' },
   { label: 'Handle Payment Issues', icon: IconAlertTriangle },
 ]
 

@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@mantine/core/styles.css';
+@import '@mantine/dates/styles.css';
 
 /* Base layer for Tailwind reset that works with Mantine */
 @layer base {

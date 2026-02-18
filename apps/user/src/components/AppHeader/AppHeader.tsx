@@ -1,6 +1,6 @@
-import { Menu } from '@mantine/core'
-import { NavLink as RouterNavLink } from 'react-router-dom'
-import { IconBell, IconChevronDown } from '@tabler/icons-react'
+// import { Menu } from '@mantine/core'
+import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom'
+import { IconBell /* IconChevronDown */ } from '@tabler/icons-react'
 import styles from './AppHeader.module.css'
 
 type AppHeaderProps = {
@@ -29,24 +29,8 @@ function HomeIcon({ className }: SvgProps) {
   )
 }
 
-function SavingsIcon({ className }: SvgProps) {
-  return (
-    <svg
-      className={className}
-      width="26"
-      height="25"
-      viewBox="0 0 26 25"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M3.9 0C2.86566 0 1.87368 0.410892 1.14228 1.14228C0.410892 1.87368 0 2.86566 0 3.9V20.8C0 21.8343 0.410892 22.8263 1.14228 23.5577C1.87368 24.2891 2.86566 24.7 3.9 24.7H20.8C21.8343 24.7 22.8263 24.2891 23.5577 23.5577C24.2891 22.8263 24.7 21.8343 24.7 20.8V18.499C25.519 17.758 26 16.705 26 15.6V9.1C26 7.995 25.519 6.942 24.7 6.201V3.9C24.7 2.86566 24.2891 1.87368 23.5577 1.14228C22.8263 0.410892 21.8343 0 20.8 0H3.9ZM3.9 1.3H20.8C21.4896 1.3 22.1509 1.57393 22.6385 2.06152C23.1261 2.54912 23.4 3.21044 23.4 3.9V5.421C22.984 5.278 22.542 5.2 22.1 5.2H14.3C13.2657 5.2 12.2737 5.61089 11.5423 6.34228C10.8109 7.07368 10.4 8.06566 10.4 9.1V15.6C10.4 16.6343 10.8109 17.6263 11.5423 18.3577C12.2737 19.0891 13.2657 19.5 14.3 19.5H22.1C22.542 19.5 22.984 19.422 23.4 19.279V20.8C23.4 21.4896 23.1261 22.1509 22.6385 22.6385C22.1509 23.1261 21.4896 23.4 20.8 23.4H3.9C3.21044 23.4 2.54912 23.1261 2.06152 22.6385C1.57393 22.1509 1.3 21.4896 1.3 20.8V3.9C1.3 3.21044 1.57393 2.54912 2.06152 2.06152C2.54912 1.57393 3.21044 1.3 3.9 1.3ZM14.3 6.5H22.1C22.7896 6.5 23.4509 6.77393 23.9385 7.26152C24.4261 7.74912 24.7 8.41044 24.7 9.1V15.6C24.7 16.2896 24.4261 16.9509 23.9385 17.4385C23.4509 17.9261 22.7896 18.2 22.1 18.2H14.3C13.6104 18.2 12.9491 17.9261 12.4615 17.4385C11.9739 16.9509 11.7 16.2896 11.7 15.6V9.1C11.7 8.41044 11.9739 7.74912 12.4615 7.26152C12.9491 6.77393 13.6104 6.5 14.3 6.5ZM17.55 9.1C16.688 9.1 15.8614 9.44241 15.2519 10.0519C14.6424 10.6614 14.3 11.488 14.3 12.35C14.3 13.212 14.6424 14.0386 15.2519 14.6481C15.8614 15.2576 16.688 15.6 17.55 15.6C18.412 15.6 19.2386 15.2576 19.8481 14.6481C20.4576 14.0386 20.8 13.212 20.8 12.35C20.8 11.488 20.4576 10.6614 19.8481 10.0519C19.2386 9.44241 18.412 9.1 17.55 9.1ZM17.55 10.4C18.0672 10.4 18.5632 10.6054 18.9289 10.9711C19.2946 11.3368 19.5 11.8328 19.5 12.35C19.5 12.8672 19.2946 13.3632 18.9289 13.7289C18.5632 14.0946 18.0672 14.3 17.55 14.3C17.0328 14.3 16.5368 14.0946 16.1711 13.7289C15.8054 13.3632 15.6 12.8672 15.6 12.35C15.6 11.8328 15.8054 11.3368 16.1711 10.9711C16.5368 10.6054 17.0328 10.4 17.55 10.4Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
+// SavingsIcon — commented out, coming soon
+// function SavingsIcon({ className }: SvgProps) { ... }
 
 function RoscaIcon({ className }: SvgProps) {
   return (
@@ -67,30 +51,48 @@ function RoscaIcon({ className }: SvgProps) {
   )
 }
 
-function InvestmentsIcon({ className }: SvgProps) {
+function WalletIcon({ className }: SvgProps) {
   return (
     <svg
       className={className}
-      width="25"
-      height="26"
-      viewBox="0 0 25 26"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <path
-        d="M18.2 2.6C17.8552 2.6 17.5246 2.46304 17.2808 2.21924C17.037 1.97544 16.9 1.64478 16.9 1.3C16.9 0.955218 17.037 0.624558 17.2808 0.380761C17.5246 0.136964 17.8552 0 18.2 0H23.4C23.7448 0 24.0754 0.136964 24.3192 0.380761C24.563 0.624558 24.7 0.955218 24.7 1.3V6.5C24.7 6.84478 24.563 7.17544 24.3192 7.41924C24.0754 7.66304 23.7448 7.8 23.4 7.8C23.0552 7.8 22.7246 7.66304 22.4808 7.41924C22.237 7.17544 22.1 6.84478 22.1 6.5V4.4382L14.5691 11.9691C14.3253 12.2128 13.9947 12.3497 13.65 12.3497C13.3053 12.3497 12.9747 12.2128 12.7309 11.9691L9.1 8.3382L2.2191 15.2191C1.97392 15.4559 1.64553 15.5869 1.30468 15.584C0.963823 15.581 0.637767 15.4443 0.396736 15.2033C0.155705 14.9622 0.0189857 14.6362 0.0160238 14.2953C0.0130619 13.9545 0.144094 13.6261 0.3809 13.3809L8.1809 5.5809C8.42469 5.33719 8.75529 5.20028 9.1 5.20028C9.44471 5.20028 9.77531 5.33719 10.0191 5.5809L13.65 9.2118L20.2618 2.6H18.2ZM2.6 20.8V24.7C2.6 25.0448 2.46304 25.3754 2.21924 25.6192C1.97544 25.863 1.64478 26 1.3 26C0.955219 26 0.624558 25.863 0.380761 25.6192C0.136964 25.3754 0 25.0448 0 24.7V20.8C0 20.4552 0.136964 20.1246 0.380761 19.8808C0.624558 19.637 0.955219 19.5 1.3 19.5C1.64478 19.5 1.97544 19.637 2.21924 19.8808C2.46304 20.1246 2.6 20.4552 2.6 20.8ZM9.1 15.6C9.1 15.2552 8.96304 14.9246 8.71924 14.6808C8.47544 14.437 8.14478 14.3 7.8 14.3C7.45522 14.3 7.12456 14.437 6.88076 14.6808C6.63696 14.9246 6.5 15.2552 6.5 15.6V24.7C6.5 25.0448 6.63696 25.3754 6.88076 25.6192C7.12456 25.863 7.45522 26 7.8 26C8.14478 26 8.47544 25.863 8.71924 25.6192C8.96304 25.3754 9.1 25.0448 9.1 24.7V15.6ZM14.3 16.9C14.6448 16.9 14.9754 17.037 15.2192 17.2808C15.463 17.5246 15.6 17.8552 15.6 18.2V24.7C15.6 25.0448 15.463 25.3754 15.2192 25.6192C14.9754 25.863 14.6448 26 14.3 26C13.9552 26 13.6246 25.863 13.3808 25.6192C13.137 25.3754 13 25.0448 13 24.7V18.2C13 17.8552 13.137 17.5246 13.3808 17.2808C13.6246 17.037 13.9552 16.9 14.3 16.9ZM22.1 11.7C22.1 11.3552 21.963 11.0246 21.7192 10.7808C21.4754 10.537 21.1448 10.4 20.8 10.4C20.4552 10.4 20.1246 10.537 19.8808 10.7808C19.637 11.0246 19.5 11.3552 19.5 11.7V24.7C19.5 25.0448 19.637 25.3754 19.8808 25.6192C20.1246 25.863 20.4552 26 20.8 26C21.1448 26 21.4754 25.863 21.7192 25.6192C21.963 25.3754 22.1 25.0448 22.1 24.7V11.7Z"
+        d="M21 7H3C2.447 7 2 7.447 2 8V20C2 20.553 2.447 21 3 21H21C21.553 21 22 20.553 22 20V8C22 7.447 21.553 7 21 7Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M17 15C17.5523 15 18 14.5523 18 14C18 13.4477 17.5523 13 17 13C16.4477 13 16 13.4477 16 14C16 14.5523 16.4477 15 17 15Z"
         fill="currentColor"
+      />
+      <path
+        d="M5 7V5C5 4.46957 5.21071 3.96086 5.58579 3.58579C5.96086 3.21071 6.46957 3 7 3H18C18.5304 3 19.0391 3.21071 19.4142 3.58579C19.7893 3.96086 20 4.46957 20 5V7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )
 }
+
+// InvestmentsIcon — commented out, coming soon
+// function InvestmentsIcon({ className }: SvgProps) { ... }
 
 function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ')
 }
 
 export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderProps) {
+  const navigate = useNavigate()
   return (
     <header className={styles.header}>
       {/* Logo */}
@@ -99,7 +101,7 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderP
       {/* Nav */}
       <nav className={styles.nav}>
         <RouterNavLink
-          to="/"
+          to="/home"
           end
           className={({ isActive }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
         >
@@ -107,30 +109,24 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderP
           <span className={styles.navLabel}>Home</span>
         </RouterNavLink>
 
-        {/* Savings dropdown */}
-        <Menu withinPortal position="bottom-start" offset={10}>
-          <Menu.Target>
-            <button type="button" className={cx(styles.navItem, styles.inactive, styles.navButton)}>
-              <SavingsIcon className={styles.navIcon} />
-              <span className={styles.navLabel}>Savings</span>
-              <IconChevronDown className={styles.chevron} />
-            </button>
-          </Menu.Target>
+        {/* Savings dropdown — coming soon */}
 
-          <Menu.Dropdown>
-            <Menu.Item>Fixed Savings</Menu.Item>
-            <Menu.Item>Target Savings</Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-
-        <RouterNavLink to="/rosca" className={() => cx(styles.navItem, styles.inactive)}>
+        <RouterNavLink
+          to="/rosca"
+          className={({ isActive }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+        >
           <RoscaIcon className={styles.navIconRosca} />
           <span className={styles.navLabel}>ROSCA</span>
         </RouterNavLink>
 
-        <RouterNavLink to="/investments" className={() => cx(styles.navItem, styles.inactive)}>
-          <InvestmentsIcon className={styles.navIconInvest} />
-          <span className={styles.navLabel}>Investments</span>
+        {/* Investments — coming soon */}
+
+        <RouterNavLink
+          to="/create-wallet"
+          className={({ isActive }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+        >
+          <WalletIcon className={styles.navIconWallet} />
+          <span className={styles.navLabel}>Wallet</span>
         </RouterNavLink>
       </nav>
 
@@ -140,7 +136,7 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderP
           <IconBell className={styles.bellIcon} />
         </div>
 
-        <div className={styles.account}>
+        <div className={styles.account} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
           <div className={styles.avatarRing}>
             <img className={styles.avatarImg} src={avatarSrc} alt="" />
           </div>
@@ -150,4 +146,3 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderP
     </header>
   )
 }
-

@@ -64,7 +64,7 @@ export function CreateGroup() {
           color="gray"
           size="lg"
           radius="xl"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
         >
           <IconArrowLeft size={20} stroke={1.5} />
         </ActionIcon>
@@ -641,7 +641,7 @@ export function CreateGroup() {
             <Button
               variant="default"
               radius="md"
-              onClick={() => setActive(2)}
+              onClick={() => setActive(0)}
             >
               Back to Edit
             </Button>
@@ -662,7 +662,7 @@ export function CreateGroup() {
               radius="md"
               onClick={() => {
                 if (active > 0) setActive(active - 1)
-                else navigate('/')
+                else navigate('/dashboard')
               }}
             >
               Back

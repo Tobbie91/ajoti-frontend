@@ -6,12 +6,10 @@ import { CurrencyCard } from "@/components/CurrencyCard";
 import { PrivacyList } from "@/components/Privacy/PrivacyList";
 
 import NigerianFlag from "@/assets/NigerianFlag.svg";
-import AmericanFlag from "@/assets/AmericanFlag.svg";
-import BritianFlag from "@/assets/BritianFlag.svg";
 import GreenCheck from "@/assets/GreenCheck.svg";
 
 
-type Currency = "NGN" | "USD" | "GBP";
+type Currency = "NGN";
 
 // ---- manual knobs ----
 const PAGE_MAX_W = 900;
@@ -101,7 +99,7 @@ export function CreateNewWallet() {
               Choose the currency to save in and beat inflation.
             </Text>
 
-            {/* Currency cards */}
+            {/* Currency card */}
             <Box style={{ maxWidth: ROW_MAX_W, width: "100%", marginTop: 10, paddingBottom:20 }}>
               <Group justify="center" gap={ROW_GAP}>
                 <Box style={{ width: CARD_W }}>
@@ -112,28 +110,6 @@ export function CreateNewWallet() {
                     active={selected === "NGN"}
                     onClick={() => setSelected("NGN")}
                     iconSrc={NigerianFlag}
-                  />
-                </Box>
-
-                <Box style={{ width: CARD_W }}>
-                  <CurrencyCard
-                    code="USD"
-                    symbol="$"
-                    amount="0.00"
-                    active={selected === "USD"}
-                    onClick={() => setSelected("USD")}
-                    iconSrc={AmericanFlag}
-                  />
-                </Box>
-
-                <Box style={{ width: CARD_W }}>
-                  <CurrencyCard
-                    code="GBP"
-                    symbol="£"
-                    amount="0.00"
-                    active={selected === "GBP"}
-                    onClick={() => setSelected("GBP")}
-                    iconSrc={BritianFlag}
                   />
                 </Box>
               </Group>
@@ -187,9 +163,7 @@ export function CreateNewWallet() {
             fontFamily: "Poppins, system-ui, sans-serif",
             fontWeight: 500,
           }}
-          onClick={() => {
-            console.log("Fund wallet for:", selected);
-          }}
+          onClick={() => navigate("/fund-wallet")}
         >
           Fund Wallet
         </Button>

@@ -1,5 +1,8 @@
-import { Stack, Grid, Text, Box, SimpleGrid, Button } from '@mantine/core'
+import { Stack, Grid, Text, Box, SimpleGrid, Button, Group, Paper } from '@mantine/core'
+import { IconArrowUpRight, IconPlus } from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
 import { StatsCard } from '@/components/StatsCard'
+import { TrustScoreCard, CreditScoreCard } from '@/components/ScoreCards'
 import { GroupTable } from '@/components/GroupTable'
 import { QuickActions } from '@/components/QuickActions'
 
@@ -38,12 +41,52 @@ export function Dashboard() {
         />
       </SimpleGrid>
 
+      {/* Wallet quick actions */}
+      <Paper p="lg" radius="md" style={{ background: '#02A36E' }}>
+        <Group justify="space-between" align="center">
+          <Box>
+            <Text fz="xs" c="white" opacity={0.7}>Wallet Balance</Text>
+            <Text fz={28} fw={700} c="white" lh={1.2}>₦10,000.00</Text>
+          </Box>
+          <Group gap="sm">
+            <Button
+              component={Link}
+              to="/fund-wallet"
+              radius="md"
+              size="sm"
+              leftSection={<IconPlus size={16} />}
+              style={{ background: 'rgba(255,255,255,0.2)' }}
+            >
+              Fund Wallet
+            </Button>
+            <Button
+              component={Link}
+              to="/withdraw"
+              radius="md"
+              size="sm"
+              leftSection={<IconArrowUpRight size={16} />}
+              style={{ background: 'rgba(255,255,255,0.2)' }}
+            >
+              Withdraw
+            </Button>
+          </Group>
+        </Group>
+      </Paper>
+
+      {/* Trust Score & Credit Score */}
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        <TrustScoreCard score={72} />
+        <CreditScoreCard score={685} />
+      </SimpleGrid>
+
       {/* Main content: table + quick actions */}
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, md: 7 }}>
           <GroupTable />
           <Box mt="sm">
             <Button
+              component={Link}
+              to="/rosca/groups"
               style={{ background: PRIMARY }}
               radius="md"
               px="xl"

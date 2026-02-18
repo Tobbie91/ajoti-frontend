@@ -28,7 +28,7 @@ export function Header({ opened, onToggle }: HeaderProps) {
               Admin
             </Text>
             <Text fz="xs" c="dimmed" lh={1.2}>
-              Super Admin
+              Admin
             </Text>
           </Box>
           <Avatar

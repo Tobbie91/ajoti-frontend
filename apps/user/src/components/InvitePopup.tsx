@@ -1,4 +1,3 @@
-// import React from "react";
 import boltIcon from "@/assets/boltIcon.svg"
 
 type InvitePopupProps = {
@@ -9,27 +8,27 @@ type InvitePopupProps = {
 const InvitePopup = ({ visible, onClose }: InvitePopupProps) => {
     if (!visible) return null;
     return (
-        <div className="w-[571px] h-[104px] rounded-[16px] bg-[#FCBC00] shadow-lg px-5 flex items-center justify-between relative"
-        >
+        <div className="w-full rounded-2xl bg-[#FCBC00] shadow-lg px-5 py-4 flex items-center gap-4 relative">
             <button
                 type="button"
                 aria-label="Close invite"
                 onClick={onClose}
-                className="absolute top-[10px] right-[12px] text-white text-[18px] leading-none"
+                className="absolute top-2 right-3 text-white text-lg leading-none"
             >
-
+                ✕
             </button>
-            <div className="flex items-center gap-2 mb-2">
-                <img src={boltIcon} alt="Bolt Icon" className=" absolute top-[12px] left-[21px]" />
-                <span className=" absolute top-[16px] left-[64px] font-[400] text-[18px] leading-[26px] text-[#FFFFFF] font-inter">
+
+            <img src={boltIcon} alt="" className="w-10 h-10 flex-shrink-0" />
+
+            <div className="flex-1 min-w-0">
+                <span className="text-white text-sm font-normal leading-relaxed">
                     Invite a friend and get N500 each. <br />
                     People you know might already be here!
                 </span>
             </div>
-            <button className="absolute top-[25px] left-[451px] bg-white rounded-[7.06px]  w-[97.65px] h-[40px]">
-                <span className="font-[400] text-[11.76px] leading-[26px] text-[#FCBC00] font-inter w-[59px] h-[22px]">
-                    Invite now
-                </span>
+
+            <button className="flex-shrink-0 bg-white rounded-lg px-4 py-2 text-xs font-medium text-[#FCBC00]">
+                Invite now
             </button>
         </div>
     );

@@ -38,7 +38,7 @@
   position: absolute;
   left: 379px;
   top: 43px;
-  width: 681.45px;
+  width: 820px;
   height: 26px;
 
   display: flex;
@@ -94,6 +94,11 @@
 .navIconInvest {
   width: 24.7px;
   height: 26px;
+}
+
+.navIconWallet {
+  width: 24px;
+  height: 24px;
 }
 
 .chevron {

@@ -23,28 +23,28 @@ export function Login() {
 
             <div className="space-y-4">
               <Text fw={700} size="xl">
-                Welcome back to ROSCA
+                Welcome back to Ajoti
               </Text>
               <Text size="sm" className="text-white/90">
-                Keep every contribution on track and manage your savings circles in one place.
+                Save, invest, and grow your wealth — all from one platform.
               </Text>
             </div>
 
             <div className="grid gap-3">
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text size="sm" className="text-white/80">
-                  Active groups
+                <Text fw={600} size="sm">
+                  Savings & ROSCA
                 </Text>
-                <Text fw={700} size="lg">
-                  24 circles live
+                <Text size="xs" className="mt-1 text-white/80">
+                  Fixed savings, target savings, and trusted group contributions.
                 </Text>
               </div>
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text size="sm" className="text-white/80">
-                  Community savings
+                <Text fw={600} size="sm">
+                  Investments & Insurance
                 </Text>
-                <Text fw={700} size="lg">
-                  ₦125M+ pooled
+                <Text size="xs" className="mt-1 text-white/80">
+                  Grow your wealth with smart investments and stay protected.
                 </Text>
               </div>
             </div>

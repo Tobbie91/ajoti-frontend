@@ -23,15 +23,14 @@ export function SummaryCard({
             radius={13.73}
             onClick={() => navigate(to)}
             style={{
-                width: 378,
-                minWidth: 378,
+                width: '100%',
                 height: 206,
                 background: gradient,
                 color: 'white',
                 position: 'relative',
                 overflow: 'hidden',
                 cursor: 'pointer',
-                transition: 'none', // Animate: Instant
+                transition: 'none',
                 border: '1px solid rgba(0,0,0,0.06)',
             }}
         >

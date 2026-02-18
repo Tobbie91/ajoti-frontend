@@ -1,4 +1,7 @@
-import { Button, Card, Group, PasswordInput, Text, TextInput, Divider } from '@mantine/core'
+import { useState } from 'react'
+import { Button, Card, Group, PasswordInput, Text, TextInput, Divider, Select } from '@mantine/core'
+import { DatePickerInput } from '@mantine/dates'
+import { IconUsers, IconUserCircle } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
@@ -6,6 +9,7 @@ import { useAuth } from '@/utils/auth'
 export function Signup() {
   const { login } = useAuth()
   const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
+  const [role, setRole] = useState<'member' | 'admin'>('member')
 
   return (
     <div className="min-h-screen bg-[#F7FBF9]">
@@ -23,28 +27,28 @@ export function Signup() {
 
             <div className="space-y-4">
               <Text fw={700} size="xl">
-                Join the ROSCA community
+                Join Ajoti today
               </Text>
               <Text size="sm" className="text-white/90">
-                Start or join trusted savings groups and build wealth together.
+                Save, invest, and manage your finances — all in one place.
               </Text>
             </div>
 
             <div className="grid gap-3">
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text size="sm" className="text-white/80">
+                <Text fw={600} size="sm">
                   Quick onboarding
                 </Text>
-                <Text fw={700} size="lg">
-                  3-minute setup
+                <Text size="xs" className="mt-1 text-white/80">
+                  Set up your account and start saving in minutes.
                 </Text>
               </div>
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text size="sm" className="text-white/80">
-                  Verified groups
+                <Text fw={600} size="sm">
+                  Everything in one place
                 </Text>
-                <Text fw={700} size="lg">
-                  1,200+ circles
+                <Text size="xs" className="mt-1 text-white/80">
+                  Savings, ROSCA, investments, insurance, and remittances.
                 </Text>
               </div>
             </div>
@@ -86,6 +90,94 @@ export function Signup() {
                   input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                 }}
               />
+              <TextInput
+                label="Phone number"
+                placeholder="+234 800 000 0000"
+                radius="md"
+                styles={{
+                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
+                }}
+              />
+              <Group grow gap="sm">
+                <DatePickerInput
+                  label="Date of birth"
+                  placeholder="DD/MM/YYYY"
+                  radius="md"
+                  valueFormat="DD/MM/YYYY"
+                  maxDate={new Date()}
+                  styles={{
+                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
+                  }}
+                />
+                <Select
+                  label="Gender"
+                  placeholder="Select"
+                  data={[
+                    { value: 'male', label: 'Male' },
+                    { value: 'female', label: 'Female' },
+                  ]}
+                  radius="md"
+                  styles={{
+                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
+                  }}
+                  allowDeselect={false}
+                />
+              </Group>
+              {/* Role Selection */}
+              <div>
+                <Text fw={500} size="sm" className="mb-2 text-[#0F172A]">
+                  I want to
+                </Text>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRole('member')}
+                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-colors ${
+                      role === 'member'
+                        ? 'border-[#02A36E] bg-[#F0FDF4]'
+                        : 'border-[#E5E7EB] bg-white hover:border-[#BFEBD1]'
+                    }`}
+                  >
+                    <IconUserCircle
+                      size={28}
+                      color={role === 'member' ? '#02A36E' : '#9CA3AF'}
+                    />
+                    <Text
+                      fw={600}
+                      className={`text-[13px] ${role === 'member' ? 'text-[#02A36E]' : 'text-[#374151]'}`}
+                    >
+                      Join Groups
+                    </Text>
+                    <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
+                      Save with others in ROSCA groups
+                    </Text>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('admin')}
+                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-colors ${
+                      role === 'admin'
+                        ? 'border-[#02A36E] bg-[#F0FDF4]'
+                        : 'border-[#E5E7EB] bg-white hover:border-[#BFEBD1]'
+                    }`}
+                  >
+                    <IconUsers
+                      size={28}
+                      color={role === 'admin' ? '#02A36E' : '#9CA3AF'}
+                    />
+                    <Text
+                      fw={600}
+                      className={`text-[13px] ${role === 'admin' ? 'text-[#02A36E]' : 'text-[#374151]'}`}
+                    >
+                      Manage a Group
+                    </Text>
+                    <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
+                      I already run a savings group
+                    </Text>
+                  </button>
+                </div>
+              </div>
+
               <PasswordInput
                 label="Password"
                 placeholder="••••••••"
@@ -104,7 +196,7 @@ export function Signup() {
 
               <Button
                 component={Link}
-                to="/home"
+                to="/verify-otp"
                 fullWidth
                 radius="md"
                 className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
