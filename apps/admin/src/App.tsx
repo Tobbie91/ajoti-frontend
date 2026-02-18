@@ -16,6 +16,7 @@ import {
   Signup,
   VerifyOtp,
   Kyc,
+  MyProfile,
 } from '@/pages'
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
           <Route path="/fund-wallet" element={<FundWallet />} />
           <Route path="/withdraw" element={<WithdrawFunds />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/my-profile" element={<MyProfile />} />
         </Route>
 
         {/* Default: redirect to login */}

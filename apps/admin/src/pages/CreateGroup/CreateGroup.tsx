@@ -18,6 +18,7 @@ import {
   NumberInput,
   Modal,
   Alert,
+  Loader,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
@@ -34,6 +35,7 @@ const PRIMARY = '#0b6b55'
 export function CreateGroup() {
   const navigate = useNavigate()
   const [active, setActive] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
 
   const [groupName, setGroupName] = useState('')
   const [tagline, setTagline] = useState('')
@@ -648,11 +650,16 @@ export function CreateGroup() {
             <Button
               radius="md"
               style={{ background: PRIMARY }}
+              loading={submitting}
+              leftSection={submitting ? <Loader size={14} color="white" /> : null}
               onClick={() => {
-                // TODO: submit group creation
+                setSubmitting(true)
+                setTimeout(() => {
+                  navigate('/rosca/groups')
+                }, 1500)
               }}
             >
-              Create Group
+              {submitting ? 'Creating...' : 'Create Group'}
             </Button>
           </>
         ) : (
