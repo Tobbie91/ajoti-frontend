@@ -1,15 +1,61 @@
 import { useState } from 'react'
-import { Button, Card, Group, PasswordInput, Text, TextInput, Divider, Select } from '@mantine/core'
+import { Button, Card, Group, PasswordInput, Text, TextInput, Divider, Select, Alert } from '@mantine/core'
 import { DatePickerInput } from '@mantine/dates'
-import { IconUsers, IconUserCircle } from '@tabler/icons-react'
-import { Link } from 'react-router-dom'
+import { IconUsers, IconUserCircle, IconAlertCircle } from '@tabler/icons-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
+import { register } from '@/utils/api'
 
 export function Signup() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
+
   const [role, setRole] = useState<'member' | 'admin'>('member')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState<Date | null>(null)
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | null>(null)
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit() {
+    setError(null)
+
+    if (!firstName || !lastName || !email || !phone || !dob || !gender || !password) {
+      setError('Please fill in all fields.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        dob: dob.toISOString().split('T')[0],
+        gender: gender as 'MALE' | 'FEMALE',
+        password,
+      })
+      localStorage.setItem('verify_email', email.trim())
+      localStorage.setItem('user', JSON.stringify({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        dob: dob.toISOString().split('T')[0],
+      }))
+      navigate('/verify-otp')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F7FBF9]">
@@ -74,29 +120,46 @@ export function Signup() {
                 </Text>
               </div>
 
-              <TextInput
-                label="Full name"
-                placeholder="Your name"
-                radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
-              />
+              {error && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+                  {error}
+                </Alert>
+              )}
+
+              <Group grow gap="sm">
+                <TextInput
+                  label="First name"
+                  placeholder="John"
+                  radius="md"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.currentTarget.value)}
+                  styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
+                />
+                <TextInput
+                  label="Last name"
+                  placeholder="Doe"
+                  radius="md"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.currentTarget.value)}
+                  styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
+                />
+              </Group>
               <TextInput
                 label="Email"
                 placeholder="you@example.com"
                 radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+                styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
               <TextInput
                 label="Phone number"
                 placeholder="+234 800 000 0000"
                 radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
+                value={phone}
+                onChange={(e) => setPhone(e.currentTarget.value)}
+                styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
               <Group grow gap="sm">
                 <DatePickerInput
@@ -105,24 +168,25 @@ export function Signup() {
                   radius="md"
                   valueFormat="DD/MM/YYYY"
                   maxDate={new Date()}
-                  styles={{
-                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                  }}
+                  value={dob}
+                  onChange={(value) => setDob(value ? new Date(value) : null)}
+                  styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
                 />
                 <Select
                   label="Gender"
                   placeholder="Select"
                   data={[
-                    { value: 'male', label: 'Male' },
-                    { value: 'female', label: 'Female' },
+                    { value: 'MALE', label: 'Male' },
+                    { value: 'FEMALE', label: 'Female' },
                   ]}
                   radius="md"
-                  styles={{
-                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                  }}
+                  value={gender}
+                  onChange={(value) => setGender(value as 'MALE' | 'FEMALE' | null)}
+                  styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
                   allowDeselect={false}
                 />
               </Group>
+
               {/* Role Selection */}
               <div>
                 <Text fw={500} size="sm" className="mb-2 text-[#0F172A]">
@@ -138,14 +202,8 @@ export function Signup() {
                         : 'border-[#E5E7EB] bg-white hover:border-[#BFEBD1]'
                     }`}
                   >
-                    <IconUserCircle
-                      size={28}
-                      color={role === 'member' ? '#02A36E' : '#9CA3AF'}
-                    />
-                    <Text
-                      fw={600}
-                      className={`text-[13px] ${role === 'member' ? 'text-[#02A36E]' : 'text-[#374151]'}`}
-                    >
+                    <IconUserCircle size={28} color={role === 'member' ? '#02A36E' : '#9CA3AF'} />
+                    <Text fw={600} className={`text-[13px] ${role === 'member' ? 'text-[#02A36E]' : 'text-[#374151]'}`}>
                       Join Groups
                     </Text>
                     <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
@@ -161,14 +219,8 @@ export function Signup() {
                         : 'border-[#E5E7EB] bg-white hover:border-[#BFEBD1]'
                     }`}
                   >
-                    <IconUsers
-                      size={28}
-                      color={role === 'admin' ? '#02A36E' : '#9CA3AF'}
-                    />
-                    <Text
-                      fw={600}
-                      className={`text-[13px] ${role === 'admin' ? 'text-[#02A36E]' : 'text-[#374151]'}`}
-                    >
+                    <IconUsers size={28} color={role === 'admin' ? '#02A36E' : '#9CA3AF'} />
+                    <Text fw={600} className={`text-[13px] ${role === 'admin' ? 'text-[#02A36E]' : 'text-[#374151]'}`}>
                       Manage a Group
                     </Text>
                     <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
@@ -182,9 +234,9 @@ export function Signup() {
                 label="Password"
                 placeholder="••••••••"
                 radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
 
               <Group justify="space-between" className="text-xs text-[#6B7280]">
@@ -195,11 +247,11 @@ export function Signup() {
               </Group>
 
               <Button
-                component={Link}
-                to="/verify-otp"
                 fullWidth
                 radius="md"
                 className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
+                loading={loading}
+                onClick={handleSubmit}
               >
                 Create account
               </Button>
@@ -207,7 +259,6 @@ export function Signup() {
               {hasGoogleClientId && (
                 <>
                   <Divider label="OR" labelPosition="center" />
-
                   <div className="flex justify-center">
                     <GoogleLogin
                       onSuccess={(credentialResponse) => {
@@ -215,9 +266,7 @@ export function Signup() {
                           login(credentialResponse.credential)
                         }
                       }}
-                      onError={() => {
-                        console.log('Login Failed')
-                      }}
+                      onError={() => console.log('Login Failed')}
                       theme="outline"
                       size="large"
                       text="signup_with"
@@ -237,4 +286,3 @@ export function Signup() {
     </div>
   )
 }
-

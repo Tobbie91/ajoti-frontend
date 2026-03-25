@@ -1,11 +1,44 @@
-import { Button, Card, Group, PasswordInput, Text, TextInput, Divider } from '@mantine/core'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Button, Card, Group, PasswordInput, Text, TextInput, Divider, Alert } from '@mantine/core'
+import { IconAlertCircle, IconCheck } from '@tabler/icons-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
+import { login as loginApi } from '@/utils/api'
 
 export function Login() {
   const { login } = useAuth()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
+  const justVerified = searchParams.get('verified') === 'true'
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit() {
+    setError(null)
+
+    if (!email || !password) {
+      setError('Please enter your email and password.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { token, refreshToken, user } = await loginApi(email.trim(), password)
+      localStorage.setItem('access_token', token)
+      localStorage.setItem('refresh_token', refreshToken)
+      localStorage.setItem('user', JSON.stringify(user))
+      navigate('/home')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F7FBF9]">
@@ -70,36 +103,51 @@ export function Login() {
                 </Text>
               </div>
 
+              {justVerified && (
+                <Alert icon={<IconCheck size={16} />} color="green" radius="md" variant="light">
+                  Email verified successfully! Please log in to continue.
+                </Alert>
+              )}
+
+              {error && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+                  {error}
+                </Alert>
+              )}
+
               <TextInput
                 label="Email"
                 placeholder="you@example.com"
                 radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+                styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
               <PasswordInput
                 label="Password"
                 placeholder="••••••••"
                 radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
 
               <Group justify="space-between" className="text-xs text-[#6B7280]">
-                <Text component="span">Forgot password?</Text>
+                <Link to="/forgot-password" className="text-[#0B6B55]">
+                  Forgot password?
+                </Link>
                 <Link to="/signup" className="text-[#0B6B55]">
                   Create account
                 </Link>
               </Group>
 
               <Button
-                component={Link}
-                to="/home"
                 fullWidth
                 radius="md"
                 className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
+                loading={loading}
+                onClick={handleSubmit}
               >
                 Sign in
               </Button>
@@ -107,7 +155,6 @@ export function Login() {
               {hasGoogleClientId && (
                 <>
                   <Divider label="OR" labelPosition="center" />
-
                   <div className="flex justify-center">
                     <GoogleLogin
                       onSuccess={(credentialResponse) => {
@@ -115,9 +162,7 @@ export function Login() {
                           login(credentialResponse.credential)
                         }
                       }}
-                      onError={() => {
-                        console.log('Login Failed')
-                      }}
+                      onError={() => console.log('Login Failed')}
                       theme="outline"
                       size="large"
                       text="signin_with"
@@ -137,4 +182,3 @@ export function Login() {
     </div>
   )
 }
-

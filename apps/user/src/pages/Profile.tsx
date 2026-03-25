@@ -14,21 +14,11 @@ import {
   IconLogout,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { logout as logoutApi } from '@/utils/api'
 
-// Mock user data
-const MOCK_USER = {
-  firstName: 'Osho',
-  lastName: 'Michael',
-  email: 'osho.michael@email.com',
-  phone: '+234 801 234 5678',
-  address: '12 Marina Road, Lagos Island',
-  city: 'Lagos',
-  state: 'Lagos',
-  nin: '12345678901',
-  bvn: '22345678901',
-  kycVerified: true,
-  joinDate: 'January 2026',
-  avatarUrl: '',
+function getUserFromStorage() {
+  const stored = localStorage.getItem('user')
+  return stored ? JSON.parse(stored) : {}
 }
 
 const NIGERIAN_STATES = [
@@ -43,21 +33,32 @@ export function Profile() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
 
-  const [firstName, setFirstName] = useState(MOCK_USER.firstName)
-  const [lastName, setLastName] = useState(MOCK_USER.lastName)
-  const [email, setEmail] = useState(MOCK_USER.email)
-  const [phone, setPhone] = useState(MOCK_USER.phone)
-  const [address, setAddress] = useState(MOCK_USER.address)
-  const [city, setCity] = useState(MOCK_USER.city)
-  const [state, setState] = useState<string | null>(MOCK_USER.state)
+  const user = getUserFromStorage()
+  const [firstName, setFirstName] = useState(user.firstName || user.firstname || '')
+  const [lastName, setLastName] = useState(user.lastName || user.lastname || '')
+  const [email, setEmail] = useState(user.email || '')
+  const [phone, setPhone] = useState(user.phone || '')
+  const [address, setAddress] = useState(user.address || '')
+  const [city, setCity] = useState(user.city || '')
+  const [state, setState] = useState<string | null>(user.state || null)
+  const kycCompleted = localStorage.getItem('kyc_completed') === 'true'
 
   function handleSave() {
     setEditing(false)
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (refreshToken) await logoutApi(refreshToken)
+    } catch {
+      // ignore logout API errors
+    }
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
     localStorage.removeItem('kyc_completed')
-    navigate('/login')
+    navigate('/')
   }
 
   return (
@@ -80,9 +81,9 @@ export function Profile() {
             {firstName} {lastName}
           </Text>
           <Text fw={400} className="text-[14px] text-[#6B7280]">
-            Member since {MOCK_USER.joinDate}
+            {email}
           </Text>
-          {MOCK_USER.kycVerified && (
+          {kycCompleted && (
             <div className="mt-2 flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
               <IconShieldCheck size={14} color="#02A36E" />
               <Text fw={500} className="text-[12px] text-[#02A36E]">
@@ -260,46 +261,44 @@ export function Profile() {
       {/* KYC / Verification */}
       <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
         <Text fw={600} className="mb-5 text-[16px] text-[#0F172A]">
-          Verification Details
+          Verification Status
         </Text>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
             <div className="flex items-center gap-3">
               <IconId size={18} color="#6B7280" />
-              <div>
-                <Text fw={500} className="text-[13px] text-[#0F172A]">
-                  NIN
-                </Text>
-                <Text fw={400} className="text-[12px] text-[#9CA3AF]">
-                  {MOCK_USER.nin.slice(0, 3)}****{MOCK_USER.nin.slice(-4)}
-                </Text>
-              </div>
+              <Text fw={500} className="text-[13px] text-[#0F172A]">
+                NIN Verification
+              </Text>
             </div>
             <div className="flex items-center gap-1.5">
-              <IconCheck size={14} color="#02A36E" />
-              <Text fw={500} className="text-[12px] text-[#02A36E]">
-                Verified
-              </Text>
+              {kycCompleted ? (
+                <>
+                  <IconCheck size={14} color="#02A36E" />
+                  <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
+                </>
+              ) : (
+                <Text fw={500} className="text-[12px] text-[#F59E0B]">Pending</Text>
+              )}
             </div>
           </div>
 
           <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
             <div className="flex items-center gap-3">
               <IconBuildingBank size={18} color="#6B7280" />
-              <div>
-                <Text fw={500} className="text-[13px] text-[#0F172A]">
-                  BVN
-                </Text>
-                <Text fw={400} className="text-[12px] text-[#9CA3AF]">
-                  {MOCK_USER.bvn.slice(0, 3)}****{MOCK_USER.bvn.slice(-4)}
-                </Text>
-              </div>
+              <Text fw={500} className="text-[13px] text-[#0F172A]">
+                BVN Verification
+              </Text>
             </div>
             <div className="flex items-center gap-1.5">
-              <IconCheck size={14} color="#02A36E" />
-              <Text fw={500} className="text-[12px] text-[#02A36E]">
-                Verified
-              </Text>
+              {kycCompleted ? (
+                <>
+                  <IconCheck size={14} color="#02A36E" />
+                  <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
+                </>
+              ) : (
+                <Text fw={500} className="text-[12px] text-[#F59E0B]">Pending</Text>
+              )}
             </div>
           </div>
         </div>

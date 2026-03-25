@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Text, TextInput, Textarea, Progress } from '@mantine/core'
+import { Text, TextInput, Textarea, Progress, Alert } from '@mantine/core'
 import {
   IconArrowLeft,
   IconUpload,
@@ -14,8 +14,10 @@ import {
   IconBuildingBank,
   IconShieldCheck,
   IconCamera,
+  IconAlertCircle,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { verifyNin, verifyBvn, submitNok } from '@/utils/api'
 
 type KycStep = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
@@ -28,6 +30,7 @@ export function Kyc() {
   const idPhotoInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<KycStep>(1)
+  const [kycError, setKycError] = useState<string | null>(null)
 
   // Step 1 - NIN
   const [nin, setNin] = useState('')
@@ -73,25 +76,63 @@ export function Kyc() {
     }
   }
 
-  function handleVerifyNin() {
+  async function handleVerifyNin() {
     if (nin.trim().length !== 11) return
+    setKycError(null)
     setNinVerifying(true)
-    setTimeout(() => {
-      setNinVerifying(false)
+    try {
+      const stored = localStorage.getItem('admin_user')
+      const profile = stored ? JSON.parse(stored) : {}
+      await verifyNin({
+        nin: nin.trim(),
+        firstName: profile.firstName || profile.firstname || '',
+        lastName: profile.lastName || profile.lastname || '',
+        dob: profile.dob || profile.DOB || '',
+      })
       setNinVerified(true)
-    }, 2000)
+    } catch (err) {
+      setKycError(err instanceof Error ? err.message : 'NIN verification failed')
+    } finally {
+      setNinVerifying(false)
+    }
   }
 
-  function handleVerifyBvn() {
+  async function handleVerifyBvn() {
     if (bvn.trim().length !== 11) return
+    setKycError(null)
     setBvnVerifying(true)
-    setTimeout(() => {
-      setBvnVerifying(false)
+    try {
+      const stored = localStorage.getItem('admin_user')
+      const profile = stored ? JSON.parse(stored) : {}
+      await verifyBvn({
+        bvn: bvn.trim(),
+        firstName: profile.firstName || profile.firstname || '',
+        lastName: profile.lastName || profile.lastname || '',
+        dob: profile.dob || profile.DOB || '',
+      })
       setBvnVerified(true)
-    }, 2000)
+    } catch (err) {
+      setKycError(err instanceof Error ? err.message : 'BVN verification failed')
+    } finally {
+      setBvnVerifying(false)
+    }
   }
 
-  function handleNext() {
+  async function handleNext() {
+    setKycError(null)
+    if (step === 3) {
+      // Submit next of kin to API
+      try {
+        await submitNok({
+          nextOfKinName: kinFullName.trim(),
+          nextOfKinRelationship: kinRelationship.trim(),
+          nextOfKinPhone: kinPhone.trim(),
+        })
+      } catch (err) {
+        setKycError(err instanceof Error ? err.message : 'Failed to submit next of kin')
+        return
+      }
+    }
     if (step < 7) {
       setStep((step + 1) as KycStep)
     } else {
@@ -158,6 +199,12 @@ export function Kyc() {
 
       {/* Content */}
       <div className="mx-auto max-w-[600px] px-6 py-8">
+        {kycError && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" className="mb-4">
+            {kycError}
+          </Alert>
+        )}
+
         {/* Notice banner */}
         <div className="mb-6 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
           <Text fw={600} className="text-[13px] text-[#065F46]">

@@ -14,7 +14,6 @@ import {
   Select,
   Checkbox,
   Radio,
-  Switch,
   NumberInput,
   Modal,
   Alert,
@@ -29,6 +28,7 @@ import {
   IconEdit,
   IconCheck,
 } from '@tabler/icons-react'
+import { createRoscaCircle } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -36,6 +36,7 @@ export function CreateGroup() {
   const navigate = useNavigate()
   const [active, setActive] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const [groupName, setGroupName] = useState('')
   const [tagline, setTagline] = useState('')
@@ -45,13 +46,11 @@ export function CreateGroup() {
   const [currency, setCurrency] = useState<string | null>('NGN')
   const [amount, setAmount] = useState('10,000')
   const [frequency, setFrequency] = useState<string[]>([])
-  const [payoutStructure, setPayoutStructure] = useState<string[]>([])
+  const [payoutStructure, setPayoutStructure] = useState('SEQUENTIAL')
 
   // Step 3 state
   const [privacyAccess, setPrivacyAccess] = useState('open')
   const [participants, setParticipants] = useState<number | string>(10)
-  const [enableTrustFilters, setEnableTrustFilters] = useState(false)
-  const [enableDirectDebit, setEnableDirectDebit] = useState(false)
 
   // Rules modal
   const [rulesOpened, { open: openRules, close: closeRules }] = useDisclosure(false)
@@ -88,7 +87,7 @@ export function CreateGroup() {
       >
         <Stepper.Step label="Group Details" />
         <Stepper.Step label="Contribution & Payouts" />
-        <Stepper.Step label="Trust & Controls" />
+        <Stepper.Step label="Settings & Controls" />
       </Stepper>
 
       {/* Step content */}
@@ -262,44 +261,45 @@ export function CreateGroup() {
               <Text fw={600} fz="sm" mb="xs">
                 Payout Structure
               </Text>
-              <Stack gap="xs">
-                <Checkbox
-                  label="Sequential order"
-                  checked={payoutStructure.includes('sequential')}
-                  onChange={(e) => {
-                    const isChecked = e.currentTarget.checked
-                    setPayoutStructure((prev) =>
-                      isChecked ? [...prev, 'sequential'] : prev.filter((p) => p !== 'sequential'),
-                    )
-                  }}
-                  color={PRIMARY}
-                  styles={{ label: { fontWeight: 400 } }}
-                />
-                <Checkbox
-                  label="Random order"
-                  checked={payoutStructure.includes('random')}
-                  onChange={(e) => {
-                    const isChecked = e.currentTarget.checked
-                    setPayoutStructure((prev) =>
-                      isChecked ? [...prev, 'random'] : prev.filter((p) => p !== 'random'),
-                    )
-                  }}
-                  color={PRIMARY}
-                  styles={{ label: { fontWeight: 400 } }}
-                />
-                <Checkbox
-                  label="Auto assign slots"
-                  checked={payoutStructure.includes('auto')}
-                  onChange={(e) => {
-                    const isChecked = e.currentTarget.checked
-                    setPayoutStructure((prev) =>
-                      isChecked ? [...prev, 'auto'] : prev.filter((p) => p !== 'auto'),
-                    )
-                  }}
-                  color={PRIMARY}
-                  styles={{ label: { fontWeight: 400 } }}
-                />
-              </Stack>
+              <Radio.Group value={payoutStructure} onChange={setPayoutStructure}>
+                <Stack gap="xs">
+                  <Radio
+                    value="SEQUENTIAL"
+                    label="Sequential"
+                    description="Members receive payouts in the order they joined"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="RANDOM_DRAW"
+                    label="Random Draw"
+                    description="Payout order is randomly assigned each cycle"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="TRUST_SCORE"
+                    label="Trust Score"
+                    description="Members with higher trust scores get priority payouts"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="COMBINED"
+                    label="Combined"
+                    description="Uses a mix of trust score and random draw"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="ADMIN_ASSIGNED"
+                    label="Admin Assigned"
+                    description="Admin manually assigns the payout order"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                </Stack>
+              </Radio.Group>
             </Box>
           </Stack>
         </Paper>
@@ -318,18 +318,14 @@ export function CreateGroup() {
                   <Radio
                     value="open"
                     label="Open to All"
+                    description="Anyone can discover and join this group"
                     color={PRIMARY}
                     styles={{ label: { fontWeight: 400 } }}
                   />
                   <Radio
-                    value="request"
-                    label="Request to Join"
-                    color={PRIMARY}
-                    styles={{ label: { fontWeight: 400 } }}
-                  />
-                  <Radio
-                    value="referral"
-                    label="Referral Only"
+                    value="invite"
+                    label="Invite Only"
+                    description="Only invited members can join this group"
                     color={PRIMARY}
                     styles={{ label: { fontWeight: 400 } }}
                   />
@@ -344,40 +340,11 @@ export function CreateGroup() {
               onChange={setParticipants}
               min={2}
               max={100}
-              leftSection={
-                <Text fz="xs" fw={600} c="dimmed">
-                  + Admin
-                </Text>
-              }
-              leftSectionWidth={65}
               styles={{
                 label: { fontWeight: 600, marginBottom: 4 },
                 input: { border: '1px solid #dee2e6' },
               }}
             />
-
-            {/* Trust Filters */}
-            <Box>
-              <Text fw={600} fz="sm" mb="xs">
-                Trust Filters
-              </Text>
-              <Stack gap="sm">
-                <Switch
-                  label="Enable Trust Filters"
-                  checked={enableTrustFilters}
-                  onChange={(e) => setEnableTrustFilters(e.currentTarget.checked)}
-                  color={PRIMARY}
-                  styles={{ label: { fontWeight: 400 } }}
-                />
-                <Switch
-                  label="Enable Direct Debit"
-                  checked={enableDirectDebit}
-                  onChange={(e) => setEnableDirectDebit(e.currentTarget.checked)}
-                  color={PRIMARY}
-                  styles={{ label: { fontWeight: 400 } }}
-                />
-              </Stack>
-            </Box>
 
             {/* Add Rules */}
             <Button
@@ -438,8 +405,8 @@ export function CreateGroup() {
 
           <Stack gap="xs">
             {[
-              'Late payment incurs a 5% penalty.',
-              'All contribution must be available for DEBIT THIRD week of every months.',
+              'Late payment incurs a 2% penalty.',
+              'All contributions must be available before the due date of every circle.',
               'Payout order is final and cannot be changed.',
               'Members must acknowledge their assigned payout slot before the group starts.',
               'The group admin has final say in resolving any disputes and managing participation.',
@@ -498,6 +465,12 @@ export function CreateGroup() {
               Confirm the details below before creating your ROSCA group.
             </Text>
           </Box>
+
+          {submitError && (
+            <Alert icon={<IconAlertTriangle size={16} />} color="red" radius="md" variant="light">
+              {submitError}
+            </Alert>
+          )}
 
           {/* Group Details */}
           <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
@@ -574,16 +547,16 @@ export function CreateGroup() {
               </Box>
               <Box>
                 <Text fz="xs" c="dimmed">Payout Order</Text>
-                <Text fz="sm" fw={500}>{payoutStructure.length > 0 ? payoutStructure.join(', ') : '—'}</Text>
+                <Text fz="sm" fw={500}>{payoutStructure || '—'}</Text>
               </Box>
             </Group>
           </Paper>
 
-          {/* Trust & Control */}
+          {/* Settings & Controls */}
           <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
             <Group justify="space-between" mb="md">
               <Text fw={700} fz="md">
-                Trust & Control
+                Settings & Controls
               </Text>
               <Button
                 variant="subtle"
@@ -599,20 +572,12 @@ export function CreateGroup() {
               <Box>
                 <Text fz="xs" c="dimmed">Access Type</Text>
                 <Text fz="sm" fw={500}>
-                  {privacyAccess === 'open' ? 'Open to All' : privacyAccess === 'request' ? 'Request to Join' : 'Referral Only'}
+                  {privacyAccess === 'open' ? 'Open to All' : 'Invite Only'}
                 </Text>
               </Box>
               <Box>
                 <Text fz="xs" c="dimmed">Participants</Text>
-                <Text fz="sm" fw={500}>{participants} + Admin</Text>
-              </Box>
-              <Box>
-                <Text fz="xs" c="dimmed">Trust Filter</Text>
-                <Text fz="sm" fw={500}>{enableTrustFilters ? 'Enabled' : 'Disabled'}</Text>
-              </Box>
-              <Box>
-                <Text fz="xs" c="dimmed">Direct Debit</Text>
-                <Text fz="sm" fw={500}>{enableDirectDebit ? 'Enabled' : 'Disabled'}</Text>
+                <Text fz="sm" fw={500}>{participants}</Text>
               </Box>
             </Group>
           </Paper>
@@ -652,11 +617,32 @@ export function CreateGroup() {
               style={{ background: PRIMARY }}
               loading={submitting}
               leftSection={submitting ? <Loader size={14} color="white" /> : null}
-              onClick={() => {
+              onClick={async () => {
                 setSubmitting(true)
-                setTimeout(() => {
+                setSubmitError(null)
+                try {
+                  const rawAmount = amount.replace(/,/g, '')
+                  const freqMap: Record<string, string> = { weekly: 'WEEKLY', biweekly: 'BI_WEEKLY', monthly: 'MONTHLY' }
+                  const freq = freqMap[frequency[0]] || 'MONTHLY'
+                  const visibility = privacyAccess === 'open' ? 'PUBLIC' : 'PRIVATE'
+                  await createRoscaCircle({
+                    name: groupName,
+                    description: description || tagline,
+                    contributionAmount: rawAmount,
+                    frequency: freq as 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY',
+                    durationCycles: Number(participants) || 10,
+                    maxSlots: Number(participants) || 10,
+                    collateralPercentage: 10,
+                    payoutLogic: payoutStructure,
+                    autoStartOnFull: true,
+                    visibility,
+                    latePenaltyPercent: 2,
+                  })
                   navigate('/rosca/groups')
-                }, 1500)
+                } catch (err) {
+                  setSubmitError(err instanceof Error ? err.message : 'Failed to create group')
+                  setSubmitting(false)
+                }
               }}
             >
               {submitting ? 'Creating...' : 'Create Group'}

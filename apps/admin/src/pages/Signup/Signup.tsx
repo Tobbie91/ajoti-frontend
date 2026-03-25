@@ -1,7 +1,46 @@
-import { Button, Card, Group, PasswordInput, Text, TextInput, Select } from '@mantine/core'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Button, Card, Group, PasswordInput, Text, TextInput, Select, Alert } from '@mantine/core'
+import { Link, useNavigate } from 'react-router-dom'
+import { IconAlertCircle } from '@tabler/icons-react'
+import { register } from '@/utils/api'
 
 export function Signup() {
+  const navigate = useNavigate()
+
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState('')
+  const [gender, setGender] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSignup() {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !gender || !dob) return
+    setError(null)
+    setLoading(true)
+    try {
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        dob,
+        gender: gender.toUpperCase() as 'MALE' | 'FEMALE',
+        password,
+        role: 'admin',
+      })
+      localStorage.setItem('admin_verify_email', email.trim())
+      navigate('/verify-otp')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F7FBF9]">
       <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-2 lg:gap-10 lg:px-6 lg:py-12">
@@ -65,18 +104,40 @@ export function Signup() {
                 </Text>
               </div>
 
-              <TextInput
-                label="Full name"
-                placeholder="Your name"
-                radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
-              />
+              {error && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+                  {error}
+                </Alert>
+              )}
+
+              <Group grow gap="sm">
+                <TextInput
+                  label="First name"
+                  placeholder="First name"
+                  radius="md"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.currentTarget.value)}
+                  styles={{
+                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
+                  }}
+                />
+                <TextInput
+                  label="Last name"
+                  placeholder="Last name"
+                  radius="md"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.currentTarget.value)}
+                  styles={{
+                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
+                  }}
+                />
+              </Group>
               <TextInput
                 label="Email"
                 placeholder="you@example.com"
                 radius="md"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
                 styles={{
                   input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                 }}
@@ -85,6 +146,8 @@ export function Signup() {
                 label="Phone number"
                 placeholder="+234 800 000 0000"
                 radius="md"
+                value={phone}
+                onChange={(e) => setPhone(e.currentTarget.value)}
                 styles={{
                   input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                 }}
@@ -95,6 +158,8 @@ export function Signup() {
                   placeholder="DD/MM/YYYY"
                   type="date"
                   radius="md"
+                  value={dob}
+                  onChange={(e) => setDob(e.currentTarget.value)}
                   styles={{
                     input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                   }}
@@ -107,6 +172,8 @@ export function Signup() {
                     { value: 'female', label: 'Female' },
                   ]}
                   radius="md"
+                  value={gender}
+                  onChange={setGender}
                   styles={{
                     input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                   }}
@@ -114,25 +181,12 @@ export function Signup() {
                 />
               </Group>
 
-              <Select
-                label="Role"
-                placeholder="Select role"
-                defaultValue="admin"
-                data={[
-                  { value: 'admin', label: 'Admin' },
-                  { value: 'user', label: 'User' },
-                ]}
-                radius="md"
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
-                allowDeselect={false}
-              />
-
               <PasswordInput
                 label="Password"
                 placeholder="••••••••"
                 radius="md"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
                 styles={{
                   input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                 }}
@@ -146,11 +200,11 @@ export function Signup() {
               </Group>
 
               <Button
-                component={Link}
-                to="/verify-otp"
                 fullWidth
                 radius="md"
                 className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
+                onClick={handleSignup}
+                loading={loading}
               >
                 Create account
               </Button>

@@ -1,48 +1,32 @@
 .header {
-  position: relative;
   width: 100%;
   height: 106px;
   background: #ffffff;
   box-shadow: 0px 4px 12px rgba(209, 217, 230, 0.25);
-}
-
-/* Keep everything aligned to the 1440px canvas */
-.header::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 1440px;
-  height: 106px;
-  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 16px;
 }
 
 .logo {
-  position: absolute;
-  left: 119px;
-  top: 38px;
-  width: 120px;
-  height: 35px;
-
   font-family: "Bodoni MT", serif;
   font-style: normal;
   font-weight: 900;
   font-size: 30px;
   line-height: 35px;
-  text-align: center;
   color: #066f5b;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 24px;
 }
 
 /* Nav row */
 .nav {
-  position: absolute;
-  left: 379px;
-  top: 43px;
-  width: 820px;
-  height: 26px;
-
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 50px;
 }
 
@@ -109,33 +93,52 @@
 
 /* Right side */
 .right {
-  position: absolute;
-  left: 1139.32px;
-  top: 36px;
-
-  width: 185px;
-  height: 46px;
-
   display: flex;
   align-items: center;
   gap: 22px;
+  flex-shrink: 0;
 }
 
 /* Bell circle */
 .bellWrap {
-  width: 30px;
-  height: 30px;
+  position: relative;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: rgba(0, 200, 83, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .bellIcon {
   width: 18px;
   height: 18px;
   color: #00c853;
+}
+
+/* Notification badge */
+.bellBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #EF4444;
+  color: #ffffff;
+  font-family: "Poppins", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  border: 2px solid #ffffff;
 }
 
 /* Account */
@@ -154,6 +157,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .avatarImg {
@@ -163,25 +167,73 @@
   object-fit: cover;
 }
 
+.avatarInitials {
+  width: 41.4px;
+  height: 41.4px;
+  border-radius: 999px;
+  background: #066f5b;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Poppins", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+}
+
 .accountText {
   font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   font-weight: 300;
   font-size: 14px;
   line-height: 21px;
   color: #525252;
+  white-space: nowrap;
 }
 
-/* Responsive: hide nav on small screens (burger will handle) */
+/* Tablet */
+@media (max-width: 1024px) {
+  .header {
+    padding: 0 20px;
+  }
+  .logo {
+    margin-left: 0;
+    font-size: 24px;
+  }
+  .nav {
+    gap: 30px;
+  }
+  .navLabel {
+    font-size: 15px;
+  }
+}
+
+/* Mobile — hide nav, show burger space */
 @media (max-width: 768px) {
+  .header {
+    padding: 0 16px 0 56px; /* left space for burger */
+    height: 70px;
+  }
+  .logo {
+    font-size: 22px;
+    margin-left: 0;
+  }
   .nav {
     display: none;
   }
-  .logo {
-    left: 70px;
+  .accountText {
+    display: none;
   }
   .right {
-    left: auto;
-    right: 16px;
+    margin-left: auto;
+    gap: 14px;
+  }
+  .avatarRing {
+    width: 36px;
+    height: 36px;
+  }
+  .avatarInitials {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
   }
 }
-

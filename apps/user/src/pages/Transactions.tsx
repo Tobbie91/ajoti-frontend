@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Text, TextInput, Select } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Text, TextInput, Select, Loader } from '@mantine/core'
 import {
   IconArrowLeft,
   IconSearch,
@@ -8,6 +8,8 @@ import {
   IconPlus,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { getWalletBalanceNaira, getWalletTransactions } from '@/utils/api'
+import type { WalletTransaction } from '@/utils/api'
 
 type Transaction = {
   id: string
@@ -19,62 +21,27 @@ type Transaction = {
   date: string
 }
 
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: '1',
-    name: 'Osho Joel',
-    type: 'Bank Transfer',
-    time: '2:30 PM',
-    amount: '₦5,000',
-    direction: 'debit',
-    date: 'Today',
-  },
-  {
-    id: '2',
-    name: 'Wallet Funding',
-    type: 'Via card •••• 6275',
-    time: '1:15 PM',
-    amount: '₦50,000',
-    direction: 'credit',
-    date: 'Today',
-  },
-  {
-    id: '3',
-    name: 'ROSCA Contribution',
-    type: 'Auto-debit',
-    time: '9:00 AM',
-    amount: '₦10,000',
-    direction: 'debit',
-    date: 'Today',
-  },
-  {
-    id: '4',
-    name: 'Wallet Funding',
-    type: 'Bank Transfer',
-    time: '4:45 PM',
-    amount: '₦100,000',
-    direction: 'credit',
-    date: 'Yesterday',
-  },
-  {
-    id: '5',
-    name: 'Abimbola Michael',
-    type: 'Bank Transfer',
-    time: '11:20 AM',
-    amount: '₦15,000',
-    direction: 'debit',
-    date: 'Yesterday',
-  },
-  {
-    id: '6',
-    name: 'ROSCA Payout',
-    type: 'Auto-credit',
-    time: '8:00 AM',
-    amount: '₦250,000',
-    direction: 'credit',
-    date: 'Feb 15, 2026',
-  },
-]
+function mapApiTxn(tx: WalletTransaction): Transaction {
+  const d = new Date(tx.createdAt)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+
+  let dateLabel: string
+  if (d.toDateString() === today.toDateString()) dateLabel = 'Today'
+  else if (d.toDateString() === yesterday.toDateString()) dateLabel = 'Yesterday'
+  else dateLabel = d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })
+
+  return {
+    id: tx.id,
+    name: tx.description || tx.type,
+    type: tx.type,
+    time: d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', hour12: true }),
+    amount: `₦${tx.amount.toLocaleString()}`,
+    direction: tx.type === 'CREDIT' ? 'credit' : 'debit',
+    date: dateLabel,
+  }
+}
 
 const STATUS_OPTIONS = ['All', 'Successful', 'Pending', 'Failed']
 const TYPE_OPTIONS = ['All', 'Credit', 'Debit']
@@ -86,10 +53,23 @@ export function Transactions() {
   const [status, setStatus] = useState<string | null>('All')
   const [type, setType] = useState<string | null>('All')
   const [category, setCategory] = useState<string | null>('All')
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [walletBalance, setWalletBalance] = useState('₦ —')
+  const [loading, setLoading] = useState(true)
 
-  const walletBalance = '₦10,000.00'
+  useEffect(() => {
+    Promise.all([
+      getWalletBalanceNaira().then((res) => {
+        const bal = Number(res.balance ?? res.nairaBalance ?? res.amount ?? res.availableBalance ?? 0)
+        setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+      }).catch(() => setWalletBalance('₦0.00')),
+      getWalletTransactions().then((txns) =>
+        setTransactions(txns.map(mapApiTxn))
+      ).catch(() => {}),
+    ]).finally(() => setLoading(false))
+  }, [])
 
-  const filtered = MOCK_TRANSACTIONS.filter((tx) => {
+  const filtered = transactions.filter((tx) => {
     if (search && !tx.name.toLowerCase().includes(search.toLowerCase())) return false
     if (type && type !== 'All') {
       if (type === 'Credit' && tx.direction !== 'credit') return false
@@ -191,7 +171,11 @@ export function Transactions() {
       />
 
       {/* Transaction list */}
-      {Object.keys(grouped).length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center pt-16">
+          <Loader color="#02A36E" />
+        </div>
+      ) : Object.keys(grouped).length === 0 ? (
         <div className="flex flex-col items-center gap-3 pt-16 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F3F4F6]">
             <IconSearch size={28} color="#9CA3AF" />

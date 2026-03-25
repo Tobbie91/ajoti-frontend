@@ -84,21 +84,6 @@ export function CreateNewWallet() {
               Create New Wallet
             </Text>
 
-            {/* Description */}
-            <Text
-              style={{
-                fontFamily: "Poppins, system-ui, sans-serif",
-                fontWeight: 300,
-                fontSize: 20,
-                lineHeight: "100%",
-                textAlign: "center",
-                maxWidth: 420,
-                paddingBottom:20,
-              }}
-            >
-              Choose the currency to save in and beat inflation.
-            </Text>
-
             {/* Currency card */}
             <Box style={{ maxWidth: ROW_MAX_W, width: "100%", marginTop: 10, paddingBottom:20 }}>
               <Group justify="center" gap={ROW_GAP}>

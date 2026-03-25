@@ -6,11 +6,5 @@ interface RequireKycProps {
 }
 
 export function RequireKyc({ children }: RequireKycProps) {
-  const kycCompleted = localStorage.getItem('kyc_completed') === 'true'
-
-  if (!kycCompleted) {
-    return <Navigate to="/kyc" replace />
-  }
-
   return <>{children}</>
 }

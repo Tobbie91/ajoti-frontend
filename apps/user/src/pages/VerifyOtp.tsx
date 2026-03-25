@@ -1,24 +1,46 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Card, Text, PinInput, Loader } from '@mantine/core'
+import { Button, Card, Text, PinInput, Loader, Alert } from '@mantine/core'
+import { IconAlertCircle } from '@tabler/icons-react'
+import { verifyEmail, resendOtp } from '@/utils/api'
 
 export function VerifyOtp() {
   const navigate = useNavigate()
+  const email = localStorage.getItem('verify_email') ?? ''
+
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'input' | 'verifying'>('input')
   const [resent, setResent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
 
-  function handleVerify() {
-    if (otp.length < 6) return
+  async function handleVerify() {
+    if (otp.length < 6 || !email) return
+    setError(null)
     setStep('verifying')
-    setTimeout(() => {
-      navigate('/home')
-    }, 1500)
+
+    try {
+      await verifyEmail({ email, otp })
+      localStorage.removeItem('verify_email')
+      navigate('/?verified=true')
+    } catch (err) {
+      setStep('input')
+      setError(err instanceof Error ? err.message : 'Verification failed. Please try again.')
+    }
   }
 
-  function handleResend() {
-    setResent(true)
-    setTimeout(() => setResent(false), 3000)
+  async function handleResend() {
+    if (!email) return
+    setResendLoading(true)
+    try {
+      await resendOtp(email)
+      setResent(true)
+      setTimeout(() => setResent(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend code.')
+    } finally {
+      setResendLoading(false)
+    }
   }
 
   return (
@@ -31,9 +53,15 @@ export function VerifyOtp() {
                 Verify your account
               </Text>
               <Text size="sm" className="mt-1 text-[#6B7280]">
-                Enter the 6-digit code sent to your email.
+                Enter the 6-digit code sent to {email || 'your email'}.
               </Text>
             </div>
+
+            {error && (
+              <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+                {error}
+              </Alert>
+            )}
 
             <div className="flex justify-center">
               <PinInput
@@ -77,9 +105,10 @@ export function VerifyOtp() {
                   size="sm"
                   fw={600}
                   className="cursor-pointer text-[#0B6B55]"
-                  onClick={handleResend}
+                  onClick={resendLoading ? undefined : handleResend}
+                  style={{ opacity: resendLoading ? 0.5 : 1 }}
                 >
-                  Resend
+                  {resendLoading ? 'Sending...' : 'Resend'}
                 </Text>
               )}
             </div>

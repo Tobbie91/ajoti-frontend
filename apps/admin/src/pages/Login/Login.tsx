@@ -1,11 +1,41 @@
-import { Button, Card, Group, PasswordInput, Text, TextInput } from '@mantine/core'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Button, Card, Group, PasswordInput, Text, TextInput, Alert } from '@mantine/core'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { IconAlertCircle } from '@tabler/icons-react'
+import { login as loginApi } from '@/utils/api'
 
 export function Login() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const verified = searchParams.get('verified') === 'true'
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleLogin() {
+    if (!email.trim() || !password) return
+    setError(null)
+    setLoading(true)
+    try {
+      const { token, refreshToken, user } = await loginApi(email.trim(), password)
+      localStorage.setItem('admin_access_token', token)
+      localStorage.setItem('admin_refresh_token', refreshToken)
+      localStorage.setItem('admin_user', JSON.stringify(user))
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F7FBF9]">
-      <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-2 lg:gap-10 lg:px-6 lg:py-12">
-        <div className="order-2 flex flex-col justify-between rounded-3xl bg-[#0B6B55] px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
+      <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 items-center gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-2 lg:gap-10 lg:px-6 lg:py-12">
+        {/* Branded panel — hidden on mobile, visible on lg+ */}
+        <div className="hidden flex-col justify-between rounded-3xl bg-[#0B6B55] px-10 py-12 text-white shadow-lg lg:flex" style={{ minHeight: 520 }}>
           <div className="space-y-8">
             <div className="flex items-center justify-between">
               <Text fw={700} size="xl" className="tracking-wide">
@@ -53,7 +83,18 @@ export function Login() {
           </div>
         </div>
 
-        <div className="order-1 flex items-center lg:order-2">
+        {/* Login form — always visible, centered on mobile */}
+        <div className="flex w-full items-center justify-center">
+          {/* Mobile branding header */}
+          <div className="w-full max-w-[480px]">
+            <div className="mb-6 text-center lg:hidden">
+              <Text fw={700} size="xl" className="text-[#0B6B55]">
+                AJOTI
+              </Text>
+              <Text size="sm" className="mt-1 text-[#6B7280]">
+                Admin Portal
+              </Text>
+            </div>
           <Card withBorder radius="xl" className="w-full border-[#E6F4EF] bg-white p-6 shadow-lg sm:p-8">
             <div className="space-y-6">
               <div>
@@ -65,10 +106,24 @@ export function Login() {
                 </Text>
               </div>
 
+              {verified && (
+                <Alert color="green" radius="md" variant="light">
+                  Email verified! You can now log in.
+                </Alert>
+              )}
+
+              {error && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+                  {error}
+                </Alert>
+              )}
+
               <TextInput
                 label="Email"
                 placeholder="you@example.com"
                 radius="md"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
                 styles={{
                   input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                 }}
@@ -77,6 +132,9 @@ export function Login() {
                 label="Password"
                 placeholder="••••••••"
                 radius="md"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                 styles={{
                   input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                 }}
@@ -90,11 +148,11 @@ export function Login() {
               </Group>
 
               <Button
-                component={Link}
-                to="/dashboard"
                 fullWidth
                 radius="md"
                 className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
+                onClick={handleLogin}
+                loading={loading}
               >
                 Sign in
               </Button>
@@ -104,6 +162,7 @@ export function Login() {
               </Text>
             </div>
           </Card>
+          </div>
         </div>
       </div>
     </div>

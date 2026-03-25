@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Stack,
@@ -33,7 +33,19 @@ import {
   IconBell,
   IconAlertTriangle,
   IconTrash,
+  IconRefresh,
+  IconArrowBackUp,
+  IconPlayerPlay,
 } from '@tabler/icons-react'
+import {
+  getPayoutHistory,
+  processPayout,
+  retryPayout,
+  reversePayout,
+  getCircleContributions,
+  type Payout,
+  type Contribution as ApiContribution,
+} from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -290,6 +302,92 @@ export function GroupDetail() {
     )
   }
 
+  // Payouts state
+  const [payouts, setPayouts] = useState<Payout[]>([])
+  const [payoutsLoading, setPayoutsLoading] = useState(false)
+  const [payoutError, setPayoutError] = useState<string | null>(null)
+  const [processingCycle, setProcessingCycle] = useState<number | null>(null)
+  const [processCycleInput, setProcessCycleInput] = useState('')
+  const [reverseModal, setReverseModal] = useState(false)
+  const [reversePayout_, setReversePayout_] = useState<Payout | null>(null)
+  const [reverseReason, setReverseReason] = useState('')
+  const [reverseLoading, setReverseLoading] = useState(false)
+
+  // Contributions state
+  const [contributions, setContributions] = useState<ApiContribution[]>([])
+  const [contribLoading, setContribLoading] = useState(false)
+
+  useEffect(() => {
+    if (activeTab === 'payouts' && id) {
+      setPayoutsLoading(true)
+      getPayoutHistory(id)
+        .then(setPayouts)
+        .catch(() => setPayouts([]))
+        .finally(() => setPayoutsLoading(false))
+    }
+    if (activeTab === 'contributions' && id) {
+      setContribLoading(true)
+      getCircleContributions(id)
+        .then((data) => setContributions(data))
+        .catch(() => setContributions([]))
+        .finally(() => setContribLoading(false))
+    }
+  }, [activeTab, id])
+
+  async function handleProcessPayout() {
+    const cycleNum = parseInt(processCycleInput)
+    if (!id || !cycleNum) return
+    setProcessingCycle(cycleNum)
+    setPayoutError(null)
+    try {
+      await processPayout(id, cycleNum)
+      setProcessCycleInput('')
+      const updated = await getPayoutHistory(id)
+      setPayouts(updated)
+    } catch (err) {
+      setPayoutError(err instanceof Error ? err.message : 'Failed to process payout')
+    } finally {
+      setProcessingCycle(null)
+    }
+  }
+
+  async function handleRetryPayout(payoutId: string) {
+    try {
+      await retryPayout(payoutId)
+      if (id) {
+        const updated = await getPayoutHistory(id)
+        setPayouts(updated)
+      }
+    } catch (err) {
+      setPayoutError(err instanceof Error ? err.message : 'Failed to retry payout')
+    }
+  }
+
+  async function handleReversePayout() {
+    if (!reversePayout_) return
+    setReverseLoading(true)
+    try {
+      await reversePayout({
+        originalPayoutId: reversePayout_.id,
+        recipientId: String(reversePayout_.recipientId ?? ''),
+        scheduleId: String(reversePayout_.scheduleId ?? ''),
+        amount: String(reversePayout_.amount),
+        reason: reverseReason,
+      })
+      setReverseModal(false)
+      setReversePayout_(null)
+      setReverseReason('')
+      if (id) {
+        const updated = await getPayoutHistory(id)
+        setPayouts(updated)
+      }
+    } catch (err) {
+      setPayoutError(err instanceof Error ? err.message : 'Failed to reverse payout')
+    } finally {
+      setReverseLoading(false)
+    }
+  }
+
   const filteredMembers = mockMembers
     .filter((m) => m.name.toLowerCase().includes(memberSearch.toLowerCase()))
     .sort((a, b) => {
@@ -511,6 +609,8 @@ export function GroupDetail() {
           <Tabs.Tab value="members">Member Management</Tabs.Tab>
           <Tabs.Tab value="payments">Payment Oversight</Tabs.Tab>
           <Tabs.Tab value="progress">Group Progress View</Tabs.Tab>
+          <Tabs.Tab value="payouts">Payouts</Tabs.Tab>
+          <Tabs.Tab value="contributions">Contributions</Tabs.Tab>
         </Tabs.List>
 
         {/* Member Management Tab */}
@@ -927,6 +1027,254 @@ export function GroupDetail() {
           </Stack>
         </Tabs.Panel>
 
+        {/* ── Payouts Tab ── */}
+        <Tabs.Panel value="payouts" pt="lg">
+          <Stack gap="lg">
+            {/* Trigger payout action */}
+            <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+              <Text fw={600} fz="md" mb="md">Manually Trigger Payout</Text>
+              <Group gap="sm" align="flex-end">
+                <TextInput
+                  label="Cycle Number"
+                  placeholder="e.g. 1"
+                  radius="md"
+                  size="sm"
+                  value={processCycleInput}
+                  onChange={(e) => setProcessCycleInput(e.currentTarget.value.replace(/\D/g, ''))}
+                  styles={{ input: { border: '1px solid #dee2e6' }, root: { flex: 1, maxWidth: 180 } }}
+                />
+                <Button
+                  size="sm"
+                  radius="md"
+                  style={{ background: PRIMARY }}
+                  leftSection={<IconPlayerPlay size={14} />}
+                  loading={processingCycle !== null}
+                  disabled={!processCycleInput}
+                  onClick={handleProcessPayout}
+                >
+                  Process Payout
+                </Button>
+              </Group>
+              {payoutError && (
+                <Text fz="sm" c="red" mt="sm">{payoutError}</Text>
+              )}
+            </Paper>
+
+            {/* Payout History */}
+            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+              <Group justify="space-between" align="center" px="lg" py="md">
+                <Text fw={600} fz="md">Payout History</Text>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  radius="md"
+                  leftSection={<IconRefresh size={13} />}
+                  style={{ borderColor: '#dee2e6', color: '#495057' }}
+                  onClick={() => {
+                    if (!id) return
+                    setPayoutsLoading(true)
+                    getPayoutHistory(id).then(setPayouts).catch(() => {}).finally(() => setPayoutsLoading(false))
+                  }}
+                >
+                  Refresh
+                </Button>
+              </Group>
+
+              {payoutsLoading ? (
+                <Group justify="center" py="xl">
+                  <Loader size="sm" color={PRIMARY} />
+                </Group>
+              ) : (
+                <Table verticalSpacing="sm" horizontalSpacing="lg">
+                  <Table.Thead>
+                    <Table.Tr style={{ background: PRIMARY }}>
+                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
+                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Recipient</Table.Th>
+                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
+                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
+                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
+                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}></Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {payouts.length === 0 && (
+                      <Table.Tr>
+                        <Table.Td colSpan={6}>
+                          <Text c="dimmed" ta="center" py="xl" fz="sm">No payouts found for this circle</Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    )}
+                    {payouts.map((p) => {
+                      const statusColor =
+                        p.status === 'SUCCESS' || p.status === 'COMPLETED'
+                          ? { bg: '#e6f5f1', color: PRIMARY }
+                          : p.status === 'FAILED'
+                          ? { bg: '#fef2f2', color: '#e74c3c' }
+                          : { bg: '#f1f3f5', color: '#868e96' }
+                      const recipient = p.recipientName ?? (p.member as { firstName?: string; lastName?: string } | undefined)
+                        ? `${(p.member as { firstName?: string })?.firstName ?? ''} ${(p.member as { lastName?: string })?.lastName ?? ''}`.trim()
+                        : '—'
+                      return (
+                        <Table.Tr key={p.id}>
+                          <Table.Td><Text fz="sm" fw={500}>Cycle {p.cycleNumber}</Text></Table.Td>
+                          <Table.Td>
+                            <Group gap="sm" align="center">
+                              <Avatar size={28} radius="xl" color="gray">{(recipient || '?').charAt(0)}</Avatar>
+                              <Text fz="sm">{recipient || '—'}</Text>
+                            </Group>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text fz="sm" fw={600}>
+                              ₦{Number(p.amount).toLocaleString('en-NG')}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge
+                              size="sm"
+                              radius="sm"
+                              style={{ background: statusColor.bg, color: statusColor.color, border: 'none', fontWeight: 600 }}
+                            >
+                              {p.status}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text fz="sm" c="dimmed">
+                              {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG') : '—'}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Group gap="xs">
+                              {p.status === 'FAILED' && (
+                                <Button
+                                  variant="subtle"
+                                  size="xs"
+                                  px="xs"
+                                  leftSection={<IconRefresh size={12} />}
+                                  style={{ color: '#e67e22' }}
+                                  onClick={() => handleRetryPayout(p.id)}
+                                >
+                                  Retry
+                                </Button>
+                              )}
+                              {(p.status === 'SUCCESS' || p.status === 'COMPLETED') && (
+                                <Button
+                                  variant="subtle"
+                                  size="xs"
+                                  px="xs"
+                                  leftSection={<IconArrowBackUp size={12} />}
+                                  style={{ color: '#e74c3c' }}
+                                  onClick={() => {
+                                    setReversePayout_(p)
+                                    setReverseReason('')
+                                    setReverseModal(true)
+                                  }}
+                                >
+                                  Reverse
+                                </Button>
+                              )}
+                            </Group>
+                          </Table.Td>
+                        </Table.Tr>
+                      )
+                    })}
+                  </Table.Tbody>
+                </Table>
+              )}
+            </Paper>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* ── Contributions Tab ── */}
+        <Tabs.Panel value="contributions" pt="lg">
+          <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+            <Group justify="space-between" align="center" px="lg" py="md">
+              <Text fw={600} fz="md">Contribution History</Text>
+              <Button
+                variant="outline"
+                size="xs"
+                radius="md"
+                leftSection={<IconRefresh size={13} />}
+                style={{ borderColor: '#dee2e6', color: '#495057' }}
+                onClick={() => {
+                  if (!id) return
+                  setContribLoading(true)
+                  getCircleContributions(id).then((data) => setContributions(data)).catch(() => {}).finally(() => setContribLoading(false))
+                }}
+              >
+                Refresh
+              </Button>
+            </Group>
+
+            {contribLoading ? (
+              <Group justify="center" py="xl">
+                <Loader size="sm" color={PRIMARY} />
+              </Group>
+            ) : (
+              <Table verticalSpacing="sm" horizontalSpacing="lg">
+                <Table.Thead>
+                  <Table.Tr style={{ background: PRIMARY }}>
+                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Member</Table.Th>
+                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
+                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
+                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
+                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {contributions.length === 0 && (
+                    <Table.Tr>
+                      <Table.Td colSpan={5}>
+                        <Text c="dimmed" ta="center" py="xl" fz="sm">No contributions found for this circle</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+                  {contributions.map((c, i) => {
+                    const m = (c as ApiContribution).member as { firstName?: string; lastName?: string } | undefined
+                    const memberName = m ? `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() : '—'
+                    const st = (c as ApiContribution).status
+                    const statusColor =
+                      st === 'COMPLETED' || st === 'PAID'
+                        ? { bg: '#e6f5f1', color: PRIMARY }
+                        : st === 'FAILED'
+                        ? { bg: '#fef2f2', color: '#e74c3c' }
+                        : { bg: '#f1f3f5', color: '#868e96' }
+                    const cycleNum = (c as ApiContribution).cycleNumber
+                    const createdAt = (c as ApiContribution).createdAt
+                    return (
+                      <Table.Tr key={(c as ApiContribution).id ?? i}>
+                        <Table.Td>
+                          <Group gap="sm" align="center">
+                            <Avatar size={28} radius="xl" color="gray">{(memberName || '?').charAt(0)}</Avatar>
+                            <Text fz="sm" fw={500}>{memberName}</Text>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td><Text fz="sm">Cycle {cycleNum}</Text></Table.Td>
+                        <Table.Td>
+                          <Text fz="sm" fw={600}>₦{Number((c as ApiContribution).amount).toLocaleString('en-NG')}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge
+                            size="sm"
+                            radius="sm"
+                            style={{ background: statusColor.bg, color: statusColor.color, border: 'none', fontWeight: 600 }}
+                          >
+                            {st}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text fz="sm" c="dimmed">
+                            {createdAt ? new Date(createdAt).toLocaleDateString('en-NG') : '—'}
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    )
+                  })}
+                </Table.Tbody>
+              </Table>
+            )}
+          </Paper>
+        </Tabs.Panel>
+
         {/* Group Progress View Tab */}
         <Tabs.Panel value="progress" pt="lg">
           <Stack gap="lg">
@@ -1093,6 +1441,68 @@ export function GroupDetail() {
         </Tabs.Panel>
       </Tabs>
       )}
+
+      {/* Reverse Payout Modal */}
+      <Modal
+        opened={reverseModal}
+        onClose={() => setReverseModal(false)}
+        centered
+        radius="md"
+        size="sm"
+        title={<Text fw={700} fz="md">Reverse Payout</Text>}
+      >
+        <Stack gap="md">
+          {reversePayout_ && (
+            <Paper p="md" radius="md" style={{ background: '#f8f9fa' }}>
+              <Group justify="space-between" mb="xs">
+                <Text fz="sm" c="dimmed">Payout ID</Text>
+                <Text fz="sm" fw={500} style={{ fontFamily: 'monospace', fontSize: 11 }}>{reversePayout_.id}</Text>
+              </Group>
+              <Group justify="space-between" mb="xs">
+                <Text fz="sm" c="dimmed">Cycle</Text>
+                <Text fz="sm" fw={600}>Cycle {reversePayout_.cycleNumber}</Text>
+              </Group>
+              <Group justify="space-between">
+                <Text fz="sm" c="dimmed">Amount</Text>
+                <Text fz="sm" fw={600} c="red">₦{Number(reversePayout_.amount).toLocaleString('en-NG')}</Text>
+              </Group>
+            </Paper>
+          )}
+          <TextInput
+            label="Reason for reversal"
+            placeholder="e.g. Bank transfer failed: Account invalid"
+            radius="md"
+            size="sm"
+            value={reverseReason}
+            onChange={(e) => setReverseReason(e.currentTarget.value)}
+            styles={{ input: { border: '1px solid #dee2e6' } }}
+          />
+          {payoutError && <Text fz="sm" c="red">{payoutError}</Text>}
+          <Group gap="sm">
+            <Button
+              variant="outline"
+              radius="md"
+              size="sm"
+              flex={1}
+              style={{ borderColor: '#dee2e6', color: '#495057' }}
+              onClick={() => setReverseModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              radius="md"
+              size="sm"
+              flex={1}
+              color="red"
+              loading={reverseLoading}
+              disabled={!reverseReason.trim()}
+              onClick={handleReversePayout}
+            >
+              Confirm Reverse
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       {/* Send Invite Modal */}
       <Modal

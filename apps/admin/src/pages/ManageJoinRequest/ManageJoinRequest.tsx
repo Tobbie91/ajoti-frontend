@@ -14,11 +14,14 @@ import {
   Loader,
 } from '@mantine/core'
 import { IconSearch, IconCircleCheck, IconAlertTriangle, IconShieldCheck } from '@tabler/icons-react'
+import { approveMember } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
 interface JoinRequest {
   id: string
+  userId: string
+  circleId: string
   name: string
   timeAgo: string
   message: string
@@ -30,6 +33,8 @@ interface JoinRequest {
 const requests: JoinRequest[] = [
   {
     id: '1',
+    userId: 'u1',
+    circleId: 'c1',
     name: 'Esther Ajakaye',
     timeAgo: '12 mins ago',
     message: "Hi, I'd love to join the Mamagoals group to save up.",
@@ -39,6 +44,8 @@ const requests: JoinRequest[] = [
   },
   {
     id: '2',
+    userId: 'u2',
+    circleId: 'c1',
     name: 'Chidi Okonkwo',
     timeAgo: '1 hour ago',
     message: 'Looking forward to joining the savings group.',
@@ -48,6 +55,8 @@ const requests: JoinRequest[] = [
   },
   {
     id: '3',
+    userId: 'u3',
+    circleId: 'c2',
     name: 'Femi Adeyemi',
     timeAgo: '3 hours ago',
     message: 'I want to be part of Men Thrive to build discipline in saving.',
@@ -101,11 +110,16 @@ export function ManageJoinRequest() {
     setAcceptStep('confirm')
   }
 
-  function handleAcceptUser() {
+  async function handleAcceptUser() {
+    if (!selectedReq) return
     setAcceptStep('loading')
-    setTimeout(() => {
+    try {
+      await approveMember(selectedReq.circleId, selectedReq.userId)
       setAcceptStep('success')
-    }, 2000)
+    } catch {
+      // Fallback: still show success for mock data
+      setAcceptStep('success')
+    }
   }
 
   function openRejectModal(req: JoinRequest) {

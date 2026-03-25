@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Text, TextInput, Badge, Avatar, Tabs, Progress, Textarea, Loader } from '@mantine/core'
 import { IconSearch, IconMessageCircle, IconCalendar, IconCheck, IconFilter, IconAlertTriangle, IconX, IconCircleCheck } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { listRoscaCircles, type RoscaCircle } from '@/utils/api'
 
 const TABS = ['All Groups', 'Open Groups', 'Invite-Only', 'Joined'] as const
 
@@ -26,36 +27,6 @@ interface JoinedGroup {
   admin: string
 }
 
-const MOCK_GROUPS: RoscaGroup[] = [
-  { id: '1', name: 'Monthly 50K Squad', duration: '6 months', slots: '4 Slots', status: 'Open', admin: 'Abimbola Micheal' },
-  { id: '2', name: 'Hustle, Grind & Win', duration: '10 months', slots: '7 Slots', status: 'Invite Only', admin: 'Abimbola Micheal' },
-  { id: '3', name: 'Monthly 50K Squad', duration: '6 months', slots: '4 Slots', status: 'Open', admin: 'Abimbola Micheal' },
-  { id: '4', name: 'Hustle, Grind & Win', duration: '10 months', slots: '7 Slots', status: 'Invite Only', admin: 'Abimbola Micheal' },
-  { id: '5', name: 'Monthly 50K Squad', duration: '6 months', slots: '4 Slots', status: 'Open', admin: 'Abimbola Micheal' },
-  { id: '6', name: 'Hustle, Grind & Win', duration: '10 months', slots: '7 Slots', status: 'Invite Only', admin: 'Abimbola Micheal' },
-]
-
-const MOCK_JOINED: JoinedGroup[] = [
-  {
-    id: 'j1',
-    name: 'Smart Savers',
-    completionRate: 90,
-    completedCycles: 3,
-    totalCycles: 6,
-    nextContribution: 'May 10, 2026',
-    admin: 'Abimbola Micheal',
-  },
-  {
-    id: 'j2',
-    name: '50K Monthly Squad',
-    completionRate: 90,
-    completedCycles: 0,
-    totalCycles: 6,
-    nextContribution: 'Feb 2, 2026',
-    admin: 'Abimbola Micheal',
-  },
-]
-
 const statusBadge: Record<GroupStatus, { bg: string }> = {
   Open: { bg: '#02A36E' },
   'Invite Only': { bg: '#F97316' },
@@ -71,7 +42,39 @@ export function Rosca() {
   const [message, setMessage] = useState('')
   const [messageStep, setMessageStep] = useState<'compose' | 'sending' | 'sent'>('compose')
 
-  const filtered = MOCK_GROUPS.filter((g) => {
+  const [groups, setGroups] = useState<RoscaGroup[]>([])
+  const [joinedGroups, setJoinedGroups] = useState<JoinedGroup[]>([])
+  const [fetchLoading, setFetchLoading] = useState(true)
+  const [needsLogin, setNeedsLogin] = useState(false)
+
+  useEffect(() => {
+    listRoscaCircles()
+      .then((circles) => {
+        const mapped: RoscaGroup[] = circles.map((c: RoscaCircle) => {
+          const slotsLeft = (c.maxSlots ?? 0) - (c.filledSlots ?? 0)
+          const adminName = c.admin
+            ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
+            : 'Unknown'
+          return {
+            id: c.id,
+            name: c.name,
+            duration: c.durationCycles ? `${c.durationCycles} cycles` : '',
+            slots: `${slotsLeft} Slots`,
+            status: (c.visibility === 'PRIVATE' ? 'Invite Only' : 'Open') as GroupStatus,
+            admin: adminName,
+          }
+        })
+        setGroups(mapped)
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.message.toLowerCase().includes('unauthorized')) {
+          setNeedsLogin(true)
+        }
+      })
+      .finally(() => setFetchLoading(false))
+  }, [])
+
+  const filtered = groups.filter((g) => {
     const matchesSearch =
       g.name.toLowerCase().includes(search.toLowerCase()) ||
       g.admin.toLowerCase().includes(search.toLowerCase())
@@ -188,7 +191,7 @@ export function Rosca() {
         {isJoinedTab ? (
           <>
           <div className="grid grid-cols-2 gap-5">
-            {MOCK_JOINED.map((group) => (
+            {joinedGroups.map((group) => (
               <div
                 key={group.id}
                 className="rounded-2xl bg-white p-6 shadow-sm"
@@ -275,7 +278,7 @@ export function Rosca() {
           </div>
 
           {/* Show More */}
-          {!showAll && MOCK_JOINED.length > 6 && (
+          {!showAll && joinedGroups.length > 6 && (
             <div className="flex justify-center">
               <button
                 onClick={() => setShowAll(true)}
@@ -288,8 +291,18 @@ export function Rosca() {
           </>
         ) : (
           <>
-            {/* Groups Grid */}
-            {displayed.length > 0 ? (
+            {/* Login prompt if not authenticated */}
+            {needsLogin ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <Text fw={600} className="text-[#374151]">Login to view available ROSCA groups</Text>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="cursor-pointer rounded-lg bg-[#02A36E] px-8 py-2.5 text-sm font-semibold text-white"
+                >
+                  Login
+                </button>
+              </div>
+            ) : displayed.length > 0 ? (
               <div className="grid grid-cols-3 gap-5">
                 {displayed.map((group) => (
                   <div
@@ -305,7 +318,7 @@ export function Rosca() {
                       </Text>
 
                       <Text fw={500} className="mt-2 text-[13px] text-[#1F2937]">
-                        {group.duration} - {group.slots}
+                        {group.slots}
                       </Text>
 
                       <div className="mt-4">
@@ -348,7 +361,10 @@ export function Rosca() {
                           </Text>
                         </div>
                       </div>
-                      <button className="rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold text-[#0F172A] shadow-sm">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/rosca/${group.id}`) }}
+                        className="rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold text-[#0F172A] shadow-sm"
+                      >
                         {group.status === 'Open' ? 'Join' : 'View'}
                       </button>
                     </div>

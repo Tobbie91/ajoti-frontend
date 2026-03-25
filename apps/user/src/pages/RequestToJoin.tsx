@@ -1,18 +1,25 @@
 import { useState } from 'react'
-import { Text, TextInput, Textarea, Checkbox, Loader } from '@mantine/core'
-import { IconArrowLeft, IconInfoCircle } from '@tabler/icons-react'
+import { Text, TextInput, Textarea, Checkbox, Loader, Alert } from '@mantine/core'
+import { IconArrowLeft, IconAlertCircle } from '@tabler/icons-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { joinRoscaCircle } from '@/utils/api'
 
 export function RequestToJoin() {
   const navigate = useNavigate()
   const { id } = useParams()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setError(null)
     setLoading(true)
-    setTimeout(() => {
+    try {
+      await joinRoscaCircle(id!)
       navigate(`/rosca/${id}/summary`)
-    }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to join group.')
+      setLoading(false)
+    }
   }
 
   if (loading) {
@@ -52,13 +59,11 @@ export function RequestToJoin() {
           </Text>
         </div>
 
-        {/* Info Banner */}
-        <div className="flex items-start gap-3 rounded-xl bg-[#F0FDF4] px-5 py-4">
-          <IconInfoCircle size={20} color="#02A36E" className="mt-0.5 flex-shrink-0" />
-          <Text fw={500} className="text-[13px] leading-relaxed text-[#166534]">
-            You are about to request access. 4 new members have joined this group today.
-          </Text>
-        </div>
+        {error && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+            {error}
+          </Alert>
+        )}
 
         {/* Form */}
         <div className="flex flex-col gap-5">

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Text, TextInput, Textarea, Progress } from '@mantine/core'
+import { Text, TextInput, Textarea, Progress, Alert } from '@mantine/core'
 import {
   IconArrowLeft,
   IconUpload,
@@ -14,8 +14,10 @@ import {
   IconBuildingBank,
   IconShieldCheck,
   IconCamera,
+  IconAlertCircle,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { verifyNin as verifyNinApi, verifyBvn as verifyBvnApi, submitNok } from '@/utils/api'
 
 type KycStep = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
@@ -58,6 +60,13 @@ export function Kyc() {
   // Step 6 - Proof of Address
   const [proofFile, setProofFile] = useState<File | null>(null)
 
+  // Error state
+  const [error, setError] = useState<string | null>(null)
+
+  // User profile from localStorage (needed for NIN/BVN verification)
+  const storedUser = localStorage.getItem('user')
+  const userProfile = storedUser ? JSON.parse(storedUser) : null
+
   const progressValue = (step / 7) * 100
 
   function canProceed() {
@@ -73,25 +82,64 @@ export function Kyc() {
     }
   }
 
-  function handleVerifyNin() {
+  async function handleVerifyNin() {
     if (nin.trim().length !== 11) return
+    setError(null)
     setNinVerifying(true)
-    setTimeout(() => {
-      setNinVerifying(false)
+    try {
+      const profile = userProfile ?? {}
+      console.log('NIN payload profile:', profile)
+      await verifyNinApi({
+        nin: nin.trim(),
+        firstName: profile.firstName || profile.firstname || '',
+        lastName: profile.lastName || profile.lastname || '',
+        dob: profile.dob || (profile.DOB ? profile.DOB.split('T')[0] : ''),
+      })
       setNinVerified(true)
-    }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'NIN verification failed')
+    } finally {
+      setNinVerifying(false)
+    }
   }
 
-  function handleVerifyBvn() {
+  async function handleVerifyBvn() {
     if (bvn.trim().length !== 11) return
+    setError(null)
     setBvnVerifying(true)
-    setTimeout(() => {
-      setBvnVerifying(false)
+    try {
+      const bvnProfile = userProfile ?? {}
+      await verifyBvnApi({
+        bvn: bvn.trim(),
+        firstName: bvnProfile.firstName || bvnProfile.firstname || '',
+        lastName: bvnProfile.lastName || bvnProfile.lastname || '',
+        dob: bvnProfile.dob || (bvnProfile.DOB ? bvnProfile.DOB.split('T')[0] : ''),
+      })
       setBvnVerified(true)
-    }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'BVN verification failed')
+    } finally {
+      setBvnVerifying(false)
+    }
   }
 
-  function handleNext() {
+  async function handleNext() {
+    setError(null)
+
+    // Submit Next of Kin to backend when leaving step 3
+    if (step === 3) {
+      try {
+        await submitNok({
+          nextOfKinName: kinFullName.trim(),
+          nextOfKinRelationship: kinRelationship.trim(),
+          nextOfKinPhone: kinPhone.trim(),
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to submit next of kin')
+        return
+      }
+    }
+
     if (step < 7) {
       setStep((step + 1) as KycStep)
     } else {
@@ -193,6 +241,12 @@ export function Kyc() {
             )
           })}
         </div>
+
+        {error && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" className="mb-4" withCloseButton onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
         {/* Step 1: NIN Verification */}
         {step === 1 && (

@@ -20,23 +20,31 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const [opened, { toggle, close }] = useDisclosure(false)
 
+  const storedUser = localStorage.getItem('user')
+  const user = storedUser ? JSON.parse(storedUser) : null
+  const initials = user
+    ? `${(user.firstName || user.firstname || '')[0] ?? ''}${(user.lastName || user.lastname || '')[0] ?? ''}`.toUpperCase()
+    : ''
+  const accountLabel = user
+    ? `${user.firstName || user.firstname || ''} ${user.lastName || user.lastname || ''}`.trim()
+    : 'My account'
+
   return (
     <AppShell
-      header={{ height: 106 }}
+      header={{ height: { base: 70, sm: 106 } }}
       navbar={{
         width: 260,
         breakpoint: 'sm',
         collapsed: { desktop: true, mobile: !opened },
       }}
-      
       padding={0}
     >
       <AppShell.Header style={{ padding: 0 }}>
-        <Box pos="relative" h={106}>
-          <AppHeader avatarSrc="/assets/avatar.jpg" accountLabel="My account" />
+        <Box pos="relative" h={{ base: 70, sm: 106 }}>
+          <AppHeader initials={initials} accountLabel={accountLabel} />
 
           {/* Mobile burger overlay */}
-          <Box pos="absolute" left={16} top={36} hiddenFrom="sm">
+          <Box pos="absolute" left={16} top={{ base: 22, sm: 36 }} hiddenFrom="sm">
             <Burger opened={opened} onClick={toggle} size="sm" />
           </Box>
         </Box>
@@ -45,7 +53,11 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile-only drawer */}
       <AppShell.Navbar p="md">
         <AppShell.Section grow>
-          <NavLink label="Home" href="/" onNavigate={close} />
+          <NavLink label="Home" href="/home" onNavigate={close} />
+          <NavLink label="ROSCA" href="/rosca" onNavigate={close} />
+          <NavLink label="Wallet" href="/create-wallet" onNavigate={close} />
+          <NavLink label="Profile" href="/profile" onNavigate={close} />
+          <NavLink label="Transactions" href="/transactions" onNavigate={close} />
         </AppShell.Section>
       </AppShell.Navbar>
 

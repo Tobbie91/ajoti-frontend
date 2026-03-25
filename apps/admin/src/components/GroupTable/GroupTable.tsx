@@ -1,5 +1,7 @@
-import { Paper, Text, Group, TextInput, Badge, Box, ActionIcon } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Paper, Text, Group, TextInput, Badge, Box, ActionIcon, Loader } from '@mantine/core'
 import { IconSearch, IconAdjustmentsHorizontal } from '@tabler/icons-react'
+import { listAllRoscaCircles, type RoscaCircle } from '@/utils/api'
 
 interface RoscaGroup {
   name: string
@@ -9,13 +11,20 @@ interface RoscaGroup {
   cycle: string
 }
 
-const groups: RoscaGroup[] = [
-  { name: 'Monthly 50k Squad', status: 'Active', members: '7/7', nextPayout: 'May 12, 2026', cycle: '3 of 7' },
-  { name: 'Smart Savers', status: 'Active', members: '6/6', nextPayout: 'May 15, 2026', cycle: '4 of 6' },
-  { name: 'MamaGoals', status: 'Pending', members: '1/10', nextPayout: 'Pending', cycle: 'Pending' },
-  { name: 'Travel & Chill', status: 'Completed', members: '6/6', nextPayout: 'Finished', cycle: '6 of 6' },
-  { name: 'Smart Pocket', status: 'Active', members: '7/7', nextPayout: 'May 18, 2026', cycle: '2 of 7' },
-]
+function mapCircle(c: RoscaCircle): RoscaGroup {
+  const filled = c.filledSlots ?? 0
+  const total = c.maxSlots ?? c.totalSlots ?? 0
+  const s = (c.status || '').toUpperCase()
+  const status: RoscaGroup['status'] =
+    s === 'ACTIVE' || s === 'STARTED' ? 'Active' : s === 'COMPLETED' ? 'Completed' : 'Pending'
+  return {
+    name: c.name || 'Unnamed',
+    status,
+    members: `${filled}/${total}`,
+    nextPayout: status === 'Pending' ? 'Pending' : status === 'Completed' ? 'Finished' : '—',
+    cycle: status === 'Pending' ? 'Pending' : `${filled} of ${c.durationCycles ?? total}`,
+  }
+}
 
 const statusColors: Record<RoscaGroup['status'], string> = {
   Active: '#0b6b55',
@@ -30,6 +39,19 @@ const statusBg: Record<RoscaGroup['status'], string> = {
 }
 
 export function GroupTable() {
+  const [groups, setGroups] = useState<RoscaGroup[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    listAllRoscaCircles()
+      .then((res) => {
+        const circles = Array.isArray(res) ? res : ((res as Record<string, unknown>)?.data ?? (res as Record<string, unknown>)?.circles ?? []) as RoscaCircle[]
+        setGroups(circles.slice(0, 5).map(mapCircle))
+      })
+      .catch((err) => console.error('GroupTable fetch error:', err))
+      .finally(() => setLoading(false))
+  }, [])
+
   return (
     <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
       {/* Header */}
@@ -67,48 +89,58 @@ export function GroupTable() {
         ))}
       </Box>
 
-      {/* Rows */}
-      {groups.map((group, i) => (
-        <Box
-          key={group.name}
-          px="lg"
-          py="sm"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1fr',
-            alignItems: 'center',
-            background: i % 2 === 0 ? 'white' : '#fafafa',
-            borderBottom: i < groups.length - 1 ? '1px solid #f1f3f5' : 'none',
-          }}
-        >
-          <Text fz="sm" fw={500}>
-            {group.name}
-          </Text>
-          <Box>
-            <Badge
-              size="sm"
-              radius="sm"
-              style={{
-                background: statusBg[group.status],
-                color: statusColors[group.status],
-                border: 'none',
-                fontWeight: 600,
-              }}
-            >
-              {group.status}
-            </Badge>
-          </Box>
-          <Text fz="sm" c="dimmed">
-            {group.members}
-          </Text>
-          <Text fz="sm" c="dimmed">
-            {group.nextPayout}
-          </Text>
-          <Text fz="sm" c="dimmed">
-            {group.cycle}
-          </Text>
+      {/* Body */}
+      {loading ? (
+        <Box py="xl" style={{ display: 'flex', justifyContent: 'center' }}>
+          <Loader size="sm" color="#0b6b55" />
         </Box>
-      ))}
+      ) : groups.length === 0 ? (
+        <Box py="xl" style={{ textAlign: 'center' }}>
+          <Text fz="sm" c="dimmed">No groups yet</Text>
+        </Box>
+      ) : (
+        groups.map((group, i) => (
+          <Box
+            key={group.name}
+            px="lg"
+            py="sm"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1fr',
+              alignItems: 'center',
+              background: i % 2 === 0 ? 'white' : '#fafafa',
+              borderBottom: i < groups.length - 1 ? '1px solid #f1f3f5' : 'none',
+            }}
+          >
+            <Text fz="sm" fw={500}>
+              {group.name}
+            </Text>
+            <Box>
+              <Badge
+                size="sm"
+                radius="sm"
+                style={{
+                  background: statusBg[group.status],
+                  color: statusColors[group.status],
+                  border: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                {group.status}
+              </Badge>
+            </Box>
+            <Text fz="sm" c="dimmed">
+              {group.members}
+            </Text>
+            <Text fz="sm" c="dimmed">
+              {group.nextPayout}
+            </Text>
+            <Text fz="sm" c="dimmed">
+              {group.cycle}
+            </Text>
+          </Box>
+        ))
+      )}
     </Paper>
   )
 }

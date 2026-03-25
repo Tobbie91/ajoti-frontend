@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Text, Avatar, Badge, Table, Textarea, Loader } from '@mantine/core'
 import {
   IconArrowLeft,
@@ -9,6 +9,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { listRoscaCircles, getRoscaSchedules, type RoscaCircle, type RoscaSchedule } from '@/utils/api'
 
 type GroupStatus = 'Open' | 'Invite Only'
 
@@ -28,103 +29,89 @@ interface GroupData {
   completionRate: string
 }
 
-const MOCK_GROUPS: Record<string, GroupData> = {
-  '1': {
-    id: '1',
-    name: '50k Monthly Squad',
-    status: 'Open',
-    amount: '₦50,000',
-    frequency: 'Monthly',
-    duration: '6 months',
-    slotsLeft: '5 Slots left',
-    contribution: '₦50,000 monthly',
-    payoutOrder: 'Based on slot draw',
-    penalty: '₦5,000 for late payment',
-    admin: 'Abimbola Michael',
-    adminBio: 'Experienced saving group leader. 2 years managing ROSCAs.',
-    completionRate: '90%',
-  },
-  '2': {
-    id: '2',
-    name: 'Hustle, Grind & Win',
-    status: 'Invite Only',
-    amount: '₦10,000',
-    frequency: 'Monthly',
-    duration: '10 months',
-    slotsLeft: '4 Slots left',
-    contribution: '₦10,000 monthly',
-    payoutOrder: 'Based on slot draw',
-    penalty: '₦2,000 for late payment',
-    admin: 'Abimbola Michael',
-    adminBio: 'Experienced saving group leader. 2 years managing ROSCAs.',
-    completionRate: '90%',
-  },
-  '3': {
-    id: '3',
-    name: '50k Monthly Squad',
-    status: 'Open',
-    amount: '₦50,000',
-    frequency: 'Monthly',
-    duration: '6 months',
-    slotsLeft: '4 Slots left',
-    contribution: '₦50,000 monthly',
-    payoutOrder: 'Based on slot draw',
-    penalty: '₦5,000 for late payment',
-    admin: 'Abimbola Michael',
-    adminBio: 'Experienced saving group leader. 2 years managing ROSCAs.',
-    completionRate: '90%',
-  },
-  '4': {
-    id: '4',
-    name: 'Hustle, Grind & Win',
-    status: 'Invite Only',
-    amount: '₦10,000',
-    frequency: 'Monthly',
-    duration: '10 months',
-    slotsLeft: '7 Slots left',
-    contribution: '₦10,000 monthly',
-    payoutOrder: 'Based on slot draw',
-    penalty: '₦2,000 for late payment',
-    admin: 'Abimbola Michael',
-    adminBio: 'Experienced saving group leader. 2 years managing ROSCAs.',
-    completionRate: '90%',
-  },
+interface ScheduleRow {
+  month: string
+  user: string
+  status: string
 }
-
-const DEFAULT_GROUP: GroupData = {
-  id: '0',
-  name: '50k Monthly Squad',
-  status: 'Open',
-  amount: '₦50,000',
-  frequency: 'Monthly',
-  duration: '6 months',
-  slotsLeft: '5 Slots left',
-  contribution: '₦50,000 monthly',
-  payoutOrder: 'Based on slot draw',
-  penalty: '₦5,000 for late payment',
-  admin: 'Abimbola Michael',
-  adminBio: 'Experienced saving group leader. 2 years managing ROSCAs.',
-  completionRate: '90%',
-}
-
-const PAYOUT_SCHEDULE = [
-  { month: 'January', user: 'User A', status: 'Pending' },
-  { month: 'February', user: 'User B', status: 'Pending' },
-  { month: 'March', user: 'User C', status: 'Pending' },
-  { month: 'April', user: 'User D', status: 'Pending' },
-  { month: 'May', user: 'User E', status: 'Pending' },
-  { month: 'June', user: 'User F', status: 'Pending' },
-]
 
 export function GroupDetails() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const group = MOCK_GROUPS[id || ''] || DEFAULT_GROUP
-  const isInviteOnly = group.status === 'Invite Only'
+
+  const [group, setGroup] = useState<GroupData | null>(null)
+  const [schedule, setSchedule] = useState<ScheduleRow[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [messageOpen, setMessageOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [messageStep, setMessageStep] = useState<'compose' | 'sending' | 'sent'>('compose')
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [circles, schedules] = await Promise.all([
+          listRoscaCircles(),
+          getRoscaSchedules(id!).catch(() => [] as RoscaSchedule[]),
+        ])
+        const circle = (Array.isArray(circles) ? circles : []).find((c: RoscaCircle) => c.id === id)
+        if (circle) {
+          const slotsLeft = (circle.maxSlots ?? 0) - (circle.filledSlots ?? 0)
+          const adminName = circle.admin
+            ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
+            : 'Unknown'
+          setGroup({
+            id: circle.id,
+            name: circle.name,
+            status: (circle.status === 'INVITE_ONLY' ? 'Invite Only' : 'Open') as GroupStatus,
+            amount: `₦${(circle.amount ?? 0).toLocaleString()}`,
+            frequency: circle.frequency ?? '',
+            duration: String(circle.duration ?? ''),
+            slotsLeft: `${slotsLeft} Slots left`,
+            contribution: `₦${(circle.amount ?? 0).toLocaleString()} ${(circle.frequency ?? '').toLowerCase()}`,
+            payoutOrder: String((circle as Record<string, unknown>).payoutOrder ?? 'Based on slot draw'),
+            penalty: String((circle as Record<string, unknown>).penalty ?? ''),
+            admin: adminName,
+            adminBio: String((circle as Record<string, unknown>).adminBio ?? ''),
+            completionRate: `${(circle as Record<string, unknown>).completionRate ?? 0}%`,
+          })
+        }
+        setSchedule(
+          (Array.isArray(schedules) ? schedules : []).map((s: RoscaSchedule) => ({
+            month: s.month ?? '',
+            user: s.recipient ?? '',
+            status: s.status ?? 'Pending',
+          }))
+        )
+      } catch (err) {
+        console.error('Failed to fetch group details:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader size={48} color="#02A36E" />
+      </div>
+    )
+  }
+
+  if (!group) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
+        <Text fw={600} className="text-[#374151]">Group not found</Text>
+        <button onClick={() => navigate('/rosca')} className="text-[#02A36E] cursor-pointer text-sm font-medium">
+          Back to groups
+        </button>
+      </div>
+    )
+  }
+
+  const isInviteOnly = group.status === 'Invite Only'
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-6 py-6">
@@ -301,7 +288,7 @@ export function GroupDetails() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {PAYOUT_SCHEDULE.map((row) => (
+                {schedule.map((row) => (
                   <Table.Tr key={row.month}>
                     <Table.Td>
                       <Text fw={500} className="text-[#0F172A]">{row.month}</Text>

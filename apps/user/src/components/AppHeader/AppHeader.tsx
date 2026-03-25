@@ -1,11 +1,20 @@
-// import { Menu } from '@mantine/core'
+import { useState, useEffect } from 'react'
 import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom'
-import { IconBell /* IconChevronDown */ } from '@tabler/icons-react'
+import { Popover, Text, ScrollArea, Loader } from '@mantine/core'
+import { IconBell } from '@tabler/icons-react'
 import styles from './AppHeader.module.css'
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from '@/utils/api'
+import type { AppNotification } from '@/utils/api'
 
 type AppHeaderProps = {
-  avatarSrc: string
+  avatarSrc?: string
   accountLabel?: string
+  initials?: string
 }
 
 type SvgProps = { className?: string }
@@ -28,9 +37,6 @@ function HomeIcon({ className }: SvgProps) {
     </svg>
   )
 }
-
-// SavingsIcon — commented out, coming soon
-// function SavingsIcon({ className }: SvgProps) { ... }
 
 function RoscaIcon({ className }: SvgProps) {
   return (
@@ -84,14 +90,141 @@ function WalletIcon({ className }: SvgProps) {
   )
 }
 
-// InvestmentsIcon — commented out, coming soon
-// function InvestmentsIcon({ className }: SvgProps) { ... }
-
 function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ')
 }
 
-export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderProps) {
+function NotificationPanel() {
+  const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    getUnreadNotificationCount()
+      .then(setUnreadCount)
+      .catch(() => {})
+  }, [])
+
+  function handleOpen(isOpen: boolean) {
+    setOpen(isOpen)
+    if (isOpen) {
+      setLoading(true)
+      getNotifications()
+        .then((list) => setNotifications(list))
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }
+  }
+
+  async function handleMarkAll() {
+    await markAllNotificationsRead().catch(() => {})
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    setUnreadCount(0)
+  }
+
+  async function handleMarkOne(id: string) {
+    await markNotificationRead(id).catch(() => {})
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
+    setUnreadCount((c) => Math.max(0, c - 1))
+  }
+
+  return (
+    <Popover
+      opened={open}
+      onChange={handleOpen}
+      width={340}
+      position="bottom-end"
+      shadow="md"
+      radius="md"
+      withArrow
+    >
+      <Popover.Target>
+        <button
+          onClick={() => handleOpen(!open)}
+          className={styles.bellWrap}
+          aria-label="Notifications"
+        >
+          <IconBell className={styles.bellIcon} />
+          {unreadCount > 0 && (
+            <span className={styles.bellBadge}>
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+      </Popover.Target>
+
+      <Popover.Dropdown style={{ padding: 0 }}>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-3">
+          <Text fw={600} fz={14} style={{ color: '#0F172A' }}>
+            Notifications
+          </Text>
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAll}
+              className="cursor-pointer text-[12px] font-medium text-[#02A36E] hover:underline"
+            >
+              Mark all as read
+            </button>
+          )}
+        </div>
+
+        {/* Body */}
+        <ScrollArea h={360}>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader size="sm" color="#02A36E" />
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <IconBell size={32} color="#D1D5DB" />
+              <Text fz={13} style={{ color: '#9CA3AF' }}>
+                No notifications yet
+              </Text>
+            </div>
+          ) : (
+            <div className="flex flex-col divide-y divide-[#F3F4F6]">
+              {notifications.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => !n.read && handleMarkOne(n.id)}
+                  className={`w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-[#F9FAFB] ${
+                    !n.read ? 'bg-[#F0FDF4]' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {!n.read && (
+                      <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#02A36E]" />
+                    )}
+                    <div className={!n.read ? '' : 'pl-4'}>
+                      <Text fw={600} fz={13} style={{ color: '#0F172A' }}>
+                        {n.title}
+                      </Text>
+                      <Text fw={400} fz={12} style={{ color: '#6B7280' }} mt={2}>
+                        {n.message}
+                      </Text>
+                      <Text fw={400} fz={11} style={{ color: '#9CA3AF' }} mt={4}>
+                        {new Date(n.createdAt).toLocaleDateString('en-NG', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </Popover.Dropdown>
+    </Popover>
+  )
+}
+
+export function AppHeader({ avatarSrc, accountLabel = 'My account', initials }: AppHeaderProps) {
   const navigate = useNavigate()
   return (
     <header className={styles.header}>
@@ -103,42 +236,40 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account' }: AppHeaderP
         <RouterNavLink
           to="/home"
           end
-          className={({ isActive }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+          className={({ isActive }: { isActive: boolean }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
         >
           <HomeIcon className={styles.navIconHome} />
           <span className={styles.navLabel}>Home</span>
         </RouterNavLink>
 
-        {/* Savings dropdown — coming soon */}
-
         <RouterNavLink
           to="/rosca"
-          className={({ isActive }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+          className={({ isActive }: { isActive: boolean }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
         >
           <RoscaIcon className={styles.navIconRosca} />
           <span className={styles.navLabel}>ROSCA</span>
         </RouterNavLink>
 
-        {/* Investments — coming soon */}
-
         <RouterNavLink
           to="/create-wallet"
-          className={({ isActive }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+          className={({ isActive }: { isActive: boolean }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
         >
           <WalletIcon className={styles.navIconWallet} />
           <span className={styles.navLabel}>Wallet</span>
         </RouterNavLink>
       </nav>
 
-      {/* Right side (bell + account) */}
+      {/* Right side */}
       <div className={styles.right}>
-        <div className={styles.bellWrap}>
-          <IconBell className={styles.bellIcon} />
-        </div>
+        <NotificationPanel />
 
         <div className={styles.account} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
           <div className={styles.avatarRing}>
-            <img className={styles.avatarImg} src={avatarSrc} alt="" />
+            {avatarSrc ? (
+              <img className={styles.avatarImg} src={avatarSrc} alt="" />
+            ) : (
+              <div className={styles.avatarInitials}>{initials || '?'}</div>
+            )}
           </div>
           <span className={styles.accountText}>{accountLabel}</span>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Stack,
@@ -20,6 +20,7 @@ import {
   SimpleGrid,
 } from '@mantine/core'
 import { IconSearch, IconChevronDown, IconCheck, IconAlertTriangle, IconTrash } from '@tabler/icons-react'
+import { listAllRoscaCircles, type RoscaCircle } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -34,32 +35,22 @@ interface RoscaGroup {
   status: Status
 }
 
-const allGroups: RoscaGroup[] = [
-  { id: '1', name: 'Mamagoals', members: '7/10', nextPayout: 'Mar 15, 2025', roundProgress: '3 of 10', status: 'Active' },
-  { id: '2', name: 'Men Thrive', members: '6/6', nextPayout: 'Mar 20, 2025', roundProgress: '5 of 6', status: 'Active' },
-  { id: '3', name: 'Women in Tech', members: '8/10', nextPayout: 'Apr 1, 2025', roundProgress: '2 of 10', status: 'Active' },
-  { id: '4', name: 'Young Savers', members: '10/12', nextPayout: 'Mar 25, 2025', roundProgress: '7 of 12', status: 'Active' },
-  { id: '5', name: 'Hustle Squad', members: '0/10', nextPayout: 'Pending', roundProgress: 'Pending', status: 'Pending' },
-  { id: '6', name: 'Traders Circle', members: '5/8', nextPayout: 'Mar 18, 2025', roundProgress: '4 of 8', status: 'Active' },
-  { id: '7', name: 'Family Fund', members: '6/6', nextPayout: 'Completed', roundProgress: '6 of 6', status: 'Completed' },
-  { id: '8', name: 'Growth Tribe', members: '4/10', nextPayout: 'Apr 10, 2025', roundProgress: '2 of 10', status: 'Active' },
-  { id: '9', name: 'Unity Savers', members: '5/8', nextPayout: 'Mar 28, 2025', roundProgress: '3 of 8', status: 'Active' },
-  { id: '10', name: 'Legacy Builders', members: '2/12', nextPayout: 'Pending', roundProgress: 'Pending', status: 'Pending' },
-  { id: '11', name: 'Smart Investors', members: '8/10', nextPayout: 'Mar 22, 2025', roundProgress: '8 of 10', status: 'Active' },
-  { id: '12', name: 'Wealth Circle', members: '4/6', nextPayout: 'Apr 2, 2025', roundProgress: '4 of 6', status: 'Active' },
-  { id: '13', name: 'Progress Team', members: '5/8', nextPayout: 'Mar 19, 2025', roundProgress: '5 of 8', status: 'Active' },
-  { id: '14', name: 'Dream Fund', members: '6/12', nextPayout: 'Apr 8, 2025', roundProgress: '2 of 12', status: 'Active' },
-  { id: '15', name: 'Steady Earners', members: '7/8', nextPayout: 'Mar 26, 2025', roundProgress: '6 of 8', status: 'Active' },
-  { id: '16', name: 'Rise Together', members: '5/10', nextPayout: 'Apr 12, 2025', roundProgress: '3 of 10', status: 'Active' },
-  { id: '17', name: 'Alpha Savers', members: '10/12', nextPayout: 'Mar 17, 2025', roundProgress: '9 of 12', status: 'Active' },
-  { id: '18', name: 'Future Fund', members: '3/6', nextPayout: 'Apr 3, 2025', roundProgress: '2 of 6', status: 'Active' },
-  { id: '19', name: 'Victory Pool', members: '7/10', nextPayout: 'Mar 29, 2025', roundProgress: '5 of 10', status: 'Active' },
-  { id: '20', name: 'Community Pot', members: '5/8', nextPayout: 'Apr 7, 2025', roundProgress: '3 of 8', status: 'Active' },
-  { id: '21', name: 'Sunrise Group', members: '10/12', nextPayout: 'Mar 23, 2025', roundProgress: '10 of 12', status: 'Active' },
-  { id: '22', name: 'Golden Circle', members: '0/10', nextPayout: 'Pending', roundProgress: 'Pending', status: 'Pending' },
-  { id: '23', name: 'Power Savers', members: '6/6', nextPayout: 'Completed', roundProgress: '6 of 6', status: 'Completed' },
-  { id: '24', name: 'Harmony Fund', members: '4/8', nextPayout: 'Apr 6, 2025', roundProgress: '4 of 8', status: 'Active' },
-]
+function mapCircleToGroup(c: RoscaCircle): RoscaGroup {
+  const filled = c.filledSlots ?? 0
+  const total = c.maxSlots ?? c.totalSlots ?? 0
+  let status: Status = 'Pending'
+  const s = (c.status || '').toUpperCase()
+  if (s === 'ACTIVE' || s === 'STARTED') status = 'Active'
+  else if (s === 'COMPLETED') status = 'Completed'
+  return {
+    id: c.id,
+    name: c.name || 'Unnamed',
+    members: `${filled}/${total}`,
+    nextPayout: status === 'Pending' ? 'Pending' : status === 'Completed' ? 'Completed' : '—',
+    roundProgress: status === 'Pending' ? 'Pending' : `${filled} of ${c.durationCycles ?? total}`,
+    status,
+  }
+}
 
 const PAGE_SIZE = 10
 
@@ -90,11 +81,23 @@ function getStatusBg(status: string) {
 
 export function RoscaGroups() {
   const navigate = useNavigate()
+  const [allGroups, setAllGroups] = useState<RoscaGroup[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string>('All')
   const [bulkAction, setBulkAction] = useState<string>('')
+
+  useEffect(() => {
+    listAllRoscaCircles()
+      .then((res) => {
+        const circles = Array.isArray(res) ? res : ((res as Record<string, unknown>)?.data ?? (res as Record<string, unknown>)?.circles ?? []) as RoscaCircle[]
+        setAllGroups(circles.map(mapCircleToGroup))
+      })
+      .catch((err) => console.error('Failed to load ROSCA circles:', err))
+      .finally(() => setLoading(false))
+  }, [])
 
   // Notification modal state
   const [notifModal, setNotifModal] = useState(false)
@@ -197,6 +200,15 @@ export function RoscaGroups() {
   function toggleOne(id: string) {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
+
+  if (loading) {
+    return (
+      <Stack align="center" justify="center" style={{ minHeight: 300 }}>
+        <Loader size={40} color={PRIMARY} />
+        <Text fz="sm" c="dimmed">Loading groups...</Text>
+      </Stack>
     )
   }
 

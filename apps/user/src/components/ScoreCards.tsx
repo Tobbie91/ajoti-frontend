@@ -1,4 +1,4 @@
-import { Paper, Text, RingProgress, Progress, Group, Stack, Badge } from '@mantine/core'
+import { Paper, Text, RingProgress, Progress, Group, Stack, Badge, Loader } from '@mantine/core'
 import { IconShieldCheck, IconGauge } from '@tabler/icons-react'
 
 function getTrustTier(score: number) {
@@ -15,8 +15,9 @@ function getCreditTier(score: number) {
   return { label: 'Poor', color: '#EF4444' }
 }
 
-export function TrustScoreCard({ score }: { score: number }) {
-  const tier = getTrustTier(score)
+export function TrustScoreCard({ score }: { score: number | null }) {
+  const resolvedScore = score ?? 0
+  const tier = getTrustTier(resolvedScore)
 
   return (
     <Paper
@@ -38,31 +39,37 @@ export function TrustScoreCard({ score }: { score: number }) {
           <Text fw={300} fz={12} style={{ color: '#6B7280' }}>
             Based on your ROSCA activity and repayment history
           </Text>
-          <Badge
-            variant="light"
-            size="sm"
-            style={{
-              backgroundColor: `${tier.color}15`,
-              color: tier.color,
-              border: `1px solid ${tier.color}30`,
-              width: 'fit-content',
-            }}
-          >
-            {tier.label}
-          </Badge>
+          {score !== null && (
+            <Badge
+              variant="light"
+              size="sm"
+              style={{
+                backgroundColor: `${tier.color}15`,
+                color: tier.color,
+                border: `1px solid ${tier.color}30`,
+                width: 'fit-content',
+              }}
+            >
+              {tier.label}
+            </Badge>
+          )}
         </Stack>
 
-        <RingProgress
-          size={90}
-          thickness={8}
-          roundCaps
-          sections={[{ value: score, color: tier.color }]}
-          label={
-            <Text ta="center" fw={700} fz={18} style={{ color: '#0F172A' }}>
-              {score}
-            </Text>
-          }
-        />
+        {score === null ? (
+          <Loader size="sm" color="#02A36E" />
+        ) : (
+          <RingProgress
+            size={90}
+            thickness={8}
+            roundCaps
+            sections={[{ value: resolvedScore, color: tier.color }]}
+            label={
+              <Text ta="center" fw={700} fz={18} style={{ color: '#0F172A' }}>
+                {resolvedScore}
+              </Text>
+            }
+          />
+        )}
       </Group>
     </Paper>
   )
