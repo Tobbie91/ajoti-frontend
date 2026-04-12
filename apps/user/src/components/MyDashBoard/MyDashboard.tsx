@@ -32,7 +32,7 @@ export function MyDashboard({
             Fund Wallet
           </button>
           <button type="button" className={styles.transferBtn} onClick={onTransfer}>
-            Transfer
+            Withdraw
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
   getUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
+  getUserProfile,
 } from '@/utils/api'
 import type { AppNotification } from '@/utils/api'
 
@@ -224,8 +225,35 @@ function NotificationPanel() {
   )
 }
 
-export function AppHeader({ avatarSrc, accountLabel = 'My account', initials }: AppHeaderProps) {
+export function AppHeader({ avatarSrc, accountLabel = 'My account', initials: initialsProp }: AppHeaderProps) {
   const navigate = useNavigate()
+  const [initials, setInitials] = useState<string>(() => {
+    const stored = localStorage.getItem('user')
+    if (stored) {
+      try {
+        const u = JSON.parse(stored)
+        const f = (u.firstName || u.firstname || '').charAt(0).toUpperCase()
+        const l = (u.lastName || u.lastname || '').charAt(0).toUpperCase()
+        return (f + l) || initialsProp || ''
+      } catch { /* ignore */ }
+    }
+    return initialsProp || ''
+  })
+
+  useEffect(() => {
+    getUserProfile()
+      .then((u) => {
+        const f = (u.firstName || '').charAt(0).toUpperCase()
+        const l = (u.lastName || '').charAt(0).toUpperCase()
+        if (f || l) setInitials(f + l)
+        // persist fresh data
+        const stored = localStorage.getItem('user')
+        const existing = stored ? JSON.parse(stored) : {}
+        localStorage.setItem('user', JSON.stringify({ ...existing, ...u }))
+      })
+      .catch(() => {})
+  }, [])
+
   return (
     <header className={styles.header}>
       {/* Logo */}
@@ -268,7 +296,7 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account', initials }: 
             {avatarSrc ? (
               <img className={styles.avatarImg} src={avatarSrc} alt="" />
             ) : (
-              <div className={styles.avatarInitials}>{initials || '?'}</div>
+              <div className={styles.avatarInitials}>{initials || initialsProp || ''}</div>
             )}
           </div>
           <span className={styles.accountText}>{accountLabel}</span>

@@ -59,11 +59,10 @@ export function WithdrawFunds() {
 
   useEffect(() => {
     getWalletBalanceNaira()
-      .then((res) =>
-        setAvailableBalance(
-          Number(res.balance ?? res.nairaBalance ?? res.amount ?? res.availableBalance ?? 0),
-        ),
-      )
+      .then((res) => {
+        const data = (res.data ?? res) as Record<string, unknown>
+        setAvailableBalance(Number(data.available ?? data.total ?? data.balance ?? 0))
+      })
       .catch(() => setAvailableBalance(0))
   }, [])
 

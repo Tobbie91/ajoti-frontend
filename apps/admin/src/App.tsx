@@ -17,6 +17,7 @@ import {
   VerifyOtp,
   Kyc,
   MyProfile,
+  FundWalletCallback,
 } from '@/pages'
 
 function App() {
@@ -44,6 +45,9 @@ function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/my-profile" element={<MyProfile />} />
         </Route>
+
+        {/* Flutterwave callback — no layout */}
+        <Route path="/fund-wallet/callback" element={<FundWalletCallback />} />
 
         {/* Default: redirect to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />

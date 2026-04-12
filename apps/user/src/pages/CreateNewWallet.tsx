@@ -1,158 +1,125 @@
-import { useState } from "react";
-import { Center, Group, Box, Text, Stack, Button } from "@mantine/core";
-import { useNavigate } from "react-router-dom";
-import Vector from "@/assets/Vector.svg";
-import { CurrencyCard } from "@/components/CurrencyCard";
-import { PrivacyList } from "@/components/Privacy/PrivacyList";
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Text } from '@mantine/core'
+import { IconArrowLeft, IconShieldCheck, IconTrendingUp, IconWallet } from '@tabler/icons-react'
+import NigerianFlag from '@/assets/NigerianFlag.svg'
 
-import NigerianFlag from "@/assets/NigerianFlag.svg";
-import GreenCheck from "@/assets/GreenCheck.svg";
+type Currency = 'NGN'
 
-
-type Currency = "NGN";
-
-// ---- manual knobs ----
-const PAGE_MAX_W = 900;
-const TOP_PADDING = 36;
-const STACK_GAP = 14;
-
-const ROW_MAX_W = 760;
-const ROW_GAP = 18;
-const CARD_W = 220;
-
-const PRIVACY_MAX_W = 420;
-const PRIVACY_OFFSET_LEFT = 100;
-const PRIVACY_TOP_GAP = 18;
+const BENEFITS = [
+  {
+    icon: <IconShieldCheck size={18} color="#02A36E" />,
+    text: 'No Naira loss — your funds are fully secured',
+  },
+  {
+    icon: <IconWallet size={18} color="#02A36E" />,
+    text: 'Accessible savings and investments anytime',
+  },
+  {
+    icon: <IconTrendingUp size={18} color="#02A36E" />,
+    text: 'Competitive interest rates on your balance',
+  },
+]
 
 export function CreateNewWallet() {
-  const navigate = useNavigate();
-  const [selected, setSelected] = useState<Currency>("NGN");
+  const navigate = useNavigate()
+  const [selected, setSelected] = useState<Currency>('NGN')
 
   return (
-    <Box style={{ width: "100%", minHeight: "100vh", position: "relative" }}>
-
+    <div className="mx-auto w-full max-w-[520px] px-4 py-6 sm:px-6 sm:py-8">
+      {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        style={{
-          position: "absolute",
-          top: "179px",
-          left: "367px",
-          width: "84px",
-          height: "30px",
-          gap: "13px",
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-        }}
+        className="mb-8 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
       >
-        <img
-          src={Vector}
-          alt=""
-          aria-hidden="true"
-          style={{ width: "16px", height: "16px" }}
-        />
-        <span
-          style={{
-            fontFamily: "Poppins, system-ui, sans-serif",
-            fontSize: "20px",
-            fontWeight: 300,
-          }}
-        >
-          Back
-        </span>
+        <IconArrowLeft size={18} />
+        Back
       </button>
 
+      {/* Heading */}
+      <div className="mb-8">
+        <Text fw={700} className="text-[26px] text-[#0F172A]">
+          Create New Wallet
+        </Text>
+        <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
+          Select a currency to set up your wallet
+        </Text>
+      </div>
 
-      {/* ================= CENTERED CONTENT ================= */}
-      <Center>
-        <Box style={{ maxWidth: PAGE_MAX_W, width: "100%", paddingTop: 190 }}>
-          <Stack gap={STACK_GAP} align="center">
-            {/* Title */}
-            <Text
-              style={{
-                fontFamily: "Poppins, system-ui, sans-serif",
-                fontWeight: 500,
-                fontSize: 22,
-                lineHeight: "100%",
-                textAlign: "center",
-                paddingBottom: 20,
-              }}
-            >
-              Create New Wallet
-            </Text>
+      {/* Currency selection */}
+      <div className="mb-6">
+        <Text fw={600} className="mb-3 text-[13px] uppercase tracking-wider text-[#9CA3AF]">
+          Available Currencies
+        </Text>
 
-            {/* Currency card */}
-            <Box style={{ maxWidth: ROW_MAX_W, width: "100%", marginTop: 10, paddingBottom:20 }}>
-              <Group justify="center" gap={ROW_GAP}>
-                <Box style={{ width: CARD_W }}>
-                  <CurrencyCard
-                    code="NGN"
-                    symbol="₦"
-                    amount="0.00"
-                    active={selected === "NGN"}
-                    onClick={() => setSelected("NGN")}
-                    iconSrc={NigerianFlag}
-                  />
-                </Box>
-              </Group>
-            </Box>
-          </Stack>
-        </Box>
-      </Center>
-
-      {/* ================= PRIVACY + KYC ================= */}
-      <Box
-        style={{
-          maxWidth: PAGE_MAX_W,
-          margin: "0 auto",
-          marginTop: PRIVACY_TOP_GAP,
-          paddingLeft: PRIVACY_OFFSET_LEFT,
-        }}
-      >
-        <Box style={{ width: "100%", maxWidth: PRIVACY_MAX_W }}>
-          <PrivacyList />
-        </Box>
-
-        <Group gap={8} align="center" style={{ marginTop: 40 }}>
-          <img
-            src={GreenCheck}
-            alt=""
-            aria-hidden="true"
-            style={{ width: 14, height: 14 }}
-          />
-          <Text
-            style={{
-              fontFamily: "Poppins, system-ui, sans-serif",
-              fontWeight: 400,
-              fontSize: 12,
-              color: "rgba(0,0,0,0.55)",
-            }}
-          >
-            KYC Verified
-          </Text>
-        </Group>
-      </Box>
-
-      {/* ================= FUND BUTTON (LAST) ================= */}
-      <Center>
-        <Button
-          radius="xl"
-          h={36}
-          px={28}
-          style={{
-            marginTop: 60,
-            background: "#9CB8B0",
-            fontFamily: "Poppins, system-ui, sans-serif",
-            fontWeight: 500,
-          }}
-          onClick={() => navigate("/fund-wallet")}
+        <button
+          onClick={() => setSelected('NGN')}
+          className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 transition-all ${
+            selected === 'NGN'
+              ? 'border-[#02A36E] bg-[#F0FDF4]'
+              : 'border-[#E5E7EB] bg-white hover:border-[#D1FAE5] hover:bg-[#F9FAFB]'
+          }`}
         >
-          Fund Wallet
-        </Button>
-      </Center>
-    </Box>
-  );
+          {/* Flag */}
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <img src={NigerianFlag} alt="Nigerian Flag" className="h-full w-full object-cover" />
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 text-left">
+            <Text fw={600} className="text-[15px] text-[#0F172A]">
+              Nigerian Naira
+            </Text>
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              NGN · ₦0.00 balance
+            </Text>
+          </div>
+
+          {/* Selected indicator */}
+          <div
+            className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+              selected === 'NGN'
+                ? 'border-[#02A36E] bg-[#02A36E]'
+                : 'border-[#D1D5DB] bg-white'
+            }`}
+          >
+            {selected === 'NGN' && (
+              <div className="h-2 w-2 rounded-full bg-white" />
+            )}
+          </div>
+        </button>
+      </div>
+
+      {/* Benefits */}
+      <div className="mb-8 rounded-2xl border border-[#E5E7EB] bg-white p-5">
+        <Text fw={600} className="mb-4 text-[14px] text-[#374151]">
+          Why open a Naira wallet?
+        </Text>
+        <div className="flex flex-col gap-3">
+          {BENEFITS.map((b, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[#F0FDF4]">
+                {b.icon}
+              </div>
+              <Text fw={400} className="text-[13px] leading-relaxed text-[#374151]">
+                {b.text}
+              </Text>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <button
+        onClick={() => navigate('/fund-wallet')}
+        className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[15px] font-semibold text-white hover:bg-[#028a5b]"
+      >
+        Fund Wallet
+      </button>
+
+      <Text fw={400} className="mt-3 text-center text-[12px] text-[#9CA3AF]">
+        Your wallet will be created automatically when you fund it
+      </Text>
+    </div>
+  )
 }

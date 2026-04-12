@@ -33,6 +33,12 @@ export function Signup() {
         role: 'admin',
       })
       localStorage.setItem('admin_verify_email', email.trim())
+      localStorage.setItem('admin_user', JSON.stringify({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        dob,
+      }))
       navigate('/verify-otp')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')

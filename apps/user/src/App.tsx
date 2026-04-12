@@ -3,7 +3,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider } from '@/components/AuthProvider'
 import { RequireKyc } from '@/components/RequireKyc'
 import { AppLayout, BlogLayout } from '@/layouts'
-import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword } from '@/pages'
+import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, FundWalletCallback, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword } from '@/pages'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = Boolean(googleClientId)
@@ -156,6 +156,7 @@ function App() {
               </RequireKyc>
             }
           />
+          <Route path="/fund-wallet/callback" element={<FundWalletCallback />} />
           <Route
             path="/withdraw"
             element={

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Text, TextInput, Select, Avatar } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Text, TextInput, Select, Avatar, Loader } from '@mantine/core'
 import {
   IconArrowLeft,
   IconUser,
@@ -14,7 +14,7 @@ import {
   IconLogout,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi } from '@/utils/api'
+import { logout as logoutApi, getUserProfile, updateUserProfile } from '@/utils/api'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('user')
@@ -32,6 +32,9 @@ const NIGERIAN_STATES = [
 export function Profile() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
   const user = getUserFromStorage()
   const [firstName, setFirstName] = useState(user.firstName || user.firstname || '')
@@ -43,8 +46,35 @@ export function Profile() {
   const [state, setState] = useState<string | null>(user.state || null)
   const kycCompleted = localStorage.getItem('kyc_completed') === 'true'
 
-  function handleSave() {
-    setEditing(false)
+  useEffect(() => {
+    getUserProfile()
+      .then((u) => {
+        setFirstName(u.firstName || '')
+        setLastName(u.lastName || '')
+        setEmail(u.email || '')
+        setPhone((u.phone as string) || '')
+        setAddress((u.address as string) || '')
+        setCity((u.city as string) || '')
+        setState((u.state as string) || null)
+        localStorage.setItem('user', JSON.stringify({ ...getUserFromStorage(), ...u }))
+      })
+      .catch(() => {})
+  }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    setSaveError(null)
+    setSaveSuccess(false)
+    try {
+      await updateUserProfile({ firstName, lastName, phone, address, city, state: state ?? undefined })
+      setSaveSuccess(true)
+      setEditing(false)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save changes')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleLogout() {
@@ -304,13 +334,31 @@ export function Profile() {
         </div>
       </div>
 
+      {saveSuccess && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#F0FDF4] px-4 py-3">
+          <IconCheck size={16} color="#02A36E" />
+          <Text fw={500} className="text-[13px] text-[#02A36E]">Profile updated successfully</Text>
+        </div>
+      )}
+      {saveError && (
+        <div className="mb-4 rounded-xl bg-red-50 px-4 py-3">
+          <Text fw={500} className="text-[13px] text-red-600">{saveError}</Text>
+        </div>
+      )}
+
       {/* Save button when editing */}
       {editing && (
         <button
           onClick={handleSave}
-          className="mb-6 w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
+          disabled={saving}
+          className={`mb-6 w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${saving ? 'cursor-not-allowed bg-[#9CA3AF]' : 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'}`}
         >
-          Save Changes
+          {saving ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader size={16} color="white" />
+              Saving...
+            </span>
+          ) : 'Save Changes'}
         </button>
       )}
 

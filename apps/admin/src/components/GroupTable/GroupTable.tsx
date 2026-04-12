@@ -41,6 +41,7 @@ const statusBg: Record<RoscaGroup['status'], string> = {
 export function GroupTable() {
   const [groups, setGroups] = useState<RoscaGroup[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     listAllRoscaCircles()
@@ -72,6 +73,8 @@ export function GroupTable() {
             size="sm"
             style={{ flex: 1 }}
             styles={{ input: { border: '1px solid #dee2e6' } }}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
         </Group>
       </Box>
@@ -99,7 +102,7 @@ export function GroupTable() {
           <Text fz="sm" c="dimmed">No groups yet</Text>
         </Box>
       ) : (
-        groups.map((group, i) => (
+        groups.filter((g) => g.name.toLowerCase().includes(search.toLowerCase())).map((group, i) => (
           <Box
             key={group.name}
             px="lg"

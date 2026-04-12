@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Stack,
   Text,
@@ -13,346 +13,359 @@ import {
   Textarea,
   Loader,
 } from '@mantine/core'
-import { IconSearch, IconCircleCheck, IconAlertTriangle, IconShieldCheck } from '@tabler/icons-react'
-import { approveMember } from '@/utils/api'
+import { IconSearch, IconCircleCheck, IconAlertTriangle } from '@tabler/icons-react'
+import { getJoinRequests, getAdminCircleDetail, approveMember, rejectMember, type CirclePendingRequests } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
-interface JoinRequest {
-  id: string
+interface PendingMember {
   userId: string
-  circleId: string
   name: string
-  timeAgo: string
-  message: string
+  joinedAt: string
   trustScore: number
+  message: string
   history: string
-  group: string
 }
 
-const requests: JoinRequest[] = [
-  {
-    id: '1',
-    userId: 'u1',
-    circleId: 'c1',
-    name: 'Esther Ajakaye',
-    timeAgo: '12 mins ago',
-    message: "Hi, I'd love to join the Mamagoals group to save up.",
-    trustScore: 92,
-    history: 'Completed 2 ROSCA Cycles',
-    group: 'Mamagoals',
-  },
-  {
-    id: '2',
-    userId: 'u2',
-    circleId: 'c1',
-    name: 'Chidi Okonkwo',
-    timeAgo: '1 hour ago',
-    message: 'Looking forward to joining the savings group.',
-    trustScore: 32,
-    history: 'Defaulted in 2 previous cycles',
-    group: 'Mamagoals',
-  },
-  {
-    id: '3',
-    userId: 'u3',
-    circleId: 'c2',
-    name: 'Femi Adeyemi',
-    timeAgo: '3 hours ago',
-    message: 'I want to be part of Men Thrive to build discipline in saving.',
-    trustScore: 85,
-    history: 'Completed 4 ROSCA Cycles',
-    group: 'Men Thrive',
-  },
-]
-
-const groups = ['Mamagoals', 'Men Thrive']
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins || 1} min${mins !== 1 ? 's' : ''} ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? 's' : ''} ago`
+  return `${Math.floor(hrs / 24)} day${Math.floor(hrs / 24) !== 1 ? 's' : ''} ago`
+}
 
 function getTrustColor(score: number) {
   if (score >= 70) return PRIMARY
-  if (score >= 50) return '#e67e22'
+  if (score >= 40) return '#e67e22'
   return '#e74c3c'
 }
 
 function getTrustBg(score: number) {
   if (score >= 70) return '#e6f5f1'
-  if (score >= 50) return '#fdf3e7'
+  if (score >= 40) return '#fdf3e7'
   return '#fde8e8'
 }
 
 export function ManageJoinRequest() {
-  const [activeGroup, setActiveGroup] = useState<string>(groups[0])
+  const [tabsLoading, setTabsLoading] = useState(true)
+  const [circles, setCircles] = useState<CirclePendingRequests[]>([])
+  const [activeCircle, setActiveCircle] = useState<CirclePendingRequests | null>(null)
+
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [members, setMembers] = useState<PendingMember[]>([])
   const [search, setSearch] = useState('')
-  const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>(requests)
+
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  // Accept modal
   const [acceptModal, setAcceptModal] = useState(false)
-  const [selectedReq, setSelectedReq] = useState<JoinRequest | null>(null)
+  const [selectedMember, setSelectedMember] = useState<PendingMember | null>(null)
   const [acceptReason, setAcceptReason] = useState('')
-  const [acceptStep, setAcceptStep] = useState<'confirm' | 'loading' | 'success'>('confirm')
+  const [acceptStep, setAcceptStep] = useState<'confirm' | 'loading' | 'success' | 'error'>('confirm')
+  const [acceptError, setAcceptError] = useState<string | null>(null)
+
+  // Reject modal
   const [rejectModal, setRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [rejectStep, setRejectStep] = useState<'confirm' | 'loading' | 'success'>('confirm')
-  const [historyModal, setHistoryModal] = useState(false)
+  const [rejectStep, setRejectStep] = useState<'confirm' | 'loading' | 'success' | 'error'>('confirm')
+  const [rejectError, setRejectError] = useState<string | null>(null)
 
-  function openAcceptModal(req: JoinRequest) {
-    setSelectedReq(req)
+  // Load circle tabs
+  useEffect(() => {
+    getJoinRequests()
+      .then((data) => {
+        setCircles(data)
+        if (data.length > 0) setActiveCircle(data[0])
+      })
+      .catch((err) => setFetchError(err instanceof Error ? err.message : 'Failed to load requests'))
+      .finally(() => setTabsLoading(false))
+  }, [])
+
+  // Load pending members whenever active circle changes
+  useEffect(() => {
+    if (!activeCircle) return
+    setMembersLoading(true)
+    setMembers([])
+    getAdminCircleDetail(activeCircle.circleId)
+      .then((circle) => {
+        type RawMember = {
+          userId: string
+          name?: string
+          status: string
+          joinedAt?: string
+          createdAt?: string
+          trustScore?: number
+          message?: string
+          history?: string
+          user?: { firstName?: string; lastName?: string; trustScore?: number }
+        }
+        const raw: RawMember[] = ((circle as Record<string, unknown>).members as RawMember[]) ?? []
+        const pending = raw
+          .filter((m) => (m.status ?? '').toUpperCase() === 'PENDING')
+          .map((m) => {
+            const fromUser = m.user ? `${m.user.firstName ?? ''} ${m.user.lastName ?? ''}`.trim() : ''
+            const name = m.name || fromUser || `User ${m.userId.slice(0, 6)}`
+            const trustScore = Number(m.trustScore ?? m.user?.trustScore ?? 0)
+            return {
+              userId: m.userId,
+              name,
+              joinedAt: m.joinedAt ?? m.createdAt ?? new Date().toISOString(),
+              trustScore,
+              message: m.message ?? '',
+              history: m.history ?? '',
+            }
+          })
+        setMembers(pending)
+      })
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false))
+  }, [activeCircle])
+
+  function removeFromList(userId: string) {
+    setMembers((prev) => prev.filter((m) => m.userId !== userId))
+  }
+
+  // Accept
+  function openAccept(member: PendingMember) {
+    setSelectedMember(member)
     setAcceptReason('')
+    setAcceptError(null)
     setAcceptStep('confirm')
     setAcceptModal(true)
   }
-
-  function closeAcceptModal() {
-    if (acceptStep === 'success' && selectedReq) {
-      setPendingRequests((prev) => prev.filter((r) => r.id !== selectedReq.id))
-    }
+  function closeAccept() {
+    if (acceptStep === 'success' && selectedMember) removeFromList(selectedMember.userId)
     setAcceptModal(false)
-    setSelectedReq(null)
-    setAcceptReason('')
-    setAcceptStep('confirm')
+    setSelectedMember(null)
   }
-
-  async function handleAcceptUser() {
-    if (!selectedReq) return
+  async function handleAccept() {
+    if (!selectedMember || !activeCircle) return
     setAcceptStep('loading')
     try {
-      await approveMember(selectedReq.circleId, selectedReq.userId)
+      await approveMember(activeCircle.circleId, selectedMember.userId)
       setAcceptStep('success')
-    } catch {
-      // Fallback: still show success for mock data
-      setAcceptStep('success')
+    } catch (err) {
+      setAcceptError(err instanceof Error ? err.message : 'Failed to accept')
+      setAcceptStep('error')
     }
   }
 
-  function openRejectModal(req: JoinRequest) {
-    setSelectedReq(req)
+  // Reject
+  function openReject(member: PendingMember) {
+    setSelectedMember(member)
     setRejectReason('')
+    setRejectError(null)
     setRejectStep('confirm')
     setRejectModal(true)
   }
-
-  function closeRejectModal() {
-    if (rejectStep === 'success' && selectedReq) {
-      setPendingRequests((prev) => prev.filter((r) => r.id !== selectedReq.id))
-    }
+  function closeReject() {
+    if (rejectStep === 'success' && selectedMember) removeFromList(selectedMember.userId)
     setRejectModal(false)
-    setSelectedReq(null)
-    setRejectReason('')
-    setRejectStep('confirm')
+    setSelectedMember(null)
   }
-
-  function handleRejectUser() {
+  async function handleReject() {
+    if (!selectedMember || !activeCircle) return
     setRejectStep('loading')
-    setTimeout(() => {
+    try {
+      await rejectMember(activeCircle.circleId, selectedMember.userId)
       setRejectStep('success')
-    }, 2000)
+    } catch (err) {
+      setRejectError(err instanceof Error ? err.message : 'Failed to reject')
+      setRejectStep('error')
+    }
   }
 
-  function openHistoryModal(req: JoinRequest) {
-    setSelectedReq(req)
-    setHistoryModal(true)
-  }
-
-  function closeHistoryModal() {
-    setHistoryModal(false)
-    setSelectedReq(null)
-  }
-
-  function getTrustLabel(score: number) {
-    if (score >= 70) return 'High'
-    if (score >= 50) return 'Medium'
-    return 'Low'
-  }
-
-  const filtered = pendingRequests.filter(
-    (r) =>
-      r.group === activeGroup &&
-      (r.name.toLowerCase().includes(search.toLowerCase()) ||
-        r.message.toLowerCase().includes(search.toLowerCase())),
+  const filtered = members.filter(
+    (m) =>
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.message.toLowerCase().includes(search.toLowerCase()),
   )
 
-  if (pendingRequests.length === 0) {
+  // Loading tabs
+  if (tabsLoading) {
     return (
-      <Stack gap="lg" align="center" justify="center" style={{ minHeight: 400 }}>
+      <Box style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <Loader color={PRIMARY} />
+      </Box>
+    )
+  }
+
+  if (fetchError) {
+    return (
+      <Stack align="center" justify="center" style={{ minHeight: 400 }}>
         <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center', maxWidth: 400 }}>
-          <IconSearch size={48} stroke={1.2} color="#868e96" style={{ marginBottom: 12 }} />
-          <Text fz="lg" fw={600} mb={4}>No Pending Requests</Text>
-          <Text fz="sm" c="dimmed">
-            There are no pending join requests at the moment. New requests will appear here when users apply to join a group.
-          </Text>
+          <IconAlertTriangle size={40} color="#e74c3c" stroke={1.5} style={{ marginBottom: 12 }} />
+          <Text fz="md" fw={600} mb={4}>Failed to load requests</Text>
+          <Text fz="sm" c="dimmed">{fetchError}</Text>
         </Paper>
       </Stack>
     )
   }
 
+  const totalPending = circles.reduce((sum, c) => sum + c.pendingCount, 0)
+
   return (
     <Stack gap="lg">
       {/* Header */}
       <Box>
-        <Text fz={22} fw={700} mb={2}>
-          Pending Join Request
-        </Text>
+        <Text fz={22} fw={700} mb={2}>Pending Join Request</Text>
         <Text fz="sm" c="dimmed">
-          {pendingRequests.length} pending request{pendingRequests.length !== 1 ? 's' : ''} across {groups.length} groups
+          {totalPending} pending request{totalPending !== 1 ? 's' : ''} across {circles.length} group{circles.length !== 1 ? 's' : ''}
         </Text>
       </Box>
 
-      {/* Search */}
-      <TextInput
-        placeholder="Search by name..."
-        leftSection={<IconSearch size={15} stroke={1.5} color="#868e96" />}
-        radius="md"
-        size="sm"
-        value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
-        styles={{ input: { border: '1px solid #dee2e6' } }}
-      />
-
-      {/* Group filter tabs */}
-      <Group gap="sm">
-        {groups.map((group) => (
-          <Button
-            key={group}
-            size="xs"
-            radius="xl"
-            variant={activeGroup === group ? 'filled' : 'default'}
-            style={
-              activeGroup === group
-                ? { background: PRIMARY }
-                : { borderColor: '#dee2e6' }
-            }
-            onClick={() => setActiveGroup(group)}
-          >
-            {group}
-          </Button>
-        ))}
-      </Group>
-
-      {/* Request cards */}
-      <Stack gap="md">
-        {filtered.length === 0 && (
-          <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef' }}>
-            <Text c="dimmed" ta="center">
-              No pending requests for {activeGroup}
-            </Text>
-          </Paper>
-        )}
-
-        {filtered.map((req) => (
-          <Paper
-            key={req.id}
-            p="lg"
+      {circles.length === 0 ? (
+        <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center' }}>
+          <IconSearch size={48} stroke={1.2} color="#868e96" style={{ marginBottom: 12 }} />
+          <Text fz="lg" fw={600} mb={4}>No Pending Requests</Text>
+          <Text fz="sm" c="dimmed">
+            There are no pending join requests at the moment.
+          </Text>
+        </Paper>
+      ) : (
+        <>
+          {/* Search */}
+          <TextInput
+            placeholder="Search by name..."
+            leftSection={<IconSearch size={15} stroke={1.5} color="#868e96" />}
             radius="md"
-            style={{ border: '1px solid #e9ecef' }}
-          >
-            <Group align="flex-start" justify="space-between" wrap="nowrap">
-              {/* Left: user info */}
-              <Group align="flex-start" gap="md" wrap="nowrap" style={{ flex: 1 }}>
-                <Avatar size={44} radius="xl" color="gray">
-                  {req.name.charAt(0)}
-                </Avatar>
-                <Box style={{ flex: 1 }}>
-                  <Group gap="sm" mb={2}>
-                    <Text fz="sm" fw={600}>
-                      {req.name}
-                    </Text>
-                    <Text fz="xs" c="dimmed">
-                      {req.timeAgo}
-                    </Text>
-                  </Group>
-                  <Text fz="sm" c="dimmed" mb="sm">
-                    {req.message}
-                  </Text>
+            size="sm"
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+            styles={{ input: { border: '1px solid #dee2e6' } }}
+          />
 
-                  {/* Trust score + history */}
-                  <Group gap="md" align="center">
-                    <Box>
-                      <Text fz="xs" c="dimmed" mb={2}>
-                        Trust Score
-                      </Text>
-                      <Badge
-                        size="lg"
-                        radius="sm"
-                        style={{
-                          background: getTrustBg(req.trustScore),
-                          color: getTrustColor(req.trustScore),
-                          border: 'none',
-                          fontWeight: 700,
-                          fontSize: 13,
-                        }}
+          {/* Circle tabs */}
+          <Group gap="sm">
+            {circles.map((c) => (
+              <Button
+                key={c.circleId}
+                size="xs"
+                radius="xl"
+                variant={activeCircle?.circleId === c.circleId ? 'filled' : 'default'}
+                style={
+                  activeCircle?.circleId === c.circleId
+                    ? { background: PRIMARY }
+                    : { borderColor: '#dee2e6', color: '#495057' }
+                }
+                onClick={() => setActiveCircle(c)}
+              >
+                {c.name}
+              </Button>
+            ))}
+          </Group>
+
+          {/* Member cards */}
+          {membersLoading ? (
+            <Box style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+              <Loader size="sm" color={PRIMARY} />
+            </Box>
+          ) : filtered.length === 0 ? (
+            <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center' }}>
+              <Text fz="sm" c="dimmed">No pending requests for {activeCircle?.name}</Text>
+            </Paper>
+          ) : (
+            <Stack gap="md">
+              {filtered.map((member) => (
+                <Paper key={member.userId} p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+                  <Group align="flex-start" justify="space-between" wrap="nowrap">
+                    <Group align="flex-start" gap="md" wrap="nowrap" style={{ flex: 1 }}>
+                      <Avatar size={44} radius="xl" color="gray">
+                        {member.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box style={{ flex: 1 }}>
+                        <Group gap="sm" mb={4}>
+                          <Text fz="sm" fw={600}>{member.name}</Text>
+                          <Text fz="xs" c="dimmed">{timeAgo(member.joinedAt)}</Text>
+                        </Group>
+                        {member.message && (
+                          <Text fz="sm" c="dimmed" mb={8}>{member.message}</Text>
+                        )}
+                        <Group gap="xl" align="center">
+                          <Box>
+                            <Text fz="xs" c="dimmed" mb={4}>Trust Score</Text>
+                            <Badge
+                              size="lg"
+                              radius="sm"
+                              style={{
+                                background: getTrustBg(member.trustScore),
+                                color: getTrustColor(member.trustScore),
+                                border: 'none',
+                                fontWeight: 700,
+                                fontSize: 13,
+                              }}
+                            >
+                              {member.trustScore}/100
+                            </Badge>
+                          </Box>
+                          {member.history && (
+                            <Box>
+                              <Text fz="xs" c="dimmed" mb={4}>History</Text>
+                              <Group gap={6} align="center">
+                                <Text fz="sm">{member.history}</Text>
+                                <Text
+                                  fz="xs"
+                                  fw={500}
+                                  style={{ color: PRIMARY, cursor: 'pointer' }}
+                                >
+                                  View History
+                                </Text>
+                              </Group>
+                            </Box>
+                          )}
+                        </Group>
+                      </Box>
+                    </Group>
+
+                    <Stack gap="xs" mt={4} style={{ flexShrink: 0 }}>
+                      <Button
+                        size="xs"
+                        radius="md"
+                        style={{ background: PRIMARY, minWidth: 80 }}
+                        onClick={() => openAccept(member)}
                       >
-                        {req.trustScore}/100
-                      </Badge>
-                    </Box>
-                    <Box>
-                      <Text fz="xs" c="dimmed" mb={2}>
-                        History
-                      </Text>
-                      <Text fz="xs" fw={500}>
-                        {req.history}
-                      </Text>
-                    </Box>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      style={{ color: PRIMARY }}
-                      px={0}
-                      mt={12}
-                      onClick={() => openHistoryModal(req)}
-                    >
-                      View History
-                    </Button>
+                        Accept
+                      </Button>
+                      <Button
+                        size="xs"
+                        radius="md"
+                        variant="outline"
+                        color="red"
+                        style={{ minWidth: 80 }}
+                        onClick={() => openReject(member)}
+                      >
+                        Reject
+                      </Button>
+                    </Stack>
                   </Group>
-                </Box>
-              </Group>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </>
+      )}
 
-              {/* Right: action buttons */}
-              <Stack gap="xs" mt={4}>
-                <Button
-                  size="xs"
-                  radius="md"
-                  style={{ background: PRIMARY, minWidth: 80 }}
-                  onClick={() => openAcceptModal(req)}
-                >
-                  Accept
-                </Button>
-                <Button
-                  size="xs"
-                  radius="md"
-                  variant="outline"
-                  color="red"
-                  style={{ minWidth: 80 }}
-                  onClick={() => openRejectModal(req)}
-                >
-                  Reject
-                </Button>
-              </Stack>
-            </Group>
-          </Paper>
-        ))}
-      </Stack>
       {/* Accept Modal */}
       <Modal
         opened={acceptModal}
-        onClose={closeAcceptModal}
+        onClose={closeAccept}
         centered
         radius="md"
         size="sm"
         withCloseButton={acceptStep === 'confirm'}
-        title={acceptStep === 'confirm' ? (
-          <Text fw={700} fz="md">Accept Join Request</Text>
-        ) : undefined}
+        title={acceptStep === 'confirm' ? <Text fw={700} fz="md">Accept Join Request</Text> : undefined}
         closeOnClickOutside={acceptStep === 'confirm'}
       >
-        {acceptStep === 'confirm' && selectedReq && (
+        {acceptStep === 'confirm' && selectedMember && (
           <Stack gap="md">
-            {/* User info */}
             <Paper p="md" radius="md" style={{ background: '#f8f9fa' }}>
               <Group gap="md" align="center">
-                <Avatar size={44} radius="xl" color="gray">
-                  {selectedReq.name.charAt(0)}
-                </Avatar>
+                <Avatar size={44} radius="xl" color="gray">{selectedMember.name.charAt(0)}</Avatar>
                 <Box>
-                  <Text fz="sm" fw={600}>{selectedReq.name}</Text>
-                  <Text fz="xs" c="dimmed">Group: {selectedReq.group}</Text>
+                  <Text fz="sm" fw={600}>{selectedMember.name}</Text>
+                  <Text fz="xs" c="dimmed">Group: {activeCircle?.name}</Text>
                 </Box>
               </Group>
               <Group gap="sm" mt="sm">
@@ -361,18 +374,16 @@ export function ManageJoinRequest() {
                   size="sm"
                   radius="sm"
                   style={{
-                    background: getTrustBg(selectedReq.trustScore),
-                    color: getTrustColor(selectedReq.trustScore),
+                    background: getTrustBg(selectedMember.trustScore),
+                    color: getTrustColor(selectedMember.trustScore),
                     border: 'none',
                     fontWeight: 700,
                   }}
                 >
-                  {selectedReq.trustScore} - {getTrustLabel(selectedReq.trustScore)}
+                  {selectedMember.trustScore}/100
                 </Badge>
               </Group>
             </Paper>
-
-            {/* Reason textarea */}
             <Box>
               <Text fz="sm" fw={500} mb={4}>Reason for Acceptance (optional)</Text>
               <Textarea
@@ -384,50 +395,33 @@ export function ManageJoinRequest() {
                 styles={{ input: { border: '1px solid #dee2e6' } }}
               />
             </Box>
-
-            {/* Actions */}
             <Group justify="flex-end" gap="sm" mt="xs">
-              <Button
-                variant="default"
-                radius="md"
-                size="sm"
-                onClick={closeAcceptModal}
-                style={{ borderColor: '#dee2e6' }}
-              >
-                Cancel
-              </Button>
-              <Button
-                radius="md"
-                size="sm"
-                style={{ background: PRIMARY }}
-                onClick={handleAcceptUser}
-              >
-                Accept User
-              </Button>
+              <Button variant="default" radius="md" size="sm" onClick={closeAccept} style={{ borderColor: '#dee2e6' }}>Cancel</Button>
+              <Button radius="md" size="sm" style={{ background: PRIMARY }} onClick={handleAccept}>Accept User</Button>
             </Group>
           </Stack>
         )}
-
         {acceptStep === 'loading' && (
           <Stack align="center" gap="md" py="xl">
             <Loader size="md" color={PRIMARY} />
             <Text fz="sm" c="dimmed">Accepting user...</Text>
           </Stack>
         )}
-
         {acceptStep === 'success' && (
           <Stack align="center" gap="md" py="xl">
             <IconCircleCheck size={48} color={PRIMARY} stroke={1.5} />
             <Text fz="sm" fw={500}>Request accepted successfully</Text>
-            <Button
-              variant="default"
-              radius="md"
-              size="sm"
-              onClick={closeAcceptModal}
-              style={{ borderColor: '#dee2e6' }}
-            >
-              Back
-            </Button>
+            <Button variant="default" radius="md" size="sm" onClick={closeAccept} style={{ borderColor: '#dee2e6' }}>Close</Button>
+          </Stack>
+        )}
+        {acceptStep === 'error' && (
+          <Stack align="center" gap="md" py="xl">
+            <IconAlertTriangle size={48} color="#e74c3c" stroke={1.5} />
+            <Text fz="sm" fw={500} c="red">{acceptError}</Text>
+            <Group gap="sm">
+              <Button variant="default" radius="md" size="sm" onClick={() => setAcceptStep('confirm')} style={{ borderColor: '#dee2e6' }}>Try Again</Button>
+              <Button variant="default" radius="md" size="sm" onClick={closeAccept} style={{ borderColor: '#dee2e6' }}>Close</Button>
+            </Group>
           </Stack>
         )}
       </Modal>
@@ -435,55 +429,30 @@ export function ManageJoinRequest() {
       {/* Reject Modal */}
       <Modal
         opened={rejectModal}
-        onClose={closeRejectModal}
+        onClose={closeReject}
         centered
         radius="md"
         size="sm"
         withCloseButton={rejectStep === 'confirm'}
-        title={rejectStep === 'confirm' ? (
-          <Text fw={700} fz="md">Reject Join Request</Text>
-        ) : undefined}
+        title={rejectStep === 'confirm' ? <Text fw={700} fz="md">Reject Join Request</Text> : undefined}
         closeOnClickOutside={rejectStep === 'confirm'}
       >
-        {rejectStep === 'confirm' && selectedReq && (
+        {rejectStep === 'confirm' && selectedMember && (
           <Stack gap="md">
-            <Text fz="sm" c="dimmed">
-              You are about to reject this user's request to join this group.
-            </Text>
-
-            {/* User info */}
+            <Text fz="sm" c="dimmed">You are about to reject this user's request to join this group.</Text>
             <Paper p="md" radius="md" style={{ background: '#f8f9fa' }}>
               <Group gap="md" align="center">
-                <Avatar size={44} radius="xl" color="gray">
-                  {selectedReq.name.charAt(0)}
-                </Avatar>
+                <Avatar size={44} radius="xl" color="gray">{selectedMember.name.charAt(0)}</Avatar>
                 <Box>
-                  <Text fz="sm" fw={600}>{selectedReq.name}</Text>
-                  <Text fz="xs" c="dimmed">Group: {selectedReq.group}</Text>
+                  <Text fz="sm" fw={600}>{selectedMember.name}</Text>
+                  <Text fz="xs" c="dimmed">Group: {activeCircle?.name}</Text>
                 </Box>
               </Group>
-              <Group gap="sm" mt="sm">
-                <Text fz="xs" c="dimmed">Trust Score:</Text>
-                <Badge
-                  size="sm"
-                  radius="sm"
-                  style={{
-                    background: getTrustBg(selectedReq.trustScore),
-                    color: getTrustColor(selectedReq.trustScore),
-                    border: 'none',
-                    fontWeight: 700,
-                  }}
-                >
-                  {selectedReq.trustScore} - {getTrustLabel(selectedReq.trustScore)}
-                </Badge>
-              </Group>
             </Paper>
-
-            {/* Reason textarea */}
             <Box>
               <Text fz="sm" fw={500} mb={4}>Reason for Rejection (optional)</Text>
               <Textarea
-                placeholder="E.g. Incomplete profile, history of default. Not eligible for this group."
+                placeholder="E.g. Incomplete profile, history of default..."
                 radius="md"
                 minRows={3}
                 value={rejectReason}
@@ -491,144 +460,32 @@ export function ManageJoinRequest() {
                 styles={{ input: { border: '1px solid #dee2e6' } }}
               />
             </Box>
-
-            {/* Actions */}
             <Group justify="flex-end" gap="sm" mt="xs">
-              <Button
-                variant="default"
-                radius="md"
-                size="sm"
-                onClick={closeRejectModal}
-                style={{ borderColor: '#dee2e6' }}
-              >
-                Cancel
-              </Button>
-              <Button
-                radius="md"
-                size="sm"
-                color="red"
-                onClick={handleRejectUser}
-              >
-                Reject User
-              </Button>
+              <Button variant="default" radius="md" size="sm" onClick={closeReject} style={{ borderColor: '#dee2e6' }}>Cancel</Button>
+              <Button radius="md" size="sm" color="red" onClick={handleReject}>Reject User</Button>
             </Group>
           </Stack>
         )}
-
         {rejectStep === 'loading' && (
           <Stack align="center" gap="md" py="xl">
             <Loader size="md" color="red" />
             <Text fz="sm" c="dimmed">Rejecting user...</Text>
           </Stack>
         )}
-
         {rejectStep === 'success' && (
           <Stack align="center" gap="md" py="xl">
             <IconAlertTriangle size={48} color="#e74c3c" stroke={1.5} />
             <Text fz="sm" fw={500}>Request rejected successfully</Text>
-            <Button
-              variant="default"
-              radius="md"
-              size="sm"
-              onClick={closeRejectModal}
-              style={{ borderColor: '#dee2e6' }}
-            >
-              Back
-            </Button>
+            <Button variant="default" radius="md" size="sm" onClick={closeReject} style={{ borderColor: '#dee2e6' }}>Close</Button>
           </Stack>
         )}
-      </Modal>
-
-      {/* View History Modal */}
-      <Modal
-        opened={historyModal}
-        onClose={closeHistoryModal}
-        centered
-        radius="md"
-        size="md"
-        withCloseButton
-        title={undefined}
-      >
-        {selectedReq && (
-          <Stack gap="lg" align="center">
-            {/* Avatar + Name */}
-            <Stack align="center" gap="xs">
-              <Avatar size={64} radius="xl" color="gray">
-                {selectedReq.name.charAt(0)}
-              </Avatar>
-              <Text fw={600} fz="md">{selectedReq.name}</Text>
-            </Stack>
-
-            {/* Trust Score + Status Cards */}
-            <Group gap="md" grow>
-              <Paper
-                p="md"
-                radius="md"
-                style={{ border: '1px solid #e9ecef', textAlign: 'center' }}
-              >
-                <Text fz={28} fw={700} style={{ color: getTrustColor(selectedReq.trustScore) }}>
-                  {selectedReq.trustScore}
-                </Text>
-                <Text fz="xs" c="dimmed">Current Trust Score</Text>
-              </Paper>
-              <Paper
-                p="md"
-                radius="md"
-                style={{ background: '#e6f5f1', textAlign: 'center' }}
-              >
-                <IconShieldCheck size={28} color={PRIMARY} stroke={1.5} style={{ margin: '0 auto 4px' }} />
-                <Text fz="xs" fw={500} style={{ color: PRIMARY }}>
-                  {selectedReq.trustScore >= 70
-                    ? 'No missed payments or defaults'
-                    : 'Has history of missed payments'}
-                </Text>
-              </Paper>
-            </Group>
-
-            {/* Score Breakdown */}
-            <Box w="100%">
-              <Text fw={600} fz="sm" mb="sm">Score Breakdown</Text>
-              <Group gap="md" grow>
-                <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center' }}>
-                  <Text fz="lg" fw={700}>{selectedReq.trustScore >= 70 ? '14/14' : '8/14'}</Text>
-                  <Text fz="xs" c="dimmed">On-Time Payments</Text>
-                </Paper>
-                <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center' }}>
-                  <Text fz="lg" fw={700}>{selectedReq.history.match(/\d+/)?.[0] || '0'}</Text>
-                  <Text fz="xs" c="dimmed">Completed Cycle</Text>
-                </Paper>
-                <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center' }}>
-                  <Text fz="lg" fw={700}>{selectedReq.trustScore >= 70 ? '0' : '1'}</Text>
-                  <Text fz="xs" c="dimmed">Group Suspended From</Text>
-                </Paper>
-              </Group>
-            </Box>
-
-            {/* Action Buttons */}
-            <Group gap="sm" justify="center" w="100%">
-              <Button
-                radius="md"
-                size="sm"
-                style={{ background: PRIMARY, flex: 1 }}
-                onClick={() => {
-                  closeHistoryModal()
-                  openAcceptModal(selectedReq)
-                }}
-              >
-                Accept
-              </Button>
-              <Button
-                radius="md"
-                size="sm"
-                color="red"
-                style={{ flex: 1 }}
-                onClick={() => {
-                  closeHistoryModal()
-                  openRejectModal(selectedReq)
-                }}
-              >
-                Reject
-              </Button>
+        {rejectStep === 'error' && (
+          <Stack align="center" gap="md" py="xl">
+            <IconAlertTriangle size={48} color="#e74c3c" stroke={1.5} />
+            <Text fz="sm" fw={500} c="red">{rejectError}</Text>
+            <Group gap="sm">
+              <Button variant="default" radius="md" size="sm" onClick={() => setRejectStep('confirm')} style={{ borderColor: '#dee2e6' }}>Try Again</Button>
+              <Button variant="default" radius="md" size="sm" onClick={closeReject} style={{ borderColor: '#dee2e6' }}>Close</Button>
             </Group>
           </Stack>
         )}

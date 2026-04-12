@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Text, Select } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Text, Select, Loader, Stack, Paper, Group, Box, Badge, SimpleGrid } from '@mantine/core'
 import {
   IconArrowLeft,
   IconShieldCheck,
@@ -9,586 +9,431 @@ import {
   IconUsers,
   IconCalendar,
   IconCash,
+  IconClock,
+  IconHistory,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import {
+  listAllRoscaCircles,
+  getLoanEligibility,
+  getLoanStatus,
+  getLoanHistory,
+  applyForLoan,
+  type RoscaCircle,
+  type Loan,
+  type LoanEligibility,
+} from '@/utils/api'
 
-type Step = 'eligibility' | 'form' | 'confirm' | 'pin' | 'processing' | 'success'
+type Step = 'overview' | 'form' | 'confirm' | 'pin' | 'processing' | 'success' | 'error'
 
-const MOCK_TRUST_SCORE = 72
-const TRUST_THRESHOLD = 60
+const PRIMARY = '#0b6b55'
 const SERVICE_FEE_RATE = 0.02
 
-const ACTIVE_GROUPS = [
-  {
-    id: '1',
-    name: 'Mamagoals',
-    contribution: 50_000,
-    frequency: 'Monthly',
-    totalMembers: 10,
-    payoutAmount: 500_000,
-    currentRound: 3,
-    yourPosition: 7,
-    nextPayoutDate: 'Jul 2026',
-  },
-  {
-    id: '2',
-    name: 'Men Thrive',
-    contribution: 30_000,
-    frequency: 'Monthly',
-    totalMembers: 6,
-    payoutAmount: 180_000,
-    currentRound: 5,
-    yourPosition: 6,
-    nextPayoutDate: 'Jun 2026',
-  },
-]
+function fmt(n: number) {
+  return n.toLocaleString('en-NG', { minimumFractionDigits: 2 })
+}
+
+function loanStatusColor(status: string) {
+  const s = status?.toUpperCase()
+  if (s === 'ACTIVE' || s === 'DISBURSED') return PRIMARY
+  if (s === 'PENDING' || s === 'PROCESSING') return '#F59E0B'
+  if (s === 'DEFAULTED' || s === 'FAILED') return '#EF4444'
+  return '#6B7280'
+}
 
 export function Loans() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>('eligibility')
+  const [step, setStep] = useState<Step>('overview')
 
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [circles, setCircles] = useState<RoscaCircle[]>([])
+  const [activeLoan, setActiveLoan] = useState<Loan | null>(null)
+  const [loanHistory, setLoanHistory] = useState<Loan[]>([])
+  const [eligibility, setEligibility] = useState<LoanEligibility | null>(null)
+  const [loadingPage, setLoadingPage] = useState(true)
+  const [checkingEligibility, setCheckingEligibility] = useState(false)
+
+  const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
   const [pin, setPin] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-  const isEligible = MOCK_TRUST_SCORE >= TRUST_THRESHOLD
-  const hasActiveGroups = ACTIVE_GROUPS.length > 0
-  const canApply = isEligible && hasActiveGroups
+  useEffect(() => {
+    Promise.all([
+      listAllRoscaCircles()
+        .then((res) => {
+          const arr = Array.isArray(res) ? res : ((res as Record<string, unknown>)?.data ?? []) as RoscaCircle[]
+          setCircles(arr.filter((c) => ['ACTIVE', 'STARTED'].includes((c.status ?? '').toUpperCase())))
+        })
+        .catch(() => {}),
+      getLoanStatus().then(setActiveLoan).catch(() => {}),
+      getLoanHistory().then(setLoanHistory).catch(() => {}),
+    ]).finally(() => setLoadingPage(false))
+  }, [])
 
-  const selectedGroup = ACTIVE_GROUPS.find((g) => g.id === selectedGroupId)
-  const serviceFee = selectedGroup ? Math.round(selectedGroup.payoutAmount * SERVICE_FEE_RATE) : 0
-  const disbursementAmount = selectedGroup ? selectedGroup.payoutAmount - serviceFee : 0
+  const selectedCircle = circles.find((c) => c.id === selectedCircleId)
+  const payoutAmount = eligibility?.expectedPayout ?? (selectedCircle ? Number(selectedCircle.contributionAmount) * (selectedCircle.maxSlots ?? 1) : 0)
+  const feeRate = eligibility?.feeRate ?? SERVICE_FEE_RATE
+  const serviceFee = Math.round(payoutAmount * feeRate)
+  const disbursementAmount = payoutAmount - serviceFee
+
+  async function handleCircleSelect(id: string | null) {
+    setSelectedCircleId(id)
+    setEligibility(null)
+    if (!id) return
+    setCheckingEligibility(true)
+    try {
+      const result = await getLoanEligibility(id)
+      setEligibility(result)
+    } catch {
+      setEligibility({ eligible: false, reason: 'Could not check eligibility. Try again.' })
+    } finally {
+      setCheckingEligibility(false)
+    }
+  }
+
+  async function submitLoan() {
+    if (!selectedCircleId) return
+    setStep('processing')
+    setError(null)
+    try {
+      await applyForLoan({ circleId: selectedCircleId })
+      setStep('success')
+      getLoanStatus().then(setActiveLoan).catch(() => {})
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Loan application failed. Please try again.')
+      setStep('error')
+    }
+  }
 
   function handlePinDigit(digit: string) {
     if (pin.length < 4) {
       const newPin = pin + digit
       setPin(newPin)
-      if (newPin.length === 4) {
-        setTimeout(() => {
-          setStep('processing')
-          setTimeout(() => {
-            setStep('success')
-          }, 2500)
-        }, 300)
-      }
+      if (newPin.length === 4) setTimeout(() => submitLoan(), 300)
     }
   }
 
-  function handlePinBackspace() {
-    setPin(pin.slice(0, -1))
+  if (loadingPage) {
+    return (
+      <Box style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <Loader color={PRIMARY} />
+      </Box>
+    )
+  }
+
+  if (step === 'processing') {
+    return (
+      <Box style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16 }}>
+        <div style={{ width: 48, height: 48, border: `4px solid #E5E7EB`, borderTopColor: PRIMARY, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <Text fw={500} fz={14} c="dimmed">Processing your early payout...</Text>
+      </Box>
+    )
+  }
+
+  if (step === 'success') {
+    return (
+      <Stack align="center" gap="lg" pt={64} style={{ maxWidth: 480, margin: '0 auto' }}>
+        <div style={{ background: '#D1FAE5', borderRadius: '50%', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: PRIMARY, borderRadius: '50%', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconCheck size={28} color="white" strokeWidth={3} />
+          </div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <Text fw={700} fz={22}>Early Payout Approved!</Text>
+          <Text fw={400} fz={14} c="dimmed" mt={8}>
+            ₦{fmt(disbursementAmount)} from <strong>{selectedCircle?.name}</strong> has been disbursed to your wallet.
+          </Text>
+        </div>
+        <Stack gap="sm" style={{ width: '100%', maxWidth: 300 }}>
+          <button onClick={() => navigate('/dashboard')} style={{ width: '100%', background: PRIMARY, color: 'white', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Done</button>
+          <button onClick={() => navigate('/rosca/groups')} style={{ width: '100%', background: 'white', color: PRIMARY, border: `1px solid ${PRIMARY}`, borderRadius: 12, padding: '14px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>View My Groups</button>
+        </Stack>
+      </Stack>
+    )
+  }
+
+  if (step === 'error') {
+    return (
+      <Stack align="center" gap="lg" pt={64} style={{ maxWidth: 480, margin: '0 auto' }}>
+        <div style={{ background: '#FEF2F2', borderRadius: '50%', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#EF4444', borderRadius: '50%', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconAlertTriangle size={28} color="white" />
+          </div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <Text fw={700} fz={22}>Application Failed</Text>
+          <Text fw={400} fz={14} c="dimmed" mt={8}>{error}</Text>
+        </div>
+        <Stack gap="sm" style={{ width: '100%', maxWidth: 300 }}>
+          <button onClick={() => { setPin(''); setStep('pin') }} style={{ width: '100%', background: PRIMARY, color: 'white', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Try Again</button>
+          <button onClick={() => { setPin(''); setStep('form') }} style={{ width: '100%', background: 'white', color: '#374151', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Go Back</button>
+        </Stack>
+      </Stack>
+    )
   }
 
   return (
-    <div className="mx-auto w-full max-w-[600px] px-6 py-8">
-      {/* ==================== ELIGIBILITY CHECK ==================== */}
-      {step === 'eligibility' && (
-        <div className="flex flex-col gap-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="mb-2 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
-          >
-            <IconArrowLeft size={18} />
-            Back
-          </button>
+    <Stack gap="lg" style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px' }}>
 
-          {canApply ? (
-            <div className="flex flex-col items-center gap-6 pt-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#D1FAE5]">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#02A36E]">
-                  <IconShieldCheck size={32} color="white" strokeWidth={2} />
-                </div>
-              </div>
+      {/* ==================== OVERVIEW ==================== */}
+      {step === 'overview' && (
+        <>
+          <Box>
+            <Text fz={22} fw={700}>Early Payout (Loans)</Text>
+            <Text fz="sm" c="dimmed" mt={4}>Get your ROSCA payout before your turn arrives</Text>
+          </Box>
 
-              <div className="text-center">
-                <Text fw={700} className="text-[24px] text-[#0F172A]">
-                  You're Eligible!
-                </Text>
-                <Text fw={400} className="mt-2 max-w-[380px] text-[14px] text-[#6B7280]">
-                  Your trust score qualifies you for an early ROSCA payout. Get your payout before your turn arrives.
-                </Text>
-              </div>
+          {/* Stats */}
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+            <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
+              <Text fz="xs" c="dimmed">Active Loan</Text>
+              <Text fz={20} fw={700} mt={4}>{activeLoan ? `₦${fmt(Number(activeLoan.disbursedAmount ?? activeLoan.amount))}` : '—'}</Text>
+              {activeLoan && <Badge size="xs" mt={4} style={{ background: `${loanStatusColor(activeLoan.status)}15`, color: loanStatusColor(activeLoan.status), border: 'none' }}>{activeLoan.status}</Badge>}
+            </Paper>
+            <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
+              <Text fz="xs" c="dimmed">Total Loans</Text>
+              <Text fz={20} fw={700} mt={4}>{loanHistory.length}</Text>
+            </Paper>
+            <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
+              <Text fz="xs" c="dimmed">Active Groups</Text>
+              <Text fz={20} fw={700} mt={4}>{circles.length}</Text>
+            </Paper>
+          </SimpleGrid>
 
-              <div className="w-full max-w-[440px] rounded-2xl border border-[#E5E7EB] bg-white p-6">
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <Text fw={400} className="text-[14px] text-[#6B7280]">
-                      Trust Score
-                    </Text>
-                    <Text fw={700} className="text-[18px] text-[#02A36E]">
-                      {MOCK_TRUST_SCORE}/100
-                    </Text>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-[#F3F4F6]">
-                    <div
-                      className="h-full rounded-full bg-[#02A36E]"
-                      style={{ width: `${MOCK_TRUST_SCORE}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between border-t border-[#F3F4F6] pt-4">
-                    <Text fw={400} className="text-[14px] text-[#6B7280]">
-                      Active ROSCA Groups
-                    </Text>
-                    <Text fw={700} className="text-[16px] text-[#0F172A]">
-                      {ACTIVE_GROUPS.length}
-                    </Text>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Text fw={400} className="text-[14px] text-[#6B7280]">
-                      Service Fee
-                    </Text>
-                    <Text fw={600} className="text-[14px] text-[#0F172A]">
-                      2% of payout
-                    </Text>
-                  </div>
-                </div>
-              </div>
-
-              <div className="w-full max-w-[440px] rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-5">
-                <Text fw={600} className="mb-3 text-[14px] text-[#0F172A]">
-                  How Early Payout Works
-                </Text>
-                <div className="flex flex-col gap-3">
-                  {[
-                    'Choose one of your active ROSCA groups',
-                    'Receive your payout amount now instead of waiting for your turn',
-                    'Continue making your regular contributions as scheduled',
-                    'A small 2% service fee applies on the payout amount',
-                  ].map((tip, i) => (
-                    <div key={tip} className="flex items-start gap-3">
-                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#02A36E] text-[11px] font-bold text-white">
-                        {i + 1}
-                      </div>
-                      <Text fw={400} className="text-[13px] text-[#6B7280]">
-                        {tip}
-                      </Text>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setStep('form')}
-                className="mt-2 w-full max-w-[440px] cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
-              >
-                Request Early Payout
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-6 pt-8">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#FEF3C7]">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F59E0B]">
-                  <IconAlertTriangle size={32} color="white" strokeWidth={2} />
-                </div>
-              </div>
-
-              <div className="text-center">
-                <Text fw={700} className="text-[24px] text-[#0F172A]">
-                  {!isEligible ? 'Not Yet Eligible' : 'No Active Groups'}
-                </Text>
-                <Text fw={400} className="mt-2 max-w-[380px] text-[14px] text-[#6B7280]">
-                  {!isEligible
-                    ? `Your trust score is ${MOCK_TRUST_SCORE}/100. You need at least ${TRUST_THRESHOLD} to qualify for an early payout.`
-                    : 'You need to be in an active ROSCA group to request an early payout.'}
-                </Text>
-              </div>
-
-              <div className="w-full max-w-[400px] rounded-2xl border border-[#E5E7EB] bg-white p-6">
-                <Text fw={600} className="mb-4 text-[14px] text-[#0F172A]">
-                  {!isEligible ? 'How to improve your score' : 'What you can do'}
-                </Text>
-                <div className="flex flex-col gap-3">
-                  {(!isEligible
-                    ? [
-                        'Join a ROSCA group and participate actively',
-                        'Make regular and timely contributions',
-                        'Complete your KYC profile',
-                        'Maintain a positive transaction history',
-                      ]
-                    : [
-                        'Browse and join an active ROSCA group',
-                        'Start making contributions to build trust',
-                        'Once active, early payout becomes available',
-                      ]
-                  ).map((tip) => (
-                    <div key={tip} className="flex items-start gap-3">
-                      <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0FDF4]">
-                        <IconCheck size={12} color="#02A36E" />
-                      </div>
-                      <Text fw={400} className="text-[13px] text-[#6B7280]">
-                        {tip}
-                      </Text>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="w-full max-w-[400px] cursor-pointer rounded-xl bg-[#9CA3AF] py-3.5 text-[14px] font-semibold text-white hover:bg-[#6B7280]"
-              >
-                Back to Dashboard
-              </button>
-            </div>
+          {/* Active loan detail */}
+          {activeLoan && (
+            <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+              <Group mb="md" gap="sm">
+                <IconClock size={16} color="#F59E0B" />
+                <Text fw={600} fz="sm">Active Loan Details</Text>
+              </Group>
+              <Stack gap="sm">
+                {[
+                  { label: 'Amount', value: `₦${fmt(Number(activeLoan.disbursedAmount ?? activeLoan.amount))}` },
+                  { label: 'Status', value: activeLoan.status },
+                  ...(activeLoan.dueDate ? [{ label: 'Due Date', value: new Date(activeLoan.dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) }] : []),
+                  ...(activeLoan.disbursedAt ? [{ label: 'Disbursed', value: new Date(activeLoan.disbursedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) }] : []),
+                ].map(({ label, value }) => (
+                  <Group key={label} justify="space-between" style={{ borderBottom: '1px solid #F3F4F6', paddingBottom: 8 }}>
+                    <Text fz="sm" c="dimmed">{label}</Text>
+                    <Text fz="sm" fw={500}>{value}</Text>
+                  </Group>
+                ))}
+              </Stack>
+            </Paper>
           )}
-        </div>
+
+          {/* Apply button */}
+          {!activeLoan && circles.length > 0 && (
+            <button onClick={() => setStep('form')} style={{ width: '100%', background: PRIMARY, color: 'white', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              Request Early Payout
+            </button>
+          )}
+
+          {!activeLoan && circles.length === 0 && (
+            <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center' }}>
+              <IconAlertTriangle size={28} color="#F59E0B" style={{ marginBottom: 12 }} />
+              <Text fw={600} fz="md" mb={8}>No Active Groups</Text>
+              <Text fz="sm" c="dimmed" mb={16}>You need an active ROSCA group to request an early payout.</Text>
+              <button onClick={() => navigate('/rosca/groups')} style={{ background: PRIMARY, color: 'white', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>View Groups</button>
+            </Paper>
+          )}
+
+          {/* Loan History */}
+          {loanHistory.length > 0 && (
+            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+              <Box px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
+                <Group gap="sm">
+                  <IconHistory size={16} color="#6B7280" />
+                  <Text fw={600} fz="sm">Loan History</Text>
+                </Group>
+              </Box>
+              <Stack gap={0}>
+                {loanHistory.map((loan, i) => (
+                  <Box key={loan.id} px="lg" py="sm" style={{ borderBottom: i < loanHistory.length - 1 ? '1px solid #F3F4F6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Text fz="sm" fw={500}>{loan.circleName ?? `Loan ${loan.id.slice(0, 8)}`}</Text>
+                      <Text fz="xs" c="dimmed">{new Date(loan.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                    </Box>
+                    <Box style={{ textAlign: 'right' }}>
+                      <Text fz="sm" fw={600} style={{ color: PRIMARY }}>₦{fmt(Number(loan.disbursedAmount ?? loan.amount))}</Text>
+                      <Badge size="xs" style={{ background: `${loanStatusColor(loan.status)}15`, color: loanStatusColor(loan.status), border: 'none' }}>{loan.status}</Badge>
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+            </Paper>
+          )}
+        </>
       )}
 
-      {/* ==================== SELECT ROSCA GROUP ==================== */}
+      {/* ==================== SELECT GROUP ==================== */}
       {step === 'form' && (
-        <div className="flex flex-col gap-6">
-          <button
-            onClick={() => setStep('eligibility')}
-            className="mb-2 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
-          >
-            <IconArrowLeft size={18} />
-            Back
+        <>
+          <button onClick={() => setStep('overview')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: '#374151' }}>
+            <IconArrowLeft size={18} /> Back
           </button>
 
-          <div>
-            <Text fw={700} className="text-[24px] text-[#0F172A]">
-              Request Early Payout
-            </Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
-              Select a ROSCA group to receive your payout early
-            </Text>
-          </div>
+          <Box>
+            <Text fz={22} fw={700}>Request Early Payout</Text>
+            <Text fz="sm" c="dimmed" mt={4}>Select an active ROSCA group</Text>
+          </Box>
 
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-            <Text fw={600} className="mb-3 text-[14px] text-[#374151]">
-              Select ROSCA Group
-            </Text>
+          <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+            <Text fw={600} fz="sm" mb="sm">Select ROSCA Group</Text>
             <Select
-              data={ACTIVE_GROUPS.map((g) => ({
-                value: g.id,
-                label: `${g.name} — ₦${g.payoutAmount.toLocaleString()} payout`,
-              }))}
-              value={selectedGroupId}
-              onChange={setSelectedGroupId}
+              data={circles.map((c) => ({ value: c.id, label: c.name }))}
+              value={selectedCircleId}
+              onChange={handleCircleSelect}
               placeholder="Choose a group"
-              radius="md"
-              size="md"
-              styles={{
-                input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 },
-              }}
+              radius="md" size="md"
+              styles={{ input: { borderColor: '#dee2e6', fontSize: 14, height: 48 } }}
             />
-          </div>
+            {checkingEligibility && (
+              <Group mt="sm" gap="xs">
+                <Loader size={14} color={PRIMARY} />
+                <Text fz="xs" c="dimmed">Checking eligibility...</Text>
+              </Group>
+            )}
+          </Paper>
 
-          {selectedGroup && (
+          {eligibility && !checkingEligibility && (
             <>
-              <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-                <Text fw={600} className="mb-4 text-[14px] text-[#0F172A]">
-                  {selectedGroup.name}
-                </Text>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 rounded-xl bg-[#F9FAFB] p-3">
-                    <IconUsers size={18} color="#6B7280" />
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">
-                        Members
-                      </Text>
-                      <Text fw={600} className="text-[14px] text-[#0F172A]">
-                        {selectedGroup.totalMembers}
-                      </Text>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-xl bg-[#F9FAFB] p-3">
-                    <IconCalendar size={18} color="#6B7280" />
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">
-                        Frequency
-                      </Text>
-                      <Text fw={600} className="text-[14px] text-[#0F172A]">
-                        {selectedGroup.frequency}
-                      </Text>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-xl bg-[#F9FAFB] p-3">
-                    <IconCash size={18} color="#6B7280" />
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">
-                        Contribution
-                      </Text>
-                      <Text fw={600} className="text-[14px] text-[#0F172A]">
-                        ₦{selectedGroup.contribution.toLocaleString()}
-                      </Text>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-xl bg-[#F9FAFB] p-3">
-                    <IconCalendar size={18} color="#6B7280" />
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">
-                        Your Turn
-                      </Text>
-                      <Text fw={600} className="text-[14px] text-[#0F172A]">
-                        Position {selectedGroup.yourPosition} — {selectedGroup.nextPayoutDate}
-                      </Text>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {!eligibility.eligible ? (
+                <Paper p="md" radius="md" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                  <Group gap="sm">
+                    <IconAlertTriangle size={16} color="#EF4444" />
+                    <Text fz="sm" style={{ color: '#B91C1C' }}>{eligibility.reason ?? 'Not eligible for this group.'}</Text>
+                  </Group>
+                </Paper>
+              ) : (
+                <>
+                  {selectedCircle && (
+                    <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+                      <Text fw={600} fz="sm" mb="md">{selectedCircle.name}</Text>
+                      <SimpleGrid cols={2} spacing="sm">
+                        {[
+                          { icon: IconUsers, label: 'Members', value: `${selectedCircle.filledSlots}/${selectedCircle.maxSlots}` },
+                          { icon: IconCalendar, label: 'Frequency', value: selectedCircle.frequency ?? '—' },
+                          { icon: IconCash, label: 'Contribution', value: `₦${Number(selectedCircle.contributionAmount).toLocaleString()}` },
+                          { icon: IconShieldCheck, label: 'Eligible', value: 'Yes', green: true },
+                        ].map(({ icon: Icon, label, value, green }) => (
+                          <Paper key={label} p="sm" radius="md" style={{ background: '#F9FAFB' }}>
+                            <Group gap="sm">
+                              <Icon size={18} color={green ? PRIMARY : '#6B7280'} />
+                              <Box>
+                                <Text fz={11} c="dimmed">{label}</Text>
+                                <Text fz="sm" fw={600} style={green ? { color: PRIMARY } : {}}>{value}</Text>
+                              </Box>
+                            </Group>
+                          </Paper>
+                        ))}
+                      </SimpleGrid>
+                    </Paper>
+                  )}
 
-              <div className="rounded-2xl border border-[#E5E7EB] bg-[#F0FDF4] p-5">
-                <Text fw={600} className="mb-3 text-[14px] text-[#374151]">
-                  Early Payout Breakdown
-                </Text>
-                <div className="flex flex-col gap-3">
-                  <div className="flex justify-between">
-                    <Text fw={400} className="text-[13px] text-[#6B7280]">
-                      Payout Amount
-                    </Text>
-                    <Text fw={600} className="text-[13px] text-[#0F172A]">
-                      ₦{selectedGroup.payoutAmount.toLocaleString()}
-                    </Text>
-                  </div>
-                  <div className="flex justify-between">
-                    <Text fw={400} className="text-[13px] text-[#6B7280]">
-                      Service Fee (2%)
-                    </Text>
-                    <Text fw={600} className="text-[13px] text-[#EF4444]">
-                      -₦{serviceFee.toLocaleString()}
-                    </Text>
-                  </div>
-                  <div className="flex justify-between border-t border-[#D1FAE5] pt-3">
-                    <Text fw={600} className="text-[14px] text-[#0F172A]">
-                      You'll Receive
-                    </Text>
-                    <Text fw={700} className="text-[16px] text-[#02A36E]">
-                      ₦{disbursementAmount.toLocaleString()}
-                    </Text>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-[#FEF3C7] px-4 py-3">
-                <Text fw={500} className="text-[12px] text-[#92400E]">
-                  You'll continue making your ₦{selectedGroup.contribution.toLocaleString()}{' '}
-                  {selectedGroup.frequency.toLowerCase()} contributions as usual. Your payout turn
-                  will be skipped since you're receiving it early.
-                </Text>
-              </div>
+                  <Paper p="lg" radius="md" style={{ background: '#F0FDF4', border: '1px solid #D1FAE5' }}>
+                    <Text fw={600} fz="sm" mb="sm">Early Payout Breakdown</Text>
+                    <Stack gap="sm">
+                      <Group justify="space-between"><Text fz="sm" c="dimmed">Payout Amount</Text><Text fz="sm" fw={600}>₦{fmt(payoutAmount)}</Text></Group>
+                      <Group justify="space-between"><Text fz="sm" c="dimmed">Service Fee ({(feeRate * 100).toFixed(0)}%)</Text><Text fz="sm" fw={600} style={{ color: '#EF4444' }}>-₦{fmt(serviceFee)}</Text></Group>
+                      <Box style={{ borderTop: '1px solid #D1FAE5', paddingTop: 12 }}>
+                        <Group justify="space-between">
+                          <Text fz="sm" fw={600}>You'll Receive</Text>
+                          <Text fz={16} fw={700} style={{ color: PRIMARY }}>₦{fmt(disbursementAmount)}</Text>
+                        </Group>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </>
+              )}
             </>
           )}
 
           <button
             onClick={() => setStep('confirm')}
-            disabled={!selectedGroupId}
-            className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${
-              selectedGroupId
-                ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
-                : 'cursor-not-allowed bg-[#9CA3AF]'
-            }`}
+            disabled={!selectedCircleId || !eligibility?.eligible || checkingEligibility}
+            style={{ width: '100%', background: selectedCircleId && eligibility?.eligible && !checkingEligibility ? PRIMARY : '#9CA3AF', color: 'white', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 14, fontWeight: 600, cursor: selectedCircleId && eligibility?.eligible ? 'pointer' : 'not-allowed' }}
           >
             Proceed
           </button>
-        </div>
+        </>
       )}
 
       {/* ==================== CONFIRMATION ==================== */}
-      {step === 'confirm' && selectedGroup && (
-        <div className="flex flex-col gap-6">
-          <button
-            onClick={() => setStep('form')}
-            className="mb-2 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
-          >
-            <IconArrowLeft size={18} />
-            Back
+      {step === 'confirm' && selectedCircle && (
+        <>
+          <button onClick={() => setStep('form')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: '#374151' }}>
+            <IconArrowLeft size={18} /> Back
           </button>
 
-          <div>
-            <Text fw={700} className="text-[24px] text-[#0F172A]">
-              Confirm Early Payout
-            </Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
-              Review the details below before proceeding
-            </Text>
-          </div>
+          <Box>
+            <Text fz={22} fw={700}>Confirm Early Payout</Text>
+            <Text fz="sm" c="dimmed" mt={4}>Review before proceeding</Text>
+          </Box>
 
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-                <Text fw={400} className="text-[14px] text-[#6B7280]">
-                  ROSCA Group
-                </Text>
-                <Text fw={600} className="text-[14px] text-[#0F172A]">
-                  {selectedGroup.name}
-                </Text>
-              </div>
-              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-                <Text fw={400} className="text-[14px] text-[#6B7280]">
-                  Payout Amount
-                </Text>
-                <Text fw={700} className="text-[18px] text-[#0F172A]">
-                  ₦{selectedGroup.payoutAmount.toLocaleString()}
-                </Text>
-              </div>
-              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-                <Text fw={400} className="text-[14px] text-[#6B7280]">
-                  Service Fee (2%)
-                </Text>
-                <Text fw={500} className="text-[14px] text-[#EF4444]">
-                  -₦{serviceFee.toLocaleString()}
-                </Text>
-              </div>
-              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-                <Text fw={400} className="text-[14px] text-[#6B7280]">
-                  Original Payout Date
-                </Text>
-                <Text fw={500} className="text-[14px] text-[#0F172A]">
-                  {selectedGroup.nextPayoutDate}
-                </Text>
-              </div>
-              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-4">
-                <Text fw={400} className="text-[14px] text-[#6B7280]">
-                  Ongoing Contribution
-                </Text>
-                <Text fw={500} className="text-[14px] text-[#0F172A]">
-                  ₦{selectedGroup.contribution.toLocaleString()} / {selectedGroup.frequency.toLowerCase()}
-                </Text>
-              </div>
-              <div className="flex items-center justify-between">
-                <Text fw={600} className="text-[14px] text-[#0F172A]">
-                  You'll Receive Now
-                </Text>
-                <Text fw={700} className="text-[18px] text-[#02A36E]">
-                  ₦{disbursementAmount.toLocaleString()}
-                </Text>
-              </div>
-            </div>
-          </div>
+          <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+            <Stack gap="md">
+              {[
+                { label: 'ROSCA Group', value: selectedCircle.name },
+                { label: 'Payout Amount', value: `₦${fmt(payoutAmount)}` },
+                { label: `Service Fee (${(feeRate * 100).toFixed(0)}%)`, value: `-₦${fmt(serviceFee)}`, red: true },
+                { label: 'Contribution', value: `₦${Number(selectedCircle.contributionAmount).toLocaleString()} / ${(selectedCircle.frequency ?? '').toLowerCase()}` },
+              ].map(({ label, value, red }) => (
+                <Group key={label} justify="space-between" style={{ borderBottom: '1px solid #F3F4F6', paddingBottom: 12 }}>
+                  <Text fz="sm" c="dimmed">{label}</Text>
+                  <Text fz="sm" fw={500} style={red ? { color: '#EF4444' } : {}}>{value}</Text>
+                </Group>
+              ))}
+              <Group justify="space-between">
+                <Text fz="sm" fw={600}>You'll Receive Now</Text>
+                <Text fz={18} fw={700} style={{ color: PRIMARY }}>₦{fmt(disbursementAmount)}</Text>
+              </Group>
+            </Stack>
+          </Paper>
 
-          <button
-            onClick={() => setStep('pin')}
-            className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
-          >
+          <button onClick={() => setStep('pin')} style={{ width: '100%', background: PRIMARY, color: 'white', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Confirm Early Payout
           </button>
-        </div>
+        </>
       )}
 
       {/* ==================== PIN ENTRY ==================== */}
       {step === 'pin' && (
-        <div className="flex flex-col items-center gap-8 pt-8">
-          <button
-            onClick={() => {
-              setStep('confirm')
-              setPin('')
-            }}
-            className="mr-auto flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
-          >
-            <IconArrowLeft size={18} />
-            Back
+        <Stack align="center" gap="xl" pt="xl">
+          <button onClick={() => { setStep('confirm'); setPin('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: '#374151', alignSelf: 'flex-start' }}>
+            <IconArrowLeft size={18} /> Back
           </button>
 
-          <div className="text-center">
-            <Text fw={700} className="text-[22px] text-[#0F172A]">
-              Enter Your PIN
-            </Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
-              Enter your 4-digit transaction PIN
-            </Text>
-          </div>
+          <Box style={{ textAlign: 'center' }}>
+            <Text fw={700} fz={22}>Enter Your PIN</Text>
+            <Text fz="sm" c="dimmed" mt={4}>Enter your 4-digit transaction PIN</Text>
+          </Box>
 
-          <div className="flex gap-4">
+          <Group gap="md">
             {[0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`flex h-14 w-14 items-center justify-center rounded-xl border-2 ${
-                  i < pin.length
-                    ? 'border-[#02A36E] bg-[#F0FDF4]'
-                    : 'border-[#E5E7EB] bg-white'
-                }`}
-              >
-                {i < pin.length && (
-                  <div className="h-3 w-3 rounded-full bg-[#02A36E]" />
-                )}
-              </div>
+              <Box key={i} style={{ width: 56, height: 56, borderRadius: 12, border: `2px solid ${i < pin.length ? PRIMARY : '#E5E7EB'}`, background: i < pin.length ? '#F0FDF4' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {i < pin.length && <div style={{ width: 12, height: 12, borderRadius: '50%', background: PRIMARY }} />}
+              </Box>
             ))}
-          </div>
+          </Group>
 
-          <button className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline">
-            Forgot PIN?
-          </button>
-
-          <div className="grid w-[280px] grid-cols-3 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, width: 280 }}>
             {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'].map((key) => {
               if (key === '') return <div key="empty" />
-              if (key === 'back') {
-                return (
-                  <button
-                    key="back"
-                    onClick={handlePinBackspace}
-                    className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F3F4F6] hover:bg-[#E5E7EB]"
-                  >
-                    <IconBackspace size={22} color="#374151" />
-                  </button>
-                )
-              }
+              if (key === 'back') return (
+                <button key="back" onClick={() => setPin((p) => p.slice(0, -1))} style={{ height: 64, borderRadius: 16, background: '#F3F4F6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconBackspace size={22} color="#374151" />
+                </button>
+              )
               return (
-                <button
-                  key={key}
-                  onClick={() => handlePinDigit(key)}
-                  className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F9FAFB] text-[20px] font-semibold text-[#0F172A] hover:bg-[#E5E7EB]"
-                >
+                <button key={key} onClick={() => handlePinDigit(key)} style={{ height: 64, borderRadius: 16, background: '#F9FAFB', border: 'none', cursor: 'pointer', fontSize: 20, fontWeight: 600, color: '#0F172A' }}>
                   {key}
                 </button>
               )
             })}
           </div>
-        </div>
+        </Stack>
       )}
-
-      {/* ==================== PROCESSING ==================== */}
-      {step === 'processing' && (
-        <div className="flex flex-col items-center gap-4 pt-24">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#E5E7EB] border-t-[#02A36E]" />
-          <Text fw={500} className="text-[14px] text-[#6B7280]">
-            Processing your early payout...
-          </Text>
-        </div>
-      )}
-
-      {/* ==================== SUCCESS ==================== */}
-      {step === 'success' && selectedGroup && (
-        <div className="flex flex-col items-center gap-6 pt-16">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#D1FAE5]">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#02A36E]">
-              <IconCheck size={32} color="white" strokeWidth={3} />
-            </div>
-          </div>
-
-          <div className="text-center">
-            <Text fw={700} className="text-[22px] text-[#0F172A]">
-              Early Payout Approved!
-            </Text>
-            <Text fw={400} className="mt-2 max-w-[340px] text-[14px] leading-[1.6] text-[#6B7280]">
-              ₦{disbursementAmount.toLocaleString()} from{' '}
-              <span className="font-medium text-[#0F172A]">{selectedGroup.name}</span> has been
-              disbursed to your wallet.
-            </Text>
-          </div>
-
-          <div className="w-full max-w-[340px] rounded-xl bg-[#FEF3C7] px-4 py-3">
-            <Text fw={500} className="text-center text-[12px] text-[#92400E]">
-              Remember to continue your ₦{selectedGroup.contribution.toLocaleString()}{' '}
-              {selectedGroup.frequency.toLowerCase()} contributions.
-            </Text>
-          </div>
-
-          <div className="mt-2 flex w-full max-w-[300px] flex-col gap-3">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
-            >
-              Done
-            </button>
-            <button
-              onClick={() => navigate('/rosca/groups')}
-              className="w-full cursor-pointer rounded-xl border border-[#02A36E] bg-white py-3.5 text-[14px] font-semibold text-[#02A36E] hover:bg-[#F0FDF4]"
-            >
-              View My Groups
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    </Stack>
   )
 }

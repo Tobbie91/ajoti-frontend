@@ -32,13 +32,20 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
   else if (d.toDateString() === yesterday.toDateString()) dateLabel = 'Yesterday'
   else dateLabel = d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })
 
+  const entryType: string = tx.entryType ?? tx.type ?? ''
+  const movementType: string = tx.movementType ?? ''
+  const label: string = movementType
+    ? movementType.charAt(0) + movementType.slice(1).toLowerCase()
+    : (tx.description ?? entryType)
+  const amtNaira = Number(tx.amount) / 100
+
   return {
     id: tx.id,
-    name: tx.description || tx.type,
-    type: tx.type,
+    name: label,
+    type: entryType,
     time: d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', hour12: true }),
-    amount: `₦${tx.amount.toLocaleString()}`,
-    direction: tx.type === 'CREDIT' ? 'credit' : 'debit',
+    amount: `₦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+    direction: entryType === 'CREDIT' ? 'credit' : 'debit',
     date: dateLabel,
   }
 }
@@ -60,7 +67,8 @@ export function Transactions() {
   useEffect(() => {
     Promise.all([
       getWalletBalanceNaira().then((res) => {
-        const bal = Number(res.balance ?? res.nairaBalance ?? res.amount ?? res.availableBalance ?? 0)
+        const data = (res.data ?? res) as Record<string, unknown>
+        const bal = Number(data.available ?? data.total ?? data.balance ?? 0)
         setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
       }).catch(() => setWalletBalance('₦0.00')),
       getWalletTransactions().then((txns) =>

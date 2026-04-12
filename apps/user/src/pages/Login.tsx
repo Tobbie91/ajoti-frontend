@@ -31,7 +31,13 @@ export function Login() {
       const { token, refreshToken, user } = await loginApi(email.trim(), password)
       localStorage.setItem('access_token', token)
       localStorage.setItem('refresh_token', refreshToken)
-      localStorage.setItem('user', JSON.stringify(user))
+      // Preserve registration data (firstName, lastName, dob) — only overwrite with non-empty values from login
+      const existing = JSON.parse(localStorage.getItem('user') ?? '{}')
+      const merged = { ...existing }
+      for (const [k, v] of Object.entries(user)) {
+        if (v !== '' && v !== null && v !== undefined) merged[k] = v
+      }
+      localStorage.setItem('user', JSON.stringify(merged))
       navigate('/home')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.')

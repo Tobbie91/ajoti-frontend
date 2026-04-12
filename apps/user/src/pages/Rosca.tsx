@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Text, TextInput, Badge, Avatar, Tabs, Progress, Textarea, Loader } from '@mantine/core'
 import { IconSearch, IconMessageCircle, IconCalendar, IconCheck, IconFilter, IconAlertTriangle, IconX, IconCircleCheck } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { listRoscaCircles, type RoscaCircle } from '@/utils/api'
+import { listRoscaCircles, getMyJoinRequests, getMyParticipations, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
 
 const TABS = ['All Groups', 'Open Groups', 'Invite-Only', 'Joined'] as const
 
@@ -44,7 +44,7 @@ export function Rosca() {
 
   const [groups, setGroups] = useState<RoscaGroup[]>([])
   const [joinedGroups, setJoinedGroups] = useState<JoinedGroup[]>([])
-  const [fetchLoading, setFetchLoading] = useState(true)
+  const [joinedLoading, setJoinedLoading] = useState(false)
   const [needsLogin, setNeedsLogin] = useState(false)
 
   useEffect(() => {
@@ -71,8 +71,57 @@ export function Rosca() {
           setNeedsLogin(true)
         }
       })
-      .finally(() => setFetchLoading(false))
+      .finally(() => {})
   }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'Joined') return
+    setJoinedLoading(true)
+
+    function mapToJoined(r: MyJoinRequest): JoinedGroup {
+      const circle = r.circle ?? {}
+      const filled = Number(circle.filledSlots ?? 0)
+      const total = Number(circle.durationCycles ?? circle.maxSlots ?? 1)
+      const adminName = circle.admin
+        ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
+        : 'Admin'
+      const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
+      const nextPayout = circle.nextPayoutDate
+        ? new Date(circle.nextPayoutDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'TBD'
+      return {
+        id: r.circleId,
+        name: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
+        completionRate,
+        completedCycles: filled,
+        totalCycles: total,
+        nextContribution: nextPayout,
+        admin: adminName,
+      }
+    }
+
+    Promise.allSettled([getMyJoinRequests(), getMyParticipations()])
+      .then(([joinRes, partRes]) => {
+        const joinRequests = joinRes.status === 'fulfilled' ? joinRes.value : []
+        const participations = partRes.status === 'fulfilled' ? partRes.value : []
+
+        const approvedRequests = joinRequests.filter(
+          (r) => ['APPROVED', 'ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
+        )
+
+        // Merge, deduplicate by circleId (participations take priority)
+        const seenIds = new Set<string>()
+        const merged: JoinedGroup[] = []
+        for (const r of [...participations, ...approvedRequests]) {
+          if (!seenIds.has(r.circleId)) {
+            seenIds.add(r.circleId)
+            merged.push(mapToJoined(r))
+          }
+        }
+        setJoinedGroups(merged)
+      })
+      .finally(() => setJoinedLoading(false))
+  }, [activeTab])
 
   const filtered = groups.filter((g) => {
     const matchesSearch =
@@ -190,7 +239,17 @@ export function Rosca() {
         {/* Joined Tab Content */}
         {isJoinedTab ? (
           <>
-          <div className="grid grid-cols-2 gap-5">
+          {joinedLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader color="#02A36E" size="md" />
+            </div>
+          ) : joinedGroups.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Text fw={600} className="text-[#374151]">No joined groups yet</Text>
+              <Text size="sm" className="text-[#9CA3AF]">Groups you've been approved to join will appear here.</Text>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-5">
             {joinedGroups.map((group) => (
               <div
                 key={group.id}
@@ -275,10 +334,11 @@ export function Rosca() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
 
           {/* Show More */}
-          {!showAll && joinedGroups.length > 6 && (
+          {!joinedLoading && !showAll && joinedGroups.length > 6 && (
             <div className="flex justify-center">
               <button
                 onClick={() => setShowAll(true)}

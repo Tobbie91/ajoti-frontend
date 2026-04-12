@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Text, TextInput, Select, Avatar, Badge } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Text, TextInput, Select, Avatar, Badge, Loader } from '@mantine/core'
 import {
   IconUser,
   IconMail,
@@ -10,15 +10,13 @@ import {
   IconCheck,
   IconId,
   IconBuildingBank,
-  IconCamera,
-  IconFileText,
   IconLogout,
   IconUserCircle,
   IconCalendar,
   IconUsers,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi } from '@/utils/api'
+import { logout as logoutApi, getUserProfile, updateUserProfile } from '@/utils/api'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('admin_user')
@@ -52,21 +50,74 @@ function InfoRow({ label, value, icon: Icon }: { label: string; value: string; i
 export function MyProfile() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
-  const user = getUserFromStorage()
   const kycCompleted = localStorage.getItem('admin_kyc_completed') === 'true'
 
-  const [firstName, setFirstName] = useState(user.firstName || user.firstname || '')
-  const [lastName, setLastName] = useState(user.lastName || user.lastname || '')
-  const fullName = `${firstName} ${lastName}`.trim()
-  const [email, setEmail] = useState(user.email || '')
-  const [phone, setPhone] = useState(user.phone || '')
-  const [address, setAddress] = useState(user.address || '')
-  const [city, setCity] = useState(user.city || '')
-  const [state, setState] = useState<string | null>(user.state || null)
-  const [lga, setLga] = useState(user.lga || '')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState<string | null>(null)
+  const [lga, setLga] = useState('')
+  const [dob, setDob] = useState('')
 
+  const fullName = `${firstName} ${lastName}`.trim()
   const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase()
+
+  useEffect(() => {
+    // Seed from localStorage immediately for fast render
+    const stored = getUserFromStorage()
+    setFirstName(stored.firstName || stored.firstname || '')
+    setLastName(stored.lastName || stored.lastname || '')
+    setEmail(stored.email || '')
+    setPhone(stored.phone || '')
+    setAddress(stored.address || '')
+    setCity(stored.city || '')
+    setState(stored.state || null)
+    setLga(stored.lga || '')
+    setDob(stored.dob || '')
+
+    // Fetch fresh from API
+    getUserProfile()
+      .then((profile) => {
+        setFirstName(profile.firstName || '')
+        setLastName(profile.lastName || '')
+        setEmail(profile.email || '')
+        setPhone(profile.phone || '')
+        setAddress((profile.address as string) || '')
+        setCity((profile.city as string) || '')
+        setState((profile.state as string) || null)
+        setLga((profile.lga as string) || '')
+        setDob((profile.dob as string) || '')
+        // Update localStorage with fresh data
+        localStorage.setItem('admin_user', JSON.stringify(profile))
+      })
+      .catch(() => {}) // fallback to localStorage values already set
+      .finally(() => setProfileLoading(false))
+  }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    setSaveError(null)
+    setSaveSuccess(false)
+    try {
+      const res = await updateUserProfile({ firstName, lastName, phone, address, city, state: state ?? undefined, lga })
+      if (res.data) localStorage.setItem('admin_user', JSON.stringify(res.data))
+      setSaveSuccess(true)
+      setEditing(false)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save changes')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleLogout() {
     try {
@@ -84,6 +135,12 @@ export function MyProfile() {
 
   return (
     <div className="mx-auto w-full max-w-[720px] py-2">
+      {profileLoading && (
+        <div className="mb-4 flex items-center gap-2 text-[#6B7280]">
+          <Loader size="xs" color="#02A36E" />
+          <Text fz="xs">Loading profile...</Text>
+        </div>
+      )}
 
       {/* Profile header */}
       <div className="mb-6 flex items-center gap-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
@@ -175,7 +232,7 @@ export function MyProfile() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Date of Birth" value={user.dob || ''} icon={IconCalendar} />
+            <InfoRow label="Date of Birth" value={dob || '—'} icon={IconCalendar} />
           </div>
 
           <div className="flex items-center gap-3 rounded-xl bg-[#F0FDF4] px-4 py-3">
@@ -287,12 +344,29 @@ export function MyProfile() {
 
       {/* Save button */}
       {editing && (
-        <button
-          onClick={() => setEditing(false)}
-          className="mb-4 w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
-        >
-          Save Changes
-        </button>
+        <>
+          {saveError && (
+            <div className="mb-3 rounded-xl border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3">
+              <Text fw={500} className="text-[13px] text-[#EF4444]">{saveError}</Text>
+            </div>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="mb-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b] disabled:opacity-60"
+          >
+            {saving ? <Loader size="xs" color="white" /> : null}
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </>
+      )}
+
+      {/* Save success */}
+      {saveSuccess && !editing && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-[#A7F3D0] bg-[#F0FDF4] px-4 py-3">
+          <IconCheck size={16} color="#02A36E" />
+          <Text fw={500} className="text-[13px] text-[#02A36E]">Profile updated successfully</Text>
+        </div>
       )}
 
       {/* Logout */}

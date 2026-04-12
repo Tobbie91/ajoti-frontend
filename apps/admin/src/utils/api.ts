@@ -64,15 +64,6 @@ export interface LoginResponse {
   refreshToken: string
 }
 
-export interface UserProfile {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  dob: string
-  phone: string
-}
-
 export async function login(email: string, password: string): Promise<{ token: string; refreshToken: string; user: UserProfile }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: 'POST',
@@ -91,18 +82,23 @@ export async function login(email: string, password: string): Promise<{ token: s
     throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Invalid email or password')
   }
 
-  const { accessToken, refreshToken, user: backendUser } = data as LoginResponse
+  const raw = data as Record<string, unknown>
+  const payload = (raw.data ?? raw) as Record<string, unknown>
+
+  const token = (payload.accessToken ?? payload.token ?? payload.access_token ?? '') as string
+  const refreshToken = (payload.refreshToken ?? payload.refresh_token ?? '') as string
+  const backendUser = (payload.user ?? payload.profile ?? {}) as Record<string, unknown>
 
   const user: UserProfile = {
-    id: '',
-    email: backendUser.email,
-    firstName: backendUser.firstname,
-    lastName: backendUser.lastname,
-    dob: backendUser.DOB ? backendUser.DOB.split('T')[0] : '',
-    phone: backendUser.phone || '',
+    id: (backendUser.id ?? backendUser._id ?? '') as string,
+    email: (backendUser.email ?? email) as string,
+    firstName: (backendUser.firstName ?? backendUser.firstname ?? '') as string,
+    lastName: (backendUser.lastName ?? backendUser.lastname ?? '') as string,
+    dob: backendUser.DOB ? (backendUser.DOB as string).split('T')[0] : (backendUser.dob as string ?? ''),
+    phone: (backendUser.phone ?? '') as string,
   }
 
-  return { token: accessToken, refreshToken, user }
+  return { token, refreshToken, user }
 }
 
 // Verify email OTP
@@ -183,6 +179,35 @@ export function submitNok(payload: SubmitNokPayload): Promise<{ message: string 
   })
 }
 
+// ── User Profile ────────────────────────────────────────────────────────────
+
+export interface UserProfile {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  dob?: string
+  address?: string
+  city?: string
+  state?: string
+  lga?: string
+  role?: string
+  [key: string]: unknown
+}
+
+export async function getUserProfile(): Promise<UserProfile> {
+  const res = await authRequest<{ data?: UserProfile } | UserProfile>('/api/users/me', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as UserProfile
+}
+
+export function updateUserProfile(payload: Partial<UserProfile>): Promise<{ message: string; data?: UserProfile }> {
+  return authRequest('/api/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
 // ── Logout ──────────────────────────────────────────────────────────────────
 
 export function logout(refreshToken: string): Promise<{ message: string }> {
@@ -238,9 +263,15 @@ export function listRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest('/api/rosca', { method: 'GET' })
 }
 
-// GET /api/admin/rosca/all — view all circles regardless of visibility
+// GET /api/admin/rosca/my-circles — view admin's own circles
 export function listAllRoscaCircles(): Promise<RoscaCircle[]> {
-  return authRequest('/api/admin/rosca/all', { method: 'GET' })
+  return authRequest('/api/admin/rosca/my-circles', { method: 'GET' })
+}
+
+// GET /api/admin/rosca/{circleId} — get circle details
+export async function getAdminCircleDetail(circleId: string): Promise<RoscaCircle> {
+  const res = await authRequest<{ data?: RoscaCircle } | RoscaCircle>(`/api/admin/rosca/${circleId}`, { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as RoscaCircle
 }
 
 // POST /api/admin/rosca — create a new ROSCA circle
@@ -273,6 +304,40 @@ export function activateRoscaCircle(circleId: string, startDate: string): Promis
   })
 }
 
+// GET /api/admin/rosca/dashboard — admin dashboard stats
+export interface AdminDashboard {
+  totalGroups: number
+  nextDeadline: { groupName: string; deadline: string } | null
+  pendingJoinRequests: {
+    total: number
+    breakdown: { groupName: string; pendingCount: number }[]
+  }
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboard> {
+  const res = await authRequest<{ data?: AdminDashboard } | AdminDashboard>(
+    '/api/admin/rosca/dashboard',
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as AdminDashboard
+}
+
+// GET /api/admin/rosca/join-requests — list circles with pending join requests
+export interface CirclePendingRequests {
+  circleId: string
+  name: string
+  pendingCount: number
+  oldestRequestAt: string
+}
+
+export async function getJoinRequests(): Promise<CirclePendingRequests[]> {
+  const res = await authRequest<{ data?: CirclePendingRequests[] } | CirclePendingRequests[]>(
+    '/api/admin/rosca/join-requests',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: CirclePendingRequests[] }).data ?? []
+}
+
 // PATCH /api/admin/rosca/{circleId}/members/{userId}/approve — approve a member
 export function approveMember(circleId: string, userId: string): Promise<{ message: string }> {
   return authRequest(`/api/admin/rosca/${circleId}/members/${userId}/approve`, {
@@ -280,8 +345,39 @@ export function approveMember(circleId: string, userId: string): Promise<{ messa
   })
 }
 
+// PATCH /api/admin/rosca/{circleId}/members/{userId}/reject — reject a member
+export function rejectMember(circleId: string, userId: string): Promise<{ message: string }> {
+  return authRequest(`/api/admin/rosca/${circleId}/members/${userId}/reject`, {
+    method: 'PATCH',
+  })
+}
+
+// GET /api/admin/rosca/{circleId}/payout-config — get current payout config
+export interface PayoutAssignment {
+  userId: string
+  name: string
+  position: number | null
+}
+
+export interface PayoutConfig {
+  payoutLogic: string
+  allAssigned: boolean
+  assignments: PayoutAssignment[]
+}
+
+export async function getPayoutConfig(circleId: string): Promise<PayoutConfig> {
+  const res = await authRequest<{ data?: PayoutConfig } | PayoutConfig>(
+    `/api/admin/rosca/${circleId}/payout-config`,
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as PayoutConfig
+}
+
 // PATCH /api/admin/rosca/{circleId}/payout-config — update payout config
-export function updatePayoutConfig(circleId: string, config: Record<string, unknown>): Promise<{ message: string }> {
+export function updatePayoutConfig(
+  circleId: string,
+  config: { payoutLogic?: string; assignments: { userId: string; position: number }[] },
+): Promise<{ message: string }> {
   return authRequest(`/api/admin/rosca/${circleId}/payout-config`, {
     method: 'PATCH',
     body: JSON.stringify(config),
@@ -368,9 +464,343 @@ export async function getCircleContributions(circleId: string): Promise<Contribu
   return Array.isArray(res) ? res : (res as { data?: Contribution[] }).data ?? []
 }
 
+// GET /api/admin/rosca/{circleId}/disbursements — admin view of disbursements
+export interface Disbursement {
+  id: string
+  amount: number | string
+  status: string
+  createdAt?: string
+  disbursedAt?: string
+  paymentMethod?: string
+  recipient?: { firstName?: string; lastName?: string }
+  member?: { firstName?: string; lastName?: string }
+  [key: string]: unknown
+}
+
+export async function getAdminDisbursements(circleId: string): Promise<Disbursement[]> {
+  const res = await authRequest<{ data?: Disbursement[] } | Disbursement[]>(
+    `/api/admin/rosca/${circleId}/disbursements`,
+    { method: 'GET' },
+  )
+  const raw = Array.isArray(res) ? res : (res as { data?: Disbursement[] }).data ?? []
+  return Array.isArray(raw) ? raw : []
+}
+
+// GET /api/admin/rosca/{circleId}/contributions — admin view of contributions
+export async function getAdminCircleContributions(circleId: string): Promise<Contribution[]> {
+  const res = await authRequest<{ data?: Contribution[] } | Contribution[]>(
+    `/api/admin/rosca/${circleId}/contributions`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: Contribution[] }).data ?? []
+}
+
 export function makeContribution(circleId: string, cycleNumber: number): Promise<{ message: string }> {
   return authRequest(`/api/rosca/${circleId}/contributions`, {
     method: 'POST',
     body: JSON.stringify({ cycleNumber }),
   })
+}
+
+// ── Wallet Transactions ───────────────────────────────────────────────────────
+
+export interface WalletTransaction {
+  id: string
+  type: string
+  amount: number
+  description: string
+  createdAt: string
+  [key: string]: unknown
+}
+
+export async function getWalletTransactions(): Promise<WalletTransaction[]> {
+  const res = await authRequest<{ data?: WalletTransaction[] } | WalletTransaction[]>(
+    '/api/wallet/transactions',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: WalletTransaction[] }).data ?? []
+}
+
+// ── Admin Wallet ─────────────────────────────────────────────────────────────
+
+export interface AdminWalletBalance {
+  total: number
+  reserved: number
+  available: number
+  currency: string
+}
+
+export async function getAdminWalletBalance(userId: string): Promise<AdminWalletBalance> {
+  const res = await authRequest<{ data?: AdminWalletBalance } | AdminWalletBalance>(
+    `/api/admin/wallet/user/${userId}`,
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as AdminWalletBalance
+}
+
+export async function getWalletBalanceNaira(): Promise<AdminWalletBalance> {
+  const res = await authRequest<{ data?: AdminWalletBalance } | AdminWalletBalance>(
+    '/api/wallet/balance/naira',
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as AdminWalletBalance
+}
+
+// ── Wallet Funding ────────────────────────────────────────────────────────────
+
+export interface FundingInitResponse {
+  authorizationUrl?: string
+  paymentLink?: string
+  paymentUrl?: string
+  link?: string
+  reference?: string
+  [key: string]: unknown
+}
+
+export async function initializeFunding(payload: {
+  amount: number
+  redirectUrl: string
+  currency?: string
+}): Promise<FundingInitResponse> {
+  const res = await authRequest<{ data?: FundingInitResponse } | FundingInitResponse>(
+    '/api/wallet/funding/initialize',
+    { method: 'POST', body: JSON.stringify({ currency: 'NGN', ...payload }) },
+  )
+  return ('data' in res && res.data ? res.data : res) as FundingInitResponse
+}
+
+export function verifyFunding(reference: string): Promise<Record<string, unknown>> {
+  return authRequest(`/api/wallet/funding/verify/${reference}`, { method: 'GET' })
+}
+
+// ── Withdrawal ────────────────────────────────────────────────────────────────
+
+export interface WithdrawalPayload {
+  amount: number
+  accountNumber: string
+  bankCode: string
+  bankName?: string
+  currency?: string
+  narration?: string
+}
+
+export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<Record<string, unknown>> {
+  const res = await authRequest<{ data?: Record<string, unknown> } | Record<string, unknown>>(
+    '/api/wallet/withdrawal/initialize',
+    { method: 'POST', body: JSON.stringify({ currency: 'NGN', ...payload }) },
+  )
+  return ('data' in res && res.data ? res.data : res) as Record<string, unknown>
+}
+
+// ── Trust Score ───────────────────────────────────────────────────────────────
+
+export interface TrustScore {
+  trustScore: number
+  displayScore?: number
+  [key: string]: unknown
+}
+
+export async function getTrustScore(): Promise<TrustScore> {
+  const res = await authRequest<{ data?: TrustScore } | TrustScore>('/api/trust/my-score', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as TrustScore
+}
+
+// ── Loans ─────────────────────────────────────────────────────────────────────
+
+export interface LoanEligibility {
+  eligible: boolean
+  reason?: string
+  maxLoanAmount?: number
+  expectedPayout?: number
+  feeRate?: number
+  [key: string]: unknown
+}
+
+export async function getLoanEligibility(circleId: string): Promise<LoanEligibility> {
+  const res = await authRequest<{ data?: LoanEligibility } | LoanEligibility>(
+    `/api/loan/eligibility?circleId=${circleId}`,
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as LoanEligibility
+}
+
+export interface Loan {
+  id: string
+  circleId: string
+  circleName?: string
+  amount: number | string
+  feeAmount?: number | string
+  disbursedAmount?: number | string
+  status: string
+  createdAt: string
+  dueDate?: string
+  disbursedAt?: string
+  [key: string]: unknown
+}
+
+export async function applyForLoan(payload: { circleId: string }): Promise<Loan> {
+  const res = await authRequest<{ data?: Loan } | Loan>('/api/loan/apply', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  return ('data' in res && res.data ? res.data : res) as Loan
+}
+
+export async function getLoanStatus(): Promise<Loan | null> {
+  try {
+    const res = await authRequest<{ data?: Loan } | Loan>('/api/loan/status', { method: 'GET' })
+    return ('data' in res && res.data ? res.data : res) as Loan
+  } catch {
+    return null
+  }
+}
+
+export async function getLoanHistory(): Promise<Loan[]> {
+  const res = await authRequest<{ data?: Loan[] } | Loan[]>('/api/loan/history', { method: 'GET' })
+  return Array.isArray(res) ? res : (res as { data?: Loan[] }).data ?? []
+}
+
+// ── Credit Score ──────────────────────────────────────────────────────────────
+
+export interface CreditScore {
+  score: number
+  compositeScore?: number
+  tier?: string
+  [key: string]: unknown
+}
+
+export async function getCreditScore(): Promise<CreditScore> {
+  const res = await authRequest<{ data?: CreditScore } | CreditScore>('/api/credit-score', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as CreditScore
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export interface AppNotification {
+  id: string
+  title: string
+  message: string
+  read: boolean
+  createdAt: string
+  [key: string]: unknown
+}
+
+export async function getNotifications(): Promise<AppNotification[]> {
+  const res = await authRequest<{ data?: AppNotification[] } | AppNotification[]>('/api/notifications', { method: 'GET' })
+  return Array.isArray(res) ? res : (res as { data?: AppNotification[] }).data ?? []
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const res = await authRequest<{ count?: number; unreadCount?: number } | number>('/api/notifications/unread-count', { method: 'GET' })
+  if (typeof res === 'number') return res
+  return (res as { count?: number; unreadCount?: number }).count ?? (res as { count?: number; unreadCount?: number }).unreadCount ?? 0
+}
+
+export function markNotificationRead(id: string): Promise<{ message: string }> {
+  return authRequest(`/api/notifications/${id}/read`, { method: 'PATCH' })
+}
+
+export function markAllNotificationsRead(): Promise<{ message: string }> {
+  return authRequest('/api/notifications/read-all', { method: 'PATCH' })
+}
+
+// ── Circle Invites ─────────────────────────────────────────────────────────────
+
+export interface CircleInvite {
+  id: string
+  email?: string
+  phone?: string
+  name?: string
+  status: string
+  createdAt: string
+  expiresAt?: string
+  [key: string]: unknown
+}
+
+export async function sendCircleInvite(
+  circleId: string,
+  payload: { email?: string; phone?: string; name?: string },
+): Promise<{ message: string; data?: CircleInvite }> {
+  return authRequest(`/api/admin/rosca/${circleId}/invites`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function getCircleInvites(circleId: string): Promise<CircleInvite[]> {
+  const res = await authRequest<{ data?: CircleInvite[] } | CircleInvite[]>(
+    `/api/admin/rosca/${circleId}/invites`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: CircleInvite[] }).data ?? []
+}
+
+export function revokeCircleInvite(circleId: string, inviteId: string): Promise<{ message: string }> {
+  return authRequest(`/api/admin/rosca/${circleId}/invites/${inviteId}`, { method: 'DELETE' })
+}
+
+// ── Member Progress ────────────────────────────────────────────────────────────
+
+export interface MemberProgress {
+  userId: string
+  name: string
+  roundsPaid?: number
+  totalRounds?: number
+  amountContributed?: number
+  expectedAmount?: number
+  missedPayments?: number
+  status?: string
+  payoutDate?: string
+  [key: string]: unknown
+}
+
+export async function getMemberProgress(circleId: string): Promise<MemberProgress[]> {
+  const res = await authRequest<{ data?: MemberProgress[] } | MemberProgress[]>(
+    `/api/admin/rosca/${circleId}/members/progress`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: MemberProgress[] }).data ?? []
+}
+
+// ── Notify Missing Contributors ────────────────────────────────────────────────
+
+export async function notifyMissingContributors(
+  circleId: string,
+  payload: { roundNumber?: number; memberIds?: string[]; message?: string },
+): Promise<{ message: string; notified?: number }> {
+  return authRequest(`/api/admin/rosca/${circleId}/notify-missing`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+// ── Financial Health ───────────────────────────────────────────────────────────
+
+export interface CycleHealth {
+  cycle: number
+  expectedContributions: number
+  actualContributions: number
+  collectionRate: number
+  disbursed: number
+  pendingDisbursements: number
+  [key: string]: unknown
+}
+
+export interface FinancialHealth {
+  totalExpected?: number
+  totalCollected?: number
+  collectionRate?: number
+  totalDisbursed?: number
+  cycles?: CycleHealth[]
+  [key: string]: unknown
+}
+
+export async function getFinancialHealth(circleId: string): Promise<FinancialHealth> {
+  const res = await authRequest<{ data?: FinancialHealth } | FinancialHealth>(
+    `/api/admin/rosca/${circleId}/financial-health`,
+    { method: 'GET' },
+  )
+  return ('data' in (res as object) && (res as Record<string, unknown>).data
+    ? (res as Record<string, unknown>).data
+    : res) as FinancialHealth
 }

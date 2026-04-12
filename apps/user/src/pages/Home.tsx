@@ -21,7 +21,7 @@ import { TrustScoreCard, CreditScoreCard } from "@/components/ScoreCards";
 
 import Rosca from "@/assets/Rosca.svg";
 import { useNavigate } from "react-router-dom";
-import { getWalletBalanceNaira, getWalletTransactions, getTrustScore } from "@/utils/api";
+import { getWalletBalanceNaira, getWalletTransactions, getTrustScore, getCreditScore } from "@/utils/api";
 import type { WalletTransaction } from "@/utils/api";
 
 export function Home() {
@@ -31,17 +31,22 @@ export function Home() {
     const user = stored ? JSON.parse(stored) : null
     const userName = user?.firstName ?? 'there'
 
-    const [walletBalance, setWalletBalance] = useState<number | null>(null)
+    const [walletBalance, setWalletBalance] = useState<{ total: number; reserved: number; available: number } | null>(null)
     const [recentTxns, setRecentTxns] = useState<WalletTransaction[]>([])
     const [trustScore, setTrustScore] = useState<number | null>(null)
+    const [creditScore, setCreditScore] = useState<number | null>(null)
 
     useEffect(() => {
         getWalletBalanceNaira()
             .then((res) => {
-                const bal = res.balance ?? res.nairaBalance ?? res.amount ?? res.availableBalance ?? 0
-                setWalletBalance(Number(bal))
+                const data = (res.data ?? res) as Record<string, unknown>
+                setWalletBalance({
+                    total: Number(data.total ?? 0),
+                    reserved: Number(data.reserved ?? 0),
+                    available: Number(data.available ?? 0),
+                })
             })
-            .catch(() => setWalletBalance(0))
+            .catch(() => setWalletBalance({ total: 0, reserved: 0, available: 0 }))
 
         getWalletTransactions()
             .then((txns) => setRecentTxns(txns.slice(0, 5)))
@@ -49,10 +54,17 @@ export function Home() {
 
         getTrustScore()
             .then((res) => {
-                const score = res.score ?? 0
+                const score = res.trustScore ?? res.displayScore ?? res.score ?? 0
                 setTrustScore(Number(score))
             })
             .catch(() => setTrustScore(0))
+
+        getCreditScore()
+            .then((res) => {
+                const score = res.trustDisplayScore ?? res.compositeScore ?? res.finalScore ?? res.score ?? 0
+                setCreditScore(Number(score))
+            })
+            .catch(() => setCreditScore(0))
     }, [])
 
     return (
@@ -68,20 +80,20 @@ export function Home() {
                 {/* Summary cards row */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
                     <SummaryCard
-                        title="Wallet Balance"
-                        amount={walletBalance !== null ? `₦ ${walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : '₦ —'}
+                        title="Total Balance"
+                        amount={walletBalance !== null ? `₦ ${walletBalance.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : '₦ —'}
                         gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
                         to="/transactions"
                     />
                     <SummaryCard
-                        title="My Savings"
-                        amount="₦ 0.00"
+                        title="Available"
+                        amount={walletBalance !== null ? `₦ ${walletBalance.available.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : '₦ —'}
                         gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
                         to="/transactions"
                     />
                     <SummaryCard
-                        title="My Goals"
-                        amount="₦ 0.00"
+                        title="Reserved"
+                        amount={walletBalance !== null ? `₦ ${walletBalance.reserved.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : '₦ —'}
                         gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
                         to="/transactions"
                     />
@@ -90,7 +102,7 @@ export function Home() {
                 {/* Trust & Credit Score cards */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                     <TrustScoreCard score={trustScore} />
-                    <CreditScoreCard score={685} />
+                    <CreditScoreCard score={creditScore ?? 0} />
                 </div>
 
                 {/* Two-column layout: left content + right sidebar */}
@@ -203,21 +215,27 @@ export function Home() {
                                 </Box>
                             ) : (
                                 <div className="flex flex-col gap-2 pt-2">
-                                    {recentTxns.map((tx) => (
-                                        <div key={tx.id} className="flex items-center justify-between rounded-lg border border-[#F3F4F6] px-3 py-2">
-                                            <div>
-                                                <Text fw={500} className="text-[13px] text-[#0F172A]">
-                                                    {tx.description || tx.type}
-                                                </Text>
-                                                <Text fw={400} className="text-[11px] text-[#9CA3AF]">
-                                                    {new Date(tx.createdAt).toLocaleDateString()}
+                                    {recentTxns.map((tx) => {
+                                        const entryType = tx.entryType ?? tx.type ?? ''
+                                        const isCredit = entryType === 'CREDIT'
+                                        const label = tx.movementType
+                                            ? tx.movementType.charAt(0) + tx.movementType.slice(1).toLowerCase()
+                                            : tx.description || entryType
+                                        const amt = Number(tx.amount) / 100
+                                        return (
+                                            <div key={tx.id} className="flex items-center justify-between rounded-lg border border-[#F3F4F6] px-3 py-2">
+                                                <div>
+                                                    <Text fw={500} className="text-[13px] text-[#0F172A]">{label}</Text>
+                                                    <Text fw={400} className="text-[11px] text-[#9CA3AF]">
+                                                        {new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                                                    </Text>
+                                                </div>
+                                                <Text fw={600} className={`text-[13px] ${isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
+                                                    {isCredit ? '+' : '-'}₦{amt.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                                                 </Text>
                                             </div>
-                                            <Text fw={600} className={`text-[13px] ${tx.type === 'CREDIT' ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
-                                                {tx.type === 'CREDIT' ? '+' : '-'}₦{tx.amount.toLocaleString()}
-                                            </Text>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             )}
                         </Card>

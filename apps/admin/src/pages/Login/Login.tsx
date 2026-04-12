@@ -22,7 +22,12 @@ export function Login() {
       const { token, refreshToken, user } = await loginApi(email.trim(), password)
       localStorage.setItem('admin_access_token', token)
       localStorage.setItem('admin_refresh_token', refreshToken)
-      localStorage.setItem('admin_user', JSON.stringify(user))
+      const existing = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
+      const merged = { ...existing }
+      for (const [k, v] of Object.entries(user)) {
+        if (v !== '' && v !== null && v !== undefined) merged[k] = v
+      }
+      localStorage.setItem('admin_user', JSON.stringify(merged))
       navigate('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')

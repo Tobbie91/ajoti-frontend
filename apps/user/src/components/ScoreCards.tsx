@@ -4,7 +4,7 @@ import { IconShieldCheck, IconGauge } from '@tabler/icons-react'
 function getTrustTier(score: number) {
   if (score >= 80) return { label: 'Excellent', color: '#02A36E' }
   if (score >= 60) return { label: 'Good', color: '#10B981' }
-  if (score >= 40) return { label: 'Fair', color: '#F59E0B' }
+  if (score >= 40) return { label: 'Average', color: '#F59E0B' }
   return { label: 'Poor', color: '#EF4444' }
 }
 
