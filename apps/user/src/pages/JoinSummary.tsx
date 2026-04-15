@@ -1,39 +1,75 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Text, Loader } from '@mantine/core'
 import { IconArrowLeft, IconCheck, IconAlertCircle } from '@tabler/icons-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { listRoscaCircles, getWalletBalance, type RoscaCircle } from '@/utils/api'
+
+function addPeriods(date: Date, frequency: string, count: number): Date {
+  const d = new Date(date)
+  if (frequency === 'WEEKLY') d.setDate(d.getDate() + count * 7)
+  else if (frequency === 'BI_WEEKLY') d.setDate(d.getDate() + count * 14)
+  else d.setMonth(d.getMonth() + count) // MONTHLY default
+  return d
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })
+}
 
 export function JoinSummary() {
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
+  const { id } = useParams()
 
-  // Mock wallet balance — change to 0 to test insufficient funds flow
-  const walletBalance = 120000
-  const savingsAmount = 50000
-  const hasInsufficientBalance = walletBalance < savingsAmount
+  const [circle, setCircle] = useState<RoscaCircle | null>(null)
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [loading, setLoading] = useState(true)
 
-  const handleProceed = () => {
-    setLoading(true)
-    setTimeout(() => {
-      navigate('/rosca/requests')
-    }, 2000)
-  }
+  useEffect(() => {
+    Promise.all([
+      listRoscaCircles().then((circles) => circles.find((c) => c.id === id) ?? null),
+      getWalletBalance().then((b) => Number(b.available ?? b.total ?? 0) / 100).catch(() => 0),
+    ])
+      .then(([c, balance]) => {
+        setCircle(c)
+        setWalletBalance(balance)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [id])
 
   if (loading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-5">
         <Loader size={48} color="#02A36E" />
         <div className="text-center">
-          <Text fw={700} className="text-[20px] text-[#0F172A]">
-            Processing payment...
-          </Text>
-          <Text fw={400} className="mt-2 text-[14px] text-[#6B7280]">
-            Please wait
-          </Text>
+          <Text fw={700} className="text-[20px] text-[#0F172A]">Loading summary...</Text>
         </div>
       </div>
     )
   }
+
+  if (!circle) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
+        <Text fw={600} className="text-[#374151]">Circle not found</Text>
+        <button onClick={() => navigate('/rosca')} className="cursor-pointer text-sm font-medium text-[#02A36E]">Back to groups</button>
+      </div>
+    )
+  }
+
+  const contributionNaira = Number(circle.contributionAmount ?? 0) / 100
+  const totalToRaise = contributionNaira * (circle.maxSlots ?? 1)
+  const duration = circle.durationCycles ?? 0
+  const frequency = (circle.frequency as string) ?? 'MONTHLY'
+
+  const deadlineRaw = (circle as Record<string, unknown>).initialContributionDeadline as string | null | undefined
+  const firstPaymentDate = deadlineRaw ? new Date(deadlineRaw) : null
+  const lastPaymentDate = firstPaymentDate ? addPeriods(firstPaymentDate, frequency, duration - 1) : null
+
+  const hasInsufficientBalance = walletBalance < contributionNaira
+
+  const frequencyLabel: Record<string, string> = { WEEKLY: 'week', BI_WEEKLY: '2 weeks', MONTHLY: 'month' }
+  const durationLabel = `${duration} ${frequency === 'WEEKLY' ? 'weeks' : frequency === 'BI_WEEKLY' ? 'bi-weekly cycles' : 'months'}`
 
   return (
     <div className="mx-auto w-full max-w-[600px] px-6 py-6">
@@ -42,13 +78,11 @@ export function JoinSummary() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-[#E5E7EB] bg-white"
           >
             <IconArrowLeft size={18} color="#374151" />
           </button>
-          <Text fw={700} className="text-[22px] text-[#0F172A]">
-            Payment Summary
-          </Text>
+          <Text fw={700} className="text-[22px] text-[#0F172A]">Payment Summary</Text>
         </div>
 
         {/* Success Icon */}
@@ -60,42 +94,42 @@ export function JoinSummary() {
 
         {/* Savings Details Card */}
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-          <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">
-            Savings Details
-          </Text>
-
+          <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">Savings Details</Text>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <Text fw={500} className="text-[13px] text-[#6B7280]">Savings Amount</Text>
+              <Text fw={500} className="text-[13px] text-[#6B7280]">Contribution per {frequencyLabel[frequency] ?? 'cycle'}</Text>
               <Text fw={600} className="text-[14px] text-[#0F172A]">
-                ₦{savingsAmount.toLocaleString()}.00
+                ₦{contributionNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>
             <div className="flex items-center justify-between">
-              <Text fw={500} className="text-[13px] text-[#6B7280]">Total Amount to Raise</Text>
-              <Text fw={600} className="text-[14px] text-[#0F172A]">₦300,000.00</Text>
+              <Text fw={500} className="text-[13px] text-[#6B7280]">Total Payout (when your turn comes)</Text>
+              <Text fw={600} className="text-[14px] text-[#0F172A]">
+                ₦{totalToRaise.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+              </Text>
             </div>
             <div className="flex items-center justify-between">
               <Text fw={500} className="text-[13px] text-[#6B7280]">First Payment Date</Text>
-              <Text fw={600} className="text-[14px] text-[#0F172A]">January 15, 2025</Text>
+              <Text fw={600} className="text-[14px] text-[#0F172A]">
+                {firstPaymentDate ? formatDate(firstPaymentDate) : 'Pending activation'}
+              </Text>
             </div>
             <div className="flex items-center justify-between">
               <Text fw={500} className="text-[13px] text-[#6B7280]">Last Payment Date</Text>
-              <Text fw={600} className="text-[14px] text-[#0F172A]">June 15, 2025</Text>
+              <Text fw={600} className="text-[14px] text-[#0F172A]">
+                {lastPaymentDate ? formatDate(lastPaymentDate) : 'Pending activation'}
+              </Text>
             </div>
             <div className="flex items-center justify-between">
               <Text fw={500} className="text-[13px] text-[#6B7280]">ROSCA Duration</Text>
-              <Text fw={600} className="text-[14px] text-[#0F172A]">6 months</Text>
+              <Text fw={600} className="text-[14px] text-[#0F172A]">{durationLabel}</Text>
             </div>
           </div>
         </div>
 
         {/* Account Details Card */}
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-          <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">
-            Account Details
-          </Text>
-
+          <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">Account Details</Text>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <Text fw={500} className="text-[13px] text-[#6B7280]">Payment Method</Text>
@@ -103,11 +137,8 @@ export function JoinSummary() {
             </div>
             <div className="flex items-center justify-between">
               <Text fw={500} className="text-[13px] text-[#6B7280]">Wallet Balance</Text>
-              <Text
-                fw={600}
-                className={`text-[14px] ${hasInsufficientBalance ? 'text-[#EF4444]' : 'text-[#0F172A]'}`}
-              >
-                ₦{walletBalance.toLocaleString()}.00
+              <Text fw={600} className={`text-[14px] ${hasInsufficientBalance ? 'text-[#EF4444]' : 'text-[#0F172A]'}`}>
+                ₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>
           </div>
@@ -127,24 +158,24 @@ export function JoinSummary() {
         {hasInsufficientBalance ? (
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => navigate('/create-wallet')}
-              className="w-full rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
+              onClick={() => navigate('/fund-wallet')}
+              className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
             >
               Fund Wallet
             </button>
             <button
               disabled
-              className="w-full rounded-xl bg-[#D1D5DB] py-4 text-[15px] font-semibold text-white cursor-not-allowed"
+              className="w-full cursor-not-allowed rounded-xl bg-[#D1D5DB] py-4 text-[15px] font-semibold text-white"
             >
               Proceed
             </button>
           </div>
         ) : (
           <button
-            onClick={handleProceed}
-            className="w-full rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
+            onClick={() => navigate('/rosca/requests')}
+            className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
           >
-            Proceed
+            Done
           </button>
         )}
       </div>

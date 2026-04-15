@@ -18,6 +18,7 @@ import {
   Kyc,
   MyProfile,
   FundWalletCallback,
+  SetPin,
 } from '@/pages'
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
           <Route path="/withdraw" element={<WithdrawFunds />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/my-profile" element={<MyProfile />} />
+          <Route path="/set-pin" element={<SetPin />} />
         </Route>
 
         {/* Flutterwave callback — no layout */}

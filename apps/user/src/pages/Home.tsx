@@ -21,7 +21,7 @@ import { TrustScoreCard, CreditScoreCard } from "@/components/ScoreCards";
 
 import Rosca from "@/assets/Rosca.svg";
 import { useNavigate } from "react-router-dom";
-import { getWalletBalanceNaira, getWalletTransactions, getTrustScore, getCreditScore } from "@/utils/api";
+import { getWalletBalance, getWalletTransactions, getTrustScore, getCreditScore } from "@/utils/api";
 import type { WalletTransaction } from "@/utils/api";
 
 export function Home() {
@@ -37,13 +37,12 @@ export function Home() {
     const [creditScore, setCreditScore] = useState<number | null>(null)
 
     useEffect(() => {
-        getWalletBalanceNaira()
-            .then((res) => {
-                const data = (res.data ?? res) as Record<string, unknown>
+        getWalletBalance()
+            .then((data) => {
                 setWalletBalance({
-                    total: Number(data.total ?? 0),
-                    reserved: Number(data.reserved ?? 0),
-                    available: Number(data.available ?? 0),
+                    total: Number(data.total ?? 0) / 100,
+                    reserved: Number(data.reserved ?? 0) / 100,
+                    available: Number(data.available ?? 0) / 100,
                 })
             })
             .catch(() => setWalletBalance({ total: 0, reserved: 0, available: 0 }))

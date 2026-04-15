@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Text } from '@mantine/core'
 import { IconArrowLeft, IconShieldCheck, IconTrendingUp, IconWallet } from '@tabler/icons-react'
 import NigerianFlag from '@/assets/NigerianFlag.svg'
+import { getWalletBalance } from '@/utils/api'
 
 type Currency = 'NGN'
 
@@ -24,6 +25,13 @@ const BENEFITS = [
 export function CreateNewWallet() {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<Currency>('NGN')
+  const [balance, setBalance] = useState(0)
+
+  useEffect(() => {
+    getWalletBalance()
+      .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
+      .catch(() => setBalance(0))
+  }, [])
 
   return (
     <div className="mx-auto w-full max-w-[520px] px-4 py-6 sm:px-6 sm:py-8">
@@ -71,7 +79,7 @@ export function CreateNewWallet() {
               Nigerian Naira
             </Text>
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              NGN · ₦0.00 balance
+              NGN · ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })} balance
             </Text>
           </div>
 

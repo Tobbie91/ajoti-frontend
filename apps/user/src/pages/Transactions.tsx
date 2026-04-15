@@ -8,7 +8,7 @@ import {
   IconPlus,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getWalletBalanceNaira, getWalletTransactions } from '@/utils/api'
+import { getWalletBalance, getWalletTransactions } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 
 type Transaction = {
@@ -66,9 +66,8 @@ export function Transactions() {
 
   useEffect(() => {
     Promise.all([
-      getWalletBalanceNaira().then((res) => {
-        const data = (res.data ?? res) as Record<string, unknown>
-        const bal = Number(data.available ?? data.total ?? data.balance ?? 0)
+      getWalletBalance().then((data) => {
+        const bal = Number(data.available ?? data.total ?? 0) / 100
         setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
       }).catch(() => setWalletBalance('₦0.00')),
       getWalletTransactions().then((txns) =>

@@ -12,6 +12,8 @@ import {
   IconId,
   IconBuildingBank,
   IconLogout,
+  IconLock,
+  IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutApi, getUserProfile, updateUserProfile } from '@/utils/api'
@@ -332,6 +334,23 @@ export function Profile() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Transaction PIN */}
+      <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <Text fw={600} className="mb-5 text-[16px] text-[#0F172A]">
+          Security
+        </Text>
+        <button
+          onClick={() => navigate('/set-pin')}
+          className="flex w-full cursor-pointer items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3 hover:bg-[#F3F4F6]"
+        >
+          <div className="flex items-center gap-3">
+            <IconLock size={18} color="#02A36E" />
+            <Text fw={500} className="text-[13px] text-[#0F172A]">Transaction PIN</Text>
+          </div>
+          <IconChevronRight size={16} color="#9CA3AF" />
+        </button>
       </div>
 
       {saveSuccess && (

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Card, Group, PasswordInput, Text, TextInput, Divider, Select, Alert } from '@mantine/core'
-import { DatePickerInput } from '@mantine/dates'
+import { DateInput } from '@mantine/dates'
 import { IconUsers, IconUserCircle, IconAlertCircle } from '@tabler/icons-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
@@ -41,6 +41,7 @@ export function Signup() {
         dob: dob.toISOString().split('T')[0],
         gender: gender as 'MALE' | 'FEMALE',
         password,
+        role: role.toUpperCase() as 'MEMBER' | 'ADMIN',
       })
       localStorage.setItem('verify_email', email.trim())
       localStorage.setItem('user', JSON.stringify({
@@ -162,7 +163,7 @@ export function Signup() {
                 styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
               <Group grow gap="sm">
-                <DatePickerInput
+                <DateInput
                   label="Date of birth"
                   placeholder="DD/MM/YYYY"
                   radius="md"
@@ -170,6 +171,13 @@ export function Signup() {
                   maxDate={new Date()}
                   value={dob}
                   onChange={(value) => setDob(value ? new Date(value) : null)}
+                  dateParser={(input) => {
+                    const [day, month, year] = input.split('/')
+                    if (day && month && year && year.length === 4) {
+                      return new Date(Number(year), Number(month) - 1, Number(day))
+                    }
+                    return new Date(input)
+                  }}
                   styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
                 />
                 <Select

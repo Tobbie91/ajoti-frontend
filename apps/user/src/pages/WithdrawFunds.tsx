@@ -7,7 +7,7 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getWalletBalanceNaira, initializeWithdrawal } from '@/utils/api'
+import { getWalletBalance, initializeWithdrawal } from '@/utils/api'
 
 type Step = 'form' | 'pin' | 'processing' | 'success' | 'error'
 
@@ -47,6 +47,7 @@ export function WithdrawFunds() {
   // Form
   const [wallet, setWallet] = useState<string | null>('ngn')
   const [accountNumber, setAccountNumber] = useState('')
+  const [accountName, setAccountName] = useState('')
   const [bankCode, setBankCode] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
 
@@ -58,11 +59,8 @@ export function WithdrawFunds() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getWalletBalanceNaira()
-      .then((res) => {
-        const data = (res.data ?? res) as Record<string, unknown>
-        setAvailableBalance(Number(data.available ?? data.total ?? data.balance ?? 0))
-      })
+    getWalletBalance()
+      .then((data) => setAvailableBalance(Number(data.available ?? data.total ?? 0) / 100))
       .catch(() => setAvailableBalance(0))
   }, [])
 
@@ -78,6 +76,7 @@ export function WithdrawFunds() {
     numericAmount > 0 &&
     numericAmount <= availableBalance &&
     accountNumber.length === 10 &&
+    accountName.trim().length > 0 &&
     bankCode !== null &&
     wallet !== null
 
@@ -95,9 +94,11 @@ export function WithdrawFunds() {
       await initializeWithdrawal({
         amount: numericAmount,
         accountNumber,
+        accountName: accountName.trim(),
         bankCode: bankCode!,
         bankName: selectedBank?.label,
         narration: `Withdrawal of NGN ${amount}`,
+        transactionPin: enteredPin,
       })
       setStep('success')
     } catch (err) {
@@ -268,6 +269,14 @@ export function WithdrawFunds() {
                   const digits = e.currentTarget.value.replace(/\D/g, '').slice(0, 10)
                   setAccountNumber(digits)
                 }}
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
+              />
+              <TextInput
+                placeholder="Account Name"
+                radius="md"
+                size="md"
+                value={accountName}
+                onChange={(e) => setAccountName(e.currentTarget.value)}
                 styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
               />
               <Select

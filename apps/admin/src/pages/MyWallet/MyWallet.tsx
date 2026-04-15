@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Text, Button, Loader } from '@mantine/core'
 import { IconPlus, IconArrowUpRight, IconArrowDownLeft } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getAdminWalletBalance, getWalletBalanceNaira, getWalletTransactions } from '@/utils/api'
+import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '@/utils/api'
 
 interface Tx {
   id: string
@@ -27,12 +27,12 @@ export function MyWallet() {
       ? getAdminWalletBalance(userId)
           .then((data) => setBalance(data.available ?? data.total ?? 0))
           .catch(() =>
-            getWalletBalanceNaira()
-              .then((data) => setBalance(data.available ?? data.total ?? 0))
+            getWalletBalance()
+              .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
               .catch(() => setBalance(0)),
           )
-      : getWalletBalanceNaira()
-          .then((data) => setBalance(data.available ?? data.total ?? 0))
+      : getWalletBalance()
+          .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
           .catch(() => setBalance(0))
 
     Promise.all([

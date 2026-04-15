@@ -621,7 +621,7 @@ export function CreateGroup() {
                 setSubmitting(true)
                 setSubmitError(null)
                 try {
-                  const rawAmount = amount.replace(/,/g, '')
+                  const rawAmount = String(Number(amount.replace(/,/g, '')) * 100) // convert naira → kobo
                   const freqMap: Record<string, string> = { weekly: 'WEEKLY', biweekly: 'BI_WEEKLY', monthly: 'MONTHLY' }
                   const freq = freqMap[frequency[0]] || 'MONTHLY'
                   const visibility = privacyAccess === 'open' ? 'PUBLIC' : 'PRIVATE'
@@ -632,11 +632,9 @@ export function CreateGroup() {
                     frequency: freq as 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY',
                     durationCycles: Number(participants) || 10,
                     maxSlots: Number(participants) || 10,
-                    collateralPercentage: 10,
                     payoutLogic: payoutStructure,
                     autoStartOnFull: true,
                     visibility,
-                    latePenaltyPercent: 2,
                   })
                   navigate('/rosca/groups')
                 } catch (err) {

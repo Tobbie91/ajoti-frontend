@@ -91,17 +91,26 @@ export function GroupDetails() {
           const adminName = circle.admin
             ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
             : 'Unknown'
+          const amountNaira = Number(circle.contributionAmount ?? 0) / 100
+          const formattedAmount = `₦${amountNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+          const payoutLogicLabel: Record<string, string> = {
+            SEQUENTIAL: 'Sequential',
+            RANDOM_DRAW: 'Random Draw',
+            TRUST_SCORE: 'Trust Score',
+            COMBINED: 'Combined',
+            ADMIN_ASSIGNED: 'Admin Assigned',
+          }
           setGroup({
             id: circle.id,
             name: circle.name,
-            status: (circle.status === 'INVITE_ONLY' ? 'Invite Only' : 'Open') as GroupStatus,
-            amount: `₦${(circle.amount ?? 0).toLocaleString()}`,
+            status: (circle.visibility === 'PRIVATE' ? 'Invite Only' : 'Open') as GroupStatus,
+            amount: formattedAmount,
             frequency: circle.frequency ?? '',
-            duration: String(circle.duration ?? ''),
+            duration: `${circle.durationCycles ?? ''} cycles`,
             slotsLeft: `${slotsLeft} Slots left`,
-            contribution: `₦${(circle.amount ?? 0).toLocaleString()} ${(circle.frequency ?? '').toLowerCase()}`,
-            payoutOrder: String((circle as Record<string, unknown>).payoutOrder ?? 'Based on slot draw'),
-            penalty: String((circle as Record<string, unknown>).penalty ?? ''),
+            contribution: `${formattedAmount} ${(circle.frequency ?? '').toLowerCase()}`,
+            payoutOrder: payoutLogicLabel[(circle.payoutLogic as string) ?? ''] ?? String(circle.payoutLogic ?? '—'),
+            penalty: '—',
             admin: adminName,
             adminBio: String((circle as Record<string, unknown>).adminBio ?? ''),
             completionRate: `${(circle as Record<string, unknown>).completionRate ?? 0}%`,

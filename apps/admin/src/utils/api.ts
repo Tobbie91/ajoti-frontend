@@ -9,21 +9,42 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
 
   const data = await res.json().catch(() => ({}))
 
-  if (res.status === 401) {
-    // Token expired or missing — clear session and redirect to login
-    ;['admin_access_token', 'admin_refresh_token', 'admin_user', 'admin_kyc_completed', 'admin_verify_email'].forEach(
-      (k) => localStorage.removeItem(k),
-    )
-    window.location.href = '/login'
-    throw new Error('Session expired. Please log in again.')
-  }
-
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
     throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
   }
 
   return data as T
+}
+
+// ── Token refresh ────────────────────────────────────────────────────────────
+
+let isRefreshing = false
+let refreshQueue: Array<(token: string) => void> = []
+
+async function tryRefresh(): Promise<string> {
+  const refreshToken = localStorage.getItem('admin_refresh_token')
+  if (!refreshToken) throw new Error('No refresh token')
+
+  const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  })
+
+  if (!res.ok) throw new Error('Refresh failed')
+
+  const data = await res.json() as { accessToken: string; refreshToken: string }
+  localStorage.setItem('admin_access_token', data.accessToken)
+  localStorage.setItem('admin_refresh_token', data.refreshToken)
+  return data.accessToken
+}
+
+function clearSessionAndRedirect() {
+  ;['admin_access_token', 'admin_refresh_token', 'admin_user', 'admin_kyc_completed', 'admin_verify_email'].forEach(
+    (k) => localStorage.removeItem(k),
+  )
+  window.location.href = '/login'
 }
 
 // ── Auth ────────────────────────────────────────────────────────────────────
@@ -124,15 +145,59 @@ export function resendOtp(email: string): Promise<{ message: string }> {
 
 // ── Authenticated requests ──────────────────────────────────────────────────
 
-function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('admin_access_token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
+function authHeaders(token?: string): Record<string, string> {
+  const t = token ?? localStorage.getItem('admin_access_token')
+  return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
-function authRequest<T>(path: string, options: RequestInit): Promise<T> {
-  return request(path, {
-    ...options,
-    headers: { ...authHeaders(), ...options.headers },
+async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
+  const { headers, ...rest } = options
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...rest,
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...headers },
+  })
+
+  if (res.status !== 401) {
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg = (data as { message?: string | string[] }).message
+      throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
+    }
+    return data as T
+  }
+
+  // 401 — attempt token refresh
+  if (!isRefreshing) {
+    isRefreshing = true
+    try {
+      const newToken = await tryRefresh()
+      refreshQueue.forEach((resolve) => resolve(newToken))
+      refreshQueue = []
+      isRefreshing = false
+
+      return request<T>(path, {
+        ...options,
+        headers: { ...authHeaders(newToken), ...headers },
+      })
+    } catch {
+      refreshQueue = []
+      isRefreshing = false
+      clearSessionAndRedirect()
+      throw new Error('Session expired. Please log in again.')
+    }
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    refreshQueue.push((newToken) => {
+      resolve(
+        request<T>(path, {
+          ...options,
+          headers: { ...authHeaders(newToken), ...headers },
+        }),
+      )
+    })
+    setTimeout(() => reject(new Error('Session expired')), 10_000)
   })
 }
 
@@ -282,11 +347,9 @@ export interface CreateRoscaPayload {
   frequency: 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY'
   durationCycles: number
   maxSlots: number
-  collateralPercentage: number
   payoutLogic: string
   autoStartOnFull: boolean
   visibility: string
-  latePenaltyPercent: number
 }
 
 export function createRoscaCircle(payload: CreateRoscaPayload): Promise<RoscaCircle> {
@@ -538,12 +601,16 @@ export async function getAdminWalletBalance(userId: string): Promise<AdminWallet
   return ('data' in res && res.data ? res.data : res) as AdminWalletBalance
 }
 
-export async function getWalletBalanceNaira(): Promise<AdminWalletBalance> {
-  const res = await authRequest<{ data?: AdminWalletBalance } | AdminWalletBalance>(
-    '/api/wallet/balance/naira',
-    { method: 'GET' },
-  )
-  return ('data' in res && res.data ? res.data : res) as AdminWalletBalance
+export interface WalletBalance {
+  total: string
+  reserved: string
+  available: string
+  currency: string
+}
+
+export async function getWalletBalance(): Promise<WalletBalance> {
+  const res = await authRequest<{ data?: WalletBalance } | WalletBalance>('/api/wallet/balance', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as WalletBalance
 }
 
 // ── Wallet Funding ────────────────────────────────────────────────────────────
@@ -576,20 +643,35 @@ export function verifyFunding(reference: string): Promise<Record<string, unknown
 // ── Withdrawal ────────────────────────────────────────────────────────────────
 
 export interface WithdrawalPayload {
-  amount: number
+  amount: number        // naira — will be multiplied × 100 to kobo before sending
   accountNumber: string
+  accountName: string
   bankCode: string
   bankName?: string
-  currency?: string
   narration?: string
+  transactionPin: string
 }
 
 export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<Record<string, unknown>> {
+  const { amount, ...rest } = payload
   const res = await authRequest<{ data?: Record<string, unknown> } | Record<string, unknown>>(
     '/api/wallet/withdrawal/initialize',
-    { method: 'POST', body: JSON.stringify({ currency: 'NGN', ...payload }) },
+    { method: 'POST', body: JSON.stringify({ ...rest, amount: amount * 100 }) }, // convert naira → kobo
   )
   return ('data' in res && res.data ? res.data : res) as Record<string, unknown>
+}
+
+// ── Transaction PIN ───────────────────────────────────────────────────────────
+
+export function setTransactionPin(pin: string, currentPin?: string): Promise<{ message: string }> {
+  return authRequest('/api/users/me/pin', {
+    method: 'POST',
+    body: JSON.stringify({ pin, ...(currentPin ? { currentPin } : {}) }),
+  })
+}
+
+export function getPinStatus(): Promise<{ hasPin: boolean }> {
+  return authRequest('/api/users/me/pin/status', { method: 'GET' })
 }
 
 // ── Trust Score ───────────────────────────────────────────────────────────────

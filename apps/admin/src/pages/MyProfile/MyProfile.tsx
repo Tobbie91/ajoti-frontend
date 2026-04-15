@@ -14,6 +14,8 @@ import {
   IconUserCircle,
   IconCalendar,
   IconUsers,
+  IconLock,
+  IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutApi, getUserProfile, updateUserProfile } from '@/utils/api'
@@ -340,6 +342,26 @@ export function MyProfile() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Security */}
+      <div className="mb-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <Text fw={700} className="mb-5 text-[15px] text-[#0F172A]">Security</Text>
+        <button
+          onClick={() => navigate('/set-pin')}
+          className="flex w-full cursor-pointer items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3 hover:bg-[#F3F4F6]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F0FDF4]">
+              <IconLock size={18} color="#02A36E" />
+            </div>
+            <div>
+              <Text fw={600} className="text-[13px] text-[#0F172A]">Transaction PIN</Text>
+              <Text fw={400} className="text-[12px] text-[#6B7280]">Set or change your withdrawal PIN</Text>
+            </div>
+          </div>
+          <IconChevronRight size={16} color="#9CA3AF" />
+        </button>
       </div>
 
       {/* Save button */}

@@ -6,7 +6,7 @@ import { StatsCard } from '@/components/StatsCard'
 import { TrustScoreCard, CreditScoreCard } from '@/components/ScoreCards'
 import { GroupTable } from '@/components/GroupTable'
 import { QuickActions } from '@/components/QuickActions'
-import { getTrustScore, getAdminWalletBalance, getWalletBalanceNaira, getCreditScore, getAdminDashboard, type AdminDashboard } from '@/utils/api'
+import { getTrustScore, getAdminWalletBalance, getWalletBalance, getCreditScore, getAdminDashboard, type AdminDashboard } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -36,12 +36,12 @@ export function Dashboard() {
       ? getAdminWalletBalance(userId)
           .then((data) => setBalance(data.available ?? data.total ?? 0))
           .catch(() =>
-            getWalletBalanceNaira()
-              .then((data) => setBalance(data.available ?? data.total ?? 0))
+            getWalletBalance()
+              .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
               .catch(() => setBalance(0)),
           )
-      : getWalletBalanceNaira()
-          .then((data) => setBalance(data.available ?? data.total ?? 0))
+      : getWalletBalance()
+          .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
           .catch(() => setBalance(0))
     void balanceFetch
   }, [userId])

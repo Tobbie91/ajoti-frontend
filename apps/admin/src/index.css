@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import '@mantine/dates/styles.css';
 
 :root {
   --color-primary: #0b6b55;
