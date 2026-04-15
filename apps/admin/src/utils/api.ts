@@ -203,6 +203,17 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
 
 // ── KYC ─────────────────────────────────────────────────────────────────────
 
+export interface KycStatus {
+  ninVerified: boolean
+  bvnVerified: boolean
+  nokSubmitted: boolean
+  status: string // "PENDING" | "APPROVED" | "REJECTED"
+}
+
+export function getKycStatus(): Promise<KycStatus> {
+  return authRequest('/api/kyc/status', { method: 'GET' })
+}
+
 export interface VerifyNinPayload {
   nin: string
   firstName: string
@@ -270,6 +281,33 @@ export function updateUserProfile(payload: Partial<UserProfile>): Promise<{ mess
   return authRequest('/api/users/me', {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  })
+}
+
+// ── KYC Admin ────────────────────────────────────────────────────────────────
+
+export interface PendingKycRecord {
+  userId: string
+  name: string
+  email: string
+  submittedAt: string | null
+  ninVerifiedAt: string | null
+  bvnVerifiedAt: string | null
+  nokSubmitted: boolean
+}
+
+export function listPendingKyc(): Promise<PendingKycRecord[]> {
+  return authRequest('/api/kyc/pending', { method: 'GET' })
+}
+
+export function approveKyc(userId: string): Promise<KycStatus> {
+  return authRequest(`/api/kyc/approve/${userId}`, { method: 'PATCH' })
+}
+
+export function rejectKyc(userId: string, rejectionReason: string): Promise<KycStatus> {
+  return authRequest(`/api/kyc/reject/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ rejectionReason }),
   })
 }
 

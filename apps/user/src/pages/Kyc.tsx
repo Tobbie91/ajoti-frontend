@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { Text, TextInput, Textarea, Progress, Alert } from '@mantine/core'
+import { useState, useRef, useEffect } from 'react'
+import { Text, TextInput, Textarea, Progress, Alert, Loader } from '@mantine/core'
 import {
   IconArrowLeft,
   IconUpload,
@@ -17,7 +17,7 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { verifyNin as verifyNinApi, verifyBvn as verifyBvnApi, submitNok } from '@/utils/api'
+import { verifyNin as verifyNinApi, verifyBvn as verifyBvnApi, submitNok, getKycStatus, resubmitKyc } from '@/utils/api'
 
 type KycStep = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
@@ -63,9 +63,42 @@ export function Kyc() {
   // Error state
   const [error, setError] = useState<string | null>(null)
 
+  // Loading while we check whether to resume from a prior submission
+  const [resumeLoading, setResumeLoading] = useState(true)
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null)
+
   // User profile from localStorage (needed for NIN/BVN verification)
   const storedUser = localStorage.getItem('user')
   const userProfile = storedUser ? JSON.parse(storedUser) : null
+
+  // On mount: check backend KYC step so we can resume / resubmit from the right point
+  useEffect(() => {
+    getKycStatus()
+      .then(async (kyc) => {
+        if (kyc.status === 'REJECTED') {
+          // Call resubmit to reset step to NOK_REQUIRED, then resume from step 3
+          try {
+            await resubmitKyc()
+          } catch {
+            // If resubmit fails (shouldn't normally happen), still let them see step 1
+          }
+          setNinVerified(true)
+          setBvnVerified(true)
+          setRejectionReason(kyc.rejectionReason ?? null)
+          setStep(3)
+        } else if (kyc.step === 'NOK_REQUIRED' || kyc.step === 'ADDRESS_REQUIRED' || kyc.step === 'PHOTO_REQUIRED' || kyc.step === 'PROOF_OF_ADDRESS_REQUIRED') {
+          // NIN/BVN already verified — resume from NOK step
+          setNinVerified(true)
+          setBvnVerified(true)
+          setStep(3)
+        }
+        // For NIN_REQUIRED, BVN_REQUIRED, or no record — start at step 1 normally
+      })
+      .catch(() => {
+        // No KYC record or network error — start fresh at step 1
+      })
+      .finally(() => setResumeLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const progressValue = (step / 7) * 100
 
@@ -174,6 +207,14 @@ export function Kyc() {
     label: { fontWeight: 500, fontSize: 14, color: '#374151', marginBottom: 4 },
   }
 
+  if (resumeLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB]">
+        <Loader color="#02A36E" size="md" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Header */}
@@ -212,6 +253,19 @@ export function Kyc() {
 
       {/* Content */}
       <div className="mx-auto max-w-[600px] px-6 py-8">
+        {/* Rejection reason banner */}
+        {rejectionReason && step === 3 && (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            color="red"
+            radius="md"
+            mb="lg"
+            title="Previous submission was rejected"
+          >
+            {rejectionReason}
+          </Alert>
+        )}
+
         {/* Step indicators */}
         <div className="mb-8 flex items-center justify-between">
           {STEP_LABELS.map((label, i) => {

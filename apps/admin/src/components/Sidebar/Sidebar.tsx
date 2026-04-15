@@ -10,6 +10,7 @@ import {
   IconUserCheck,
   IconCirclePlus,
   IconUsers,
+  IconShieldCheck,
 } from '@tabler/icons-react'
 
 const roscaChildren = [
@@ -91,6 +92,20 @@ export function Sidebar() {
             root: {
               borderRadius: 8,
               fontWeight: isActive('/loans') ? 600 : 400,
+            },
+          }}
+        />
+
+        <NavLink
+          component={RouterNavLink}
+          to="/kyc-approvals"
+          label="KYC Approvals"
+          leftSection={<IconShieldCheck size={19} stroke={1.5} />}
+          active={isActive('/kyc-approvals')}
+          styles={{
+            root: {
+              borderRadius: 8,
+              fontWeight: isActive('/kyc-approvals') ? 600 : 400,
             },
           }}
         />

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from '@/layouts'
+import { KycGate } from '@/components/KycGate'
 import {
   Dashboard,
   CreateGroup,
@@ -19,6 +20,7 @@ import {
   MyProfile,
   FundWalletCallback,
   SetPin,
+  KycApprovals,
 } from '@/pages'
 
 function App() {
@@ -41,11 +43,12 @@ function App() {
           <Route path="/rosca/groups/:id/edit" element={<EditGroup />} />
           <Route path="/loans" element={<Loans />} />
           <Route path="/my-wallet" element={<MyWallet />} />
-          <Route path="/fund-wallet" element={<FundWallet />} />
-          <Route path="/withdraw" element={<WithdrawFunds />} />
+          <Route path="/fund-wallet" element={<KycGate action="fund your wallet"><FundWallet /></KycGate>} />
+          <Route path="/withdraw" element={<KycGate action="withdraw funds"><WithdrawFunds /></KycGate>} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/my-profile" element={<MyProfile />} />
           <Route path="/set-pin" element={<SetPin />} />
+          <Route path="/kyc-approvals" element={<KycApprovals />} />
         </Route>
 
         {/* Flutterwave callback — no layout */}

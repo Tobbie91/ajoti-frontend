@@ -192,7 +192,7 @@ export function Header({ opened, onToggle }: HeaderProps) {
       <Group gap="sm">
         <NotificationPanel />
         <Box
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate('/my-profile')}
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
         >
           <Box style={{ textAlign: 'right' }}>

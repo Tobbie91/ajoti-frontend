@@ -236,11 +236,17 @@ export interface KycStatus {
   ninVerified: boolean
   bvnVerified: boolean
   nokSubmitted: boolean
-  status: string  // e.g. "PENDING", "APPROVED", "REJECTED"
+  status: string  // e.g. "NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED"
+  step?: string   // e.g. "NIN_REQUIRED", "BVN_REQUIRED", "NOK_REQUIRED", "SUBMITTED"
+  rejectionReason?: string | null
 }
 
 export function getKycStatus(): Promise<KycStatus> {
   return authRequest('/api/kyc/status', { method: 'GET' })
+}
+
+export function resubmitKyc(): Promise<KycStatus> {
+  return authRequest('/api/kyc/resubmit', { method: 'POST' })
 }
 
 export interface VerifyNinPayload {

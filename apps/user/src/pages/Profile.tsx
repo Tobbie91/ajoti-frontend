@@ -16,7 +16,7 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi, getUserProfile, updateUserProfile } from '@/utils/api'
+import { logout as logoutApi, getUserProfile, updateUserProfile, getKycStatus, type KycStatus } from '@/utils/api'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('user')
@@ -46,7 +46,12 @@ export function Profile() {
   const [address, setAddress] = useState(user.address || '')
   const [city, setCity] = useState(user.city || '')
   const [state, setState] = useState<string | null>(user.state || null)
-  const kycCompleted = localStorage.getItem('kyc_completed') === 'true'
+  const [kycStatus, setKycStatus] = useState<KycStatus | null>(null)
+  const kycApproved = kycStatus?.status === 'APPROVED'
+
+  useEffect(() => {
+    getKycStatus().then(setKycStatus).catch(() => {})
+  }, [])
 
   useEffect(() => {
     getUserProfile()
@@ -115,13 +120,23 @@ export function Profile() {
           <Text fw={400} className="text-[14px] text-[#6B7280]">
             {email}
           </Text>
-          {kycCompleted && (
+          {kycApproved ? (
             <div className="mt-2 flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
               <IconShieldCheck size={14} color="#02A36E" />
               <Text fw={500} className="text-[12px] text-[#02A36E]">
                 KYC Verified
               </Text>
             </div>
+          ) : (
+            <button
+              onClick={() => navigate('/kyc')}
+              className="mt-2 flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 hover:bg-[#FDE68A]"
+            >
+              <IconShieldCheck size={14} color="#F59E0B" />
+              <Text fw={500} className="text-[12px] text-[#92400E]">
+                Complete Verification
+              </Text>
+            </button>
           )}
         </div>
         <button
@@ -304,7 +319,7 @@ export function Profile() {
               </Text>
             </div>
             <div className="flex items-center gap-1.5">
-              {kycCompleted ? (
+              {kycStatus?.ninVerified ? (
                 <>
                   <IconCheck size={14} color="#02A36E" />
                   <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
@@ -323,7 +338,7 @@ export function Profile() {
               </Text>
             </div>
             <div className="flex items-center gap-1.5">
-              {kycCompleted ? (
+              {kycStatus?.bvnVerified ? (
                 <>
                   <IconCheck size={14} color="#02A36E" />
                   <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
@@ -333,6 +348,15 @@ export function Profile() {
               )}
             </div>
           </div>
+
+          {!kycApproved && (
+            <button
+              onClick={() => navigate('/kyc')}
+              className="mt-1 w-full cursor-pointer rounded-xl bg-[#02A36E] py-3 text-[13px] font-semibold text-white hover:bg-[#028a5b]"
+            >
+              {kycStatus?.ninVerified || kycStatus?.bvnVerified ? 'Resume Verification' : 'Start Verification'}
+            </button>
+          )}
         </div>
       </div>
 
