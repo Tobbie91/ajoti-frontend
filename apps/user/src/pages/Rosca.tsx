@@ -4,6 +4,9 @@ import { IconSearch, IconMessageCircle, IconCalendar, IconCheck, IconFilter, Ico
 import { useNavigate } from 'react-router-dom'
 import { listRoscaCircles, getMyJoinRequests, getMyParticipations, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
 
+// Shape returned by getMyParticipations — a circle object with the user already a member
+type Participation = RoscaCircle
+
 const TABS = ['All Groups', 'Open Groups', 'Invite-Only', 'Joined'] as const
 
 type GroupStatus = 'Open' | 'Invite Only'
@@ -78,7 +81,7 @@ export function Rosca() {
     if (activeTab !== 'Joined') return
     setJoinedLoading(true)
 
-    function mapToJoined(r: MyJoinRequest): JoinedGroup {
+    function mapJoinRequest(r: MyJoinRequest): JoinedGroup {
       const circle = r.circle ?? {}
       const filled = Number(circle.filledSlots ?? 0)
       const total = Number(circle.durationCycles ?? circle.maxSlots ?? 1)
@@ -86,12 +89,33 @@ export function Rosca() {
         ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
         : 'Admin'
       const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
-      const nextPayout = circle.nextPayoutDate
-        ? new Date(circle.nextPayoutDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+      const nextPayout = (circle as { nextPayoutDate?: string }).nextPayoutDate
+        ? new Date((circle as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'TBD'
       return {
         id: r.circleId,
         name: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
+        completionRate,
+        completedCycles: filled,
+        totalCycles: total,
+        nextContribution: nextPayout,
+        admin: adminName,
+      }
+    }
+
+    function mapParticipation(c: Participation): JoinedGroup {
+      const filled = Number(c.filledSlots ?? 0)
+      const total = Number(c.durationCycles ?? c.maxSlots ?? 1)
+      const adminName = c.admin
+        ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
+        : 'Admin'
+      const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
+      const nextPayout = (c as { nextPayoutDate?: string }).nextPayoutDate
+        ? new Date((c as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'TBD'
+      return {
+        id: c.id,
+        name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
         completionRate,
         completedCycles: filled,
         totalCycles: total,
@@ -109,13 +133,19 @@ export function Rosca() {
           (r) => ['APPROVED', 'ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
         )
 
-        // Merge, deduplicate by circleId (participations take priority)
+        // Build merged list — participations take priority (dedup by circleId)
         const seenIds = new Set<string>()
         const merged: JoinedGroup[] = []
-        for (const r of [...participations, ...approvedRequests]) {
+        for (const c of participations) {
+          if (!seenIds.has(c.id)) {
+            seenIds.add(c.id)
+            merged.push(mapParticipation(c))
+          }
+        }
+        for (const r of approvedRequests) {
           if (!seenIds.has(r.circleId)) {
             seenIds.add(r.circleId)
-            merged.push(mapToJoined(r))
+            merged.push(mapJoinRequest(r))
           }
         }
         setJoinedGroups(merged)

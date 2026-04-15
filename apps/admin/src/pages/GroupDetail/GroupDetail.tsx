@@ -55,6 +55,7 @@ import {
   getMemberProgress,
   notifyMissingContributors,
   getFinancialHealth,
+  getCircleJoinRequests,
   type Payout,
   type Contribution as ApiContribution,
   type RoscaCircle,
@@ -523,16 +524,19 @@ export function GroupDetail() {
       .then(setCircleData)
       .catch(() => {})
       .finally(() => setCircleLoading(false))
+    // Fetch financial health early so the balance card is populated immediately
+    getFinancialHealth(id)
+      .then(setFinancialHealth)
+      .catch(() => {})
+    // Fetch pending join request count
+    getCircleJoinRequests(id)
+      .then((requests) => setPendingJoinCount(requests.length))
+      .catch(() => {})
   }, [id])
 
   const mockFallback = mockGroups.find((g) => g.id === id) || defaultGroup
   const groupName = circleData?.name ?? mockFallback.name
   const groupStatus = (circleData?.status ?? mockFallback.status) as string
-  const groupBalance = circleData
-    ? `₦${Number(circleData.contributionAmount ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
-    : mockFallback.balance
-
-  const group = { ...mockFallback, name: groupName, status: groupStatus as GroupInfo['status'], balance: groupBalance }
   const isPending = groupStatus === 'PENDING' || groupStatus === 'Pending'
   const isCompleted = groupStatus === 'COMPLETED' || groupStatus === 'Completed'
   const badge = getStatusBadge(isPending ? 'Pending' : isCompleted ? 'Completed' : 'Active')
@@ -613,10 +617,7 @@ export function GroupDetail() {
     setInviteStep('sending')
     setInviteError(null)
     try {
-      const contact = inviteBy === 'email'
-        ? { email: inviteContact, name: inviteName }
-        : { phone: inviteContact, name: inviteName }
-      await sendCircleInvite(id, contact)
+      await sendCircleInvite(id, { email: inviteContact })
       setInviteStep('success')
       loadInvites()
     } catch (err) {
@@ -645,6 +646,16 @@ export function GroupDetail() {
   // Financial health state
   const [financialHealth, setFinancialHealth] = useState<FinancialHealth | null>(null)
   const [financialHealthLoading, setFinancialHealthLoading] = useState(false)
+  const [pendingJoinCount, setPendingJoinCount] = useState<number>(0)
+
+  const totalCollectedKobo = financialHealth?.cycles
+    ? (financialHealth.cycles as Array<{ collected?: string | number }>)
+        .reduce((sum, c) => sum + Number(c.collected ?? 0), 0)
+    : null
+  const groupBalance = totalCollectedKobo !== null
+    ? `₦${(totalCollectedKobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+    : circleLoading ? '...' : '₦0.00'
+  const group = { ...mockFallback, name: groupName, status: groupStatus as GroupInfo['status'], balance: groupBalance }
 
   // Debit filter modal state
   const [debitFilterModal, setDebitFilterModal] = useState(false)
@@ -891,7 +902,12 @@ export function GroupDetail() {
               </Group>
               <Text fz="sm" c="dimmed" mb="md">
                 {circleData
-                  ? `${circleData.frequency ?? ''} · ₦${Number(circleData.contributionAmount ?? 0).toLocaleString()} · ${circleData.filledSlots ?? 0}/${circleData.maxSlots ?? 0} members`
+                  ? (() => {
+                      const freqLabel: Record<string, string> = { WEEKLY: 'Weekly', BI_WEEKLY: 'Bi-weekly', MONTHLY: 'Monthly' }
+                      const freq = freqLabel[(circleData.frequency as string) ?? ''] ?? circleData.frequency ?? ''
+                      const amount = (Number(circleData.contributionAmount ?? 0) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+                      return `${freq} · ₦${amount} · ${circleData.filledSlots ?? 0}/${circleData.maxSlots ?? 0} members`
+                    })()
                   : group.tagline}
               </Text>
               <Group gap="sm">
@@ -1161,15 +1177,15 @@ export function GroupDetail() {
                     size={120}
                     thickness={10}
                     roundCaps
-                    sections={[{ value: 10, color: PRIMARY }]}
+                    sections={[{ value: Math.min((pendingJoinCount / (circleData?.maxSlots ?? 1)) * 100, 100), color: PRIMARY }]}
                     label={
                       <Text ta="center" fz={22} fw={700} style={{ color: PRIMARY }}>
-                        1
+                        {pendingJoinCount}
                       </Text>
                     }
                   />
                   <Text fz="sm" fw={500} ta="center" mt="sm">
-                    Pending Join Request
+                    Pending Join {pendingJoinCount === 1 ? 'Request' : 'Requests'}
                   </Text>
                 </Paper>
               </Group>

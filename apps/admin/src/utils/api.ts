@@ -401,6 +401,24 @@ export async function getJoinRequests(): Promise<CirclePendingRequests[]> {
   return Array.isArray(res) ? res : (res as { data?: CirclePendingRequests[] }).data ?? []
 }
 
+export interface JoinRequesterDossier {
+  userId: string
+  membershipId: string
+  name: string
+  requestedAt: string
+  trustScore: number
+  onTimePaymentRate: number | null
+  completedCycles: number
+}
+
+export async function getCircleJoinRequests(circleId: string): Promise<JoinRequesterDossier[]> {
+  const res = await authRequest<{ data?: JoinRequesterDossier[] } | JoinRequesterDossier[]>(
+    `/api/admin/rosca/${circleId}/join-requests`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: JoinRequesterDossier[] }).data ?? []
+}
+
 // PATCH /api/admin/rosca/{circleId}/members/{userId}/approve — approve a member
 export function approveMember(circleId: string, userId: string): Promise<{ message: string }> {
   return authRequest(`/api/admin/rosca/${circleId}/members/${userId}/approve`, {
@@ -801,7 +819,7 @@ export interface CircleInvite {
 
 export async function sendCircleInvite(
   circleId: string,
-  payload: { email?: string; phone?: string; name?: string },
+  payload: { email: string },
 ): Promise<{ message: string; data?: CircleInvite }> {
   return authRequest(`/api/admin/rosca/${circleId}/invites`, {
     method: 'POST',

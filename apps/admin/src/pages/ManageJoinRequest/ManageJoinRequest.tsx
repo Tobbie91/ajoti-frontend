@@ -13,19 +13,12 @@ import {
   Textarea,
   Loader,
 } from '@mantine/core'
-import { IconSearch, IconCircleCheck, IconAlertTriangle } from '@tabler/icons-react'
-import { getJoinRequests, getAdminCircleDetail, approveMember, rejectMember, type CirclePendingRequests } from '@/utils/api'
+import { IconSearch, IconCircleCheck, IconAlertTriangle, IconTrendingUp, IconHistory } from '@tabler/icons-react'
+import { getJoinRequests, getCircleJoinRequests, approveMember, rejectMember, type CirclePendingRequests, type JoinRequesterDossier } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
-interface PendingMember {
-  userId: string
-  name: string
-  joinedAt: string
-  trustScore: number
-  message: string
-  history: string
-}
+type PendingMember = JoinRequesterDossier
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -88,43 +81,19 @@ export function ManageJoinRequest() {
     if (!activeCircle) return
     setMembersLoading(true)
     setMembers([])
-    getAdminCircleDetail(activeCircle.circleId)
-      .then((circle) => {
-        type RawMember = {
-          userId: string
-          name?: string
-          status: string
-          joinedAt?: string
-          createdAt?: string
-          trustScore?: number
-          message?: string
-          history?: string
-          user?: { firstName?: string; lastName?: string; trustScore?: number }
-        }
-        const raw: RawMember[] = ((circle as Record<string, unknown>).members as RawMember[]) ?? []
-        const pending = raw
-          .filter((m) => (m.status ?? '').toUpperCase() === 'PENDING')
-          .map((m) => {
-            const fromUser = m.user ? `${m.user.firstName ?? ''} ${m.user.lastName ?? ''}`.trim() : ''
-            const name = m.name || fromUser || `User ${m.userId.slice(0, 6)}`
-            const trustScore = Number(m.trustScore ?? m.user?.trustScore ?? 0)
-            return {
-              userId: m.userId,
-              name,
-              joinedAt: m.joinedAt ?? m.createdAt ?? new Date().toISOString(),
-              trustScore,
-              message: m.message ?? '',
-              history: m.history ?? '',
-            }
-          })
-        setMembers(pending)
-      })
+    getCircleJoinRequests(activeCircle.circleId)
+      .then(setMembers)
       .catch(() => setMembers([]))
       .finally(() => setMembersLoading(false))
   }, [activeCircle])
 
   function removeFromList(userId: string) {
     setMembers((prev) => prev.filter((m) => m.userId !== userId))
+    setCircles((prev) => prev.map((c) =>
+      c.circleId === activeCircle?.circleId
+        ? { ...c, pendingCount: Math.max(0, c.pendingCount - 1) }
+        : c
+    ))
   }
 
   // Accept
@@ -177,10 +146,8 @@ export function ManageJoinRequest() {
     }
   }
 
-  const filtered = members.filter(
-    (m) =>
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.message.toLowerCase().includes(search.toLowerCase()),
+  const filtered = members.filter((m) =>
+    m.name.toLowerCase().includes(search.toLowerCase()),
   )
 
   // Loading tabs
@@ -272,23 +239,24 @@ export function ManageJoinRequest() {
                 <Paper key={member.userId} p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
                   <Group align="flex-start" justify="space-between" wrap="nowrap">
                     <Group align="flex-start" gap="md" wrap="nowrap" style={{ flex: 1 }}>
-                      <Avatar size={44} radius="xl" color="gray">
+                      <Avatar size={48} radius="xl" color="gray" fw={700}>
                         {member.name.charAt(0).toUpperCase()}
                       </Avatar>
                       <Box style={{ flex: 1 }}>
-                        <Group gap="sm" mb={4}>
-                          <Text fz="sm" fw={600}>{member.name}</Text>
-                          <Text fz="xs" c="dimmed">{timeAgo(member.joinedAt)}</Text>
+                        <Group gap="sm" mb={6}>
+                          <Text fz="sm" fw={700}>{member.name}</Text>
+                          <Text fz="xs" c="dimmed">Requested {timeAgo(member.requestedAt)}</Text>
                         </Group>
-                        {member.message && (
-                          <Text fz="sm" c="dimmed" mb={8}>{member.message}</Text>
-                        )}
-                        <Group gap="xl" align="center">
+
+                        {/* Stats row */}
+                        <Group gap="lg" wrap="wrap">
+                          {/* Trust Score */}
                           <Box>
                             <Text fz="xs" c="dimmed" mb={4}>Trust Score</Text>
                             <Badge
                               size="lg"
                               radius="sm"
+                              leftSection={<IconTrendingUp size={12} />}
                               style={{
                                 background: getTrustBg(member.trustScore),
                                 color: getTrustColor(member.trustScore),
@@ -297,24 +265,40 @@ export function ManageJoinRequest() {
                                 fontSize: 13,
                               }}
                             >
-                              {member.trustScore}/100
+                              {member.trustScore}
                             </Badge>
                           </Box>
-                          {member.history && (
-                            <Box>
-                              <Text fz="xs" c="dimmed" mb={4}>History</Text>
-                              <Group gap={6} align="center">
-                                <Text fz="sm">{member.history}</Text>
-                                <Text
-                                  fz="xs"
-                                  fw={500}
-                                  style={{ color: PRIMARY, cursor: 'pointer' }}
-                                >
-                                  View History
-                                </Text>
-                              </Group>
-                            </Box>
-                          )}
+
+                          {/* On-time payment rate */}
+                          <Box>
+                            <Text fz="xs" c="dimmed" mb={4}>On-time Payments</Text>
+                            {member.onTimePaymentRate !== null ? (
+                              <Badge
+                                size="lg"
+                                radius="sm"
+                                style={{
+                                  background: getTrustBg(member.onTimePaymentRate),
+                                  color: getTrustColor(member.onTimePaymentRate),
+                                  border: 'none',
+                                  fontWeight: 700,
+                                  fontSize: 13,
+                                }}
+                              >
+                                {member.onTimePaymentRate}%
+                              </Badge>
+                            ) : (
+                              <Text fz="sm" c="dimmed">No history</Text>
+                            )}
+                          </Box>
+
+                          {/* Completed cycles */}
+                          <Box>
+                            <Text fz="xs" c="dimmed" mb={4}>Completed Cycles</Text>
+                            <Group gap={4} align="center">
+                              <IconHistory size={14} color="#6B7280" />
+                              <Text fz="sm" fw={600}>{member.completedCycles}</Text>
+                            </Group>
+                          </Box>
                         </Group>
                       </Box>
                     </Group>

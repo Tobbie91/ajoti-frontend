@@ -7,17 +7,22 @@ import {
   IconWallet,
   IconCash,
   IconUserCircle,
+  IconUserCheck,
+  IconCirclePlus,
+  IconUsers,
 } from '@tabler/icons-react'
 
 const roscaChildren = [
-  { label: 'Groups', path: '/rosca/groups' },
+  { label: 'Groups', path: '/rosca/groups', icon: IconUsers },
+  { label: 'Create Group', path: '/create-group', icon: IconCirclePlus },
+  { label: 'Join Requests', path: '/manage-join-request', icon: IconUserCheck },
 ]
 
 export function Sidebar() {
   const location = useLocation()
-  const [roscaOpened, setRoscaOpened] = useState(
-    location.pathname.startsWith('/rosca'),
-  )
+  const roscaPaths = ['/rosca', '/create-group', '/manage-join-request']
+  const isRoscaSection = roscaPaths.some((p) => location.pathname.startsWith(p))
+  const [roscaOpened, setRoscaOpened] = useState(isRoscaSection)
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
@@ -46,7 +51,7 @@ export function Sidebar() {
           childrenOffset={24}
           opened={roscaOpened}
           onChange={() => setRoscaOpened((o) => !o)}
-          active={location.pathname.startsWith('/rosca')}
+          active={isRoscaSection}
           styles={{ root: { borderRadius: 8 } }}
         >
           {roscaChildren.map((child) => (
@@ -55,7 +60,8 @@ export function Sidebar() {
               component={RouterNavLink}
               to={child.path}
               label={child.label}
-              active={location.pathname === child.path}
+              leftSection={child.icon ? <child.icon size={15} stroke={1.5} /> : undefined}
+              active={isActive(child.path)}
               styles={{ root: { borderRadius: 8 } }}
             />
           ))}

@@ -390,12 +390,12 @@ export async function getMyJoinRequests(): Promise<MyJoinRequest[]> {
 }
 
 // GET /api/rosca/my-participations — circles the user is actively participating in
-export async function getMyParticipations(): Promise<MyJoinRequest[]> {
-  const res = await authRequest<{ data?: MyJoinRequest[] } | MyJoinRequest[]>(
+export async function getMyParticipations(): Promise<RoscaCircle[]> {
+  const res = await authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>(
     '/api/rosca/my-participations',
     { method: 'GET' },
   )
-  return Array.isArray(res) ? res : (res as { data?: MyJoinRequest[] }).data ?? []
+  return Array.isArray(res) ? res : (res as { data?: RoscaCircle[] }).data ?? []
 }
 
 export interface RoscaSchedule {
