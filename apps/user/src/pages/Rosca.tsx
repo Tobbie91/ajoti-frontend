@@ -227,11 +227,6 @@ export function Rosca() {
               fontSize: 14,
               padding: '10px 0',
               color: '#9CA3AF',
-              '&[data-active]': {
-                color: '#02A36E',
-                borderBottomColor: '#02A36E',
-                fontWeight: 600,
-              },
             },
           }}
         >

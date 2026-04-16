@@ -448,14 +448,48 @@ export async function getMyParticipations(): Promise<RoscaCircle[]> {
 }
 
 export interface RoscaSchedule {
-  month: string
-  recipient: string
+  id?: string
+  cycleNumber?: number
+  contributionDeadline?: string
+  payoutDate?: string
+  recipientId?: string | null
   status: string
+  // legacy fields (used in GroupDetails payout table)
+  month?: string
+  recipient?: string
   [key: string]: unknown
 }
 
-export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
-  return authRequest(`/api/rosca/${circleId}/schedules`, { method: 'GET' })
+export async function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
+  const res = await authRequest<{ data?: RoscaSchedule[] } | RoscaSchedule[]>(
+    `/api/rosca/${circleId}/schedules`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: RoscaSchedule[] }).data ?? []
+}
+
+export async function getRoscaCircle(circleId: string): Promise<RoscaCircle> {
+  const res = await authRequest<{ data?: RoscaCircle } | RoscaCircle>(
+    `/api/rosca/${circleId}`,
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as RoscaCircle
+}
+
+export interface CircleContribution {
+  id: string
+  cycleNumber: number
+  amount: string
+  penaltyAmount: string
+  paidAt: string
+}
+
+export async function getCircleContributions(circleId: string): Promise<CircleContribution[]> {
+  const res = await authRequest<{ data?: CircleContribution[] } | CircleContribution[]>(
+    `/api/rosca/${circleId}/contributions`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: CircleContribution[] }).data ?? []
 }
 
 // ── Wallet ──────────────────────────────────────────────────────────────────
@@ -748,12 +782,56 @@ export interface AppNotification {
   message: string
   read: boolean
   createdAt: string
+  actionUrl?: string | null
   [key: string]: unknown
 }
 
+export interface PendingInvite {
+  id: string
+  token: string
+  email: string
+  expiresAt: string
+  createdAt: string
+  circle: {
+    id: string
+    name: string
+    contributionAmount: string
+    frequency: string
+    durationCycles: number
+    maxSlots: number
+    filledSlots: number
+    admin: { firstName: string; lastName: string }
+  }
+}
+
+export async function getMyInvites(): Promise<PendingInvite[]> {
+  const res = await authRequest<{ data?: PendingInvite[] } | PendingInvite[]>(
+    '/api/rosca/my-invites',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: PendingInvite[] }).data ?? []
+}
+
+export async function joinByInvite(token: string): Promise<{ message: string }> {
+  return authRequest('/api/rosca/join-by-invite', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
 export async function getNotifications(): Promise<AppNotification[]> {
-  const res = await authRequest<{ data?: AppNotification[] } | AppNotification[]>('/api/notifications', { method: 'GET' })
-  return Array.isArray(res) ? res : (res as { data?: AppNotification[] }).data ?? []
+  const res = await authRequest<{ data?: unknown[] } | unknown[]>('/api/notifications', { method: 'GET' })
+  const raw: unknown[] = Array.isArray(res) ? res : ((res as { data?: unknown[] }).data ?? [])
+  // Normalize backend field names: body→message, isRead→read
+  return raw.map((n: unknown) => {
+    const r = n as Record<string, unknown>
+    return {
+      ...r,
+      message: (r.message ?? r.body ?? '') as string,
+      read: (r.read ?? r.isRead ?? false) as boolean,
+      actionUrl: (r.actionUrl ?? null) as string | null,
+    } as AppNotification
+  })
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
@@ -778,6 +856,9 @@ export interface CircleMember {
   firstName?: string
   lastName?: string
   position?: number
+  status?: string
+  joinedAt?: string
+  trustScore?: number
   [key: string]: unknown
 }
 
@@ -808,7 +889,7 @@ export async function submitPeerReview(circleId: string, payload: {
   rating: number
   comment?: string
 }): Promise<{ message: string }> {
-  return authRequest(`/api/rosca/${circleId}/peer-review`, {
+  return authRequest(`/api/rosca/${circleId}/reviews`, {
     method: 'POST',
     body: JSON.stringify(payload),
   })

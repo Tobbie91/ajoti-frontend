@@ -3,7 +3,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider } from '@/components/AuthProvider'
 import { KycGate } from '@/components/KycGate'
 import { AppLayout, BlogLayout } from '@/layouts'
-import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, FundWalletCallback, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword, SetPin } from '@/pages'
+import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, InviteAccept, MyInvites, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, FundWalletCallback, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword, SetPin } from '@/pages'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = Boolean(googleClientId)
@@ -54,38 +54,7 @@ function App() {
                 </AppLayout>
             }
           />
-          <Route
-            path="/rosca/:id"
-            element={
-              <AppLayout>
-                  <GroupDetails />
-                </AppLayout>
-            }
-          />
-          <Route
-            path="/rosca/:id/join"
-            element={
-              <AppLayout>
-                  <RequestToJoin />
-                </AppLayout>
-            }
-          />
-          <Route
-            path="/rosca/:id/summary"
-            element={
-              <AppLayout>
-                  <JoinSummary />
-                </AppLayout>
-            }
-          />
-          <Route
-            path="/rosca/:id/activities"
-            element={
-              <AppLayout>
-                  <GrowthActivities />
-                </AppLayout>
-            }
-          />
+          {/* Static /rosca/* routes must come before /rosca/:id */}
           <Route
             path="/rosca/how-it-works"
             element={
@@ -115,6 +84,55 @@ function App() {
             element={
               <AppLayout>
                   <MyGroupRequests />
+                </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/invites"
+            element={
+              <AppLayout>
+                <MyInvites />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/invite/:token"
+            element={
+              <AppLayout>
+                <InviteAccept />
+              </AppLayout>
+            }
+          />
+          {/* Dynamic routes after all static ones */}
+          <Route
+            path="/rosca/:id/join"
+            element={
+              <AppLayout>
+                  <RequestToJoin />
+                </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/:id/summary"
+            element={
+              <AppLayout>
+                  <JoinSummary />
+                </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/:id/activities"
+            element={
+              <AppLayout>
+                  <GrowthActivities />
+                </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/:id"
+            element={
+              <AppLayout>
+                  <GroupDetails />
                 </AppLayout>
             }
           />

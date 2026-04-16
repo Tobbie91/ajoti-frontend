@@ -96,6 +96,7 @@ function cx(...classes: Array<string | false | undefined>) {
 }
 
 function NotificationPanel() {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -128,6 +129,18 @@ function NotificationPanel() {
     await markNotificationRead(id).catch(() => {})
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
     setUnreadCount((c) => Math.max(0, c - 1))
+  }
+
+  async function handleNotificationClick(n: AppNotification) {
+    if (!n.read) await handleMarkOne(n.id)
+    const url = n.actionUrl ?? (
+      // Fallback: old invite notifications created before actionUrl was added
+      n.title?.toLowerCase().includes('invited to join') ? '/rosca/invites' : null
+    )
+    if (url) {
+      setOpen(false)
+      navigate(url as string)
+    }
   }
 
   return (
@@ -189,10 +202,10 @@ function NotificationPanel() {
               {notifications.map((n) => (
                 <button
                   key={n.id}
-                  onClick={() => !n.read && handleMarkOne(n.id)}
-                  className={`w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-[#F9FAFB] ${
+                  onClick={() => handleNotificationClick(n)}
+                  className={`w-full px-4 py-3 text-left transition-colors hover:bg-[#F9FAFB] ${
                     !n.read ? 'bg-[#F0FDF4]' : ''
-                  }`}
+                  } ${n.actionUrl ? 'cursor-pointer' : !n.read ? 'cursor-pointer' : 'cursor-default'}`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.read && (
