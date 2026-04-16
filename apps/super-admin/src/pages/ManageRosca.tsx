@@ -1,363 +1,612 @@
-import { AdminRequestModal } from '@/components/AdminRequestModal/AdminRequestModal';
 import {
-  Container,
-  Group,
-  Text,
-  Title,
-  Tabs,
-  Table,
-  Paper,
-  Button,
-  Pagination,
-  Stack,
-  Modal,
-  Loader,
+  ActionIcon,
   Badge,
-} from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
-import { useState } from 'react';
+  Button,
+  Drawer,
+  Group,
+  Loader,
+  Menu,
+  Pagination,
+  Paper,
+  Select,
+  Skeleton,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
+  Alert,
+  Modal,
+} from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
+import {
+  IconAlertCircle,
+  IconCircleX,
+  IconDots,
+  IconEye,
+  IconFlag,
+  IconRefresh,
+  IconSearch,
+} from '@tabler/icons-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  cancelCircle,
+  flagMember,
+  getCircleDetail,
+  getDefaulters,
+  listCircles,
+  type CircleRow,
+  type PaginatedResponse,
+} from '@/utils/api'
 
-interface AdminRequest {
-  name: string;
-  email: string;
-  phone?: string;
-  reason: string;
-  submitted: string;
-  idProvided: string;
-  groupsJoined: number;
-  dateJoined: string;
-  trustScore: number;
-  status: 'pending' | 'approved' | 'rejected'; // Add status field
-  action: 'approve' | 'reject';
+// ── helpers ─────────────────────────────────────────────────────────────────
+
+function formatNaira(kobo: string | number) {
+  const n = typeof kobo === 'string' ? parseFloat(kobo) : kobo
+  if (isNaN(n)) return '—'
+  return `₦${(n / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
-const initialRequests: AdminRequest[] = [
-  {
-    name: 'Ogunrinde Ayomide',
-    email: 'mide@domain.com',
-    reason: "I've managed local thrift groups",
-    submitted: 'Jun 20, 2025',
-    idProvided: 'Yes',
-    action: 'approve',
-    groupsJoined: 3,
-    dateJoined: 'April 15, 2025',
-    trustScore: 22,
-    status: 'pending',
-  },
-  {
-    name: 'Ogunrinde Ayomide',
-    email: 'mide@domain.com',
-    reason: "I've managed local thrift groups",
-    submitted: 'Jun 20, 2025',
-    idProvided: 'No',
-    action: 'reject',
-    groupsJoined: 1,
-    dateJoined: 'March 10, 2025',
-    trustScore: 15,
-    status: 'pending',
-  },
-  {
-    name: 'Adekunle Oluwaseun',
-    email: 'seun@domain.com',
-    reason: "10 years experience in financial management",
-    submitted: 'Jun 18, 2025',
-    idProvided: 'Yes',
-    action: 'approve',
-    groupsJoined: 5,
-    dateJoined: 'Jan 10, 2025',
-    trustScore: 85,
-    status: 'approved', // Already approved
-  },
-  {
-    name: 'Blessing Okafor',
-    email: 'blessing@domain.com',
-    reason: "Community leader with thrift group experience",
-    submitted: 'Jun 15, 2025',
-    idProvided: 'No',
-    action: 'reject',
-    groupsJoined: 0,
-    dateJoined: 'Feb 20, 2025',
-    trustScore: 10,
-    status: 'rejected', // Already rejected
-  },
-];
+function statusColor(status: string) {
+  switch (status?.toUpperCase()) {
+    case 'ACTIVE': return 'green'
+    case 'COMPLETED': return 'blue'
+    case 'CANCELLED': return 'red'
+    case 'PENDING': return 'yellow'
+    default: return 'gray'
+  }
+}
 
-export function ManageRosca() {
-  // Modals state
-  const [detailsModalOpened, setDetailsModalOpened] = useState(false);
-  const [confirmModalOpened, setConfirmModalOpened] = useState(false);
-  const [loadingModalOpened, setLoadingModalOpened] = useState(false);
-  
-  const [selectedRequest, setSelectedRequest] = useState<AdminRequest | null>(null);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<string | null>('pending');
-  const [requests, setRequests] = useState<AdminRequest[]>(initialRequests);
+// ── Circle detail drawer ─────────────────────────────────────────────────────
 
-  // Filter requests based on active tab
-  const filteredRequests = requests.filter(req => {
-    if (activeTab === 'pending') return req.status === 'pending';
-    if (activeTab === 'approved') return req.status === 'approved';
-    if (activeTab === 'rejected') return req.status === 'rejected';
-    return true;
-  });
+interface CircleDetailDrawerProps {
+  circleId: string | null
+  opened: boolean
+  onClose: () => void
+  onCancelled: () => void
+}
 
-  const handleViewRequest = (request: AdminRequest) => {
-    setSelectedRequest(request);
-    setDetailsModalOpened(true);
-  };
-  
-  // When user clicks Approve from details modal
-  const handleApproveClick = () => {
-    setDetailsModalOpened(false);
-    setConfirmModalOpened(true);
-  };
-  
-  // When user clicks Reject from details modal
-  const handleRejectClick = () => {
-    setDetailsModalOpened(false);
-    setLoadingMessage('Rejecting User');
-    setLoadingModalOpened(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      if (selectedRequest) {
-        // Update the request status
-        setRequests(prev => prev.map(req => 
-          req.email === selectedRequest.email && req.name === selectedRequest.name
-            ? { ...req, status: 'rejected' as const }
-            : req
-        ));
-        
-        console.log('Rejected:', selectedRequest);
-        setLoadingModalOpened(false);
-        setSelectedRequest(null);
-      }
-    }, 2000);
-  };
-  
-  // When user clicks Yes on confirmation modal
-  const handleConfirmApprove = () => {
-    setConfirmModalOpened(false);
-    setLoadingMessage('Confirming User');
-    setLoadingModalOpened(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      if (selectedRequest) {
-        // Update the request status
-        setRequests(prev => prev.map(req => 
-          req.email === selectedRequest.email && req.name === selectedRequest.name
-            ? { ...req, status: 'approved' as const }
-            : req
-        ));
-        
-        console.log('Approved:', selectedRequest);
-        setLoadingModalOpened(false);
-        setSelectedRequest(null);
-      }
-    }, 2000);
-  };
-  
-  // When user clicks No on confirmation modal
-  const handleCancelApprove = () => {
-    setConfirmModalOpened(false);
-    setDetailsModalOpened(true);
-  };
+function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDetailDrawerProps) {
+  const [detail, setDetail] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleCloseDetailsModal = () => {
-    setDetailsModalOpened(false);
-    setSelectedRequest(null);
-  };
+  // Cancel circle modal
+  const [cancelOpened, { open: openCancel, close: closeCancel }] = useDisclosure(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
-  // Get counts for tabs
-  const pendingCount = requests.filter(r => r.status === 'pending').length;
-  const approvedCount = requests.filter(r => r.status === 'approved').length;
-  const rejectedCount = requests.filter(r => r.status === 'rejected').length;
+  // Flag member modal
+  const [flagMemberId, setFlagMemberId] = useState<string | null>(null)
+  const [flagReason, setFlagReason] = useState('')
+  const [flagging, setFlagging] = useState(false)
+  const [flagError, setFlagError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!circleId || !opened) return
+    setLoading(true)
+    setError(null)
+    setDetail(null)
+    getCircleDetail(circleId)
+      .then(setDetail)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load circle'))
+      .finally(() => setLoading(false))
+  }, [circleId, opened])
+
+  async function handleCancel() {
+    if (!circleId || !cancelReason.trim()) return
+    setCancelling(true)
+    setCancelError(null)
+    try {
+      await cancelCircle(circleId, cancelReason.trim())
+      closeCancel()
+      setCancelReason('')
+      onCancelled()
+      onClose()
+    } catch (e) {
+      setCancelError(e instanceof Error ? e.message : 'Failed to cancel circle')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  async function handleFlagMember() {
+    if (!flagMemberId || !flagReason.trim()) return
+    setFlagging(true)
+    setFlagError(null)
+    try {
+      await flagMember(flagMemberId, flagReason.trim())
+      setFlagMemberId(null)
+      setFlagReason('')
+    } catch (e) {
+      setFlagError(e instanceof Error ? e.message : 'Failed to flag member')
+    } finally {
+      setFlagging(false)
+    }
+  }
+
+  const circle = detail as Record<string, unknown> | null
+  const members = (circle?.members as unknown[] | undefined) ?? []
+  const admin = circle?.admin as { firstName?: string; lastName?: string; email?: string } | undefined
 
   return (
-    <Container size="xl" py="xl">
-      <Stack gap="lg">
-        {/* Back */}
-        <Group gap="xs">
-          <IconArrowLeft size={18} />
-          <Text fw={500}>Back</Text>
-        </Group>
+    <>
+      <Drawer
+        opened={opened}
+        onClose={onClose}
+        position="right"
+        size="lg"
+        title={
+          <Text fw={700} size="lg">
+            Circle Detail
+          </Text>
+        }
+        padding="lg"
+      >
+        {loading && (
+          <Stack gap="md">
+            {[...Array(6)].map((_, i) => <Skeleton key={i} height={20} radius="sm" />)}
+          </Stack>
+        )}
 
-        {/* Header */}
-        <Text c="dimmed">Manage ROSCA</Text>
+        {error && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+            {error}
+          </Alert>
+        )}
 
-        <Group justify="space-between" align="center">
-          <Title order={2}>Admin Requests</Title>
+        {circle && !loading && (
+          <Stack gap="lg">
+            {/* Summary */}
+            <Paper withBorder radius="md" p="md">
+              <Group justify="space-between" mb="xs">
+                <Text fw={700} size="lg">{String(circle.name ?? '—')}</Text>
+                <Badge color={statusColor(String(circle.status ?? ''))} variant="light">
+                  {String(circle.status ?? '—')}
+                </Badge>
+              </Group>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-3">
+                <InfoItem label="Admin" value={admin ? `${admin.firstName} ${admin.lastName}` : '—'} />
+                <InfoItem label="Admin Email" value={admin?.email ?? '—'} />
+                <InfoItem label="Contribution" value={formatNaira(String(circle.contributionAmount ?? 0))} />
+                <InfoItem label="Frequency" value={String(circle.frequency ?? '—')} />
+                <InfoItem label="Cycle" value={`${String(circle.currentCycle ?? 0)} / ${String(circle.durationCycles ?? 0)}`} />
+                <InfoItem label="Members" value={String(circle.memberCount ?? 0)} />
+              </div>
+            </Paper>
 
-          <Tabs value={activeTab} onChange={setActiveTab}>
-            <Tabs.List>
-              <Tabs.Tab value="pending" rightSection={
-                <Badge size="xs" circle>{pendingCount}</Badge>
-              }>
-                Pending
-              </Tabs.Tab>
-              <Tabs.Tab value="approved" rightSection={
-                <Badge size="xs" circle color="green">{approvedCount}</Badge>
-              }>
-                Approved
-              </Tabs.Tab>
-              <Tabs.Tab value="rejected" rightSection={
-                <Badge size="xs" circle color="red">{rejectedCount}</Badge>
-              }>
-                Rejected
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-        </Group>
-
-        {/* Table */}
-        <Paper withBorder radius="md">
-          <Table
-            striped
-            highlightOnHover
-            styles={{
-              th: { padding: '16px 20px' },
-              td: { padding: '16px 20px' },
-            }}
-          >
-            <Table.Thead>
-              <Table.Tr bg="#066F5B">
-                <Table.Th c="white">Name</Table.Th>
-                <Table.Th c="white">Email</Table.Th>
-                <Table.Th c="white">Reason</Table.Th>
-                <Table.Th c="white">Submitted</Table.Th>
-                <Table.Th c="white">ID Provided</Table.Th>
-                <Table.Th c="white">Action</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-
-            <Table.Tbody>
-              {filteredRequests.length > 0 ? (
-                filteredRequests.map((req, index) => (
-                  <Table.Tr 
-                    key={index} 
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => req.status === 'pending' && handleViewRequest(req)}
-                  >
-                    <Table.Td>{req.name}</Table.Td>
-                    <Table.Td>{req.email}</Table.Td>
-                    <Table.Td>{req.reason.substring(0, 50)}...</Table.Td>
-                    <Table.Td>{req.submitted}</Table.Td>
-                    <Table.Td>{req.idProvided}</Table.Td>
-                    <Table.Td onClick={(e) => e.stopPropagation()}>
-                      {req.status === 'pending' ? (
-                        req.action === 'approve' ? (
-                          <Button 
-                            color="#00C853" 
-                            radius="md"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewRequest(req);
-                            }}
+            {/* Members */}
+            {members.length > 0 && (
+              <Paper withBorder radius="md" p="md">
+                <Text fw={600} mb="sm">Members</Text>
+                <Stack gap="xs">
+                  {(members as Record<string, unknown>[]).map((m, i) => {
+                    const user = m.user as Record<string, unknown> | undefined
+                    const membershipId = String(m.id ?? '')
+                    const isFlagged = m.isFlagged as boolean | undefined
+                    return (
+                      <Group key={i} justify="space-between" p="xs" style={{ borderRadius: 8, background: '#F9FAFB' }}>
+                        <div>
+                          <Text size="sm" fw={500}>
+                            {user ? `${user.firstName} ${user.lastName}` : `Member ${i + 1}`}
+                          </Text>
+                          <Text size="xs" c="dimmed">{String(user?.email ?? '—')}</Text>
+                        </div>
+                        <Group gap="xs">
+                          {isFlagged && <Badge color="orange" size="xs">Flagged</Badge>}
+                          <Badge color={statusColor(String(m.status ?? ''))} size="xs" variant="light">
+                            {String(m.status ?? '—')}
+                          </Badge>
+                          <ActionIcon
+                            variant="light"
+                            color="orange"
+                            size="sm"
+                            title="Flag member"
+                            onClick={() => { setFlagMemberId(membershipId); setFlagReason(''); setFlagError(null) }}
                           >
-                            Approve
-                          </Button>
-                        ) : (
-                          <Button 
-                            color="#DF0307" 
-                            radius="md"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewRequest(req);
-                            }}
-                          >
-                            Reject
-                          </Button>
-                        )
-                      ) : (
-                        <Text size="sm" c="dimmed">
-                          {req.status === 'approved' ? 'Approved' : 'Rejected'}
-                        </Text>
-                      )}
-                    </Table.Td>
-                  </Table.Tr>
-                ))
-              ) : (
-                <Table.Tr>
-                  <Table.Td colSpan={7}>
-                    <Text ta="center" py="xl" c="dimmed">
-                      No {activeTab} requests found
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+                            <IconFlag size={14} />
+                          </ActionIcon>
+                        </Group>
+                      </Group>
+                    )
+                  })}
+                </Stack>
+              </Paper>
+            )}
 
-          {/* Footer */}
-          <Group justify="space-between" p="md">
-            <Text size="sm" c="dimmed">
-              Showing {filteredRequests.length} of {requests.length} requests
-            </Text>
-            <Pagination total={Math.ceil(filteredRequests.length / 7)} />
+            {/* Cancel button — only for active/pending circles */}
+            {['ACTIVE', 'PENDING'].includes(String(circle.status ?? '').toUpperCase()) && (
+              <Button
+                color="red"
+                variant="light"
+                leftSection={<IconCircleX size={16} />}
+                onClick={openCancel}
+              >
+                Cancel Circle
+              </Button>
+            )}
+          </Stack>
+        )}
+      </Drawer>
+
+      {/* Cancel modal */}
+      <Modal opened={cancelOpened} onClose={closeCancel} title="Cancel Circle" centered size="md">
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            This action cannot be undone. Provide a reason for cancellation.
+          </Text>
+          {cancelError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+              {cancelError}
+            </Alert>
+          )}
+          <Textarea
+            label="Reason"
+            placeholder="Explain why this circle is being cancelled..."
+            minRows={3}
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.currentTarget.value)}
+            autosize
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeCancel}>Back</Button>
+            <Button
+              color="red"
+              loading={cancelling}
+              disabled={!cancelReason.trim()}
+              onClick={handleCancel}
+            >
+              Confirm Cancel
+            </Button>
           </Group>
-        </Paper>
-      </Stack>
+        </Stack>
+      </Modal>
 
-      {/* Details Modal */}
-      {selectedRequest && (
-        <AdminRequestModal
-          opened={detailsModalOpened}
-          onClose={handleCloseDetailsModal}
-          requestData={selectedRequest}
-          onApprove={handleApproveClick}
-          onReject={handleRejectClick}
+      {/* Flag member modal */}
+      <Modal
+        opened={!!flagMemberId}
+        onClose={() => setFlagMemberId(null)}
+        title="Flag Member"
+        centered
+        size="md"
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">Describe the issue with this member.</Text>
+          {flagError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+              {flagError}
+            </Alert>
+          )}
+          <Textarea
+            label="Reason"
+            placeholder="e.g. Missed contributions, suspicious activity..."
+            minRows={3}
+            value={flagReason}
+            onChange={(e) => setFlagReason(e.currentTarget.value)}
+            autosize
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setFlagMemberId(null)}>Cancel</Button>
+            <Button
+              color="orange"
+              loading={flagging}
+              disabled={!flagReason.trim()}
+              onClick={handleFlagMember}
+            >
+              Flag Member
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  )
+}
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <Text size="xs" c="dimmed" fw={500}>{label}</Text>
+      <Text size="sm" fw={500}>{value}</Text>
+    </div>
+  )
+}
+
+// ── Circles tab ──────────────────────────────────────────────────────────────
+
+function CirclesTab() {
+  const [data, setData] = useState<PaginatedResponse<CircleRow> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<string | null>(null)
+
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false)
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const LIMIT = 20
+
+  const fetchCircles = useCallback(() => {
+    setLoading(true)
+    setError(null)
+    listCircles({
+      page,
+      limit: LIMIT,
+      ...(status ? { status } : {}),
+      ...(search.trim() ? { search: search.trim() } : {}),
+    })
+      .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load circles'))
+      .finally(() => setLoading(false))
+  }, [page, status, search])
+
+  useEffect(() => { fetchCircles() }, [fetchCircles])
+
+  function handleSearchChange(val: string) {
+    setSearch(val)
+    setPage(1)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(fetchCircles, 400)
+  }
+
+  function openCircleDetail(id: string) {
+    setDetailId(id)
+    openDetail()
+  }
+
+  const rows = data?.data ?? []
+  const totalPages = data?.meta.totalPages ?? 1
+
+  return (
+    <>
+      {/* Filters */}
+      <Group mb="md" gap="sm">
+        <TextInput
+          placeholder="Search by name..."
+          leftSection={<IconSearch size={16} />}
+          value={search}
+          onChange={(e) => handleSearchChange(e.currentTarget.value)}
+          style={{ flex: 1, maxWidth: 320 }}
+          radius="md"
         />
+        <Select
+          placeholder="Status"
+          data={[
+            { value: 'ACTIVE', label: 'Active' },
+            { value: 'PENDING', label: 'Pending' },
+            { value: 'COMPLETED', label: 'Completed' },
+            { value: 'CANCELLED', label: 'Cancelled' },
+          ]}
+          value={status}
+          onChange={(v) => { setStatus(v); setPage(1) }}
+          clearable
+          radius="md"
+          style={{ width: 160 }}
+        />
+        <ActionIcon variant="default" size="lg" radius="md" onClick={fetchCircles} title="Refresh">
+          <IconRefresh size={16} />
+        </ActionIcon>
+      </Group>
+
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" mb="md">
+          {error}
+        </Alert>
       )}
 
-      {/* Confirmation Modal */}
-      <Modal
-        opened={confirmModalOpened}
-        onClose={() => setConfirmModalOpened(false)}
-        size="md"
-        centered
-      >
-        <Stack gap="xl" py="md">
-          <Text size="lg" ta="center">
-            Are you sure you want to upgrade this user to ROSCA Admin?
-          </Text>
-          
-          <Group justify="center" gap="md">
-            <Button 
-              variant="outline" 
-              color="gray" 
-              size="lg"
-              onClick={handleCancelApprove}
-              style={{ minWidth: 100 }}
-            >
-              No
-            </Button>
-            <Button 
-              color="#066F5B" 
-              size="lg"
-              onClick={handleConfirmApprove}
-              style={{ minWidth: 100 }}
-            >
-              Yes
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <Paper withBorder radius="md">
+        <Table highlightOnHover>
+          <Table.Thead>
+            <Table.Tr bg="#066F5B">
+              <Table.Th c="white">Name</Table.Th>
+              <Table.Th c="white">Admin</Table.Th>
+              <Table.Th c="white">Contribution</Table.Th>
+              <Table.Th c="white">Frequency</Table.Th>
+              <Table.Th c="white">Cycle</Table.Th>
+              <Table.Th c="white">Members</Table.Th>
+              <Table.Th c="white">Status</Table.Th>
+              <Table.Th c="white" />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {loading ? (
+              [...Array(8)].map((_, i) => (
+                <Table.Tr key={i}>
+                  {[...Array(8)].map((__, j) => (
+                    <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
+                  ))}
+                </Table.Tr>
+              ))
+            ) : rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={8}>
+                  <Text ta="center" py="xl" c="dimmed">No circles found</Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              rows.map((c) => (
+                <Table.Tr key={c.id}>
+                  <Table.Td fw={500}>{c.name}</Table.Td>
+                  <Table.Td>
+                    {c.admin ? (
+                      <div>
+                        <Text size="sm">{c.admin.firstName} {c.admin.lastName}</Text>
+                        <Text size="xs" c="dimmed">{c.admin.email}</Text>
+                      </div>
+                    ) : '—'}
+                  </Table.Td>
+                  <Table.Td>{formatNaira(c.contributionAmount)}</Table.Td>
+                  <Table.Td style={{ textTransform: 'capitalize' }}>{c.frequency?.toLowerCase() ?? '—'}</Table.Td>
+                  <Table.Td>{c.currentCycle} / {c.durationCycles}</Table.Td>
+                  <Table.Td>{c.memberCount}</Table.Td>
+                  <Table.Td>
+                    <Badge color={statusColor(c.status)} variant="light" size="sm">
+                      {c.status}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Menu shadow="md" width={180} position="bottom-end">
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" color="gray">
+                          <IconDots size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          leftSection={<IconEye size={14} />}
+                          onClick={() => openCircleDetail(c.id)}
+                        >
+                          View Detail
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  </Table.Td>
+                </Table.Tr>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
 
-      {/* Loading Modal */}
-      <Modal
-        opened={loadingModalOpened}
-        onClose={() => {}}
-        withCloseButton={false}
-        size="md"
-        centered
-      >
-        <Stack gap="xl" py="xl" align="center">
-          <Loader size="lg" color="#066F5B" />
-          <Text size="lg" fw={500}>{loadingMessage}</Text>
-          <Text size="sm" c="dimmed">Please wait...</Text>
-        </Stack>
-      </Modal>
-    </Container>
-  );
+        <Group justify="space-between" p="md">
+          <Text size="sm" c="dimmed">
+            {data ? `${data.meta.total} circle${data.meta.total !== 1 ? 's' : ''}` : ''}
+          </Text>
+          <Pagination total={totalPages} value={page} onChange={setPage} size="sm" />
+        </Group>
+      </Paper>
+
+      <CircleDetailDrawer
+        circleId={detailId}
+        opened={detailOpened}
+        onClose={closeDetail}
+        onCancelled={fetchCircles}
+      />
+    </>
+  )
+}
+
+// ── Defaulters tab ───────────────────────────────────────────────────────────
+
+function DefaultersTab() {
+  const [data, setData] = useState<PaginatedResponse<unknown> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    setLoading(true)
+    getDefaulters(page, 20)
+      .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load defaulters'))
+      .finally(() => setLoading(false))
+  }, [page])
+
+  const rows = (data?.data ?? []) as Record<string, unknown>[]
+  const totalPages = data?.meta.totalPages ?? 1
+
+  return (
+    <>
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" mb="md">
+          {error}
+        </Alert>
+      )}
+
+      <Paper withBorder radius="md">
+        <Table highlightOnHover>
+          <Table.Thead>
+            <Table.Tr bg="#066F5B">
+              <Table.Th c="white">User</Table.Th>
+              <Table.Th c="white">Email</Table.Th>
+              <Table.Th c="white">Circle</Table.Th>
+              <Table.Th c="white">Amount Owed</Table.Th>
+              <Table.Th c="white">Missed Cycles</Table.Th>
+              <Table.Th c="white">Status</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {loading ? (
+              [...Array(8)].map((_, i) => (
+                <Table.Tr key={i}>
+                  {[...Array(6)].map((__, j) => (
+                    <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
+                  ))}
+                </Table.Tr>
+              ))
+            ) : rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={6}>
+                  <Text ta="center" py="xl" c="dimmed">No defaulters found</Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              rows.map((d, i) => {
+                const user = d.user as Record<string, unknown> | undefined
+                const circle = d.circle as Record<string, unknown> | undefined
+                return (
+                  <Table.Tr key={i}>
+                    <Table.Td fw={500}>
+                      {user ? `${user.firstName} ${user.lastName}` : String(d.userId ?? '—')}
+                    </Table.Td>
+                    <Table.Td c="dimmed">{String(user?.email ?? '—')}</Table.Td>
+                    <Table.Td>{String(circle?.name ?? d.circleId ?? '—')}</Table.Td>
+                    <Table.Td>{formatNaira(String(d.amountOwedKobo ?? d.amount ?? 0))}</Table.Td>
+                    <Table.Td>{String(d.missedCycles ?? d.missedPayments ?? '—')}</Table.Td>
+                    <Table.Td>
+                      <Badge color="red" variant="light" size="sm">
+                        {String(d.status ?? 'DEFAULTED')}
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                )
+              })
+            )}
+          </Table.Tbody>
+        </Table>
+
+        <Group justify="space-between" p="md">
+          <Text size="sm" c="dimmed">
+            {data ? `${data.meta.total} defaulter${data.meta.total !== 1 ? 's' : ''}` : ''}
+          </Text>
+          <Pagination total={totalPages} value={page} onChange={setPage} size="sm" />
+        </Group>
+      </Paper>
+    </>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export function ManageRosca() {
+  const [tab, setTab] = useState<string | null>('circles')
+
+  return (
+    <Stack gap="lg" p="xl">
+      <div>
+        <Title order={2} fw={700}>Circle Governance</Title>
+        <Text c="dimmed" size="sm" mt={4}>
+          Monitor and manage all ROSCA circles, members, and defaulters.
+        </Text>
+      </div>
+
+      <Tabs value={tab} onChange={setTab}>
+        <Tabs.List mb="lg">
+          <Tabs.Tab value="circles">Circles</Tabs.Tab>
+          <Tabs.Tab value="defaulters">Defaulters</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="circles">
+          <CirclesTab />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="defaulters">
+          <DefaultersTab />
+        </Tabs.Panel>
+      </Tabs>
+    </Stack>
+  )
 }

@@ -1,6 +1,8 @@
+import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from '@/layouts'
 import { KycGate } from '@/components/KycGate'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 import {
   Dashboard,
   CreateGroup,
@@ -22,6 +24,12 @@ import {
   SetPin,
 } from '@/pages'
 
+function KycPageGuard({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('admin_access_token')
+  if (!token) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -30,10 +38,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
-        <Route path="/kyc" element={<Kyc />} />
+        <Route path="/kyc" element={<KycPageGuard><Kyc /></KycPageGuard>} />
 
         {/* Protected routes — with admin layout */}
-        <Route element={<AdminLayout />}>
+        <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/create-group" element={<CreateGroup />} />
           <Route path="/manage-join-request" element={<ManageJoinRequest />} />

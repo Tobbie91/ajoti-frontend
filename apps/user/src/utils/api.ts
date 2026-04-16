@@ -97,6 +97,8 @@ export interface UserProfile {
   city?: string
   state?: string
   lga?: string
+  role?: string
+  adminRequestedAt?: string | null
   [key: string]: unknown
 }
 
@@ -176,11 +178,13 @@ function authHeaders(token?: string): Record<string, string> {
 
 async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
   const { headers, ...rest } = options
+  const isFormData = options.body instanceof FormData
+  const contentTypeHeader = isFormData ? {} : { 'Content-Type': 'application/json' }
 
   // First attempt
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
-    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...headers },
+    headers: { ...contentTypeHeader, ...authHeaders(), ...headers },
   })
 
   if (res.status !== 401) {
@@ -289,6 +293,44 @@ export function submitNok(payload: SubmitNokPayload): Promise<{ message: string 
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export interface SubmitPhotoPayload {
+  governmentIdType: string
+  address: string
+  city: string
+  state: string
+  lga?: string
+  country: string
+  selfie: File
+  governmentIdFront: File
+  governmentIdBack?: File
+}
+
+export function submitPhoto(payload: SubmitPhotoPayload): Promise<KycStatus> {
+  const form = new FormData()
+  form.append('governmentIdType', payload.governmentIdType)
+  form.append('address', payload.address)
+  form.append('city', payload.city)
+  form.append('state', payload.state)
+  form.append('country', payload.country)
+  if (payload.lga) form.append('lga', payload.lga)
+  form.append('selfie', payload.selfie)
+  form.append('governmentIdFront', payload.governmentIdFront)
+  if (payload.governmentIdBack) form.append('governmentIdBack', payload.governmentIdBack)
+  return authRequest('/api/kyc/submit-photo', { method: 'POST', body: form })
+}
+
+export interface SubmitProofOfAddressPayload {
+  proofOfAddressType: string
+  proofOfAddress: File
+}
+
+export function submitProofOfAddress(payload: SubmitProofOfAddressPayload): Promise<KycStatus> {
+  const form = new FormData()
+  form.append('proofOfAddressType', payload.proofOfAddressType)
+  form.append('proofOfAddress', payload.proofOfAddress)
+  return authRequest('/api/kyc/submit-proof-of-address', { method: 'POST', body: form })
 }
 
 // ── Logout ──────────────────────────────────────────────────────────────────
@@ -778,4 +820,10 @@ export async function getCirclePeerReviews(circleId: string): Promise<PeerReview
     { method: 'GET' },
   )
   return Array.isArray(res) ? res : (res as { data?: PeerReview[] }).data ?? []
+}
+
+// ── Admin Access Request ──────────────────────────────────────────────────────
+
+export function requestAdminAccess(): Promise<{ message: string }> {
+  return authRequest('/api/users/me/request-admin', { method: 'POST' })
 }

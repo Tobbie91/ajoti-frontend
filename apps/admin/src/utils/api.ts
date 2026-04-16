@@ -216,6 +216,10 @@ export function getKycStatus(): Promise<KycStatus> {
   return authRequest('/api/kyc/status', { method: 'GET' })
 }
 
+export function resubmitKyc(): Promise<KycStatus> {
+  return authRequest('/api/kyc/resubmit', { method: 'POST' })
+}
+
 export interface VerifyNinPayload {
   nin: string
   firstName: string
