@@ -19,7 +19,8 @@ export function VerifyOtp() {
     setStep('verifying')
     try {
       await verifyEmail({ email, otp })
-      navigate('/login?verified=true')
+      // Admin registration flow: go straight to KYC after email verification
+      navigate('/kyc?onboarding=true')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed')
       setStep('input')

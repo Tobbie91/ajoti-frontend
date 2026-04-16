@@ -15,13 +15,17 @@ import {
   IconShieldCheck,
   IconCamera,
   IconAlertCircle,
+  IconExternalLink,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { verifyNin, verifyBvn, submitNok } from '@/utils/api'
 
 type KycStep = 1 | 2 | 3 | 4 | 5 | 6 | 7
+type KycPhase = 'flow' | 'submitted'
 
-const STEP_LABELS = ['NIN', 'BVN', 'Next of Kin', 'Address', 'Photos', 'Proof', 'Review']
+const STEP_LABELS = ['NIN', 'BVN', 'Next of Kin']
+
+const USER_APP_URL = import.meta.env.VITE_USER_APP_URL ?? 'http://localhost:5173'
 
 export function Kyc() {
   const navigate = useNavigate()
@@ -29,6 +33,7 @@ export function Kyc() {
   const selfieInputRef = useRef<HTMLInputElement>(null)
   const idPhotoInputRef = useRef<HTMLInputElement>(null)
 
+  const [phase, setPhase] = useState<KycPhase>('flow')
   const [step, setStep] = useState<KycStep>(1)
   const [kycError, setKycError] = useState<string | null>(null)
 
@@ -61,17 +66,13 @@ export function Kyc() {
   // Step 6 - Proof of Address
   const [proofFile, setProofFile] = useState<File | null>(null)
 
-  const progressValue = (step / 7) * 100
+  const progressValue = (step / 3) * 100
 
   function canProceed() {
     switch (step) {
       case 1: return ninVerified
       case 2: return bvnVerified
-      case 3: return kinFullName.trim() && kinPhone.trim() && kinRelationship.trim()
-      case 4: return houseAddress.trim() && city.trim() && state.trim()
-      case 5: return selfieFile !== null && idPhotoFile !== null
-      case 6: return proofFile !== null
-      case 7: return true
+      case 3: return !!(kinFullName.trim() && kinPhone.trim() && kinRelationship.trim())
       default: return false
     }
   }
@@ -121,24 +122,21 @@ export function Kyc() {
   async function handleNext() {
     setKycError(null)
     if (step === 3) {
-      // Submit next of kin to API
+      // Submit next of kin — completes Level 1 KYC (auto-approved)
       try {
         await submitNok({
           nextOfKinName: kinFullName.trim(),
           nextOfKinRelationship: kinRelationship.trim(),
           nextOfKinPhone: kinPhone.trim(),
         })
+        localStorage.setItem('admin_kyc_completed', 'true')
+        setPhase('submitted')
       } catch (err) {
         setKycError(err instanceof Error ? err.message : 'Failed to submit next of kin')
-        return
       }
+      return
     }
-    if (step < 7) {
-      setStep((step + 1) as KycStep)
-    } else {
-      localStorage.setItem('admin_kyc_completed', 'true')
-      navigate('/dashboard')
-    }
+    setStep((step + 1) as KycStep)
   }
 
   function handleBack() {
@@ -167,6 +165,49 @@ export function Kyc() {
     label: { fontWeight: 500, fontSize: 14, color: '#374151', marginBottom: 4 },
   }
 
+  // ── KYC submitted — Level 1 auto-approved, pending admin role review ──────────
+  if (phase === 'submitted') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
+        <div className="w-full max-w-[460px] rounded-3xl border border-[#E5E7EB] bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#F0FDF4]">
+            <IconShieldCheck size={40} color="#02A36E" stroke={1.5} />
+          </div>
+          <Text fw={700} className="text-[22px] text-[#0F172A]">
+            Identity Verified!
+          </Text>
+          <Text fw={400} className="mt-2 text-[14px] leading-relaxed text-[#6B7280]">
+            Your identity has been verified (KYC Level 1). Your admin account is now pending review — you'll be notified once it's approved.
+          </Text>
+
+          <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] px-5 py-4 text-left">
+            <Text fw={600} className="text-[13px] text-[#0F172A]">What happens next?</Text>
+            <ul className="mt-2 space-y-1.5 text-[13px] text-[#6B7280]">
+              <li>• Our team will review and activate your admin account</li>
+              <li>• You'll receive an email once your account is approved</li>
+              <li>• In the meantime, you can use the Ajoti member app</li>
+            </ul>
+          </div>
+
+          <a
+            href={USER_APP_URL}
+            className="mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0B6B55] py-3.5 text-[14px] font-semibold text-white no-underline hover:bg-[#095C49]"
+          >
+            Go to Member App
+            <IconExternalLink size={16} />
+          </a>
+
+          <button
+            onClick={() => navigate('/login')}
+            className="mt-3 cursor-pointer text-[13px] text-[#6B7280] underline-offset-2 hover:underline"
+          >
+            Sign in to admin portal
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Header */}
@@ -187,7 +228,7 @@ export function Kyc() {
               Admin Identity Verification
             </Text>
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              Step {step} of 7 — {STEP_LABELS[step - 1]}
+              Step {step} of 3 — {STEP_LABELS[step - 1]}
             </Text>
           </div>
           <div className="w-[34px]" />
@@ -386,8 +427,8 @@ export function Kyc() {
           </div>
         )}
 
-        {/* Step 4: House Address */}
-        {step === 4 && (
+        {/* Steps 4–7 are Level 2/3 KYC upgrades — not part of initial onboarding */}
+        {step === 999 /* never */ && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE9FE]">
@@ -409,8 +450,7 @@ export function Kyc() {
           </div>
         )}
 
-        {/* Step 5: Photo Upload */}
-        {step === 5 && (
+        {step === 998 /* never */ && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0F9FF]">
@@ -501,8 +541,7 @@ export function Kyc() {
           </div>
         )}
 
-        {/* Step 6: Proof of Address */}
-        {step === 6 && (
+        {step === 997 /* never */ && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF7ED]">
@@ -555,8 +594,7 @@ export function Kyc() {
           </div>
         )}
 
-        {/* Step 7: Review */}
-        {step === 7 && (
+        {step === 996 /* never */ && (
           <div className="flex flex-col gap-5">
             <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
               <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">Review Your Information</Text>
@@ -703,7 +741,7 @@ export function Kyc() {
                 : 'cursor-not-allowed bg-[#9CA3AF]'
             }`}
           >
-            {step === 7 ? 'Submit & Activate Account' : 'Continue'}
+            {step === 3 ? 'Submit KYC' : 'Continue'}
           </button>
         </div>
       </div>

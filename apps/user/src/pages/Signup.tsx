@@ -7,12 +7,13 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
 import { register } from '@/utils/api'
 
+const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5179'
+
 export function Signup() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
-  const [role, setRole] = useState<'member' | 'admin'>('member')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -41,7 +42,7 @@ export function Signup() {
         dob: dob.toISOString().split('T')[0],
         gender: gender as 'MALE' | 'FEMALE',
         password,
-        role: role.toUpperCase() as 'MEMBER' | 'ADMIN',
+        role: 'MEMBER',
       })
       localStorage.setItem('verify_email', email.trim())
       localStorage.setItem('user', JSON.stringify({
@@ -195,46 +196,33 @@ export function Signup() {
                 />
               </Group>
 
-              {/* Role Selection */}
+              {/* Account type — member only; admins use the separate admin app */}
               <div>
                 <Text fw={500} size="sm" className="mb-2 text-[#0F172A]">
                   I want to
                 </Text>
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRole('member')}
-                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-colors ${
-                      role === 'member'
-                        ? 'border-[#02A36E] bg-[#F0FDF4]'
-                        : 'border-[#E5E7EB] bg-white hover:border-[#BFEBD1]'
-                    }`}
-                  >
-                    <IconUserCircle size={28} color={role === 'member' ? '#02A36E' : '#9CA3AF'} />
-                    <Text fw={600} className={`text-[13px] ${role === 'member' ? 'text-[#02A36E]' : 'text-[#374151]'}`}>
+                  <div className="flex cursor-default flex-col items-center gap-2 rounded-xl border-2 border-[#02A36E] bg-[#F0FDF4] px-4 py-4">
+                    <IconUserCircle size={28} color="#02A36E" />
+                    <Text fw={600} className="text-[13px] text-[#02A36E]">
                       Join Groups
                     </Text>
                     <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
                       Save with others in ROSCA groups
                     </Text>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('admin')}
-                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 transition-colors ${
-                      role === 'admin'
-                        ? 'border-[#02A36E] bg-[#F0FDF4]'
-                        : 'border-[#E5E7EB] bg-white hover:border-[#BFEBD1]'
-                    }`}
+                  </div>
+                  <a
+                    href={`${ADMIN_APP_URL}/signup`}
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-[#E5E7EB] bg-white px-4 py-4 no-underline transition-colors hover:border-[#BFEBD1]"
                   >
-                    <IconUsers size={28} color={role === 'admin' ? '#02A36E' : '#9CA3AF'} />
-                    <Text fw={600} className={`text-[13px] ${role === 'admin' ? 'text-[#02A36E]' : 'text-[#374151]'}`}>
+                    <IconUsers size={28} color="#9CA3AF" />
+                    <Text fw={600} className="text-[13px] text-[#374151]">
                       Manage a Group
                     </Text>
                     <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
                       I already run a savings group
                     </Text>
-                  </button>
+                  </a>
                 </div>
               </div>
 

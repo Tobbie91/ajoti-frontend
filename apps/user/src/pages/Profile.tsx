@@ -14,9 +14,13 @@ import {
   IconLogout,
   IconLock,
   IconChevronRight,
+  IconUsers,
+  IconExternalLink,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutApi, getUserProfile, updateUserProfile, getKycStatus, type KycStatus } from '@/utils/api'
+
+const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5179'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('user')
@@ -47,7 +51,7 @@ export function Profile() {
   const [city, setCity] = useState(user.city || '')
   const [state, setState] = useState<string | null>(user.state || null)
   const [kycStatus, setKycStatus] = useState<KycStatus | null>(null)
-  const kycApproved = kycStatus?.status === 'APPROVED'
+  const kycApproved = (kycStatus?.kycLevel ?? 0) >= 1
 
   useEffect(() => {
     getKycStatus().then(setKycStatus).catch(() => {})
@@ -375,6 +379,28 @@ export function Profile() {
           </div>
           <IconChevronRight size={16} color="#9CA3AF" />
         </button>
+      </div>
+
+      {/* Become an admin */}
+      <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <Text fw={600} className="mb-5 text-[16px] text-[#0F172A]">
+          Admin Access
+        </Text>
+        <a
+          href={`${ADMIN_APP_URL}/signup`}
+          className="flex w-full cursor-pointer items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-4 no-underline hover:bg-[#F0FDF4]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E8FDF3]">
+              <IconUsers size={18} color="#02A36E" />
+            </div>
+            <div>
+              <Text fw={600} className="text-[13px] text-[#0F172A]">Become an Admin</Text>
+              <Text fw={400} className="text-[12px] text-[#6B7280]">Create and manage your own savings group</Text>
+            </div>
+          </div>
+          <IconExternalLink size={16} color="#9CA3AF" />
+        </a>
       </div>
 
       {saveSuccess && (
