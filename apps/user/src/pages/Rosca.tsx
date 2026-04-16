@@ -46,35 +46,49 @@ export function Rosca() {
   const [messageStep, setMessageStep] = useState<'compose' | 'sending' | 'sent'>('compose')
 
   const [groups, setGroups] = useState<RoscaGroup[]>([])
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
   const [joinedGroups, setJoinedGroups] = useState<JoinedGroup[]>([])
   const [joinedLoading, setJoinedLoading] = useState(false)
   const [needsLogin, setNeedsLogin] = useState(false)
 
   useEffect(() => {
-    listRoscaCircles()
-      .then((circles) => {
-        const mapped: RoscaGroup[] = circles.map((c: RoscaCircle) => {
-          const slotsLeft = (c.maxSlots ?? 0) - (c.filledSlots ?? 0)
-          const adminName = c.admin
-            ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
-            : 'Unknown'
-          return {
-            id: c.id,
-            name: c.name,
-            duration: c.durationCycles ? `${c.durationCycles} cycles` : '',
-            slots: `${slotsLeft} Slots`,
-            status: (c.visibility === 'PRIVATE' ? 'Invite Only' : 'Open') as GroupStatus,
-            admin: adminName,
+    Promise.allSettled([listRoscaCircles(), getMyParticipations(), getMyJoinRequests()])
+      .then(([circlesRes, partRes, joinRes]) => {
+        if (circlesRes.status === 'fulfilled') {
+          const mapped: RoscaGroup[] = circlesRes.value.map((c: RoscaCircle) => {
+            const slotsLeft = (c.maxSlots ?? 0) - (c.filledSlots ?? 0)
+            const adminName = c.admin
+              ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
+              : 'Unknown'
+            return {
+              id: c.id,
+              name: c.name,
+              duration: c.durationCycles ? `${c.durationCycles} cycles` : '',
+              slots: `${slotsLeft} Slots`,
+              status: (c.visibility === 'PRIVATE' ? 'Invite Only' : 'Open') as GroupStatus,
+              admin: adminName,
+            }
+          })
+          setGroups(mapped)
+        } else {
+          const err = circlesRes.reason
+          if (err instanceof Error && err.message.toLowerCase().includes('unauthorized')) {
+            setNeedsLogin(true)
           }
-        })
-        setGroups(mapped)
-      })
-      .catch((err) => {
-        if (err instanceof Error && err.message.toLowerCase().includes('unauthorized')) {
-          setNeedsLogin(true)
         }
+
+        // Build set of circle IDs the user is already part of
+        const ids = new Set<string>()
+        if (partRes.status === 'fulfilled') {
+          partRes.value.forEach((c) => ids.add(c.id))
+        }
+        if (joinRes.status === 'fulfilled') {
+          joinRes.value
+            .filter((r) => ['APPROVED', 'ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()))
+            .forEach((r) => ids.add(r.circleId))
+        }
+        setJoinedIds(ids)
       })
-      .finally(() => {})
   }, [])
 
   useEffect(() => {
@@ -154,6 +168,7 @@ export function Rosca() {
   }, [activeTab])
 
   const filtered = groups.filter((g) => {
+    if (joinedIds.has(g.id)) return false
     const matchesSearch =
       g.name.toLowerCase().includes(search.toLowerCase()) ||
       g.admin.toLowerCase().includes(search.toLowerCase())
@@ -263,6 +278,12 @@ export function Rosca() {
           <button className="flex h-[42px] items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 text-[13px] font-medium text-[#374151]">
             <IconFilter size={16} color="#6B7280" />
             Filter
+          </button>
+          <button
+            onClick={() => navigate('/rosca/requests')}
+            className="flex h-[42px] cursor-pointer items-center gap-2 rounded-lg border border-[#02A36E] bg-white px-4 text-[13px] font-medium text-[#02A36E]"
+          >
+            My Requests
           </button>
         </div>
 
