@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Title,
   Text,
@@ -7,268 +7,524 @@ import {
   TextInput,
   Select,
   Table,
-  Checkbox,
   Badge,
   Menu,
   ActionIcon,
   Pagination,
   Card,
+  Drawer,
+  Skeleton,
+  Alert,
+  Divider,
+  Modal,
+  Textarea,
+  Button,
+  ThemeIcon,
+  SimpleGrid,
 } from '@mantine/core'
-import { IconSearch, IconDots, IconX } from '@tabler/icons-react'
+import { useDisclosure } from '@mantine/hooks'
+import {
+  IconSearch,
+  IconDots,
+  IconAlertCircle,
+  IconUser,
+  IconWallet,
+  IconTopologyRing,
+  IconShieldCheck,
+} from '@tabler/icons-react'
+import {
+  listUsers,
+  getUserDetail,
+  updateUserStatus,
+  promoteToSuperadmin,
+  type SuperadminUserRow,
+  type SuperadminUserDetail,
+} from '@/utils/api'
 
-interface User {
-  name: string
-  email: string
-  phone: string
-  activeRosca: string
-  bvn: string
-  status: 'Active' | 'Inactive'
-  role: 'Admin' | 'Regular User' // Added role field for filtering
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const STATUS_COLOR: Record<string, string> = {
+  ACTIVE: 'green',
+  SUSPENDED: 'yellow',
+  BANNED: 'red',
 }
 
-const allUsers: User[] = [
-  { name: 'Ayomide Emmanuel', email: 'mide@domain.com', phone: '+234 901 234 5678', activeRosca: '2 Groups', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Adediran Rhoda', email: 'vicR@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Yakubu Taiwo', email: 'tee@domain.com', phone: '+234 901 234 5678', activeRosca: '2 Groups', bvn: '2234567899', status: 'Active', role: 'Admin' },
-  { name: 'Obatowon Nuel', email: 'nuel@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Emmanuel Ifeade', email: 'adeif@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: 'Unsubmitted', status: 'Inactive', role: 'Regular User' },
-  { name: 'Oyesiji Inioluwa', email: 'ini@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: 'Unsubmitted', status: 'Inactive', role: 'Regular User' },
-  { name: 'Ayinde Samuel', email: 'sam@domain.com', phone: '+234 901 234 5678', activeRosca: '2 Groups', bvn: '2234567899', status: 'Active', role: 'Admin' },
-  { name: 'Okeleye Peter', email: 'shak@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Balogun Tunde', email: 'tunde@domain.com', phone: '+234 901 234 5678', activeRosca: '1 Group', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Afolabi Grace', email: 'grace@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Okonkwo Chidi', email: 'chidi@domain.com', phone: '+234 901 234 5678', activeRosca: '3 Groups', bvn: '2234567899', status: 'Active', role: 'Admin' },
-  { name: 'Adeyemi Funke', email: 'funke@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: 'Unsubmitted', status: 'Inactive', role: 'Regular User' },
-  { name: 'Ibrahim Musa', email: 'musa@domain.com', phone: '+234 901 234 5678', activeRosca: '1 Group', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Ogunleye Dayo', email: 'dayo@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Nnamdi Kelechi', email: 'kele@domain.com', phone: '+234 901 234 5678', activeRosca: '2 Groups', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Oluwaseun Bisi', email: 'bisi@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: 'Unsubmitted', status: 'Inactive', role: 'Regular User' },
-  { name: 'Eze Obioma', email: 'obioma@domain.com', phone: '+234 901 234 5678', activeRosca: '1 Group', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Fashola Kemi', email: 'kemi@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Abdullahi Fatima', email: 'fatima@domain.com', phone: '+234 901 234 5678', activeRosca: '2 Groups', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Oladipo Wale', email: 'wale@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Chukwuma Emeka', email: 'emeka@domain.com', phone: '+234 901 234 5678', activeRosca: '1 Group', bvn: '2234567899', status: 'Active', role: 'Admin' },
-  { name: 'Adebayo Tosin', email: 'tosin@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: 'Unsubmitted', status: 'Inactive', role: 'Regular User' },
-  { name: 'Ogundele Segun', email: 'segun@domain.com', phone: '+234 901 234 5678', activeRosca: '3 Groups', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Adekunle Ronke', email: 'ronke@domain.com', phone: '+234 901 234 5678', activeRosca: 'None', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-  { name: 'Yusuf Aminat', email: 'aminat@domain.com', phone: '+234 901 234 5678', activeRosca: '1 Group', bvn: '2234567899', status: 'Active', role: 'Regular User' },
-]
+const KYC_COLOR: Record<string, string> = {
+  APPROVED: 'green',
+  PENDING: 'yellow',
+  REJECTED: 'red',
+  NOT_SUBMITTED: 'gray',
+}
+
+function formatNaira(naira: string) {
+  const n = parseFloat(naira)
+  if (isNaN(n)) return '₦0.00'
+  return `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+}
+
+// ── User Detail Drawer ────────────────────────────────────────────────────────
+
+function UserDetailDrawer({
+  userId,
+  opened,
+  onClose,
+  onStatusChange,
+}: {
+  userId: string | null
+  opened: boolean
+  onClose: () => void
+  onStatusChange: () => void
+}) {
+  const [detail, setDetail] = useState<SuperadminUserDetail | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const [suspendModal, { open: openSuspend, close: closeSuspend }] = useDisclosure(false)
+  const [banModal, { open: openBan, close: closeBan }] = useDisclosure(false)
+  const [promoteModal, { open: openPromote, close: closePromote }] = useDisclosure(false)
+  const [reason, setReason] = useState('')
+
+  useEffect(() => {
+    if (!userId || !opened) return
+    setDetail(null)
+    setError(null)
+    setLoading(true)
+    getUserDetail(userId)
+      .then(setDetail)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load user'))
+      .finally(() => setLoading(false))
+  }, [userId, opened])
+
+  async function handleStatus(status: 'ACTIVE' | 'SUSPENDED' | 'BANNED', reasonText?: string) {
+    if (!userId) return
+    setActionLoading(true)
+    try {
+      await updateUserStatus(userId, status, reasonText)
+      closeSuspend()
+      closeBan()
+      onStatusChange()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Action failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handlePromote() {
+    if (!userId) return
+    setActionLoading(true)
+    try {
+      await promoteToSuperadmin(userId)
+      closePromote()
+      onStatusChange()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Promote failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const user = detail?.user as Record<string, unknown> | undefined
+  const wallet = detail?.wallet
+  const roscaCount = detail?.roscaParticipation.length ?? 0
+  const debtCount = detail?.outstandingDebts.length ?? 0
+  const currentStatus = (user?.status as string) ?? ''
+  const currentRole = (user?.role as string) ?? ''
+
+  return (
+    <>
+      <Drawer
+        opened={opened}
+        onClose={onClose}
+        title={<Text fw={600}>User Profile</Text>}
+        position="right"
+        size="md"
+        padding="lg"
+      >
+        {loading ? (
+          <Stack gap="sm">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} h={40} radius="sm" />)}
+          </Stack>
+        ) : error ? (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">{error}</Alert>
+        ) : detail ? (
+          <Stack gap="md">
+            {/* Identity */}
+            <Group gap="xs">
+              <ThemeIcon size={48} radius="xl" variant="light" color="primary">
+                <IconUser size={24} stroke={1.5} />
+              </ThemeIcon>
+              <Stack gap={2}>
+                <Text fw={600} fz="lg">
+                  {(user?.firstName as string)} {(user?.lastName as string)}
+                </Text>
+                <Text fz="sm" c="dimmed">{user?.email as string}</Text>
+              </Stack>
+            </Group>
+
+            <SimpleGrid cols={2} spacing="xs">
+              <InfoItem label="Phone" value={(user?.phone as string) ?? '—'} />
+              <InfoItem label="Role" value={currentRole} />
+              <InfoItem
+                label="Status"
+                value={
+                  <Badge color={STATUS_COLOR[currentStatus] ?? 'gray'} variant="light" size="sm">
+                    {currentStatus}
+                  </Badge>
+                }
+              />
+              <InfoItem
+                label="KYC"
+                value={
+                  (() => {
+                    const kyc = user?.kyc as { status: string } | null
+                    return (
+                      <Badge color={KYC_COLOR[kyc?.status ?? 'NOT_SUBMITTED'] ?? 'gray'} variant="light" size="sm">
+                        {kyc?.status ?? 'NOT_SUBMITTED'}
+                      </Badge>
+                    )
+                  })()
+                }
+              />
+              <InfoItem label="Joined" value={user?.createdAt ? new Date(user.createdAt as string).toLocaleDateString('en-NG') : '—'} />
+              <InfoItem label="Verified" value={(user?.isVerified as boolean) ? 'Yes' : 'No'} />
+            </SimpleGrid>
+
+            <Divider />
+
+            {/* Wallet */}
+            <Group gap="xs">
+              <ThemeIcon size={36} radius="md" variant="light" color="blue">
+                <IconWallet size={18} stroke={1.5} />
+              </ThemeIcon>
+              <Stack gap={0}>
+                <Text fz="xs" c="dimmed">Wallet Balance</Text>
+                <Text fw={600}>{wallet ? formatNaira(wallet.balanceNaira) : 'No wallet'}</Text>
+              </Stack>
+              {wallet && (
+                <Badge ml="auto" size="xs" color={wallet.status === 'ACTIVE' ? 'green' : 'gray'} variant="light">
+                  {wallet.status}
+                </Badge>
+              )}
+            </Group>
+
+            {/* Stats row */}
+            <SimpleGrid cols={2} spacing="xs">
+              <Card withBorder p="sm" radius="md">
+                <Group gap="xs">
+                  <ThemeIcon size={28} radius="md" variant="light" color="grape">
+                    <IconTopologyRing size={14} stroke={1.5} />
+                  </ThemeIcon>
+                  <Stack gap={0}>
+                    <Text fz="xs" c="dimmed">ROSCA Groups</Text>
+                    <Text fw={600} fz="sm">{roscaCount}</Text>
+                  </Stack>
+                </Group>
+              </Card>
+              <Card withBorder p="sm" radius="md">
+                <Group gap="xs">
+                  <ThemeIcon size={28} radius="md" variant="light" color={debtCount > 0 ? 'red' : 'green'}>
+                    <IconShieldCheck size={14} stroke={1.5} />
+                  </ThemeIcon>
+                  <Stack gap={0}>
+                    <Text fz="xs" c="dimmed">Outstanding Debts</Text>
+                    <Text fw={600} fz="sm" c={debtCount > 0 ? 'red' : undefined}>{debtCount}</Text>
+                  </Stack>
+                </Group>
+              </Card>
+            </SimpleGrid>
+
+            {user?.suspensionReason && (
+              <Alert color="orange" radius="md" variant="light">
+                <Text fz="xs" fw={500}>Suspension reason:</Text>
+                <Text fz="sm">{user.suspensionReason as string}</Text>
+              </Alert>
+            )}
+
+            <Divider />
+
+            {/* Actions */}
+            <Stack gap="xs">
+              {currentStatus !== 'ACTIVE' && (
+                <Button fullWidth variant="light" color="green" onClick={() => handleStatus('ACTIVE')} loading={actionLoading}>
+                  Reactivate Account
+                </Button>
+              )}
+              {currentStatus === 'ACTIVE' && (
+                <Button fullWidth variant="light" color="yellow" onClick={openSuspend}>
+                  Suspend Account
+                </Button>
+              )}
+              {currentStatus !== 'BANNED' && (
+                <Button fullWidth variant="light" color="red" onClick={openBan}>
+                  Ban Account
+                </Button>
+              )}
+              {currentRole !== 'SUPERADMIN' && (
+                <Button fullWidth variant="subtle" color="primary" onClick={openPromote}>
+                  Promote to Superadmin
+                </Button>
+              )}
+            </Stack>
+          </Stack>
+        ) : null}
+      </Drawer>
+
+      {/* Suspend modal */}
+      <Modal opened={suspendModal} onClose={closeSuspend} title="Suspend User" size="sm">
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">Provide a reason for suspending this account (optional).</Text>
+          <Textarea
+            placeholder="Reason for suspension..."
+            value={reason}
+            onChange={(e) => setReason(e.currentTarget.value)}
+            rows={3}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeSuspend}>Cancel</Button>
+            <Button color="yellow" loading={actionLoading} onClick={() => { handleStatus('SUSPENDED', reason || undefined); setReason('') }}>
+              Suspend
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Ban modal */}
+      <Modal opened={banModal} onClose={closeBan} title="Ban User" size="sm">
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">Permanently ban this user. Provide a reason (optional).</Text>
+          <Textarea
+            placeholder="Reason for ban..."
+            value={reason}
+            onChange={(e) => setReason(e.currentTarget.value)}
+            rows={3}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeBan}>Cancel</Button>
+            <Button color="red" loading={actionLoading} onClick={() => { handleStatus('BANNED', reason || undefined); setReason('') }}>
+              Ban
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Promote modal */}
+      <Modal opened={promoteModal} onClose={closePromote} title="Promote to Superadmin" size="sm">
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            This will grant full superadmin access to{' '}
+            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong>.
+            This action is logged in the audit trail.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closePromote}>Cancel</Button>
+            <Button color="primary" loading={actionLoading} onClick={handlePromote}>
+              Confirm Promote
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  )
+}
+
+function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <Stack gap={2}>
+      <Text fz="xs" c="dimmed">{label}</Text>
+      {typeof value === 'string' ? <Text fz="sm" fw={500}>{value || '—'}</Text> : value}
+    </Stack>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 20
 
 export function ManageUsers() {
+  const [users, setUsers] = useState<SuperadminUserRow[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
   const [page, setPage] = useState(1)
-  const [selected, setSelected] = useState<string[]>([])
-  
-  // Filter states
-  const [searchQuery, setSearchQuery] = useState('')
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [accountStatus, setAccountStatus] = useState<string | null>(null)
-  const [bulkAction, setBulkAction] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Filter users based on all filter criteria
-  const filteredUsers = useMemo(() => {
-    return allUsers.filter(user => {
-      // Search filter (name, email, phone)
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase()
-        const matchesSearch = 
-          user.name.toLowerCase().includes(query) ||
-          user.email.toLowerCase().includes(query) ||
-          user.phone.includes(query)
-        if (!matchesSearch) return false
-      }
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [kycFilter, setKycFilter] = useState<string | null>(null)
 
-      // Role filter
-      if (userRole && userRole !== 'All Users') {
-        if (user.role !== userRole) return false
-      }
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false)
 
-      // Status filter
-      if (accountStatus && accountStatus !== 'All') {
-        if (user.status !== accountStatus) return false
-      }
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
-      return true
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => setDebouncedSearch(search), 400)
+  }, [search])
+
+  function fetchUsers() {
+    setLoading(true)
+    setError(null)
+    listUsers({
+      page,
+      limit: PAGE_SIZE,
+      search: debouncedSearch || undefined,
+      role: roleFilter ?? undefined,
+      status: statusFilter ?? undefined,
+      kycStatus: kycFilter ?? undefined,
     })
-  }, [searchQuery, userRole, accountStatus])
-
-  // Handle bulk actions
-  const handleBulkAction = (action: string | null) => {
-    if (!action || selected.length === 0) return
-
-    switch (action) {
-      case 'Activate':
-        console.log('Activating users:', selected)
-        // Add API call here
-        break
-      case 'Deactivate':
-        console.log('Deactivating users:', selected)
-        // Add API call here
-        break
-      case 'Delete':
-        console.log('Deleting users:', selected)
-        // Add API call here
-        break
-    }
-    
-    // Clear selection after action
-    setSelected([])
-    setBulkAction(null)
+      .then((res) => {
+        setUsers(res.data)
+        setTotal(res.meta.total)
+        setTotalPages(res.meta.totalPages)
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load users'))
+      .finally(() => setLoading(false))
   }
 
-  // Reset all filters
-  const clearFilters = () => {
-    setSearchQuery('')
-    setUserRole(null)
-    setAccountStatus(null)
+  useEffect(() => {
+    fetchUsers()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, roleFilter, statusFilter, kycFilter])
+
+  function openUserDetail(userId: string) {
+    setSelectedUserId(userId)
+    openDrawer()
+  }
+
+  function handleFiltersReset() {
+    setSearch('')
+    setRoleFilter(null)
+    setStatusFilter(null)
+    setKycFilter(null)
     setPage(1)
   }
 
-  const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE)
-  const paginatedUsers = filteredUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  const toggleRow = (email: string) =>
-    setSelected((current) =>
-      current.includes(email)
-        ? current.filter((e) => e !== email)
-        : [...current, email],
-    )
-
-  const toggleAll = () =>
-    setSelected((current) =>
-      current.length === paginatedUsers.length
-        ? []
-        : paginatedUsers.map((u) => u.email),
-    )
+  const hasFilters = !!(search || roleFilter || statusFilter || kycFilter)
 
   return (
     <Stack gap="md">
       <Group justify="space-between" align="center">
         <Title order={2}>Manage Users</Title>
-        {(searchQuery || userRole || accountStatus) && (
-          <ActionIcon 
-            variant="subtle" 
-            color="gray" 
-            onClick={clearFilters}
-            title="Clear filters"
-          >
-            <IconX size={18} />
-          </ActionIcon>
-        )}
+        <Text fz="sm" c="dimmed">{total.toLocaleString()} users total</Text>
       </Group>
 
-      <Group gap="sm">
+      <Group gap="sm" wrap="wrap">
         <TextInput
           placeholder="Search by name, email or phone"
           leftSection={<IconSearch size={16} />}
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.currentTarget.value)
-            setPage(1) // Reset to first page on search
-          }}
-          w={300}
+          value={search}
+          onChange={(e) => { setSearch(e.currentTarget.value); setPage(1) }}
+          w={280}
           size="sm"
         />
         <Select
-          placeholder="User Role"
-          data={['All Users', 'Admin', 'Regular User']}
-          value={userRole}
-          onChange={(value) => {
-            setUserRole(value)
-            setPage(1)
-          }}
+          placeholder="Role"
+          data={['MEMBER', 'ADMIN', 'SUPERADMIN']}
+          value={roleFilter}
+          onChange={(v) => { setRoleFilter(v); setPage(1) }}
           size="sm"
-          w={150}
+          w={140}
           clearable
         />
         <Select
-          placeholder="Account Status"
-          data={['All', 'Active', 'Inactive']}
-          value={accountStatus}
-          onChange={(value) => {
-            setAccountStatus(value)
-            setPage(1)
-          }}
+          placeholder="Status"
+          data={['ACTIVE', 'SUSPENDED', 'BANNED']}
+          value={statusFilter}
+          onChange={(v) => { setStatusFilter(v); setPage(1) }}
           size="sm"
-          w={170}
+          w={140}
           clearable
         />
         <Select
-          placeholder="Bulk Action"
-          data={['Activate', 'Deactivate', 'Delete']}
-          value={bulkAction}
-          onChange={handleBulkAction}
+          placeholder="KYC Status"
+          data={['NOT_SUBMITTED', 'PENDING', 'APPROVED', 'REJECTED']}
+          value={kycFilter}
+          onChange={(v) => { setKycFilter(v); setPage(1) }}
           size="sm"
-          w={150}
-          disabled={selected.length === 0}
+          w={165}
           clearable
         />
+        {hasFilters && (
+          <Button variant="subtle" size="sm" color="gray" onClick={handleFiltersReset}>
+            Clear filters
+          </Button>
+        )}
       </Group>
 
-      {/* Results count */}
-      {filteredUsers.length > 0 && (
-        <Text size="sm" c="dimmed">
-          Found {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
-        </Text>
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">{error}</Alert>
       )}
 
       <Card withBorder p={0} radius="md">
         <Table verticalSpacing="sm" horizontalSpacing="md">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
-              <Table.Th w={40}>
-                <Checkbox
-                  checked={
-                    paginatedUsers.length > 0 &&
-                    selected.length === paginatedUsers.length
-                  }
-                  indeterminate={
-                    selected.length > 0 &&
-                    selected.length < paginatedUsers.length
-                  }
-                  onChange={toggleAll}
-                  color="white"
-                  styles={{ input: { borderColor: 'white' } }}
-                />
-              </Table.Th>
               <Table.Th style={{ color: 'white' }}>Name</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Email address</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Phone number</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Active ROSCA</Table.Th>
-              <Table.Th style={{ color: 'white' }}>BVN</Table.Th>
+              <Table.Th style={{ color: 'white' }}>Email</Table.Th>
+              <Table.Th style={{ color: 'white' }}>Phone</Table.Th>
+              <Table.Th style={{ color: 'white' }}>Role</Table.Th>
+              <Table.Th style={{ color: 'white' }}>KYC</Table.Th>
+              <Table.Th style={{ color: 'white' }}>ROSCA</Table.Th>
               <Table.Th style={{ color: 'white' }}>Status</Table.Th>
-              <Table.Th style={{ color: 'white' }}>View</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={50} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {paginatedUsers.length > 0 ? (
-              paginatedUsers.map((user) => (
-                <Table.Tr key={user.email}>
+            {loading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <Table.Tr key={i}>
+                  {Array.from({ length: 8 }).map((__, j) => (
+                    <Table.Td key={j}><Skeleton h={20} radius="sm" /></Table.Td>
+                  ))}
+                </Table.Tr>
+              ))
+            ) : users.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={8}>
+                  <Text ta="center" py="xl" c="dimmed">
+                    {hasFilters ? 'No users match your filters' : 'No users yet'}
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              users.map((user) => (
+                <Table.Tr key={user.id}>
                   <Table.Td>
-                    <Checkbox
-                      checked={selected.includes(user.email)}
-                      onChange={() => toggleRow(user.email)}
-                    />
+                    <Text fz="sm" fw={500}>{user.firstName} {user.lastName}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm">{user.name}</Text>
+                    <Text fz="sm" c="dimmed">{user.email}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm">{user.email}</Text>
+                    <Text fz="sm">{user.phone ?? '—'}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm">{user.phone}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm">{user.activeRosca}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm">{user.bvn}</Text>
+                    <Badge variant="light" size="sm" color={user.role === 'SUPERADMIN' ? 'violet' : user.role === 'ADMIN' ? 'blue' : 'gray'}>
+                      {user.role}
+                    </Badge>
                   </Table.Td>
                   <Table.Td>
                     <Badge
-                      color={user.status === 'Active' ? 'green' : 'red'}
+                      variant="light"
+                      size="sm"
+                      color={KYC_COLOR[user.kyc?.status ?? 'NOT_SUBMITTED'] ?? 'gray'}
+                    >
+                      {user.kyc?.status ?? 'NOT_SUBMITTED'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fz="sm">{user._count.roscaMemberships}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge
+                      color={STATUS_COLOR[user.status] ?? 'gray'}
                       variant="filled"
                       size="sm"
                       radius="sm"
@@ -277,29 +533,21 @@ export function ManageUsers() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Menu shadow="md" width={160} position="bottom-end">
+                    <Menu shadow="md" width={180} position="bottom-end">
                       <Menu.Target>
                         <ActionIcon variant="subtle" color="dark">
                           <IconDots size={18} />
                         </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item>View Profile</Menu.Item>
-                        <Menu.Item>Edit User</Menu.Item>
-                        <Menu.Item color="red">Deactivate</Menu.Item>
+                        <Menu.Item onClick={() => openUserDetail(user.id)}>
+                          View Profile
+                        </Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
                   </Table.Td>
                 </Table.Tr>
               ))
-            ) : (
-              <Table.Tr>
-                <Table.Td colSpan={8}>
-                  <Text ta="center" py="xl" c="dimmed">
-                    No users found matching your filters
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
             )}
           </Table.Tbody>
         </Table>
@@ -307,23 +555,21 @@ export function ManageUsers() {
 
       <Group justify="space-between">
         <Text fz="sm" c="dimmed">
-          {filteredUsers.length > 0 ? (
-            `Showing ${(page - 1) * PAGE_SIZE + 1}-
-            ${Math.min(page * PAGE_SIZE, filteredUsers.length)} of ${filteredUsers.length} users`
-          ) : (
-            'No users to display'
-          )}
+          {total > 0
+            ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total.toLocaleString()} users`
+            : 'No users to display'}
         </Text>
-        {filteredUsers.length > PAGE_SIZE && (
-          <Pagination
-            total={totalPages}
-            value={page}
-            onChange={setPage}
-            size="sm"
-            color="primary"
-          />
+        {totalPages > 1 && (
+          <Pagination total={totalPages} value={page} onChange={setPage} size="sm" color="primary" />
         )}
       </Group>
+
+      <UserDetailDrawer
+        userId={selectedUserId}
+        opened={drawerOpened}
+        onClose={closeDrawer}
+        onStatusChange={fetchUsers}
+      />
     </Stack>
   )
 }

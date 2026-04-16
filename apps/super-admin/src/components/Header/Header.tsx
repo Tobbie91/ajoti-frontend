@@ -1,23 +1,27 @@
-import { Group, Text, Avatar, Burger } from '@mantine/core'
-import { DatePickerInput } from '@mantine/dates'
-import { IconCalendar } from '@tabler/icons-react'
-import { useState } from 'react'
+import { Group, Text, Avatar, Burger, ActionIcon, Tooltip } from '@mantine/core'
+import { IconLogout } from '@tabler/icons-react'
+import { clearSessionAndRedirect, logoutApi } from '@/utils/api'
 
 interface HeaderProps {
   opened: boolean
   onToggle: () => void
-  userName?: string
-  avatarSrc?: string
 }
 
-export function Header({
-  opened,
-  onToggle,
-  userName = 'Osho',
-  avatarSrc,
-}: HeaderProps) {
-  const [startDate, setStartDate] = useState<string | null>(null)
-  const [endDate, setEndDate] = useState<string | null>(null)
+export function Header({ opened, onToggle }: HeaderProps) {
+  const stored = localStorage.getItem('superadmin_user')
+  const user = stored ? (JSON.parse(stored) as { firstName?: string; lastName?: string }) : null
+  const displayName = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Admin' : 'Admin'
+  const initial = displayName.charAt(0).toUpperCase()
+
+  async function handleLogout() {
+    const refreshToken = localStorage.getItem('superadmin_refresh_token') ?? ''
+    try {
+      await logoutApi(refreshToken)
+    } catch {
+      // best-effort
+    }
+    clearSessionAndRedirect()
+  }
 
   return (
     <Group h="100%" px="md" justify="space-between">
@@ -28,30 +32,18 @@ export function Header({
         </Text>
       </Group>
 
-      <Group gap="sm" visibleFrom="sm">
-        <DatePickerInput
-          leftSection={<IconCalendar size={16} />}
-          placeholder="Start date"
-          value={startDate}
-          onChange={setStartDate}
-          size="xs"
-          w={160}
-        />
-        <DatePickerInput
-          leftSection={<IconCalendar size={16} />}
-          placeholder="End date"
-          value={endDate}
-          onChange={setEndDate}
-          size="xs"
-          w={160}
-        />
-      </Group>
-
       <Group gap="sm">
-        <Text fz="sm">Hi {userName}</Text>
-        <Avatar src={avatarSrc} radius="xl" size="md" color="primary">
-          {userName.charAt(0)}
+        <Text fz="sm" visibleFrom="sm">
+          Hi, {displayName}
+        </Text>
+        <Avatar radius="xl" size="md" color="primary">
+          {initial}
         </Avatar>
+        <Tooltip label="Sign out" withArrow>
+          <ActionIcon variant="subtle" color="gray" onClick={handleLogout} aria-label="Sign out">
+            <IconLogout size={18} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
       </Group>
     </Group>
   )

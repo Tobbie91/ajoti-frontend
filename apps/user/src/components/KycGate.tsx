@@ -18,7 +18,8 @@ export function KycGate({ children, action = 'perform this action' }: KycGatePro
   useEffect(() => {
     getKycStatus()
       .then((kyc) => {
-        if (kyc.status === 'APPROVED') setState('approved')
+        // Level 1+ (NIN+BVN+NOK) is the minimum to transact
+        if (kyc.kycLevel >= 1) setState('approved')
         else if (kyc.status === 'PENDING') setState('pending')
         else if (kyc.status === 'REJECTED') setState('rejected')
         else setState('incomplete')

@@ -1,11 +1,14 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from '@/layouts'
+import { RequireAuth } from '@/components/RequireAuth/RequireAuth'
 import {
   Dashboard,
   ManageUsers,
   ManageRosca,
   Transactions,
   SettingsLogs,
+  Login,
+  KycApprovals,
 } from '@/pages'
 
 import { FixedSavings } from '@/pages/savings/FixedSavings'
@@ -15,15 +18,24 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<AdminLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/manage-users" element={<ManageUsers />} />
-          <Route path="/manage-rosca" element={<ManageRosca />} />
-          <Route path="/savings/FixedSavings" element={<FixedSavings />} />
-          <Route path="/savings/TargetSavings" element={<TargetSavings />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/settings-logs" element={<SettingsLogs />} />
+        {/* Public */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Protected — require SUPERADMIN token */}
+        <Route element={<RequireAuth />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/manage-users" element={<ManageUsers />} />
+            <Route path="/kyc-approvals" element={<KycApprovals />} />
+            <Route path="/manage-rosca" element={<ManageRosca />} />
+            <Route path="/savings/FixedSavings" element={<FixedSavings />} />
+            <Route path="/savings/TargetSavings" element={<TargetSavings />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/settings-logs" element={<SettingsLogs />} />
+          </Route>
         </Route>
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   )

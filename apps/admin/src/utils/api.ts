@@ -208,6 +208,8 @@ export interface KycStatus {
   bvnVerified: boolean
   nokSubmitted: boolean
   status: string // "PENDING" | "APPROVED" | "REJECTED"
+  step?: string
+  kycLevel: number // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
 }
 
 export function getKycStatus(): Promise<KycStatus> {

@@ -237,7 +237,8 @@ export interface KycStatus {
   bvnVerified: boolean
   nokSubmitted: boolean
   status: string  // e.g. "NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED"
-  step?: string   // e.g. "NIN_REQUIRED", "BVN_REQUIRED", "NOK_REQUIRED", "SUBMITTED"
+  step?: string   // e.g. "NIN_REQUIRED", "BVN_REQUIRED", "NOK_REQUIRED", "SUBMITTED", "PHOTO_REQUIRED", "PROOF_OF_ADDRESS_REQUIRED"
+  kycLevel: number  // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
   rejectionReason?: string | null
 }
 
