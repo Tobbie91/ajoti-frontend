@@ -84,7 +84,7 @@ export function Rosca() {
         }
         if (joinRes.status === 'fulfilled') {
           joinRes.value
-            .filter((r) => ['APPROVED', 'ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()))
+            .filter((r) => ['ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()))
             .forEach((r) => ids.add(r.circleId))
         }
         setJoinedIds(ids)
@@ -144,7 +144,7 @@ export function Rosca() {
         const participations = partRes.status === 'fulfilled' ? partRes.value : []
 
         const approvedRequests = joinRequests.filter(
-          (r) => ['APPROVED', 'ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
+          (r) => ['ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
         )
 
         // Build merged list — participations take priority (dedup by circleId)

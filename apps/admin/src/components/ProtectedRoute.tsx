@@ -5,6 +5,15 @@ import { getKycStatus } from '@/utils/api'
 
 type GuardState = 'loading' | 'ok' | 'no-auth' | 'no-kyc'
 
+function getTokenRole(token: string): string | undefined {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.role
+  } catch {
+    return undefined
+  }
+}
+
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation()
   const [state, setState] = useState<GuardState>('loading')
@@ -12,6 +21,14 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem('admin_access_token')
     if (!token) {
+      setState('no-auth')
+      return
+    }
+
+    const role = getTokenRole(token)
+    if (role !== 'ADMIN' && role !== 'SUPERADMIN') {
+      localStorage.removeItem('admin_access_token')
+      localStorage.removeItem('admin_refresh_token')
       setState('no-auth')
       return
     }

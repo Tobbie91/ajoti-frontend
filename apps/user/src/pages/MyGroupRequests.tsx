@@ -21,7 +21,8 @@ interface GroupRequest {
 function mapStatus(raw: string): RequestStatus {
   const s = raw.toUpperCase()
   if (s === 'PENDING') return 'Pending'
-  if (['APPROVED', 'ACTIVE', 'STARTED'].includes(s)) return 'Accepted'
+  if (['ACTIVE', 'STARTED'].includes(s)) return 'Accepted'
+  if (s === 'REJECTED') return 'Declined'
   return 'Declined'
 }
 
@@ -35,11 +36,11 @@ function mapRequest(r: MyJoinRequest): GroupRequest {
   const adminName = circle.admin
     ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
     : 'Admin'
-  const date = r.createdAt
-    ? new Date(r.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+  const date = r.requestedAt
+    ? new Date(r.requestedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—'
   return {
-    id: r.id,
+    id: r.membershipId,
     groupName: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
     amount: formatted,
     duration: circle.durationCycles ? `${circle.durationCycles} cycles` : '—',

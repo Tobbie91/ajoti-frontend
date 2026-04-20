@@ -412,10 +412,11 @@ export function joinRoscaCircle(circleId: string): Promise<{ message: string }> 
 }
 
 export interface MyJoinRequest {
-  id: string
+  membershipId: string
   circleId: string
   status: string
-  createdAt?: string
+  requestedAt?: string
+  collateralReserved?: string
   circle?: {
     id?: string
     name?: string
