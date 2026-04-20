@@ -11,6 +11,8 @@ import {
   IconReceipt,
   IconSettings,
   IconShieldCheck,
+  IconAward,
+  IconTestPipe,
 } from '@tabler/icons-react'
 
 const mainLinks = [
@@ -18,6 +20,8 @@ const mainLinks = [
   { label: 'Manage Users', icon: IconUsers, path: '/manage-users' },
   { label: 'KYC Approvals', icon: IconShieldCheck, path: '/kyc-approvals' },
   { label: 'Manage ROSCA', icon: IconTopologyRing, path: '/manage-rosca' },
+  { label: 'Trust Scores', icon: IconAward, path: '/trust-scores' },
+  { label: 'Simulations', icon: IconTestPipe, path: '/simulations' },
 ]
 
 const savingsChildren = [

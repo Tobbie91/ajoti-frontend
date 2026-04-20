@@ -525,3 +525,143 @@ export interface ReconcileResult {
 export function reconcileFunding(reference: string): Promise<{ success: boolean; message: string; data: ReconcileResult }> {
   return authRequest(`/api/admin/funding/reconcile/${encodeURIComponent(reference)}`, { method: 'POST' })
 }
+
+// ── Trust Scores ──────────────────────────────────────────────────────────────
+
+export interface TrustStatsRow {
+  userId: string
+  score: number
+  displayScore: number
+  totalContributions: number
+  onTimeContributions: number
+  lateContributions: number
+  missedContributions: number
+  payoutReceived: boolean
+  defaultedPostPayout: boolean
+  peerRatingAvg: number
+  peerRatingCount: number
+  user: { firstName: string; lastName: string; email: string }
+}
+
+export interface TrustStatsFull extends TrustStatsRow {
+  atiBreakdown: {
+    recentBehavior: number
+    historyBehavior: number
+    payoutReliability: number
+    peerScore: number
+    historyLength: number
+  }
+}
+
+export interface TrustEventResult {
+  newTrustScore: number
+  newDisplayScore: number
+}
+
+export function getAllTrustStats(params: {
+  page?: number
+  limit?: number
+  minScore?: number
+  maxScore?: number
+} = {}): Promise<PaginatedResponse<TrustStatsRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/trust${q ? `?${q}` : ''}`, { method: 'GET' })
+}
+
+export function getTrustStatsFull(userId: string): Promise<TrustStatsFull> {
+  return authRequest(`/api/superadmin/trust/${userId}`, { method: 'GET' })
+}
+
+export function fireTrustEvent(
+  userId: string,
+  dto: { eventType: string; rating?: number; isPostPayout?: boolean },
+): Promise<TrustEventResult> {
+  return authRequest(`/api/superadmin/trust/${userId}/event`, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+// ── Simulations ───────────────────────────────────────────────────────────────
+
+export interface SimScoreSnapshot { memberLabel: string; raw: number; display: number }
+export interface SimEventRecord { cycle: string; event: string; scores: SimScoreSnapshot[] }
+export interface SimMemberResult { label: string; finalRaw: number; finalDisplay: number }
+export interface SimResult { runId: string; events: SimEventRecord[]; finalScores: SimMemberResult[] }
+export interface AutoSimResult { runId: string; circleA: SimResult; circleB: SimResult; circleC: SimResult }
+
+export interface ManualSimConfig {
+  circleName: string
+  contributionAmountKobo: number
+  maxSlots: number
+  frequency: 'WEEKLY' | 'BI_WEEKLY' | 'MONTHLY'
+  payoutLogic: 'SEQUENTIAL' | 'RANDOM_DRAW' | 'TRUST_SCORE' | 'COMBINED' | 'ADMIN_ASSIGNED'
+  members: { label: string; payoutPosition: number }[]
+  cycles: {
+    cycleNumber: number
+    contributions: { member: string; timing: 'on_time' | 'late' | 'missed' }[]
+    extraTrustEvents?: { member: string; event: string; rating?: number; isPostPayout?: boolean }[]
+  }[]
+  peerReviews?: { reviewer: string; reviewee: string; rating: number; comment?: string }[]
+}
+
+export function runAutoSimulation(): Promise<{ success: boolean; data: AutoSimResult }> {
+  return authRequest('/api/superadmin/simulate/auto', { method: 'POST' })
+}
+
+export function runManualSimulation(dto: ManualSimConfig): Promise<{ success: boolean; data: SimResult }> {
+  return authRequest('/api/superadmin/simulate/manual', { method: 'POST', body: JSON.stringify(dto) })
+}
+
+// ── Sandbox ───────────────────────────────────────────────────────────────────
+
+export interface SandboxUser { id: string; label: string; email: string; walletId: string; role: string }
+export interface SandboxUsersResult { runId: string; users: SandboxUser[] }
+export interface SandboxCircleResult { runId: string; circleId: string; adminId: string; memberIds: string[]; durationCycles: number }
+export interface SandboxCycleMemberResult { userId: string; contributed: boolean; timing: string; trustScore: { raw: number; display: number } }
+export interface SandboxCycleResult {
+  circleId: string; cycleNumber: number
+  members: SandboxCycleMemberResult[]
+  payout: { payoutId: string; recipientId: string; amount: string; isLastCycle: boolean; status: string }
+}
+export interface LedgerEntryRow { id: string; entryType: string; movementType: string; amount: string; balanceBefore: string; balanceAfter: string; reference: string; sourceType: string; createdAt: string }
+export interface LedgerInspectResult { walletId: string; entryCount: number; reportedBalance: string; computedBalance: string; isReconciled: boolean; discrepancy: string; entries: LedgerEntryRow[] }
+export interface WalletReconcileRow { walletId: string; userId: string; isReconciled: boolean; reportedBalance: string; computedBalance: string; discrepancy: string; entryCount: number }
+export interface ReconcileRunResult { runId: string; allReconciled: boolean; wallets: WalletReconcileRow[] }
+
+export function sandboxCreateUsers(dto: { runId?: string; count: number; fundAmountKobo?: number }): Promise<{ success: boolean; data: SandboxUsersResult }> {
+  return authRequest('/api/superadmin/simulate/sandbox/users', { method: 'POST', body: JSON.stringify(dto) })
+}
+
+export function sandboxCreateCircle(dto: {
+  runId: string; memberIds: string[]; adminId?: string; name: string
+  contributionAmountKobo: number; frequency: string; payoutLogic: string
+  assignments?: { userId: string; position: number }[]
+}): Promise<{ success: boolean; data: SandboxCircleResult }> {
+  return authRequest('/api/superadmin/simulate/sandbox/circle', { method: 'POST', body: JSON.stringify(dto) })
+}
+
+export function sandboxRunCycle(dto: {
+  circleId: string; cycleNumber: number
+  contributions: { userId: string; timing: 'on_time' | 'late' | 'skip' }[]
+}): Promise<{ success: boolean; data: SandboxCycleResult }> {
+  return authRequest('/api/superadmin/simulate/sandbox/cycle', { method: 'POST', body: JSON.stringify(dto) })
+}
+
+export function sandboxApplyLoan(dto: { userId: string; circleId: string }): Promise<{ success: boolean; data: unknown }> {
+  return authRequest('/api/superadmin/simulate/sandbox/loan', { method: 'POST', body: JSON.stringify(dto) })
+}
+
+export function sandboxInspectLedger(walletId: string): Promise<{ success: boolean; data: LedgerInspectResult }> {
+  return authRequest(`/api/superadmin/simulate/sandbox/ledger/${walletId}`, { method: 'GET' })
+}
+
+export function sandboxReconcile(runId: string): Promise<{ success: boolean; data: ReconcileRunResult }> {
+  return authRequest(`/api/superadmin/simulate/sandbox/reconcile/${runId}`, { method: 'GET' })
+}
+
+export function sandboxReset(runId: string): Promise<{ success: boolean; message: string; data: { deleted: number } }> {
+  return authRequest(`/api/superadmin/simulate/sandbox/reset/${runId}`, { method: 'DELETE' })
+}

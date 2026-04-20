@@ -9,6 +9,8 @@ import {
   SettingsLogs,
   Login,
   KycApprovals,
+  TrustScores,
+  Simulations,
 } from '@/pages'
 
 import { FixedSavings } from '@/pages/savings/FixedSavings'
@@ -31,6 +33,8 @@ function App() {
             <Route path="/savings/FixedSavings" element={<FixedSavings />} />
             <Route path="/savings/TargetSavings" element={<TargetSavings />} />
             <Route path="/transactions" element={<Transactions />} />
+            <Route path="/trust-scores" element={<TrustScores />} />
+            <Route path="/simulations" element={<Simulations />} />
             <Route path="/settings-logs" element={<SettingsLogs />} />
           </Route>
         </Route>
