@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { SimpleGrid, Grid, Stack, Skeleton, Alert } from '@mantine/core'
-import { IconUsers, IconTopologyRing, IconWallet, IconAlertCircle } from '@tabler/icons-react'
+import { SimpleGrid, Grid, Stack, Skeleton, Alert, Card, Group, Text, Badge, ThemeIcon } from '@mantine/core'
+import { IconUsers, IconTopologyRing, IconWallet, IconAlertCircle, IconCurrencyNaira } from '@tabler/icons-react'
 import { StatsCard } from '@/components/StatsCard'
 import { UsersEngagementChart, AnalyticsDonutChart } from '@/components/charts'
 import { RecentActivities } from '@/components/RecentActivities'
 import { QuickActions } from '@/components/QuickActions'
-import { getDashboardStats, getGrowthMetrics, type DashboardStats, type GrowthMetrics } from '@/utils/api'
+import { getDashboardStats, getGrowthMetrics, getWalletSummary, type DashboardStats, type GrowthMetrics, type WalletSummary } from '@/utils/api'
 
 function formatNaira(nairaStr: string) {
   const num = parseFloat(nairaStr)
@@ -18,6 +18,7 @@ function formatNaira(nairaStr: string) {
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [growth, setGrowth] = useState<GrowthMetrics | null>(null)
+  const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,10 +26,12 @@ export function Dashboard() {
     Promise.all([
       getDashboardStats(),
       getGrowthMetrics({ period: '30d' }),
+      getWalletSummary(),
     ])
-      .then(([s, g]) => {
+      .then(([s, g, w]) => {
         setStats(s)
         setGrowth(g)
+        setWalletSummary(w)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load dashboard'))
       .finally(() => setLoading(false))
@@ -103,6 +106,40 @@ export function Dashboard() {
           <AnalyticsDonutChart kyc={stats?.kyc} />
         </Grid.Col>
       </Grid>
+
+      {/* Wallet breakdown */}
+      {walletSummary && (
+        <Card withBorder radius="md" p="md">
+          <Group mb="sm" gap="xs">
+            <ThemeIcon size={32} radius="md" variant="light" color="teal">
+              <IconCurrencyNaira size={18} stroke={1.5} />
+            </ThemeIcon>
+            <Text fw={600} fz="sm">Platform Wallet Breakdown</Text>
+          </Group>
+          <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="sm">
+            <div>
+              <Text fz="xs" c="dimmed">Total User Funds</Text>
+              <Text fw={700} fz="sm">{formatNaira(walletSummary.totalUserBalanceNaira)}</Text>
+            </div>
+            <div>
+              <Text fz="xs" c="dimmed">Platform Pool</Text>
+              <Text fw={700} fz="sm">{formatNaira(walletSummary.platformPoolNaira)}</Text>
+            </div>
+            <div>
+              <Text fz="xs" c="dimmed">Active Wallets</Text>
+              <Badge color="green" variant="light" size="sm">{walletSummary.walletCounts.active.toLocaleString()}</Badge>
+            </div>
+            <div>
+              <Text fz="xs" c="dimmed">Frozen Wallets</Text>
+              <Badge color="blue" variant="light" size="sm">{walletSummary.walletCounts.frozen.toLocaleString()}</Badge>
+            </div>
+            <div>
+              <Text fz="xs" c="dimmed">Suspended Wallets</Text>
+              <Badge color="red" variant="light" size="sm">{walletSummary.walletCounts.suspended.toLocaleString()}</Badge>
+            </div>
+          </SimpleGrid>
+        </Card>
+      )}
 
       <Grid>
         <Grid.Col span={{ base: 12, md: 7 }}>

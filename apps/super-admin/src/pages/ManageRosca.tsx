@@ -11,6 +11,7 @@ import {
   Select,
   Skeleton,
   Stack,
+  Switch,
   Table,
   Tabs,
   Text,
@@ -36,6 +37,7 @@ import {
   flagMember,
   getCircleDetail,
   getDefaulters,
+  getAllRoscaCircles,
   listCircles,
   type CircleRow,
   type PaginatedResponse,
@@ -318,6 +320,8 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 
 function CirclesTab() {
   const [data, setData] = useState<PaginatedResponse<CircleRow> | null>(null)
+  const [allCircles, setAllCircles] = useState<CircleRow[] | null>(null)
+  const [showAll, setShowAll] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -333,16 +337,23 @@ function CirclesTab() {
   const fetchCircles = useCallback(() => {
     setLoading(true)
     setError(null)
-    listCircles({
-      page,
-      limit: LIMIT,
-      ...(status ? { status } : {}),
-      ...(search.trim() ? { search: search.trim() } : {}),
-    })
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load circles'))
-      .finally(() => setLoading(false))
-  }, [page, status, search])
+    if (showAll) {
+      getAllRoscaCircles({ ...(status ? { status } : {}) })
+        .then((res) => setAllCircles(res.data))
+        .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load circles'))
+        .finally(() => setLoading(false))
+    } else {
+      listCircles({
+        page,
+        limit: LIMIT,
+        ...(status ? { status } : {}),
+        ...(search.trim() ? { search: search.trim() } : {}),
+      })
+        .then(setData)
+        .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load circles'))
+        .finally(() => setLoading(false))
+    }
+  }, [page, status, search, showAll])
 
   useEffect(() => { fetchCircles() }, [fetchCircles])
 
@@ -358,21 +369,23 @@ function CirclesTab() {
     openDetail()
   }
 
-  const rows = data?.data ?? []
-  const totalPages = data?.meta.totalPages ?? 1
+  const rows = showAll ? (allCircles ?? []) : (data?.data ?? [])
+  const totalPages = showAll ? 1 : (data?.meta.totalPages ?? 1)
 
   return (
     <>
       {/* Filters */}
       <Group mb="md" gap="sm">
-        <TextInput
-          placeholder="Search by name..."
-          leftSection={<IconSearch size={16} />}
-          value={search}
-          onChange={(e) => handleSearchChange(e.currentTarget.value)}
-          style={{ flex: 1, maxWidth: 320 }}
-          radius="md"
-        />
+        {!showAll && (
+          <TextInput
+            placeholder="Search by name..."
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={(e) => handleSearchChange(e.currentTarget.value)}
+            style={{ flex: 1, maxWidth: 320 }}
+            radius="md"
+          />
+        )}
         <Select
           placeholder="Status"
           data={[
@@ -390,6 +403,12 @@ function CirclesTab() {
         <ActionIcon variant="default" size="lg" radius="md" onClick={fetchCircles} title="Refresh">
           <IconRefresh size={16} />
         </ActionIcon>
+        <Switch
+          label="Include private"
+          size="sm"
+          checked={showAll}
+          onChange={(e) => { setShowAll(e.currentTarget.checked); setPage(1) }}
+        />
       </Group>
 
       {error && (
@@ -473,9 +492,11 @@ function CirclesTab() {
 
         <Group justify="space-between" p="md">
           <Text size="sm" c="dimmed">
-            {data ? `${data.meta.total} circle${data.meta.total !== 1 ? 's' : ''}` : ''}
+            {showAll
+              ? `${rows.length} circle${rows.length !== 1 ? 's' : ''} (all, including private)`
+              : data ? `${data.meta.total} circle${data.meta.total !== 1 ? 's' : ''}` : ''}
           </Text>
-          <Pagination total={totalPages} value={page} onChange={setPage} size="sm" />
+          {!showAll && <Pagination total={totalPages} value={page} onChange={setPage} size="sm" />}
         </Group>
       </Paper>
 

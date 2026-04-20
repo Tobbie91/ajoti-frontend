@@ -37,6 +37,8 @@ import {
   getUserDetail,
   updateUserStatus,
   promoteToSuperadmin,
+  approveAdminRequest,
+  rejectAdminRequest,
   type SuperadminUserRow,
   type SuperadminUserDetail,
 } from '@/utils/api'
@@ -83,6 +85,8 @@ function UserDetailDrawer({
   const [suspendModal, { open: openSuspend, close: closeSuspend }] = useDisclosure(false)
   const [banModal, { open: openBan, close: closeBan }] = useDisclosure(false)
   const [promoteModal, { open: openPromote, close: closePromote }] = useDisclosure(false)
+  const [approveAdminModal, { open: openApproveAdmin, close: closeApproveAdmin }] = useDisclosure(false)
+  const [rejectAdminModal, { open: openRejectAdmin, close: closeRejectAdmin }] = useDisclosure(false)
   const [reason, setReason] = useState('')
 
   useEffect(() => {
@@ -122,6 +126,36 @@ function UserDetailDrawer({
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Promote failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleApproveAdmin() {
+    if (!userId) return
+    setActionLoading(true)
+    try {
+      await approveAdminRequest(userId)
+      closeApproveAdmin()
+      onStatusChange()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Approve failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleRejectAdmin() {
+    if (!userId) return
+    setActionLoading(true)
+    try {
+      await rejectAdminRequest(userId)
+      closeRejectAdmin()
+      onStatusChange()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Reject failed')
     } finally {
       setActionLoading(false)
     }
@@ -246,6 +280,21 @@ function UserDetailDrawer({
 
             <Divider />
 
+            {/* Pending admin request alert */}
+            {(user?.adminRequestedAt as string | null) && (
+              <Alert color="orange" radius="md" variant="light" title="Pending Admin Request">
+                <Text fz="xs">Requested on {new Date(user!.adminRequestedAt as string).toLocaleDateString('en-NG')}</Text>
+                <Group mt="xs" gap="xs">
+                  <Button size="xs" color="green" variant="filled" onClick={openApproveAdmin} loading={actionLoading}>
+                    Approve
+                  </Button>
+                  <Button size="xs" color="red" variant="light" onClick={openRejectAdmin} loading={actionLoading}>
+                    Reject
+                  </Button>
+                </Group>
+              </Alert>
+            )}
+
             {/* Actions */}
             <Stack gap="xs">
               {currentStatus !== 'ACTIVE' && (
@@ -327,6 +376,38 @@ function UserDetailDrawer({
           </Group>
         </Stack>
       </Modal>
+
+      {/* Approve admin request modal */}
+      <Modal opened={approveAdminModal} onClose={closeApproveAdmin} title="Approve Admin Request" size="sm">
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            This will grant admin access to{' '}
+            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong> and allow them to create and manage ROSCA groups.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeApproveAdmin}>Cancel</Button>
+            <Button color="green" loading={actionLoading} onClick={handleApproveAdmin}>
+              Approve
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Reject admin request modal */}
+      <Modal opened={rejectAdminModal} onClose={closeRejectAdmin} title="Reject Admin Request" size="sm">
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            This will reject the admin access request from{' '}
+            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong>. They will remain a regular member.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeRejectAdmin}>Cancel</Button>
+            <Button color="red" loading={actionLoading} onClick={handleRejectAdmin}>
+              Reject
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </>
   )
 }
@@ -356,6 +437,7 @@ export function ManageUsers() {
   const [roleFilter, setRoleFilter] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [kycFilter, setKycFilter] = useState<string | null>(null)
+  const [pendingAdminFilter, setPendingAdminFilter] = useState(false)
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false)
@@ -378,6 +460,7 @@ export function ManageUsers() {
       role: roleFilter ?? undefined,
       status: statusFilter ?? undefined,
       kycStatus: kycFilter ?? undefined,
+      pendingAdminRequest: pendingAdminFilter || undefined,
     })
       .then((res) => {
         setUsers(res.data)
@@ -391,7 +474,7 @@ export function ManageUsers() {
   useEffect(() => {
     fetchUsers()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearch, roleFilter, statusFilter, kycFilter])
+  }, [page, debouncedSearch, roleFilter, statusFilter, kycFilter, pendingAdminFilter])
 
   function openUserDetail(userId: string) {
     setSelectedUserId(userId)
@@ -403,10 +486,11 @@ export function ManageUsers() {
     setRoleFilter(null)
     setStatusFilter(null)
     setKycFilter(null)
+    setPendingAdminFilter(false)
     setPage(1)
   }
 
-  const hasFilters = !!(search || roleFilter || statusFilter || kycFilter)
+  const hasFilters = !!(search || roleFilter || statusFilter || kycFilter || pendingAdminFilter)
 
   return (
     <Stack gap="md">
@@ -451,6 +535,14 @@ export function ManageUsers() {
           w={165}
           clearable
         />
+        <Button
+          variant={pendingAdminFilter ? 'filled' : 'light'}
+          color="orange"
+          size="sm"
+          onClick={() => { setPendingAdminFilter((v) => !v); setPage(1) }}
+        >
+          Pending Admin Requests
+        </Button>
         {hasFilters && (
           <Button variant="subtle" size="sm" color="gray" onClick={handleFiltersReset}>
             Clear filters
@@ -497,7 +589,12 @@ export function ManageUsers() {
               users.map((user) => (
                 <Table.Tr key={user.id}>
                   <Table.Td>
-                    <Text fz="sm" fw={500}>{user.firstName} {user.lastName}</Text>
+                    <Group gap="xs" wrap="nowrap">
+                      <Text fz="sm" fw={500}>{user.firstName} {user.lastName}</Text>
+                      {user.adminRequestedAt && (
+                        <Badge size="xs" color="orange" variant="filled">Admin Request</Badge>
+                      )}
+                    </Group>
                   </Table.Td>
                   <Table.Td>
                     <Text fz="sm" c="dimmed">{user.email}</Text>

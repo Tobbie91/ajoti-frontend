@@ -30,8 +30,10 @@ import {
   exportCsv,
   getLedger,
   getTransactionAnalytics,
+  reconcileFunding,
   type LedgerRow,
   type PaginatedResponse,
+  type ReconcileResult,
   type TransactionAnalytics,
 } from '@/utils/api'
 
@@ -136,6 +138,27 @@ export function Transactions() {
 
   const [exporting, setExporting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [reconcileRef, setReconcileRef] = useState('')
+  const [reconciling, setReconciling] = useState(false)
+  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null)
+  const [reconcileError, setReconcileError] = useState<string | null>(null)
+
+  async function handleReconcile() {
+    const ref = reconcileRef.trim()
+    if (!ref) return
+    setReconciling(true)
+    setReconcileResult(null)
+    setReconcileError(null)
+    try {
+      const res = await reconcileFunding(ref)
+      setReconcileResult(res.data)
+    } catch (e) {
+      setReconcileError(e instanceof Error ? e.message : 'Reconciliation failed')
+    } finally {
+      setReconciling(false)
+    }
+  }
 
   // Load analytics
   useEffect(() => {
@@ -370,6 +393,65 @@ export function Transactions() {
           </Text>
           <Pagination total={totalPages} value={page} onChange={setPage} size="sm" />
         </Group>
+      </Paper>
+
+      {/* Manual Reconciliation */}
+      <Paper withBorder radius="md" p="md">
+        <Text fw={600} size="sm" mb="xs">Manual Funding Reconciliation</Text>
+        <Text size="xs" c="dimmed" mb="md">
+          Force-reconcile a stuck or unprocessed funding transaction by its internal reference (e.g. AJT-FUND-…).
+        </Text>
+        <Group gap="sm" align="flex-end">
+          <TextInput
+            placeholder="AJT-FUND-8ca2de2e-…"
+            value={reconcileRef}
+            onChange={(e) => { setReconcileRef(e.currentTarget.value); setReconcileResult(null); setReconcileError(null) }}
+            style={{ flex: 1, maxWidth: 420 }}
+            radius="md"
+            size="sm"
+          />
+          <Button
+            size="sm"
+            loading={reconciling}
+            disabled={!reconcileRef.trim()}
+            onClick={handleReconcile}
+          >
+            Reconcile
+          </Button>
+        </Group>
+
+        {reconcileError && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" mt="sm">
+            {reconcileError}
+          </Alert>
+        )}
+
+        {reconcileResult && (
+          <Paper withBorder radius="sm" p="sm" mt="sm" bg="gray.0">
+            <Group gap="xs" mb="xs">
+              <Badge
+                color={
+                  reconcileResult.outcome === 'settled' ? 'green'
+                  : reconcileResult.outcome === 'already_processed' ? 'blue'
+                  : reconcileResult.outcome === 'still_pending' ? 'yellow'
+                  : 'red'
+                }
+                variant="filled"
+                size="sm"
+              >
+                {reconcileResult.outcome.replace(/_/g, ' ')}
+              </Badge>
+              <Text size="xs" c="dimmed">{new Date(reconcileResult.reconciledAt).toLocaleString('en-NG')}</Text>
+            </Group>
+            <Text size="xs" style={{ fontFamily: 'monospace' }}>{reconcileResult.reference}</Text>
+            {reconcileResult.amountKobo && (
+              <Text size="xs" c="dimmed" mt={4}>Amount: {formatNaira(reconcileResult.amountKobo)}</Text>
+            )}
+            {(reconcileResult.reason || reconcileResult.providerMessage) && (
+              <Text size="xs" c="dimmed" mt={4}>{reconcileResult.reason ?? reconcileResult.providerMessage}</Text>
+            )}
+          </Paper>
+        )}
       </Paper>
     </Stack>
   )

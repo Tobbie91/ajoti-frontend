@@ -247,6 +247,7 @@ export interface SuperadminUserRow {
   createdAt: string
   suspendedAt: string | null
   suspensionReason: string | null
+  adminRequestedAt: string | null
   kyc: { status: string; step: string } | null
   wallet: { id: string; status: string } | null
   _count: { roscaMemberships: number }
@@ -266,6 +267,7 @@ export function listUsers(params: {
   kycStatus?: string
   registeredFrom?: string
   registeredTo?: string
+  pendingAdminRequest?: boolean
 }): Promise<PaginatedResponse<SuperadminUserRow>> {
   const q = new URLSearchParams(
     Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
@@ -298,6 +300,14 @@ export function updateUserStatus(
 
 export function promoteToSuperadmin(userId: string): Promise<{ success: boolean; data: unknown }> {
   return authRequest(`/api/superadmin/users/${userId}/promote`, { method: 'PATCH' })
+}
+
+export function approveAdminRequest(userId: string): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/approve-admin`, { method: 'PATCH' })
+}
+
+export function rejectAdminRequest(userId: string): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/reject-admin`, { method: 'PATCH' })
 }
 
 // ── KYC ───────────────────────────────────────────────────────────────────────
@@ -451,6 +461,16 @@ export interface CircleRow {
   admin?: { firstName: string; lastName: string; email: string }
 }
 
+export function getAllRoscaCircles(params: {
+  status?: string
+  adminId?: string
+} = {}): Promise<{ success: boolean; data: CircleRow[] }> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/rosca/all${q ? `?${q}` : ''}`, { method: 'GET' })
+}
+
 export function listCircles(params: {
   page?: number
   limit?: number
@@ -489,4 +509,19 @@ export function flagMember(
     method: 'PATCH',
     body: JSON.stringify({ reason }),
   })
+}
+
+export interface ReconcileResult {
+  reference: string
+  outcome: string
+  reconciledAt: string
+  transactionId?: string
+  transactionStatus?: string
+  amountKobo?: string
+  reason?: string
+  providerMessage?: string
+}
+
+export function reconcileFunding(reference: string): Promise<{ success: boolean; message: string; data: ReconcileResult }> {
+  return authRequest(`/api/admin/funding/reconcile/${encodeURIComponent(reference)}`, { method: 'POST' })
 }

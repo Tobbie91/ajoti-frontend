@@ -51,6 +51,7 @@ export function Profile() {
   const kycApproved = (kycStatus?.kycLevel ?? 0) >= 1
   const [adminRequestState, setAdminRequestState] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [adminRequestError, setAdminRequestError] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string>(user.role || '')
 
   useEffect(() => {
     getKycStatus().then(setKycStatus).catch(() => {})
@@ -67,6 +68,7 @@ export function Profile() {
         setCity((u.city as string) || '')
         setState((u.state as string) || null)
         if (u.adminRequestedAt) setAdminRequestState('sent')
+        if (u.role) setUserRole(u.role)
         localStorage.setItem('user', JSON.stringify({ ...getUserFromStorage(), ...u }))
       })
       .catch(() => {})
@@ -472,14 +474,32 @@ export function Profile() {
         </button>
       </div>
 
-      {/* Become an admin */}
+      {/* Admin Access */}
       <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
         <Text fw={600} className="mb-1 text-[16px] text-[#0F172A]">Admin Access</Text>
         <Text fw={400} className="mb-5 text-[12px] text-[#6B7280]">
           Create and manage your own savings group
         </Text>
 
-        {adminRequestState === 'sent' ? (
+        {userRole === 'ADMIN' || userRole === 'SUPERADMIN' ? (
+          <a
+            href="http://localhost:5179/login"
+            target="_blank"
+            rel="noreferrer"
+            className="flex w-full items-center justify-between rounded-xl bg-[#F0FDF4] px-4 py-4 hover:bg-[#D1FAE5]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#02A36E]">
+                <IconUsers size={18} color="white" />
+              </div>
+              <div className="text-left">
+                <Text fw={600} className="text-[13px] text-[#0F172A]">Go to Admin Dashboard</Text>
+                <Text fw={400} className="text-[12px] text-[#6B7280]">You already have admin access</Text>
+              </div>
+            </div>
+            <IconChevronRight size={16} color="#9CA3AF" />
+          </a>
+        ) : adminRequestState === 'sent' ? (
           <div className="flex items-start gap-3 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-4 py-4">
             <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#02A36E]">
               <IconCheck size={16} color="white" />
