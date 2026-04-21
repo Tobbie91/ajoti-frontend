@@ -179,12 +179,12 @@ function authHeaders(token?: string): Record<string, string> {
 async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
   const { headers, ...rest } = options
   const isFormData = options.body instanceof FormData
-  const contentTypeHeader = isFormData ? {} : { 'Content-Type': 'application/json' }
+  const contentTypeHeader: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
 
   // First attempt
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
-    headers: { ...contentTypeHeader, ...authHeaders(), ...headers },
+    headers: { ...contentTypeHeader, ...authHeaders(), ...(headers as Record<string, string>) },
   })
 
   if (res.status !== 401) {
