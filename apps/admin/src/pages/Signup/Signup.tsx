@@ -26,11 +26,11 @@ export function Signup() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: `+234${phone.trim()}`,
         dob,
         gender: gender.toUpperCase() as 'MALE' | 'FEMALE',
         password,
-        role: 'admin',
+        role: 'ADMIN',
       })
       localStorage.setItem('admin_verify_email', email.trim())
       localStorage.setItem('admin_user', JSON.stringify({
@@ -150,10 +150,11 @@ export function Signup() {
               />
               <TextInput
                 label="Phone number"
-                placeholder="+234 800 000 0000"
+                placeholder="800 000 0000"
                 radius="md"
                 value={phone}
                 onChange={(e) => setPhone(e.currentTarget.value)}
+                leftSection={<Text size="sm" c="dimmed">+234</Text>}
                 styles={{
                   input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
                 }}
