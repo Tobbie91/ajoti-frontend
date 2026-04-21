@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider } from '@/components/AuthProvider'
-import { RequireKyc } from '@/components/RequireKyc'
+import { KycGate } from '@/components/KycGate'
 import { AppLayout, BlogLayout } from '@/layouts'
-import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, FundWalletCallback, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword } from '@/pages'
+import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, InviteAccept, MyInvites, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, FundWalletCallback, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword, SetPin } from '@/pages'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = Boolean(googleClientId)
@@ -32,74 +32,29 @@ function App() {
           <Route
             path="/create-wallet"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <CreateNewWallet />
                 </AppLayout>
-              </RequireKyc>
             }
           />
 
           <Route
             path="/createNewWallet2"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <CreateNewWallet2 />
                 </AppLayout>
-              </RequireKyc>
             }
           />
           <Route
             path="/rosca"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <Rosca />
                 </AppLayout>
-              </RequireKyc>
             }
           />
-          <Route
-            path="/rosca/:id"
-            element={
-              <RequireKyc>
-                <AppLayout>
-                  <GroupDetails />
-                </AppLayout>
-              </RequireKyc>
-            }
-          />
-          <Route
-            path="/rosca/:id/join"
-            element={
-              <RequireKyc>
-                <AppLayout>
-                  <RequestToJoin />
-                </AppLayout>
-              </RequireKyc>
-            }
-          />
-          <Route
-            path="/rosca/:id/summary"
-            element={
-              <RequireKyc>
-                <AppLayout>
-                  <JoinSummary />
-                </AppLayout>
-              </RequireKyc>
-            }
-          />
-          <Route
-            path="/rosca/:id/activities"
-            element={
-              <RequireKyc>
-                <AppLayout>
-                  <GrowthActivities />
-                </AppLayout>
-              </RequireKyc>
-            }
-          />
+          {/* Static /rosca/* routes must come before /rosca/:id */}
           <Route
             path="/rosca/how-it-works"
             element={
@@ -119,82 +74,127 @@ function App() {
           <Route
             path="/rosca/become-admin"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <BecomeAdmin />
                 </AppLayout>
-              </RequireKyc>
             }
           />
           <Route
             path="/rosca/requests"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <MyGroupRequests />
                 </AppLayout>
-              </RequireKyc>
+            }
+          />
+          <Route
+            path="/rosca/invites"
+            element={
+              <AppLayout>
+                <MyInvites />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/invite/:token"
+            element={
+              <AppLayout>
+                <InviteAccept />
+              </AppLayout>
+            }
+          />
+          {/* Dynamic routes after all static ones */}
+          <Route
+            path="/rosca/:id/join"
+            element={
+              <AppLayout>
+                  <RequestToJoin />
+                </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/:id/summary"
+            element={
+              <AppLayout>
+                  <JoinSummary />
+                </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/:id/activities"
+            element={
+              <AppLayout>
+                  <GrowthActivities />
+                </AppLayout>
+            }
+          />
+          <Route
+            path="/rosca/:id"
+            element={
+              <AppLayout>
+                  <GroupDetails />
+                </AppLayout>
             }
           />
           <Route
             path="/investments"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <Investments />
                 </AppLayout>
-              </RequireKyc>
             }
           />
           <Route
             path="/fund-wallet"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
+                <KycGate action="fund your wallet">
                   <FundWallet />
-                </AppLayout>
-              </RequireKyc>
+                </KycGate>
+              </AppLayout>
             }
           />
           <Route path="/fund-wallet/callback" element={<FundWalletCallback />} />
           <Route
             path="/withdraw"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
+                <KycGate action="withdraw funds">
                   <WithdrawFunds />
-                </AppLayout>
-              </RequireKyc>
+                </KycGate>
+              </AppLayout>
             }
           />
           <Route
             path="/transactions"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <Transactions />
                 </AppLayout>
-              </RequireKyc>
             }
           />
           <Route
             path="/loans"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <Loans />
                 </AppLayout>
-              </RequireKyc>
             }
           />
           <Route
             path="/profile"
             element={
-              <RequireKyc>
-                <AppLayout>
+              <AppLayout>
                   <Profile />
                 </AppLayout>
-              </RequireKyc>
+            }
+          />
+          <Route
+            path="/set-pin"
+            element={
+              <AppLayout>
+                  <SetPin />
+                </AppLayout>
             }
           />
         </Routes>

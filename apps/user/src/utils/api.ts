@@ -17,6 +17,36 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
   return data as T
 }
 
+// ── Token refresh ────────────────────────────────────────────────────────────
+
+let isRefreshing = false
+let refreshQueue: Array<(token: string) => void> = []
+
+async function tryRefresh(): Promise<string> {
+  const refreshToken = localStorage.getItem('refresh_token')
+  if (!refreshToken) throw new Error('No refresh token')
+
+  const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  })
+
+  if (!res.ok) throw new Error('Refresh failed')
+
+  const data = await res.json() as { accessToken: string; refreshToken: string }
+  localStorage.setItem('access_token', data.accessToken)
+  localStorage.setItem('refresh_token', data.refreshToken)
+  return data.accessToken
+}
+
+function clearSessionAndRedirect() {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
+  localStorage.removeItem('user')
+  window.location.href = '/'
+}
+
 // ── Auth ────────────────────────────────────────────────────────────────────
 
 // Register
@@ -67,6 +97,8 @@ export interface UserProfile {
   city?: string
   state?: string
   lga?: string
+  role?: string
+  adminRequestedAt?: string | null
   [key: string]: unknown
 }
 
@@ -139,15 +171,66 @@ export function resendOtp(email: string): Promise<{ message: string }> {
 
 // ── Authenticated requests ──────────────────────────────────────────────────
 
-function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('access_token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
+function authHeaders(token?: string): Record<string, string> {
+  const t = token ?? localStorage.getItem('access_token')
+  return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
-function authRequest<T>(path: string, options: RequestInit): Promise<T> {
-  return request(path, {
-    ...options,
-    headers: { ...authHeaders(), ...options.headers },
+async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
+  const { headers, ...rest } = options
+  const isFormData = options.body instanceof FormData
+  const contentTypeHeader = isFormData ? {} : { 'Content-Type': 'application/json' }
+
+  // First attempt
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...rest,
+    headers: { ...contentTypeHeader, ...authHeaders(), ...headers },
+  })
+
+  if (res.status !== 401) {
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg = (data as { message?: string | string[] }).message
+      throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
+    }
+    return data as T
+  }
+
+  // 401 — attempt token refresh (queue concurrent calls so we only refresh once)
+  if (!isRefreshing) {
+    isRefreshing = true
+    try {
+      const newToken = await tryRefresh()
+      refreshQueue.forEach((resolve) => resolve(newToken))
+      refreshQueue = []
+      isRefreshing = false
+
+      // Retry with new token
+      return request<T>(path, {
+        ...options,
+        headers: { ...authHeaders(newToken), ...headers },
+      })
+    } catch {
+      refreshQueue = []
+      isRefreshing = false
+      clearSessionAndRedirect()
+      throw new Error('Session expired. Please log in again.')
+    }
+  }
+
+  // Another request is already refreshing — wait for it
+  return new Promise<T>((resolve, reject) => {
+    refreshQueue.push((newToken) => {
+      resolve(
+        request<T>(path, {
+          ...options,
+          headers: { ...authHeaders(newToken), ...headers },
+        }),
+      )
+    })
+    // If refresh ultimately fails the queue gets cleared and this will never resolve,
+    // but clearSessionAndRedirect() will navigate away anyway.
+    setTimeout(() => reject(new Error('Session expired')), 10_000)
   })
 }
 
@@ -157,11 +240,18 @@ export interface KycStatus {
   ninVerified: boolean
   bvnVerified: boolean
   nokSubmitted: boolean
-  status: string  // e.g. "PENDING", "APPROVED", "REJECTED"
+  status: string  // e.g. "NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED"
+  step?: string   // e.g. "NIN_REQUIRED", "BVN_REQUIRED", "NOK_REQUIRED", "SUBMITTED", "PHOTO_REQUIRED", "PROOF_OF_ADDRESS_REQUIRED"
+  kycLevel: number  // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
+  rejectionReason?: string | null
 }
 
 export function getKycStatus(): Promise<KycStatus> {
   return authRequest('/api/kyc/status', { method: 'GET' })
+}
+
+export function resubmitKyc(): Promise<KycStatus> {
+  return authRequest('/api/kyc/resubmit', { method: 'POST' })
 }
 
 export interface VerifyNinPayload {
@@ -203,6 +293,44 @@ export function submitNok(payload: SubmitNokPayload): Promise<{ message: string 
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export interface SubmitPhotoPayload {
+  governmentIdType: string
+  address: string
+  city: string
+  state: string
+  lga?: string
+  country: string
+  selfie: File
+  governmentIdFront: File
+  governmentIdBack?: File
+}
+
+export function submitPhoto(payload: SubmitPhotoPayload): Promise<KycStatus> {
+  const form = new FormData()
+  form.append('governmentIdType', payload.governmentIdType)
+  form.append('address', payload.address)
+  form.append('city', payload.city)
+  form.append('state', payload.state)
+  form.append('country', payload.country)
+  if (payload.lga) form.append('lga', payload.lga)
+  form.append('selfie', payload.selfie)
+  form.append('governmentIdFront', payload.governmentIdFront)
+  if (payload.governmentIdBack) form.append('governmentIdBack', payload.governmentIdBack)
+  return authRequest('/api/kyc/submit-photo', { method: 'POST', body: form })
+}
+
+export interface SubmitProofOfAddressPayload {
+  proofOfAddressType: string
+  proofOfAddress: File
+}
+
+export function submitProofOfAddress(payload: SubmitProofOfAddressPayload): Promise<KycStatus> {
+  const form = new FormData()
+  form.append('proofOfAddressType', payload.proofOfAddressType)
+  form.append('proofOfAddress', payload.proofOfAddress)
+  return authRequest('/api/kyc/submit-proof-of-address', { method: 'POST', body: form })
 }
 
 // ── Logout ──────────────────────────────────────────────────────────────────
@@ -284,10 +412,11 @@ export function joinRoscaCircle(circleId: string): Promise<{ message: string }> 
 }
 
 export interface MyJoinRequest {
-  id: string
+  membershipId: string
   circleId: string
   status: string
-  createdAt?: string
+  requestedAt?: string
+  collateralReserved?: string
   circle?: {
     id?: string
     name?: string
@@ -311,23 +440,57 @@ export async function getMyJoinRequests(): Promise<MyJoinRequest[]> {
 }
 
 // GET /api/rosca/my-participations — circles the user is actively participating in
-export async function getMyParticipations(): Promise<MyJoinRequest[]> {
-  const res = await authRequest<{ data?: MyJoinRequest[] } | MyJoinRequest[]>(
+export async function getMyParticipations(): Promise<RoscaCircle[]> {
+  const res = await authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>(
     '/api/rosca/my-participations',
     { method: 'GET' },
   )
-  return Array.isArray(res) ? res : (res as { data?: MyJoinRequest[] }).data ?? []
+  return Array.isArray(res) ? res : (res as { data?: RoscaCircle[] }).data ?? []
 }
 
 export interface RoscaSchedule {
-  month: string
-  recipient: string
+  id?: string
+  cycleNumber?: number
+  contributionDeadline?: string
+  payoutDate?: string
+  recipientId?: string | null
   status: string
+  // legacy fields (used in GroupDetails payout table)
+  month?: string
+  recipient?: string
   [key: string]: unknown
 }
 
-export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
-  return authRequest(`/api/rosca/${circleId}/schedules`, { method: 'GET' })
+export async function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
+  const res = await authRequest<{ data?: RoscaSchedule[] } | RoscaSchedule[]>(
+    `/api/rosca/${circleId}/schedules`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: RoscaSchedule[] }).data ?? []
+}
+
+export async function getRoscaCircle(circleId: string): Promise<RoscaCircle> {
+  const res = await authRequest<{ data?: RoscaCircle } | RoscaCircle>(
+    `/api/rosca/${circleId}`,
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as RoscaCircle
+}
+
+export interface CircleContribution {
+  id: string
+  cycleNumber: number
+  amount: string
+  penaltyAmount: string
+  paidAt: string
+}
+
+export async function getCircleContributions(circleId: string): Promise<CircleContribution[]> {
+  const res = await authRequest<{ data?: CircleContribution[] } | CircleContribution[]>(
+    `/api/rosca/${circleId}/contributions`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: CircleContribution[] }).data ?? []
 }
 
 // ── Wallet ──────────────────────────────────────────────────────────────────
@@ -343,12 +506,16 @@ export function getWallet(): Promise<Wallet> {
   return authRequest('/api/wallet', { method: 'GET' })
 }
 
-export function getWalletBalance(): Promise<{ balance: number }> {
-  return authRequest('/api/wallet/balance', { method: 'GET' })
+export interface WalletBalance {
+  total: string
+  reserved: string
+  available: string
+  currency: string
 }
 
-export function getWalletBalanceNaira(): Promise<Record<string, unknown>> {
-  return authRequest('/api/wallet/balance/naira', { method: 'GET' })
+export async function getWalletBalance(): Promise<WalletBalance> {
+  const res = await authRequest<{ data?: WalletBalance } | WalletBalance>('/api/wallet/balance', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as WalletBalance
 }
 
 export interface WalletBucket {
@@ -469,12 +636,13 @@ export async function initializeFunding(payload: {
 // ── Withdrawal ────────────────────────────────────────────────────────────────
 
 export interface WithdrawalPayload {
-  amount: number
+  amount: number        // naira — will be multiplied × 100 to kobo before sending
   accountNumber: string
+  accountName: string
   bankCode: string
   bankName?: string
-  currency?: string
   narration?: string
+  transactionPin: string
 }
 
 export interface WithdrawalResponse {
@@ -485,14 +653,28 @@ export interface WithdrawalResponse {
 }
 
 export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<WithdrawalResponse> {
+  const { amount, ...rest } = payload
   const res = await authRequest<{ data?: WithdrawalResponse } | WithdrawalResponse>(
     '/api/wallet/withdrawal/initialize',
     {
       method: 'POST',
-      body: JSON.stringify({ currency: 'NGN', ...payload }),
+      body: JSON.stringify({ ...rest, amount: amount * 100 }), // convert naira → kobo
     },
   )
   return ('data' in res && res.data ? res.data : res) as WithdrawalResponse
+}
+
+// ── Transaction PIN ───────────────────────────────────────────────────────────
+
+export function setTransactionPin(pin: string, currentPin?: string): Promise<{ message: string }> {
+  return authRequest('/api/users/me/pin', {
+    method: 'POST',
+    body: JSON.stringify({ pin, ...(currentPin ? { currentPin } : {}) }),
+  })
+}
+
+export function getPinStatus(): Promise<{ hasPin: boolean }> {
+  return authRequest('/api/users/me/pin/status', { method: 'GET' })
 }
 
 // ── Trust Score ───────────────────────────────────────────────────────────────
@@ -601,12 +783,56 @@ export interface AppNotification {
   message: string
   read: boolean
   createdAt: string
+  actionUrl?: string | null
   [key: string]: unknown
 }
 
+export interface PendingInvite {
+  id: string
+  token: string
+  email: string
+  expiresAt: string
+  createdAt: string
+  circle: {
+    id: string
+    name: string
+    contributionAmount: string
+    frequency: string
+    durationCycles: number
+    maxSlots: number
+    filledSlots: number
+    admin: { firstName: string; lastName: string }
+  }
+}
+
+export async function getMyInvites(): Promise<PendingInvite[]> {
+  const res = await authRequest<{ data?: PendingInvite[] } | PendingInvite[]>(
+    '/api/rosca/my-invites',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: PendingInvite[] }).data ?? []
+}
+
+export async function joinByInvite(token: string): Promise<{ message: string }> {
+  return authRequest('/api/rosca/join-by-invite', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
 export async function getNotifications(): Promise<AppNotification[]> {
-  const res = await authRequest<{ data?: AppNotification[] } | AppNotification[]>('/api/notifications', { method: 'GET' })
-  return Array.isArray(res) ? res : (res as { data?: AppNotification[] }).data ?? []
+  const res = await authRequest<{ data?: unknown[] } | unknown[]>('/api/notifications', { method: 'GET' })
+  const raw: unknown[] = Array.isArray(res) ? res : ((res as { data?: unknown[] }).data ?? [])
+  // Normalize backend field names: body→message, isRead→read
+  return raw.map((n: unknown) => {
+    const r = n as Record<string, unknown>
+    return {
+      ...r,
+      message: (r.message ?? r.body ?? '') as string,
+      read: (r.read ?? r.isRead ?? false) as boolean,
+      actionUrl: (r.actionUrl ?? null) as string | null,
+    } as AppNotification
+  })
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
@@ -631,6 +857,9 @@ export interface CircleMember {
   firstName?: string
   lastName?: string
   position?: number
+  status?: string
+  joinedAt?: string
+  trustScore?: number
   [key: string]: unknown
 }
 
@@ -661,7 +890,7 @@ export async function submitPeerReview(circleId: string, payload: {
   rating: number
   comment?: string
 }): Promise<{ message: string }> {
-  return authRequest(`/api/rosca/${circleId}/peer-review`, {
+  return authRequest(`/api/rosca/${circleId}/reviews`, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -673,4 +902,10 @@ export async function getCirclePeerReviews(circleId: string): Promise<PeerReview
     { method: 'GET' },
   )
   return Array.isArray(res) ? res : (res as { data?: PeerReview[] }).data ?? []
+}
+
+// ── Admin Access Request ──────────────────────────────────────────────────────
+
+export function requestAdminAccess(): Promise<{ message: string }> {
+  return authRequest('/api/users/me/request-admin', { method: 'POST' })
 }

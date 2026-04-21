@@ -1,445 +1,460 @@
-import React, { useState, useMemo } from 'react';
 import {
-  Container,
-  Title,
-  Card,
-  Text,
-  Grid,
-  Table,
-  Badge,
-  Group,
-  Button,
-  Select,
-  Paper,
-  rem,
-  Box,
-  Stack,
-  Menu,
   ActionIcon,
-} from '@mantine/core';
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Group,
+  Pagination,
+  Paper,
+  SegmentedControl,
+  Select,
+  Skeleton,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core'
 import {
-  IconDownload,
-  IconFilter,
-  IconArrowUpRight,
+  IconAlertCircle,
   IconArrowDownRight,
-  IconRefresh,
+  IconArrowUpRight,
   IconCurrencyNaira,
-  IconCheck,
-  IconCalendar,
-} from '@tabler/icons-react';
-import { TransactionMiniStats } from '@/components/StatsCard/transactionMiniStats';
-import dayjs from 'dayjs';
+  IconDownload,
+  IconRefresh,
+  IconSearch,
+} from '@tabler/icons-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  exportCsv,
+  getLedger,
+  getTransactionAnalytics,
+  reconcileFunding,
+  type LedgerRow,
+  type PaginatedResponse,
+  type ReconcileResult,
+  type TransactionAnalytics,
+} from '@/utils/api'
 
-// Define transaction data type
-interface Transaction {
-  id: number;
-  dateTime: string;
-  type: 'Wallet Top-up' | 'Withdrawal';
-  amount: string;
-  amountValue: number; // Add numeric value for calculations
-  user: string;
-  timeframe: string;
-  status: 'success' | 'pending' | 'failed';
-  timestamp: Date; // Add actual timestamp for filtering
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function formatNaira(kobo: string | number) {
+  const n = typeof kobo === 'string' ? parseFloat(kobo) : kobo
+  if (isNaN(n)) return '₦0.00'
+  const abs = Math.abs(n) / 100
+  if (abs >= 1_000_000) return `₦${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `₦${(abs / 1_000).toFixed(1)}K`
+  return `₦${abs.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
-// Helper function to parse date string
-const parseDate = (dateStr: string): Date => {
-  const [datePart, timePart] = dateStr.split(' ');
-  const [day, month, year] = datePart.split('/');
-  const [time, period] = [timePart.slice(0, -3), timePart.slice(-2)];
-  const [hours, minutes] = time.split(':');
-  
-  let hour = parseInt(hours);
-  if (period === 'PM' && hour !== 12) hour += 12;
-  if (period === 'AM' && hour === 12) hour = 0;
-  
-  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hour, parseInt(minutes));
-};
+function entryTypeBadge(entryType: string, movementType: string) {
+  const isCr = entryType === 'CREDIT'
+  return (
+    <Badge
+      color={isCr ? 'green' : 'red'}
+      variant="light"
+      size="sm"
+      leftSection={isCr ? <IconArrowDownRight size={12} /> : <IconArrowUpRight size={12} />}
+    >
+      {movementType ?? entryType}
+    </Badge>
+  )
+}
 
-const transactionsData: Transaction[] = [
-  {
-    id: 1,
-    dateTime: '20/05/2025 09:10 AM',
-    type: 'Wallet Top-up',
-    amount: '₦ 10,100',
-    amountValue: 10100,
-    user: 'Okeh Benita benny@domain.com',
-    timeframe: '2 mins ago',
-    status: 'success',
-    timestamp: new Date(2025, 4, 20, 9, 10), // May 20, 2025
-  },
-  {
-    id: 2,
-    dateTime: '20/05/2025 09:10 AM',
-    type: 'Withdrawal',
-    amount: '₦ 30,500',
-    amountValue: 30500,
-    user: 'Ajakaye John john@domain.com',
-    timeframe: '2 mins ago',
-    status: 'success',
-    timestamp: new Date(2025, 4, 20, 9, 10),
-  },
-  {
-    id: 3,
-    dateTime: '19/05/2025 02:30 PM',
-    type: 'Withdrawal',
-    amount: '₦ 2,900',
-    amountValue: 2900,
-    user: 'Peter Praise pope@domain.com',
-    timeframe: '1 day ago',
-    status: 'success',
-    timestamp: new Date(2025, 4, 19, 14, 30),
-  },
-  {
-    id: 4,
-    dateTime: '18/05/2025 11:15 AM',
-    type: 'Wallet Top-up',
-    amount: '₦ 1,500',
-    amountValue: 1500,
-    user: 'Abel Ojetunde ab@domain.com',
-    timeframe: '2 days ago',
-    status: 'success',
-    timestamp: new Date(2025, 4, 18, 11, 15),
-  },
-  {
-    id: 5,
-    dateTime: '15/05/2025 04:45 PM',
-    type: 'Wallet Top-up',
-    amount: '₦ 10,100',
-    amountValue: 10100,
-    user: 'Ayo Ifeoluwa ayo@domain.com',
-    timeframe: '5 days ago',
-    status: 'pending',
-    timestamp: new Date(2025, 4, 15, 16, 45),
-  },
-  {
-    id: 6,
-    dateTime: '10/05/2025 10:30 AM',
-    type: 'Withdrawal',
-    amount: '₦ 50,000',
-    amountValue: 50000,
-    user: 'Chioma Okonkwo chioma@domain.com',
-    timeframe: '2 weeks ago',
-    status: 'success',
-    timestamp: new Date(2025, 4, 10, 10, 30),
-  },
-  {
-    id: 7,
-    dateTime: '05/05/2025 01:20 PM',
-    type: 'Wallet Top-up',
-    amount: '₦ 25,000',
-    amountValue: 25000,
-    user: 'Emeka Okafor emeka@domain.com',
-    timeframe: '3 weeks ago',
-    status: 'success',
-    timestamp: new Date(2025, 4, 5, 13, 20),
-  },
-  {
-    id: 8,
-    dateTime: '01/05/2025 09:00 AM',
-    type: 'Withdrawal',
-    amount: '₦ 75,000',
-    amountValue: 75000,
-    user: 'Folake Coker folake@domain.com',
-    timeframe: '1 month ago',
-    status: 'success',
-    timestamp: new Date(2025, 4, 1, 9, 0),
-  },
-];
+// ── Stats banner ─────────────────────────────────────────────────────────────
 
-// Date filter options
-type DateFilter = 'all' | 'today' | 'thisWeek' | 'thisMonth';
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+  loading,
+}: {
+  label: string
+  value: string
+  icon: React.ReactNode
+  color: string
+  loading: boolean
+}) {
+  return (
+    <Card withBorder radius="md" p="md" style={{ flex: 1 }}>
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          background: `${color}20`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 12,
+        }}
+      >
+        {icon}
+      </div>
+      <Text size="sm" fw={500} mb={4}>{label}</Text>
+      {loading ? (
+        <Skeleton height={28} width="60%" radius="sm" />
+      ) : (
+        <Text size="xl" fw={800}>{value}</Text>
+      )}
+    </Card>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+const PERIOD_OPTIONS = [
+  { label: '7d', value: '7d' },
+  { label: '30d', value: '30d' },
+  { label: '90d', value: '90d' },
+]
+
+const SOURCE_OPTIONS = [
+  { value: '', label: 'All types' },
+  { value: 'TRANSACTION', label: 'Transaction' },
+  { value: 'ROSCA_CONTRIBUTION', label: 'ROSCA Contribution' },
+  { value: 'ROSCA_PAYOUT', label: 'ROSCA Payout' },
+  { value: 'REVERSAL', label: 'Reversal' },
+  { value: 'PLATFORM_FEE', label: 'Platform Fee' },
+  { value: 'FUNDING', label: 'Funding' },
+]
+
+const LIMIT = 20
 
 export function Transactions() {
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
-  const [filterMenuOpened, setFilterMenuOpened] = useState(false);
+  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d')
+  const [analytics, setAnalytics] = useState<TransactionAnalytics | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(true)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
 
-  // Filter transactions based on date
-  const filteredTransactions = useMemo(() => {
-    const now = dayjs();
-    
-    return transactionsData.filter(transaction => {
-      const transactionDate = dayjs(transaction.timestamp);
-      
-      switch (dateFilter) {
-        case 'today':
-          return transactionDate.isSame(now, 'day');
-        
-        case 'thisWeek':
-          return transactionDate.isSame(now, 'week');
-        
-        case 'thisMonth':
-          return transactionDate.isSame(now, 'month');
-        
-        case 'all':
-        default:
-          return true;
-      }
-    });
-  }, [dateFilter]);
+  const [ledger, setLedger] = useState<PaginatedResponse<LedgerRow> | null>(null)
+  const [ledgerLoading, setLedgerLoading] = useState(true)
+  const [ledgerError, setLedgerError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [sourceType, setSourceType] = useState<string | null>(null)
 
-  // Calculate summary stats based on filtered transactions
-  const stats = useMemo(() => {
-    const inflow = filteredTransactions
-      .filter(t => t.type === 'Wallet Top-up')
-      .reduce((sum, t) => sum + t.amountValue, 0);
-    
-    const outflow = filteredTransactions
-      .filter(t => t.type === 'Withdrawal')
-      .reduce((sum, t) => sum + t.amountValue, 0);
-    
-    return {
-      totalInflow: inflow,
-      totalOutflow: outflow,
-      netBalance: inflow - outflow,
-    };
-  }, [filteredTransactions]);
+  const [exporting, setExporting] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const [reconcileRef, setReconcileRef] = useState('')
+  const [reconciling, setReconciling] = useState(false)
+  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null)
+  const [reconcileError, setReconcileError] = useState<string | null>(null)
 
-  // Get filter label for display
-  const getFilterLabel = () => {
-    switch (dateFilter) {
-      case 'today': return 'Today';
-      case 'thisWeek': return 'This Week';
-      case 'thisMonth': return 'This Month';
-      default: return 'All Time';
+  async function handleReconcile() {
+    const ref = reconcileRef.trim()
+    if (!ref) return
+    setReconciling(true)
+    setReconcileResult(null)
+    setReconcileError(null)
+    try {
+      const res = await reconcileFunding(ref)
+      setReconcileResult(res.data)
+    } catch (e) {
+      setReconcileError(e instanceof Error ? e.message : 'Reconciliation failed')
+    } finally {
+      setReconciling(false)
     }
-  };
+  }
 
-  const rows = filteredTransactions.map((transaction) => (
-    <Table.Tr key={transaction.id}>
-      <Table.Td>{transaction.dateTime}</Table.Td>
-      <Table.Td>
-        <Badge
-          color={transaction.type === 'Wallet Top-up' ? 'green' : 'blue'}
-          variant="light"
-          leftSection={
-            transaction.type === 'Wallet Top-up' ? (
-              <IconArrowUpRight size={12} />
-            ) : (
-              <IconArrowDownRight size={12} />
-            )
-          }
-        >
-          {transaction.type}
-        </Badge>
-      </Table.Td>
-      <Table.Td>
-        <Text fw={500} className={transaction.type === 'Withdrawal' ? 'text-red-600' : 'text-green-600'}>
-          {transaction.amount}
-        </Text>
-      </Table.Td>
-      <Table.Td>
-        <div>
-          <Text size="sm" fw={500}>
-            {transaction.user.split(' ')[0]} {transaction.user.split(' ')[1]}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {transaction.user.split(' ')[2]}
-          </Text>
-        </div>
-      </Table.Td>
-      <Table.Td>
-        <Badge color="gray" variant="light">
-          {transaction.timeframe}
-        </Badge>
-      </Table.Td>
-      <Table.Td>
-        <Button
-          size="xs"
-          variant="light"
-          color="blue"
-          leftSection={<IconRefresh size={14} />}
-          onClick={() => console.log('Retry transaction:', transaction.id)}
-        >
-          Retry
-        </Button>
-      </Table.Td>
-    </Table.Tr>
-  ));
+  // Load analytics
+  useEffect(() => {
+    setAnalyticsLoading(true)
+    setAnalyticsError(null)
+    getTransactionAnalytics({ period })
+      .then(setAnalytics)
+      .catch((e) => setAnalyticsError(e instanceof Error ? e.message : 'Failed to load stats'))
+      .finally(() => setAnalyticsLoading(false))
+  }, [period])
+
+  // Load ledger
+  const fetchLedger = useCallback(() => {
+    setLedgerLoading(true)
+    setLedgerError(null)
+    getLedger({
+      page,
+      limit: LIMIT,
+      ...(search.trim() ? { reference: search.trim() } : {}),
+      ...(sourceType ? { sourceType } : {}),
+    })
+      .then(setLedger)
+      .catch((e) => setLedgerError(e instanceof Error ? e.message : 'Failed to load ledger'))
+      .finally(() => setLedgerLoading(false))
+  }, [page, search, sourceType])
+
+  useEffect(() => { fetchLedger() }, [fetchLedger])
+
+  function handleSearchChange(val: string) {
+    setSearch(val)
+    setPage(1)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(fetchLedger, 400)
+  }
+
+  async function handleExport() {
+    if (!analytics) return
+    setExporting(true)
+    try {
+      const blob = await exportCsv({
+        type: 'transactions',
+        startDate: analytics.period.start.split('T')[0],
+        endDate: analytics.period.end.split('T')[0],
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `transactions-${period}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // silent — export errors are non-critical
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const rows = ledger?.data ?? []
+  const totalPages = ledger?.meta.totalPages ?? 1
 
   return (
-    <Container size="lg" py="xl">
+    <Stack gap="lg" p="xl">
       {/* Header */}
-      <Group justify="space-between" mb="xl">
+      <Group justify="space-between">
         <div>
-          <Title order={1} fw={700}>Transactions</Title>
+          <Title order={2} fw={700}>Transactions</Title>
+          <Text c="dimmed" size="sm" mt={4}>Ledger entries and transaction analytics.</Text>
         </div>
-      </Group>
-
-      {/* Summary Cards */}
-      <Grid gutter="xl" mb="xl">
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card withBorder radius="md" padding="md" className="shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mb-4">
-              <IconArrowDownRight size={20} className="text-green-600" />
-            </div>
-            <Text size="sm" fw={500} mb={4}>Total Inflow</Text>
-            <Text size="xl" fw={800} className="text-2xl">
-              {formatCurrency(stats.totalInflow)}
-            </Text>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card withBorder radius="md" padding="md" className="shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mb-4">
-              <IconArrowUpRight size={20} className="text-red-600" />
-            </div>
-            <Text size="sm" fw={500} mb={4}>Total Outflow</Text>
-            <Text size="xl" fw={800} className="text-2xl">
-              {formatCurrency(stats.totalOutflow)}
-            </Text>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card withBorder radius="md" padding="md" className="shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mb-4">
-              <IconCurrencyNaira size={20} className="text-green-600" />
-            </div>
-            <Text size="sm" fw={500} mb={4}>Net Balance</Text>
-            <Text size="xl" fw={800} className="text-2xl">
-              {formatCurrency(stats.netBalance)}
-            </Text>
-          </Card>
-        </Grid.Col>
-      </Grid>
-
-      <TransactionMiniStats/>
-
-      <Group justify="space-between" mb="xl">
-        <div>
-          <Text c="dimmed" mt={4}>Showing {filteredTransactions.length} transactions</Text>
-        </div>
-        
-        {/* Action Buttons */}
-        <Group>
+        <Group gap="sm">
+          <SegmentedControl
+            data={PERIOD_OPTIONS}
+            value={period}
+            onChange={(v) => setPeriod(v as '7d' | '30d' | '90d')}
+            size="xs"
+          />
           <Button
             leftSection={<IconDownload size={16} />}
             variant="outline"
+            loading={exporting}
+            onClick={handleExport}
+            size="sm"
           >
-            Export
+            Export CSV
           </Button>
-          
-          {/* Date Filter Dropdown */}
-          <Menu
-            opened={filterMenuOpened}
-            onChange={setFilterMenuOpened}
-            position="bottom-end"
-            shadow="md"
-          >
-            <Menu.Target>
-              <Button
-                leftSection={<IconFilter size={16} />}
-                variant={dateFilter !== 'all' ? "filled" : "outline"}
-                color={dateFilter !== 'all' ? "#066F5B" : undefined}
-                rightSection={<IconCalendar size={14} />}
-              >
-                {getFilterLabel()}
-              </Button>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-              <Menu.Label>Filter by Date</Menu.Label>
-              <Menu.Item
-                leftSection={dateFilter === 'all' ? <IconCheck size={14} /> : null}
-                onClick={() => {
-                  setDateFilter('all');
-                  setFilterMenuOpened(false);
-                }}
-                style={{ fontWeight: dateFilter === 'all' ? 600 : 400 }}
-              >
-                All Time
-              </Menu.Item>
-              <Menu.Item
-                leftSection={dateFilter === 'today' ? <IconCheck size={14} /> : null}
-                onClick={() => {
-                  setDateFilter('today');
-                  setFilterMenuOpened(false);
-                }}
-                style={{ fontWeight: dateFilter === 'today' ? 600 : 400 }}
-              >
-                Today
-              </Menu.Item>
-              <Menu.Item
-                leftSection={dateFilter === 'thisWeek' ? <IconCheck size={14} /> : null}
-                onClick={() => {
-                  setDateFilter('thisWeek');
-                  setFilterMenuOpened(false);
-                }}
-                style={{ fontWeight: dateFilter === 'thisWeek' ? 600 : 400 }}
-              >
-                This Week
-              </Menu.Item>
-              <Menu.Item
-                leftSection={dateFilter === 'thisMonth' ? <IconCheck size={14} /> : null}
-                onClick={() => {
-                  setDateFilter('thisMonth');
-                  setFilterMenuOpened(false);
-                }}
-                style={{ fontWeight: dateFilter === 'thisMonth' ? 600 : 400 }}
-              >
-                This Month
-              </Menu.Item>
-
-              {dateFilter !== 'all' && (
-                <>
-                  <Menu.Divider />
-                  <Menu.Item
-                    color="red"
-                    onClick={() => {
-                      setDateFilter('all');
-                      setFilterMenuOpened(false);
-                    }}
-                  >
-                    Clear Filter
-                  </Menu.Item>
-                </>
-              )}
-            </Menu.Dropdown>
-          </Menu>
         </Group>
       </Group>
 
-      <Card withBorder radius={0} p={0}>
+      {analyticsError && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+          {analyticsError}
+        </Alert>
+      )}
+
+      {/* Stats */}
+      <Group grow gap="md">
+        <StatCard
+          label={`Inflow (${period})`}
+          value={formatNaira(analytics?.inflow.totalKobo ?? 0)}
+          icon={<IconArrowDownRight size={20} color="#16a34a" />}
+          color="#16a34a"
+          loading={analyticsLoading}
+        />
+        <StatCard
+          label={`Outflow (${period})`}
+          value={formatNaira(analytics?.outflow.totalKobo ?? 0)}
+          icon={<IconArrowUpRight size={20} color="#dc2626" />}
+          color="#dc2626"
+          loading={analyticsLoading}
+        />
+        <StatCard
+          label={`Platform Fees (${period})`}
+          value={formatNaira(analytics?.platformFees.totalKobo ?? 0)}
+          icon={<IconCurrencyNaira size={20} color="#2563eb" />}
+          color="#2563eb"
+          loading={analyticsLoading}
+        />
+        <StatCard
+          label="Transactions"
+          value={String((analytics?.inflow.count ?? 0) + (analytics?.outflow.count ?? 0))}
+          icon={<IconCurrencyNaira size={20} color="#9333ea" />}
+          color="#9333ea"
+          loading={analyticsLoading}
+        />
+      </Group>
+
+      {/* Ledger filters */}
+      <Group gap="sm">
+        <TextInput
+          placeholder="Search by reference..."
+          leftSection={<IconSearch size={16} />}
+          value={search}
+          onChange={(e) => handleSearchChange(e.currentTarget.value)}
+          style={{ flex: 1, maxWidth: 320 }}
+          radius="md"
+        />
+        <Select
+          placeholder="Source type"
+          data={SOURCE_OPTIONS}
+          value={sourceType}
+          onChange={(v) => { setSourceType(v); setPage(1) }}
+          clearable
+          radius="md"
+          style={{ width: 200 }}
+        />
+        <ActionIcon variant="default" size="lg" radius="md" onClick={fetchLedger} title="Refresh">
+          <IconRefresh size={16} />
+        </ActionIcon>
+      </Group>
+
+      {ledgerError && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+          {ledgerError}
+        </Alert>
+      )}
+
+      <Paper withBorder radius="md">
         <Table.ScrollContainer minWidth={800}>
-          <Table verticalSpacing="md" horizontalSpacing="md">
+          <Table highlightOnHover>
             <Table.Thead>
-              <Table.Tr style={{ backgroundColor: '#066F5B' }}>
-                <Table.Th style={{ color: 'white' }}>Date & Time</Table.Th>
-                <Table.Th style={{ color: 'white' }}>Transaction Type</Table.Th>
-                <Table.Th style={{ color: 'white' }}>Amount</Table.Th>
-                <Table.Th style={{ color: 'white' }}>User ID</Table.Th>
-                <Table.Th style={{ color: 'white' }}>Timeframe</Table.Th>
-                <Table.Th style={{ color: 'white' }}>Action</Table.Th>
+              <Table.Tr bg="#066F5B">
+                <Table.Th c="white">Date</Table.Th>
+                <Table.Th c="white">Type</Table.Th>
+                <Table.Th c="white">Amount</Table.Th>
+                <Table.Th c="white">Balance After</Table.Th>
+                <Table.Th c="white">Reference</Table.Th>
+                <Table.Th c="white">User</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {rows.length > 0 ? rows : (
+              {ledgerLoading ? (
+                [...Array(10)].map((_, i) => (
+                  <Table.Tr key={i}>
+                    {[...Array(6)].map((__, j) => (
+                      <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
+                    ))}
+                  </Table.Tr>
+                ))
+              ) : rows.length === 0 ? (
                 <Table.Tr>
                   <Table.Td colSpan={6}>
-                    <Text ta="center" py="xl" c="dimmed">
-                      No transactions found for this period
-                    </Text>
+                    <Text ta="center" py="xl" c="dimmed">No ledger entries found</Text>
                   </Table.Td>
                 </Table.Tr>
+              ) : (
+                rows.map((row) => {
+                  const user = row.wallet?.user
+                  const amtKobo = parseFloat(String(row.amount))
+                  const balKobo = parseFloat(String(row.balanceAfter))
+                  return (
+                    <Table.Tr key={row.id}>
+                      <Table.Td>
+                        <Text size="sm">{new Date(row.createdAt).toLocaleDateString('en-NG')}</Text>
+                        <Text size="xs" c="dimmed">{new Date(row.createdAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</Text>
+                      </Table.Td>
+                      <Table.Td>{entryTypeBadge(row.entryType, row.movementType)}</Table.Td>
+                      <Table.Td>
+                        <Text
+                          fw={600}
+                          size="sm"
+                          c={row.entryType === 'CREDIT' ? 'green' : 'red'}
+                        >
+                          {row.entryType === 'CREDIT' ? '+' : '-'}{formatNaira(amtKobo)}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{formatNaira(balKobo)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="xs" c="dimmed" style={{ fontFamily: 'monospace', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {row.reference}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {user ? (
+                          <div>
+                            <Text size="sm" fw={500}>{user.firstName} {user.lastName}</Text>
+                            <Text size="xs" c="dimmed">{user.email}</Text>
+                          </div>
+                        ) : <Text size="sm" c="dimmed">—</Text>}
+                      </Table.Td>
+                    </Table.Tr>
+                  )
+                })
               )}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
-      </Card>
-    </Container>
-  );
+
+        <Group justify="space-between" p="md">
+          <Text size="sm" c="dimmed">
+            {ledger ? `${ledger.meta.total.toLocaleString()} entries` : ''}
+          </Text>
+          <Pagination total={totalPages} value={page} onChange={setPage} size="sm" />
+        </Group>
+      </Paper>
+
+      {/* Manual Reconciliation */}
+      <Paper withBorder radius="md" p="md">
+        <Text fw={600} size="sm" mb="xs">Manual Funding Reconciliation</Text>
+        <Text size="xs" c="dimmed" mb="md">
+          Force-reconcile a stuck or unprocessed funding transaction by its internal reference (e.g. AJT-FUND-…).
+        </Text>
+        <Group gap="sm" align="flex-end">
+          <TextInput
+            placeholder="AJT-FUND-8ca2de2e-…"
+            value={reconcileRef}
+            onChange={(e) => { setReconcileRef(e.currentTarget.value); setReconcileResult(null); setReconcileError(null) }}
+            style={{ flex: 1, maxWidth: 420 }}
+            radius="md"
+            size="sm"
+          />
+          <Button
+            size="sm"
+            loading={reconciling}
+            disabled={!reconcileRef.trim()}
+            onClick={handleReconcile}
+          >
+            Reconcile
+          </Button>
+        </Group>
+
+        {reconcileError && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" mt="sm">
+            {reconcileError}
+          </Alert>
+        )}
+
+        {reconcileResult && (
+          <Paper withBorder radius="sm" p="sm" mt="sm" bg="gray.0">
+            <Group gap="xs" mb="xs">
+              <Badge
+                color={
+                  reconcileResult.outcome === 'settled' ? 'green'
+                  : reconcileResult.outcome === 'already_processed' ? 'blue'
+                  : reconcileResult.outcome === 'still_pending' ? 'yellow'
+                  : 'red'
+                }
+                variant="filled"
+                size="sm"
+              >
+                {reconcileResult.outcome.replace(/_/g, ' ')}
+              </Badge>
+              <Text size="xs" c="dimmed">{new Date(reconcileResult.reconciledAt).toLocaleString('en-NG')}</Text>
+            </Group>
+            <Text size="xs" style={{ fontFamily: 'monospace' }}>{reconcileResult.reference}</Text>
+            {reconcileResult.amountKobo && (
+              <Text size="xs" c="dimmed" mt={4}>Amount: {formatNaira(reconcileResult.amountKobo)}</Text>
+            )}
+            {(reconcileResult.reason || reconcileResult.providerMessage) && (
+              <Text size="xs" c="dimmed" mt={4}>{reconcileResult.reason ?? reconcileResult.providerMessage}</Text>
+            )}
+          </Paper>
+        )}
+      </Paper>
+    </Stack>
+  )
 }
 
-export default Transactions;
+export default Transactions

@@ -4,6 +4,9 @@ import { IconSearch, IconMessageCircle, IconCalendar, IconCheck, IconFilter, Ico
 import { useNavigate } from 'react-router-dom'
 import { listRoscaCircles, getMyJoinRequests, getMyParticipations, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
 
+// Shape returned by getMyParticipations — a circle object with the user already a member
+type Participation = RoscaCircle
+
 const TABS = ['All Groups', 'Open Groups', 'Invite-Only', 'Joined'] as const
 
 type GroupStatus = 'Open' | 'Invite Only'
@@ -43,42 +46,56 @@ export function Rosca() {
   const [messageStep, setMessageStep] = useState<'compose' | 'sending' | 'sent'>('compose')
 
   const [groups, setGroups] = useState<RoscaGroup[]>([])
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
   const [joinedGroups, setJoinedGroups] = useState<JoinedGroup[]>([])
   const [joinedLoading, setJoinedLoading] = useState(false)
   const [needsLogin, setNeedsLogin] = useState(false)
 
   useEffect(() => {
-    listRoscaCircles()
-      .then((circles) => {
-        const mapped: RoscaGroup[] = circles.map((c: RoscaCircle) => {
-          const slotsLeft = (c.maxSlots ?? 0) - (c.filledSlots ?? 0)
-          const adminName = c.admin
-            ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
-            : 'Unknown'
-          return {
-            id: c.id,
-            name: c.name,
-            duration: c.durationCycles ? `${c.durationCycles} cycles` : '',
-            slots: `${slotsLeft} Slots`,
-            status: (c.visibility === 'PRIVATE' ? 'Invite Only' : 'Open') as GroupStatus,
-            admin: adminName,
+    Promise.allSettled([listRoscaCircles(), getMyParticipations(), getMyJoinRequests()])
+      .then(([circlesRes, partRes, joinRes]) => {
+        if (circlesRes.status === 'fulfilled') {
+          const mapped: RoscaGroup[] = circlesRes.value.map((c: RoscaCircle) => {
+            const slotsLeft = (c.maxSlots ?? 0) - (c.filledSlots ?? 0)
+            const adminName = c.admin
+              ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
+              : 'Unknown'
+            return {
+              id: c.id,
+              name: c.name,
+              duration: c.durationCycles ? `${c.durationCycles} cycles` : '',
+              slots: `${slotsLeft} Slots`,
+              status: (c.visibility === 'PRIVATE' ? 'Invite Only' : 'Open') as GroupStatus,
+              admin: adminName,
+            }
+          })
+          setGroups(mapped)
+        } else {
+          const err = circlesRes.reason
+          if (err instanceof Error && err.message.toLowerCase().includes('unauthorized')) {
+            setNeedsLogin(true)
           }
-        })
-        setGroups(mapped)
-      })
-      .catch((err) => {
-        if (err instanceof Error && err.message.toLowerCase().includes('unauthorized')) {
-          setNeedsLogin(true)
         }
+
+        // Build set of circle IDs the user is already part of
+        const ids = new Set<string>()
+        if (partRes.status === 'fulfilled') {
+          partRes.value.forEach((c) => ids.add(c.id))
+        }
+        if (joinRes.status === 'fulfilled') {
+          joinRes.value
+            .filter((r) => ['ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()))
+            .forEach((r) => ids.add(r.circleId))
+        }
+        setJoinedIds(ids)
       })
-      .finally(() => {})
   }, [])
 
   useEffect(() => {
     if (activeTab !== 'Joined') return
     setJoinedLoading(true)
 
-    function mapToJoined(r: MyJoinRequest): JoinedGroup {
+    function mapJoinRequest(r: MyJoinRequest): JoinedGroup {
       const circle = r.circle ?? {}
       const filled = Number(circle.filledSlots ?? 0)
       const total = Number(circle.durationCycles ?? circle.maxSlots ?? 1)
@@ -86,12 +103,33 @@ export function Rosca() {
         ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
         : 'Admin'
       const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
-      const nextPayout = circle.nextPayoutDate
-        ? new Date(circle.nextPayoutDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+      const nextPayout = (circle as { nextPayoutDate?: string }).nextPayoutDate
+        ? new Date((circle as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'TBD'
       return {
         id: r.circleId,
         name: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
+        completionRate,
+        completedCycles: filled,
+        totalCycles: total,
+        nextContribution: nextPayout,
+        admin: adminName,
+      }
+    }
+
+    function mapParticipation(c: Participation): JoinedGroup {
+      const filled = Number(c.filledSlots ?? 0)
+      const total = Number(c.durationCycles ?? c.maxSlots ?? 1)
+      const adminName = c.admin
+        ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
+        : 'Admin'
+      const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
+      const nextPayout = (c as { nextPayoutDate?: string }).nextPayoutDate
+        ? new Date((c as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'TBD'
+      return {
+        id: c.id,
+        name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
         completionRate,
         completedCycles: filled,
         totalCycles: total,
@@ -106,16 +144,22 @@ export function Rosca() {
         const participations = partRes.status === 'fulfilled' ? partRes.value : []
 
         const approvedRequests = joinRequests.filter(
-          (r) => ['APPROVED', 'ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
+          (r) => ['ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
         )
 
-        // Merge, deduplicate by circleId (participations take priority)
+        // Build merged list — participations take priority (dedup by circleId)
         const seenIds = new Set<string>()
         const merged: JoinedGroup[] = []
-        for (const r of [...participations, ...approvedRequests]) {
+        for (const c of participations) {
+          if (!seenIds.has(c.id)) {
+            seenIds.add(c.id)
+            merged.push(mapParticipation(c))
+          }
+        }
+        for (const r of approvedRequests) {
           if (!seenIds.has(r.circleId)) {
             seenIds.add(r.circleId)
-            merged.push(mapToJoined(r))
+            merged.push(mapJoinRequest(r))
           }
         }
         setJoinedGroups(merged)
@@ -124,6 +168,7 @@ export function Rosca() {
   }, [activeTab])
 
   const filtered = groups.filter((g) => {
+    if (joinedIds.has(g.id)) return false
     const matchesSearch =
       g.name.toLowerCase().includes(search.toLowerCase()) ||
       g.admin.toLowerCase().includes(search.toLowerCase())
@@ -182,11 +227,6 @@ export function Rosca() {
               fontSize: 14,
               padding: '10px 0',
               color: '#9CA3AF',
-              '&[data-active]': {
-                color: '#02A36E',
-                borderBottomColor: '#02A36E',
-                fontWeight: 600,
-              },
             },
           }}
         >
@@ -233,6 +273,12 @@ export function Rosca() {
           <button className="flex h-[42px] items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 text-[13px] font-medium text-[#374151]">
             <IconFilter size={16} color="#6B7280" />
             Filter
+          </button>
+          <button
+            onClick={() => navigate('/rosca/requests')}
+            className="flex h-[42px] cursor-pointer items-center gap-2 rounded-lg border border-[#02A36E] bg-white px-4 text-[13px] font-medium text-[#02A36E]"
+          >
+            My Requests
           </button>
         </div>
 

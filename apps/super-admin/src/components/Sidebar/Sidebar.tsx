@@ -1,26 +1,32 @@
 import { useState } from 'react'
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom'
-import { NavLink, Stack, Text, Box } from '@mantine/core'
+import { NavLink, Stack, Text, Box, Badge } from '@mantine/core'
 import {
   IconLayoutDashboard,
   IconUsers,
   IconTopologyRing,
   IconPigMoney,
   IconChartLine,
-  IconShieldCheck,
+  IconTarget,
   IconReceipt,
   IconSettings,
+  IconShieldCheck,
+  IconAward,
+  IconTestPipe,
 } from '@tabler/icons-react'
 
 const mainLinks = [
   { label: 'Dashboard', icon: IconLayoutDashboard, path: '/' },
-  { label: 'Manage User', icon: IconUsers, path: '/manage-users' },
+  { label: 'Manage Users', icon: IconUsers, path: '/manage-users' },
+  { label: 'KYC Approvals', icon: IconShieldCheck, path: '/kyc-approvals' },
   { label: 'Manage ROSCA', icon: IconTopologyRing, path: '/manage-rosca' },
+  { label: 'Trust Scores', icon: IconAward, path: '/trust-scores' },
+  { label: 'Simulations', icon: IconTestPipe, path: '/simulations' },
 ]
 
 const savingsChildren = [
-  { label: 'Fixed Savings', icon: IconChartLine, path: '/savings/FixedSavings' },
-  { label: 'Target Savings', icon: IconShieldCheck, path: '/savings/TargetSavings' },
+  { label: 'Fixed Savings', icon: IconChartLine, path: '/savings/FixedSavings', comingSoon: true },
+  { label: 'Target Savings', icon: IconTarget, path: '/savings/TargetSavings', comingSoon: true },
 ]
 
 const bottomLinks = [
@@ -67,7 +73,16 @@ export function Sidebar() {
               key={child.path}
               component={RouterNavLink}
               to={child.path}
-              label={child.label}
+              label={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {child.label}
+                  {child.comingSoon && (
+                    <Badge size="xs" variant="light" color="gray">
+                      Soon
+                    </Badge>
+                  )}
+                </span>
+              }
               leftSection={<child.icon size={18} stroke={1.5} />}
               active={location.pathname === child.path}
             />

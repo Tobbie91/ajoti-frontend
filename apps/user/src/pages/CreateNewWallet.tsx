@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Text } from '@mantine/core'
-import { IconArrowLeft, IconShieldCheck, IconTrendingUp, IconWallet } from '@tabler/icons-react'
+import { IconArrowLeft, IconShieldCheck, IconTrendingUp, IconWallet, IconArrowUpRight } from '@tabler/icons-react'
 import NigerianFlag from '@/assets/NigerianFlag.svg'
+import { getWalletBalance } from '@/utils/api'
 
 type Currency = 'NGN'
 
@@ -24,6 +25,13 @@ const BENEFITS = [
 export function CreateNewWallet() {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<Currency>('NGN')
+  const [balance, setBalance] = useState(0)
+
+  useEffect(() => {
+    getWalletBalance()
+      .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
+      .catch(() => setBalance(0))
+  }, [])
 
   return (
     <div className="mx-auto w-full max-w-[520px] px-4 py-6 sm:px-6 sm:py-8">
@@ -71,7 +79,7 @@ export function CreateNewWallet() {
               Nigerian Naira
             </Text>
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              NGN · ₦0.00 balance
+              NGN · ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })} balance
             </Text>
           </div>
 
@@ -109,13 +117,22 @@ export function CreateNewWallet() {
         </div>
       </div>
 
-      {/* CTA */}
-      <button
-        onClick={() => navigate('/fund-wallet')}
-        className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[15px] font-semibold text-white hover:bg-[#028a5b]"
-      >
-        Fund Wallet
-      </button>
+      {/* CTAs */}
+      <div className="flex gap-3">
+        <button
+          onClick={() => navigate('/fund-wallet')}
+          className="flex-1 cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[15px] font-semibold text-white hover:bg-[#028a5b]"
+        >
+          Fund Wallet
+        </button>
+        <button
+          onClick={() => navigate('/withdraw')}
+          className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-[#02A36E] px-6 py-3.5 text-[15px] font-semibold text-[#02A36E] hover:bg-[#F0FDF4]"
+        >
+          <IconArrowUpRight size={18} />
+          Withdraw
+        </button>
+      </div>
 
       <Text fw={400} className="mt-3 text-center text-[12px] text-[#9CA3AF]">
         Your wallet will be created automatically when you fund it

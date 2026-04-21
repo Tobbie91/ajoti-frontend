@@ -27,7 +27,7 @@ export function FundWallet() {
     setSubmitting(true)
     try {
       const res = await initializeFunding({
-        amount: numericAmount,
+        amount: numericAmount * 100, // convert naira → kobo
         redirectUrl: `${window.location.origin}/fund-wallet/callback`,
         currency: 'NGN',
       })

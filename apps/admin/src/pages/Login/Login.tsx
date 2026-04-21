@@ -20,6 +20,19 @@ export function Login() {
     setLoading(true)
     try {
       const { token, refreshToken, user } = await loginApi(email.trim(), password)
+
+      let jwtRole: string | undefined
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        jwtRole = payload.role
+      } catch {
+        throw new Error('Invalid token received')
+      }
+
+      if (jwtRole !== 'ADMIN' && jwtRole !== 'SUPERADMIN') {
+        throw new Error('Access denied. This portal is for admins only.')
+      }
+
       localStorage.setItem('admin_access_token', token)
       localStorage.setItem('admin_refresh_token', refreshToken)
       const existing = JSON.parse(localStorage.getItem('admin_user') ?? '{}')

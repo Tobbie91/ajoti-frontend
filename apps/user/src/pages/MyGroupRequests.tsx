@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Text, Badge, Avatar, Tabs } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Text, Badge, Avatar, Tabs, Loader } from '@mantine/core'
 import { IconArrowLeft, IconClock, IconClipboardOff } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { getMyJoinRequests, type MyJoinRequest } from '@/utils/api'
 
 const REQUEST_TABS = ['Pending', 'Accepted', 'Declined'] as const
 
@@ -17,26 +18,37 @@ interface GroupRequest {
   date: string
 }
 
-const MOCK_REQUESTS: GroupRequest[] = [
-  {
-    id: '1',
-    groupName: 'Monthly 50K Squad',
-    amount: '₦50,000',
-    duration: '6 months',
-    admin: 'Abimbola Micheal',
-    status: 'Pending',
-    date: 'Feb 18, 2025',
-  },
-  {
-    id: '2',
-    groupName: 'Hustle, Grind & Win',
-    amount: '₦100,000',
-    duration: '10 months',
-    admin: 'Abimbola Micheal',
-    status: 'Pending',
-    date: 'Feb 15, 2025',
-  },
-]
+function mapStatus(raw: string): RequestStatus {
+  const s = raw.toUpperCase()
+  if (s === 'PENDING') return 'Pending'
+  if (['ACTIVE', 'STARTED'].includes(s)) return 'Accepted'
+  if (s === 'REJECTED') return 'Declined'
+  return 'Declined'
+}
+
+function mapRequest(r: MyJoinRequest): GroupRequest {
+  const circle = r.circle ?? {}
+  const amountKobo = Number(circle.contributionAmount ?? 0)
+  const amountNaira = amountKobo / 100
+  const formatted = amountKobo > 0
+    ? `₦${amountNaira.toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
+    : '—'
+  const adminName = circle.admin
+    ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
+    : 'Admin'
+  const date = r.requestedAt
+    ? new Date(r.requestedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—'
+  return {
+    id: r.membershipId,
+    groupName: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
+    amount: formatted,
+    duration: circle.durationCycles ? `${circle.durationCycles} cycles` : '—',
+    admin: adminName,
+    status: mapStatus(r.status ?? ''),
+    date,
+  }
+}
 
 const statusConfig: Record<RequestStatus, { bg: string; color: string }> = {
   Pending: { bg: '#FEF3C7', color: '#92400E' },
@@ -62,8 +74,17 @@ const emptyStateText: Record<string, { title: string; subtitle: string }> = {
 export function MyGroupRequests() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<string>('Pending')
+  const [requests, setRequests] = useState<GroupRequest[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = MOCK_REQUESTS.filter((r) => {
+  useEffect(() => {
+    getMyJoinRequests()
+      .then((data) => setRequests(data.map(mapRequest)))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = requests.filter((r) => {
     if (activeTab === 'Pending') return r.status === 'Pending'
     if (activeTab === 'Accepted') return r.status === 'Accepted'
     if (activeTab === 'Declined') return r.status === 'Declined'
@@ -102,11 +123,6 @@ export function MyGroupRequests() {
               fontSize: 14,
               padding: '10px 0',
               color: '#9CA3AF',
-              '&[data-active]': {
-                color: '#02A36E',
-                borderBottomColor: '#02A36E',
-                fontWeight: 600,
-              },
             },
           }}
         >
@@ -120,7 +136,11 @@ export function MyGroupRequests() {
         </Tabs>
 
         {/* Request Cards */}
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader color="#02A36E" size="md" />
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="flex flex-col gap-4">
             {filtered.map((request) => (
               <div

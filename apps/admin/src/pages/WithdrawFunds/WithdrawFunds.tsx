@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Text, TextInput, Select } from '@mantine/core'
 import { IconArrowLeft, IconCheck, IconBackspace, IconAlertCircle } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getAdminWalletBalance, initializeWithdrawal } from '@/utils/api'
+import { getWalletBalance, initializeWithdrawal } from '@/utils/api'
 
 type Step = 'form' | 'pin' | 'processing' | 'success' | 'error'
 
@@ -37,21 +37,18 @@ export function WithdrawFunds() {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('form')
   const [accountNumber, setAccountNumber] = useState('')
+  const [accountName, setAccountName] = useState('')
   const [bankCode, setBankCode] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
   const [pin, setPin] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
-  const userId = storedUser.id ?? storedUser._id ?? ''
-
   useEffect(() => {
-    if (!userId) return
-    getAdminWalletBalance(userId)
-      .then((data) => setAvailableBalance(data.available ?? data.total ?? 0))
+    getWalletBalance()
+      .then((data) => setAvailableBalance(Number(data.available ?? data.total ?? 0) / 100))
       .catch(() => setAvailableBalance(0))
-  }, [userId])
+  }, [])
 
   const numericAmount = parseInt(amount.replace(/,/g, ''), 10) || 0
 
@@ -65,7 +62,8 @@ export function WithdrawFunds() {
     numericAmount > 0 &&
     numericAmount <= availableBalance &&
     accountNumber.length === 10 &&
-    bankCode !== null
+    bankCode !== null &&
+    accountName.trim().length > 0
 
   async function submitWithdrawal() {
     setStep('processing')
@@ -73,11 +71,13 @@ export function WithdrawFunds() {
     const selectedBank = NIGERIAN_BANKS.find((b) => b.value === bankCode)
     try {
       await initializeWithdrawal({
-        amount: numericAmount,
+        amount: numericAmount * 100, // convert naira → kobo
         accountNumber,
+        accountName: accountName.trim(),
         bankCode: bankCode!,
         bankName: selectedBank?.label,
         narration: `Withdrawal of NGN ${amount}`,
+        transactionPin: pin,
       })
       setStep('success')
     } catch (err) {
@@ -169,6 +169,13 @@ export function WithdrawFunds() {
                 radius="md" size="md"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.currentTarget.value.replace(/\D/g, '').slice(0, 10))}
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
+              />
+              <TextInput
+                placeholder="Account Name"
+                radius="md" size="md"
+                value={accountName}
+                onChange={(e) => setAccountName(e.currentTarget.value)}
                 styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
               />
               <Select

@@ -1,79 +1,87 @@
-import { useState, useRef } from 'react'
-import { Text, TextInput, Textarea, Progress, Alert } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Text, TextInput, Progress, Alert, Loader } from '@mantine/core'
 import {
   IconArrowLeft,
-  IconUpload,
   IconCheck,
-  IconFile,
-  IconX,
   IconUser,
   IconPhone,
-  IconHome,
-  IconFileText,
   IconId,
   IconBuildingBank,
   IconShieldCheck,
-  IconCamera,
   IconAlertCircle,
+  IconExternalLink,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { verifyNin, verifyBvn, submitNok } from '@/utils/api'
+import { verifyNin, verifyBvn, submitNok, getKycStatus, resubmitKyc, getUserProfile, type UserProfile } from '@/utils/api'
 
-type KycStep = 1 | 2 | 3 | 4 | 5 | 6 | 7
+type KycStep = 1 | 2 | 3
+type KycPhase = 'loading' | 'flow' | 'pending' | 'submitted'
 
-const STEP_LABELS = ['NIN', 'BVN', 'Next of Kin', 'Address', 'Photos', 'Proof', 'Review']
+const STEP_LABELS = ['NIN', 'BVN', 'Next of Kin']
+
+const USER_APP_URL = import.meta.env.VITE_USER_APP_URL ?? 'http://localhost:5173'
 
 export function Kyc() {
   const navigate = useNavigate()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const selfieInputRef = useRef<HTMLInputElement>(null)
-  const idPhotoInputRef = useRef<HTMLInputElement>(null)
 
+  const [phase, setPhase] = useState<KycPhase>('loading')
   const [step, setStep] = useState<KycStep>(1)
   const [kycError, setKycError] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
-  // Step 1 - NIN
+  // Step 1 — NIN
   const [nin, setNin] = useState('')
   const [ninVerified, setNinVerified] = useState(false)
   const [ninVerifying, setNinVerifying] = useState(false)
 
-  // Step 2 - BVN
+  // Step 2 — BVN
   const [bvn, setBvn] = useState('')
   const [bvnVerified, setBvnVerified] = useState(false)
   const [bvnVerifying, setBvnVerifying] = useState(false)
 
-  // Step 3 - Next of Kin
+  // Step 3 — Next of Kin
   const [kinFullName, setKinFullName] = useState('')
   const [kinRelationship, setKinRelationship] = useState('')
   const [kinPhone, setKinPhone] = useState('')
   const [kinEmail, setKinEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  // Step 4 - Address
-  const [houseAddress, setHouseAddress] = useState('')
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
-  const [lga, setLga] = useState('')
+  // On mount: check existing KYC status + fetch user profile for NIN/BVN verification
+  useEffect(() => {
+    Promise.all([
+      getKycStatus(),
+      getUserProfile().catch(() => null),
+    ]).then(async ([kyc, profile]) => {
+      if (profile) setUserProfile(profile)
 
-  // Step 5 - Photos
-  const [selfieFile, setSelfieFile] = useState<File | null>(null)
-  const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null)
+      if (kyc.kycLevel >= 1) {
+        // Already verified — go straight to dashboard
+        navigate('/dashboard', { replace: true })
+        return
+      }
+      if (kyc.status === 'PENDING') {
+        // Submitted but awaiting superadmin approval
+        setPhase('pending')
+        return
+      }
+      if (kyc.status === 'REJECTED') {
+        // Reset so they can resubmit from NOK
+        try { await resubmitKyc() } catch { /* ignore */ }
+        setNinVerified(true)
+        setBvnVerified(true)
+        setStep(3)
+      }
+      setPhase('flow')
+    }).catch(() => setPhase('flow'))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Step 6 - Proof of Address
-  const [proofFile, setProofFile] = useState<File | null>(null)
-
-  const progressValue = (step / 7) * 100
+  const progressValue = (step / 3) * 100
 
   function canProceed() {
-    switch (step) {
-      case 1: return ninVerified
-      case 2: return bvnVerified
-      case 3: return kinFullName.trim() && kinPhone.trim() && kinRelationship.trim()
-      case 4: return houseAddress.trim() && city.trim() && state.trim()
-      case 5: return selfieFile !== null && idPhotoFile !== null
-      case 6: return proofFile !== null
-      case 7: return true
-      default: return false
-    }
+    if (step === 1) return ninVerified
+    if (step === 2) return bvnVerified
+    if (step === 3) return !!(kinFullName.trim() && kinPhone.trim() && kinRelationship.trim())
+    return false
   }
 
   async function handleVerifyNin() {
@@ -81,13 +89,15 @@ export function Kyc() {
     setKycError(null)
     setNinVerifying(true)
     try {
+      // Prefer API-fetched profile (has dob); fall back to localStorage
       const stored = localStorage.getItem('admin_user')
-      const profile = stored ? JSON.parse(stored) : {}
+      const local = stored ? JSON.parse(stored) : {}
+      const p = userProfile ?? local
       await verifyNin({
         nin: nin.trim(),
-        firstName: profile.firstName || profile.firstname || '',
-        lastName: profile.lastName || profile.lastname || '',
-        dob: profile.dob || profile.DOB || '',
+        firstName: p.firstName || p.firstname || '',
+        lastName: p.lastName || p.lastname || '',
+        dob: p.dob || p.DOB || '',
       })
       setNinVerified(true)
     } catch (err) {
@@ -103,12 +113,13 @@ export function Kyc() {
     setBvnVerifying(true)
     try {
       const stored = localStorage.getItem('admin_user')
-      const profile = stored ? JSON.parse(stored) : {}
+      const local = stored ? JSON.parse(stored) : {}
+      const p = userProfile ?? local
       await verifyBvn({
         bvn: bvn.trim(),
-        firstName: profile.firstName || profile.firstname || '',
-        lastName: profile.lastName || profile.lastname || '',
-        dob: profile.dob || profile.DOB || '',
+        firstName: p.firstName || p.firstname || '',
+        lastName: p.lastName || p.lastname || '',
+        dob: p.dob || p.DOB || '',
       })
       setBvnVerified(true)
     } catch (err) {
@@ -121,45 +132,23 @@ export function Kyc() {
   async function handleNext() {
     setKycError(null)
     if (step === 3) {
-      // Submit next of kin to API
+      setSubmitting(true)
       try {
         await submitNok({
           nextOfKinName: kinFullName.trim(),
           nextOfKinRelationship: kinRelationship.trim(),
           nextOfKinPhone: kinPhone.trim(),
         })
+        localStorage.setItem('admin_kyc_completed', 'true')
+        setPhase('submitted')
       } catch (err) {
         setKycError(err instanceof Error ? err.message : 'Failed to submit next of kin')
-        return
+      } finally {
+        setSubmitting(false)
       }
+      return
     }
-    if (step < 7) {
-      setStep((step + 1) as KycStep)
-    } else {
-      localStorage.setItem('admin_kyc_completed', 'true')
-      navigate('/dashboard')
-    }
-  }
-
-  function handleBack() {
-    if (step > 1) {
-      setStep((step - 1) as KycStep)
-    }
-  }
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) setProofFile(file)
-  }
-
-  function handleSelfieChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) setSelfieFile(file)
-  }
-
-  function handleIdPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) setIdPhotoFile(file)
+    setStep((step + 1) as KycStep)
   }
 
   const inputStyles = {
@@ -167,6 +156,84 @@ export function Kyc() {
     label: { fontWeight: 500, fontSize: 14, color: '#374151', marginBottom: 4 },
   }
 
+  // ── Loading ───────────────────────────────────────────────────────────────────
+  if (phase === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB]">
+        <Loader color="#02A36E" size="md" />
+      </div>
+    )
+  }
+
+  // ── Submitted but pending superadmin approval ─────────────────────────────────
+  if (phase === 'pending') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
+        <div className="w-full max-w-[460px] rounded-3xl border border-[#E5E7EB] bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#FEF3C7]">
+            <IconShieldCheck size={40} color="#D97706" stroke={1.5} />
+          </div>
+          <Text fw={700} className="text-[22px] text-[#0F172A]">Verification Submitted</Text>
+          <Text fw={400} className="mt-2 text-[14px] leading-relaxed text-[#6B7280]">
+            Your KYC documents are under review. You'll be notified once your admin account is approved — this usually takes less than 24 hours.
+          </Text>
+          <a
+            href={USER_APP_URL}
+            className="mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0B6B55] py-3.5 text-[14px] font-semibold text-white no-underline hover:bg-[#095C49]"
+          >
+            Go to Member App
+            <IconExternalLink size={16} />
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Submitted — Level 1 auto-approved ────────────────────────────────────────
+  if (phase === 'submitted') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
+        <div className="w-full max-w-[460px] rounded-3xl border border-[#E5E7EB] bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#F0FDF4]">
+            <IconShieldCheck size={40} color="#02A36E" stroke={1.5} />
+          </div>
+          <Text fw={700} className="text-[22px] text-[#0F172A]">
+            Identity Verified!
+          </Text>
+          <Text fw={400} className="mt-2 text-[14px] leading-relaxed text-[#6B7280]">
+            Your identity has been verified (KYC Level 1). Your admin account is now pending
+            review — you'll be notified once it's approved.
+          </Text>
+
+          <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] px-5 py-4 text-left">
+            <Text fw={600} className="text-[13px] text-[#0F172A]">What happens next?</Text>
+            <ul className="mt-2 space-y-1.5 text-[13px] text-[#6B7280]">
+              <li>• Our team will review and activate your admin account</li>
+              <li>• You'll receive an email once your account is approved</li>
+              <li>• To increase your transaction limits, upgrade your KYC in the member app</li>
+            </ul>
+          </div>
+
+          <a
+            href={USER_APP_URL}
+            className="mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0B6B55] py-3.5 text-[14px] font-semibold text-white no-underline hover:bg-[#095C49]"
+          >
+            Go to Member App
+            <IconExternalLink size={16} />
+          </a>
+
+          <button
+            onClick={() => navigate('/login')}
+            className="mt-3 cursor-pointer text-[13px] text-[#6B7280] underline-offset-2 hover:underline"
+          >
+            Sign in to admin portal
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── 3-step onboarding flow ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Header */}
@@ -174,7 +241,7 @@ export function Kyc() {
         <div className="mx-auto flex max-w-[600px] items-center gap-4 px-6 py-4">
           {step > 1 ? (
             <button
-              onClick={handleBack}
+              onClick={() => setStep((step - 1) as KycStep)}
               className="flex cursor-pointer items-center justify-center rounded-lg border border-[#E5E7EB] bg-white p-2 hover:bg-[#F9FAFB]"
             >
               <IconArrowLeft size={18} color="#374151" />
@@ -183,24 +250,21 @@ export function Kyc() {
             <div className="w-[34px]" />
           )}
           <div className="flex-1 text-center">
-            <Text fw={700} className="text-[18px] text-[#0F172A]">
-              Admin Identity Verification
-            </Text>
+            <Text fw={700} className="text-[18px] text-[#0F172A]">Admin Identity Verification</Text>
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              Step {step} of 7 — {STEP_LABELS[step - 1]}
+              Step {step} of 3 — {STEP_LABELS[step - 1]}
             </Text>
           </div>
           <div className="w-[34px]" />
         </div>
         <div className="mx-auto max-w-[600px] px-6 pb-4">
-          <Progress value={progressValue} size="sm" radius="xl" color="#02A36E" className="bg-[#E5E7EB]" />
+          <Progress value={progressValue} size="sm" radius="xl" color="#02A36E" />
         </div>
       </div>
 
-      {/* Content */}
       <div className="mx-auto max-w-[600px] px-6 py-8">
         {kycError && (
-          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" className="mb-4">
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" className="mb-4" withCloseButton onClose={() => setKycError(null)}>
             {kycError}
           </Alert>
         )}
@@ -211,33 +275,28 @@ export function Kyc() {
             KYC is required to activate your admin account
           </Text>
           <Text fw={400} className="mt-1 text-[12px] text-[#6B7280]">
-            Complete all steps to gain full access to the admin dashboard and group management tools.
+            Complete all 3 steps to gain access to the admin dashboard and group management tools.
           </Text>
         </div>
 
         {/* Step indicators */}
         <div className="mb-8 flex items-center justify-between">
           {STEP_LABELS.map((label, i) => {
-            const stepNum = i + 1
-            const isActive = stepNum === step
-            const isCompleted = stepNum < step
+            const n = i + 1
+            const isActive = n === step
+            const isDone = n < step
             return (
               <div key={label} className="flex flex-col items-center gap-2">
-                <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold ${
-                    isCompleted
-                      ? 'bg-[#02A36E] text-white'
-                      : isActive
-                        ? 'border-2 border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]'
-                        : 'border-2 border-[#E5E7EB] bg-white text-[#9CA3AF]'
-                  }`}
-                >
-                  {isCompleted ? <IconCheck size={16} /> : stepNum}
+                <div className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold ${
+                  isDone
+                    ? 'bg-[#02A36E] text-white'
+                    : isActive
+                      ? 'border-2 border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]'
+                      : 'border-2 border-[#E5E7EB] bg-white text-[#9CA3AF]'
+                }`}>
+                  {isDone ? <IconCheck size={16} /> : n}
                 </div>
-                <Text
-                  fw={isActive ? 600 : 400}
-                  className={`text-[10px] ${isActive ? 'text-[#02A36E]' : 'text-[#9CA3AF]'}`}
-                >
+                <Text fw={isActive ? 600 : 400} className={`text-[10px] ${isActive ? 'text-[#02A36E]' : 'text-[#9CA3AF]'}`}>
                   {label}
                 </Text>
               </div>
@@ -245,7 +304,7 @@ export function Kyc() {
           })}
         </div>
 
-        {/* Step 1: NIN Verification */}
+        {/* Step 1: NIN */}
         {step === 1 && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
@@ -263,11 +322,7 @@ export function Kyc() {
                 placeholder="Enter your 11-digit NIN"
                 radius="md"
                 value={nin}
-                onChange={(e) => {
-                  const val = e.currentTarget.value.replace(/\D/g, '').slice(0, 11)
-                  setNin(val)
-                  setNinVerified(false)
-                }}
+                onChange={(e) => { setNin(e.currentTarget.value.replace(/\D/g, '').slice(0, 11)); setNinVerified(false) }}
                 styles={inputStyles}
                 maxLength={11}
                 required
@@ -305,7 +360,7 @@ export function Kyc() {
           </div>
         )}
 
-        {/* Step 2: BVN Verification */}
+        {/* Step 2: BVN */}
         {step === 2 && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
@@ -323,11 +378,7 @@ export function Kyc() {
                 placeholder="Enter your 11-digit BVN"
                 radius="md"
                 value={bvn}
-                onChange={(e) => {
-                  const val = e.currentTarget.value.replace(/\D/g, '').slice(0, 11)
-                  setBvn(val)
-                  setBvnVerified(false)
-                }}
+                onChange={(e) => { setBvn(e.currentTarget.value.replace(/\D/g, '').slice(0, 11)); setBvnVerified(false) }}
                 styles={inputStyles}
                 maxLength={11}
                 required
@@ -386,309 +437,11 @@ export function Kyc() {
           </div>
         )}
 
-        {/* Step 4: House Address */}
-        {step === 4 && (
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE9FE]">
-                <IconHome size={20} color="#7C3AED" />
-              </div>
-              <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">Residential Address</Text>
-                <Text fw={400} className="text-[13px] text-[#6B7280]">Provide your current house address</Text>
-              </div>
-            </div>
-            <div className="flex flex-col gap-4">
-              <Textarea label="House Address" placeholder="Enter your full house address (e.g. 12, Allen Avenue)" radius="md" minRows={3} value={houseAddress} onChange={(e) => setHouseAddress(e.currentTarget.value)} styles={inputStyles} required />
-              <div className="grid grid-cols-2 gap-4">
-                <TextInput label="City" placeholder="e.g. Ikeja" radius="md" value={city} onChange={(e) => setCity(e.currentTarget.value)} styles={inputStyles} required />
-                <TextInput label="State" placeholder="e.g. Lagos" radius="md" value={state} onChange={(e) => setState(e.currentTarget.value)} styles={inputStyles} required />
-              </div>
-              <TextInput label="LGA (Optional)" placeholder="e.g. Ikeja LGA" radius="md" value={lga} onChange={(e) => setLga(e.currentTarget.value)} styles={inputStyles} />
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Photo Upload */}
-        {step === 5 && (
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0F9FF]">
-                <IconCamera size={20} color="#0284C7" />
-              </div>
-              <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">Photo Verification</Text>
-                <Text fw={400} className="text-[13px] text-[#6B7280]">Upload a clear selfie and a photo of your government-issued ID</Text>
-              </div>
-            </div>
-            <div className="flex flex-col gap-5">
-              {/* Selfie */}
-              <div>
-                <Text fw={600} className="mb-2 text-[13px] text-[#374151]">
-                  Selfie / Profile Photo <span className="text-red-500">*</span>
-                </Text>
-                <Text fw={400} className="mb-3 text-[12px] text-[#6B7280]">
-                  Take a clear, well-lit photo of your face. No sunglasses or hats.
-                </Text>
-                <input ref={selfieInputRef} type="file" accept="image/jpg,image/jpeg,image/png" onChange={handleSelfieChange} className="hidden" />
-                {!selfieFile ? (
-                  <button
-                    onClick={() => selfieInputRef.current?.click()}
-                    className="flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] px-6 py-8 transition-colors hover:border-[#0284C7] hover:bg-[#F0F9FF]"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E5E7EB]">
-                      <IconCamera size={22} color="#6B7280" />
-                    </div>
-                    <div className="text-center">
-                      <Text fw={600} className="text-[14px] text-[#374151]">Upload selfie</Text>
-                      <Text fw={400} className="mt-1 text-[12px] text-[#9CA3AF]">JPG or PNG (Max 5MB)</Text>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] p-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0284C7]">
-                      <IconCamera size={20} color="white" />
-                    </div>
-                    <div className="flex-1">
-                      <Text fw={600} className="text-[13px] text-[#0F172A]">{selfieFile.name}</Text>
-                      <Text fw={400} className="text-[12px] text-[#6B7280]">{(selfieFile.size / 1024).toFixed(1)} KB</Text>
-                    </div>
-                    <button onClick={() => setSelfieFile(null)} className="flex cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-[#FEE2E2]">
-                      <IconX size={16} color="#EF4444" />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* ID Photo */}
-              <div>
-                <Text fw={600} className="mb-2 text-[13px] text-[#374151]">
-                  Government-Issued ID Photo <span className="text-red-500">*</span>
-                </Text>
-                <Text fw={400} className="mb-3 text-[12px] text-[#6B7280]">
-                  Upload a clear photo of your NIN slip, National ID card, passport, or driver's licence.
-                </Text>
-                <input ref={idPhotoInputRef} type="file" accept="image/jpg,image/jpeg,image/png,.pdf" onChange={handleIdPhotoChange} className="hidden" />
-                {!idPhotoFile ? (
-                  <button
-                    onClick={() => idPhotoInputRef.current?.click()}
-                    className="flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] px-6 py-8 transition-colors hover:border-[#02A36E] hover:bg-[#F0FDF4]"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E5E7EB]">
-                      <IconUpload size={22} color="#6B7280" />
-                    </div>
-                    <div className="text-center">
-                      <Text fw={600} className="text-[14px] text-[#374151]">Upload ID document</Text>
-                      <Text fw={400} className="mt-1 text-[12px] text-[#9CA3AF]">JPG, PNG or PDF (Max 5MB)</Text>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#02A36E]">
-                      <IconId size={20} color="white" />
-                    </div>
-                    <div className="flex-1">
-                      <Text fw={600} className="text-[13px] text-[#0F172A]">{idPhotoFile.name}</Text>
-                      <Text fw={400} className="text-[12px] text-[#6B7280]">{(idPhotoFile.size / 1024).toFixed(1)} KB</Text>
-                    </div>
-                    <button onClick={() => setIdPhotoFile(null)} className="flex cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-[#FEE2E2]">
-                      <IconX size={16} color="#EF4444" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 6: Proof of Address */}
-        {step === 6 && (
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF7ED]">
-                <IconFileText size={20} color="#F97316" />
-              </div>
-              <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">Proof of Address</Text>
-                <Text fw={400} className="text-[13px] text-[#6B7280]">Upload a document that verifies your address</Text>
-              </div>
-            </div>
-            <div className="mb-6 rounded-xl bg-[#F9FAFB] p-4">
-              <Text fw={600} className="mb-2 text-[13px] text-[#374151]">Accepted documents:</Text>
-              <div className="flex flex-col gap-1.5">
-                {['Utility bill (not older than 3 months)', 'Bank statement', 'Tenancy agreement', 'Government-issued document with address'].map((doc) => (
-                  <div key={doc} className="flex items-center gap-2">
-                    <IconCheck size={14} color="#02A36E" />
-                    <Text fw={400} className="text-[13px] text-[#6B7280]">{doc}</Text>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileChange} className="hidden" />
-            {!proofFile ? (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] px-6 py-10 transition-colors hover:border-[#02A36E] hover:bg-[#F0FDF4]"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E5E7EB]">
-                  <IconUpload size={22} color="#6B7280" />
-                </div>
-                <div className="text-center">
-                  <Text fw={600} className="text-[14px] text-[#374151]">Click to upload</Text>
-                  <Text fw={400} className="mt-1 text-[12px] text-[#9CA3AF]">PDF, JPG, or PNG (Max 5MB)</Text>
-                </div>
-              </button>
-            ) : (
-              <div className="flex items-center gap-3 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#02A36E]">
-                  <IconFile size={20} color="white" />
-                </div>
-                <div className="flex-1">
-                  <Text fw={600} className="text-[13px] text-[#0F172A]">{proofFile.name}</Text>
-                  <Text fw={400} className="text-[12px] text-[#6B7280]">{(proofFile.size / 1024).toFixed(1)} KB</Text>
-                </div>
-                <button onClick={() => setProofFile(null)} className="flex cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-[#FEE2E2]">
-                  <IconX size={16} color="#EF4444" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 7: Review */}
-        {step === 7 && (
-          <div className="flex flex-col gap-5">
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-              <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">Review Your Information</Text>
-              <Text fw={400} className="mb-6 text-[13px] text-[#6B7280]">Please review the details below before submitting</Text>
-
-              <div className="mb-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <IconShieldCheck size={16} color="#02A36E" />
-                  <Text fw={600} className="text-[14px] text-[#0F172A]">Identity Verification</Text>
-                </div>
-                <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#F9FAFB] p-4">
-                  <div>
-                    <Text fw={400} className="text-[11px] text-[#9CA3AF]">NIN</Text>
-                    <div className="flex items-center gap-2">
-                      <Text fw={500} className="text-[13px] text-[#0F172A]">{nin.slice(0, 3)}****{nin.slice(-4)}</Text>
-                      <IconCheck size={14} color="#02A36E" />
-                    </div>
-                  </div>
-                  <div>
-                    <Text fw={400} className="text-[11px] text-[#9CA3AF]">BVN</Text>
-                    <div className="flex items-center gap-2">
-                      <Text fw={500} className="text-[13px] text-[#0F172A]">{bvn.slice(0, 3)}****{bvn.slice(-4)}</Text>
-                      <IconCheck size={14} color="#02A36E" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <IconUser size={16} color="#D97706" />
-                  <Text fw={600} className="text-[14px] text-[#0F172A]">Next of Kin</Text>
-                </div>
-                <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#F9FAFB] p-4">
-                  <div>
-                    <Text fw={400} className="text-[11px] text-[#9CA3AF]">Full Name</Text>
-                    <Text fw={500} className="text-[13px] text-[#0F172A]">{kinFullName}</Text>
-                  </div>
-                  <div>
-                    <Text fw={400} className="text-[11px] text-[#9CA3AF]">Relationship</Text>
-                    <Text fw={500} className="text-[13px] text-[#0F172A]">{kinRelationship}</Text>
-                  </div>
-                  <div>
-                    <Text fw={400} className="text-[11px] text-[#9CA3AF]">Phone Number</Text>
-                    <Text fw={500} className="text-[13px] text-[#0F172A]">{kinPhone}</Text>
-                  </div>
-                  {kinEmail && (
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">Email</Text>
-                      <Text fw={500} className="text-[13px] text-[#0F172A]">{kinEmail}</Text>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <IconHome size={16} color="#7C3AED" />
-                  <Text fw={600} className="text-[14px] text-[#0F172A]">Residential Address</Text>
-                </div>
-                <div className="rounded-xl bg-[#F9FAFB] p-4">
-                  <Text fw={500} className="text-[13px] text-[#0F172A]">{houseAddress}</Text>
-                  <Text fw={400} className="mt-1 text-[13px] text-[#6B7280]">{city}, {state}{lga ? `, ${lga}` : ''}</Text>
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <IconCamera size={16} color="#0284C7" />
-                  <Text fw={600} className="text-[14px] text-[#0F172A]">Photo Verification</Text>
-                </div>
-                <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#F9FAFB] p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0284C7]">
-                      <IconCamera size={14} color="white" />
-                    </div>
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">Selfie</Text>
-                      <div className="flex items-center gap-1">
-                        <Text fw={500} className="text-[12px] text-[#0F172A]">Uploaded</Text>
-                        <IconCheck size={12} color="#02A36E" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#02A36E]">
-                      <IconId size={14} color="white" />
-                    </div>
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">ID Document</Text>
-                      <div className="flex items-center gap-1">
-                        <Text fw={500} className="text-[12px] text-[#0F172A]">Uploaded</Text>
-                        <IconCheck size={12} color="#02A36E" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-3 flex items-center gap-2">
-                  <IconFileText size={16} color="#F97316" />
-                  <Text fw={600} className="text-[14px] text-[#0F172A]">Proof of Address</Text>
-                </div>
-                <div className="flex items-center gap-3 rounded-xl bg-[#F9FAFB] p-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#02A36E]">
-                    <IconFile size={16} color="white" />
-                  </div>
-                  <div>
-                    <Text fw={500} className="text-[13px] text-[#0F172A]">{proofFile?.name}</Text>
-                    <Text fw={400} className="text-[12px] text-[#6B7280]">{proofFile ? (proofFile.size / 1024).toFixed(1) : 0} KB</Text>
-                  </div>
-                  <div className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-[#D1FAE5]">
-                    <IconCheck size={14} color="#02A36E" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] p-4">
-              <Text fw={500} className="text-[13px] leading-[1.6] text-[#0C4A6E]">
-                By submitting, you confirm that all information provided is accurate and up to date. Your admin account will be activated within 24-48 hours after verification.
-              </Text>
-            </div>
-          </div>
-        )}
-
-        {/* Action buttons */}
+        {/* Action button */}
         <div className="mt-8 flex gap-3">
           {step > 1 && (
             <button
-              onClick={handleBack}
+              onClick={() => setStep((step - 1) as KycStep)}
               className="flex-1 cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-6 py-3.5 text-[14px] font-semibold text-[#374151] hover:bg-[#F9FAFB]"
             >
               Back
@@ -696,14 +449,14 @@ export function Kyc() {
           )}
           <button
             onClick={handleNext}
-            disabled={!canProceed()}
+            disabled={!canProceed() || submitting}
             className={`flex-1 rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-              canProceed()
+              canProceed() && !submitting
                 ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
                 : 'cursor-not-allowed bg-[#9CA3AF]'
             }`}
           >
-            {step === 7 ? 'Submit & Activate Account' : 'Continue'}
+            {submitting ? 'Submitting...' : step === 3 ? 'Submit KYC' : 'Continue'}
           </button>
         </div>
       </div>

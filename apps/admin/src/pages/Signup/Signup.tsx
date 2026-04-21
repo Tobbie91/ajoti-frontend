@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Card, Group, PasswordInput, Text, TextInput, Select, Alert } from '@mantine/core'
+import { DateInput } from '@mantine/dates'
 import { Link, useNavigate } from 'react-router-dom'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { register } from '@/utils/api'
@@ -11,23 +12,27 @@ export function Signup() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [dob, setDob] = useState('')
+  const [dob, setDob] = useState<Date | null>(null)
   const [gender, setGender] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSignup() {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !gender || !dob) return
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !gender || !dob) {
+      setError('Please fill in all fields.')
+      return
+    }
     setError(null)
     setLoading(true)
     try {
+      const dobString = dob.toISOString().split('T')[0]
       await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         phone: `+234${phone.trim()}`,
-        dob,
+        dob: dobString,
         gender: gender.toUpperCase() as 'MALE' | 'FEMALE',
         password,
         role: 'ADMIN',
@@ -37,7 +42,7 @@ export function Signup() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        dob,
+        dob: dobString,
       }))
       navigate('/verify-otp')
     } catch (err) {
@@ -160,16 +165,22 @@ export function Signup() {
                 }}
               />
               <Group grow gap="sm">
-                <TextInput
+                <DateInput
                   label="Date of birth"
                   placeholder="DD/MM/YYYY"
-                  type="date"
                   radius="md"
+                  valueFormat="DD/MM/YYYY"
+                  maxDate={new Date()}
                   value={dob}
-                  onChange={(e) => setDob(e.currentTarget.value)}
-                  styles={{
-                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
+                  onChange={(value) => setDob(value ? new Date(value) : null)}
+                  dateParser={(input) => {
+                    const [day, month, year] = input.split('/')
+                    if (day && month && year && year.length === 4) {
+                      return new Date(Number(year), Number(month) - 1, Number(day))
+                    }
+                    return new Date(input)
                   }}
+                  styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
                 />
                 <Select
                   label="Gender"

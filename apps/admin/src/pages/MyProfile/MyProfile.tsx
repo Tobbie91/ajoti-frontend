@@ -14,9 +14,11 @@ import {
   IconUserCircle,
   IconCalendar,
   IconUsers,
+  IconLock,
+  IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi, getUserProfile, updateUserProfile } from '@/utils/api'
+import { logout as logoutApi, getUserProfile, updateUserProfile, getKycStatus, type KycStatus } from '@/utils/api'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('admin_user')
@@ -55,7 +57,8 @@ export function MyProfile() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
-  const kycCompleted = localStorage.getItem('admin_kyc_completed') === 'true'
+  const [kycStatus, setKycStatus] = useState<KycStatus | null>(null)
+  const kycApproved = kycStatus?.status === 'APPROVED'
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -100,6 +103,8 @@ export function MyProfile() {
       })
       .catch(() => {}) // fallback to localStorage values already set
       .finally(() => setProfileLoading(false))
+
+    getKycStatus().then(setKycStatus).catch(() => {})
   }, [])
 
   async function handleSave() {
@@ -156,11 +161,19 @@ export function MyProfile() {
             {email}
           </Text>
           <div className="mt-2 flex gap-2">
-            {kycCompleted && (
+            {kycApproved ? (
               <div className="flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
                 <IconShieldCheck size={13} color="#02A36E" />
                 <Text fw={500} className="text-[11px] text-[#02A36E]">KYC Verified</Text>
               </div>
+            ) : (
+              <button
+                onClick={() => navigate('/kyc')}
+                className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 hover:bg-[#FDE68A]"
+              >
+                <IconShieldCheck size={13} color="#F59E0B" />
+                <Text fw={500} className="text-[11px] text-[#92400E]">Complete Verification</Text>
+              </button>
             )}
             <div className="flex w-fit items-center gap-1.5 rounded-full bg-[#EFF6FF] px-3 py-1">
               <IconUserCircle size={13} color="#3B82F6" />
@@ -293,7 +306,7 @@ export function MyProfile() {
       <div className="mb-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
           <Text fw={700} className="text-[15px] text-[#0F172A]">Identity Verification</Text>
-          {kycCompleted && (
+          {kycApproved && (
             <div className="flex items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
               <IconShieldCheck size={13} color="#02A36E" />
               <Text fw={500} className="text-[11px] text-[#02A36E]">All Verified</Text>
@@ -310,7 +323,7 @@ export function MyProfile() {
               <Text fw={600} className="text-[13px] text-[#0F172A]">NIN Verification</Text>
             </div>
             <div className="flex items-center gap-1.5">
-              {kycCompleted ? (
+              {kycStatus?.ninVerified ? (
                 <>
                   <IconCheck size={14} color="#02A36E" />
                   <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
@@ -329,7 +342,7 @@ export function MyProfile() {
               <Text fw={600} className="text-[13px] text-[#0F172A]">BVN Verification</Text>
             </div>
             <div className="flex items-center gap-1.5">
-              {kycCompleted ? (
+              {kycStatus?.bvnVerified ? (
                 <>
                   <IconCheck size={14} color="#02A36E" />
                   <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
@@ -339,7 +352,36 @@ export function MyProfile() {
               )}
             </div>
           </div>
+
+          {!kycApproved && (
+            <button
+              onClick={() => navigate('/kyc')}
+              className="mt-1 w-full cursor-pointer rounded-xl bg-[#0b6b55] py-3 text-[13px] font-semibold text-white hover:bg-[#094f3e]"
+            >
+              {kycStatus?.ninVerified || kycStatus?.bvnVerified ? 'Resume Verification' : 'Start Verification'}
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Security */}
+      <div className="mb-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <Text fw={700} className="mb-5 text-[15px] text-[#0F172A]">Security</Text>
+        <button
+          onClick={() => navigate('/set-pin')}
+          className="flex w-full cursor-pointer items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3 hover:bg-[#F3F4F6]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F0FDF4]">
+              <IconLock size={18} color="#02A36E" />
+            </div>
+            <div>
+              <Text fw={600} className="text-[13px] text-[#0F172A]">Transaction PIN</Text>
+              <Text fw={400} className="text-[12px] text-[#6B7280]">Set or change your withdrawal PIN</Text>
+            </div>
+          </div>
+          <IconChevronRight size={16} color="#9CA3AF" />
+        </button>
       </div>
 
       {/* Save button */}

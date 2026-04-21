@@ -60,6 +60,7 @@ export function GroupDetails() {
 
   // Peer review state
   const [members, setMembers] = useState<CircleMember[]>([])
+  const [membersLoaded, setMembersLoaded] = useState(false)
   const [existingReviews, setExistingReviews] = useState<PeerReview[]>([])
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewTarget, setReviewTarget] = useState<CircleMember | null>(null)
@@ -83,7 +84,7 @@ export function GroupDetails() {
           getRoscaSchedules(id!).catch(() => [] as RoscaSchedule[]),
         ])
         // Fetch members and existing reviews in background
-        getCircleMembers(id!).then(setMembers).catch(() => {})
+        getCircleMembers(id!).then((m) => { setMembers(m); setMembersLoaded(true) }).catch(() => setMembersLoaded(true))
         getCirclePeerReviews(id!).then(setExistingReviews).catch(() => {})
         const circle = (Array.isArray(circles) ? circles : []).find((c: RoscaCircle) => c.id === id)
         if (circle) {
@@ -91,17 +92,26 @@ export function GroupDetails() {
           const adminName = circle.admin
             ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
             : 'Unknown'
+          const amountNaira = Number(circle.contributionAmount ?? 0) / 100
+          const formattedAmount = `₦${amountNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+          const payoutLogicLabel: Record<string, string> = {
+            SEQUENTIAL: 'Sequential',
+            RANDOM_DRAW: 'Random Draw',
+            TRUST_SCORE: 'Trust Score',
+            COMBINED: 'Combined',
+            ADMIN_ASSIGNED: 'Admin Assigned',
+          }
           setGroup({
             id: circle.id,
             name: circle.name,
-            status: (circle.status === 'INVITE_ONLY' ? 'Invite Only' : 'Open') as GroupStatus,
-            amount: `₦${(circle.amount ?? 0).toLocaleString()}`,
+            status: (circle.visibility === 'PRIVATE' ? 'Invite Only' : 'Open') as GroupStatus,
+            amount: formattedAmount,
             frequency: circle.frequency ?? '',
-            duration: String(circle.duration ?? ''),
+            duration: `${circle.durationCycles ?? ''} cycles`,
             slotsLeft: `${slotsLeft} Slots left`,
-            contribution: `₦${(circle.amount ?? 0).toLocaleString()} ${(circle.frequency ?? '').toLowerCase()}`,
-            payoutOrder: String((circle as Record<string, unknown>).payoutOrder ?? 'Based on slot draw'),
-            penalty: String((circle as Record<string, unknown>).penalty ?? ''),
+            contribution: `${formattedAmount} ${(circle.frequency ?? '').toLowerCase()}`,
+            payoutOrder: payoutLogicLabel[(circle.payoutLogic as string) ?? ''] ?? String(circle.payoutLogic ?? '—'),
+            penalty: '—',
             admin: adminName,
             adminBio: String((circle as Record<string, unknown>).adminBio ?? ''),
             completionRate: `${(circle as Record<string, unknown>).completionRate ?? 0}%`,
@@ -143,6 +153,7 @@ export function GroupDetails() {
   }
 
   const isInviteOnly = group.status === 'Invite Only'
+  const isMember = membersLoaded && members.some((m) => m.userId === currentUserId)
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-6 py-6">
@@ -194,15 +205,26 @@ export function GroupDetails() {
           </div>
 
           {/* Member Avatars */}
-          <div className="flex items-center">
-            <Avatar.Group>
-              <Avatar size={40} radius="xl" color="blue" variant="filled">A</Avatar>
-              <Avatar size={40} radius="xl" color="grape" variant="filled">B</Avatar>
-              <Avatar size={40} radius="xl" color="teal" variant="filled">C</Avatar>
-              <Avatar size={40} radius="xl" color="orange" variant="filled">D</Avatar>
-              <Avatar size={40} radius="xl" color="gray" variant="filled">+1</Avatar>
-            </Avatar.Group>
-          </div>
+          {members.length > 0 && (
+            <div className="flex items-center">
+              <Avatar.Group>
+                {members.slice(0, 4).map((m) => {
+                  const name = m.name || `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || `U`
+                  const initials = name.split(' ').map((w: string) => w[0] ?? '').join('').slice(0, 2).toUpperCase()
+                  return (
+                    <Avatar key={m.userId} size={40} radius="xl" color="teal" variant="filled">
+                      {initials}
+                    </Avatar>
+                  )
+                })}
+                {members.length > 4 && (
+                  <Avatar size={40} radius="xl" color="gray" variant="filled">
+                    +{members.length - 4}
+                  </Avatar>
+                )}
+              </Avatar.Group>
+            </div>
+          )}
         </div>
 
         {/* Invite-Only Notice */}
@@ -348,7 +370,14 @@ export function GroupDetails() {
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-4">
-            {isInviteOnly ? (
+            {isMember ? (
+              <button
+                onClick={() => navigate(`/rosca/${id}/activities`)}
+                className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
+              >
+                View Activities
+              </button>
+            ) : isInviteOnly ? (
               <button
                 onClick={() => {
                   setMessageOpen(true)
@@ -368,9 +397,11 @@ export function GroupDetails() {
                 Request to Join
               </button>
             )}
-            <button className="w-full cursor-pointer rounded-xl border-2 border-[#EF4444] py-4 text-[15px] font-semibold text-[#EF4444]">
-              Report Group
-            </button>
+            {!isMember && (
+              <button className="w-full cursor-pointer rounded-xl border-2 border-[#EF4444] py-4 text-[15px] font-semibold text-[#EF4444]">
+                Report Group
+              </button>
+            )}
           </div>
 
           {/* Promo Card */}

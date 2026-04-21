@@ -1,23 +1,26 @@
 import { Card, SimpleGrid, UnstyledButton, Text, Stack, Box } from '@mantine/core'
+import { useNavigate } from 'react-router-dom'
 import {
-  IconUserCheck,
   IconId,
   IconUsersGroup,
-  IconMessageReport,
-  IconCoinMonero,
-  IconSpeakerphone,
+  IconTopologyRing,
+  IconReceipt,
+  IconShieldCheck,
+  IconFileExport,
 } from '@tabler/icons-react'
 
 const actions = [
-  { label: 'Activate ROSCA Admin', icon: IconUserCheck, color: '#0B6B55' },
-  { label: 'KYC Center', icon: IconId, color: '#095C49' },
-  { label: 'Manager User', icon: IconUsersGroup, color: '#074D3D' },
-  { label: 'User Complaints', icon: IconMessageReport, color: '#053E31' },
-  { label: 'New Savings Product', icon: IconCoinMonero, color: '#41D980' },
-  { label: 'Send System Notice', icon: IconSpeakerphone, color: '#0B6B55' },
+  { label: 'KYC Approvals', icon: IconId, color: '#0B6B55', path: '/kyc-approvals' },
+  { label: 'Manage Users', icon: IconUsersGroup, color: '#095C49', path: '/manage-users' },
+  { label: 'ROSCA Circles', icon: IconTopologyRing, color: '#074D3D', path: '/manage-rosca' },
+  { label: 'Transactions', icon: IconReceipt, color: '#053E31', path: '/transactions' },
+  { label: 'Audit Logs', icon: IconShieldCheck, color: '#41D980', path: '/settings-logs' },
+  { label: 'Export Data', icon: IconFileExport, color: '#0B6B55', path: '/settings-logs' },
 ]
 
 export function QuickActions() {
+  const navigate = useNavigate()
+
   return (
     <Card withBorder p="lg" radius="md">
       <Text fw={600} fz="lg" mb="md">
@@ -29,6 +32,7 @@ export function QuickActions() {
           <UnstyledButton
             key={action.label}
             p="md"
+            onClick={() => navigate(action.path)}
             style={{
               borderRadius: 'var(--mantine-radius-md)',
               border: '1px solid var(--mantine-color-gray-2)',

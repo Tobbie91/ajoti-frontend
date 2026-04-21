@@ -1,38 +1,68 @@
-import { Card, Text, Group } from '@mantine/core'
+import { Card, Text, Group, SegmentedControl } from '@mantine/core'
 import { LineChart } from '@mantine/charts'
+import { useState } from 'react'
 
-const data = [
-  { day: '1', users: 40, active: 20, new: 10 },
-  { day: '4', users: 55, active: 35, new: 15 },
-  { day: '8', users: 50, active: 30, new: 12 },
-  { day: '12', users: 60, active: 40, new: 18 },
-  { day: '16', users: 65, active: 42, new: 20 },
-  { day: '20', users: 42, active: 55, new: 35 },
-  { day: '24', users: 50, active: 30, new: 25 },
-  { day: '28', users: 55, active: 35, new: 20 },
-  { day: '31', users: 60, active: 40, new: 22 },
+interface SeriesPoint {
+  date: string
+  count: number
+}
+
+interface UsersEngagementChartProps {
+  userSeries?: SeriesPoint[]
+  circleSeries?: SeriesPoint[]
+}
+
+function buildChartData(userSeries: SeriesPoint[], circleSeries: SeriesPoint[]) {
+  // Merge the two series by date
+  const map: Record<string, { date: string; users: number; circles: number }> = {}
+  for (const p of userSeries) {
+    map[p.date] = { date: p.date, users: p.count, circles: 0 }
+  }
+  for (const p of circleSeries) {
+    if (map[p.date]) map[p.date].circles = p.count
+    else map[p.date] = { date: p.date, users: 0, circles: p.count }
+  }
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+const FALLBACK = [
+  { date: '', users: 0, circles: 0 },
 ]
 
-export function UsersEngagementChart() {
+export function UsersEngagementChart({ userSeries = [], circleSeries = [] }: UsersEngagementChartProps) {
+  const [view, setView] = useState<'30d' | '7d'>('30d')
+
+  const data = userSeries.length > 0 || circleSeries.length > 0
+    ? buildChartData(userSeries, circleSeries)
+    : FALLBACK
+
+  // For 7d slice the last 7 points
+  const displayed = view === '7d' ? data.slice(-7) : data
+
   return (
     <Card withBorder p="lg" radius="md" h="100%">
       <Group justify="space-between" mb="md">
         <Text fw={600} fz="lg">
-          Users Engagement
+          Platform Growth
         </Text>
-        <Text fz="xs" c="dimmed">
-          ...
-        </Text>
+        <SegmentedControl
+          size="xs"
+          value={view}
+          onChange={(v) => setView(v as '30d' | '7d')}
+          data={[
+            { label: '7d', value: '7d' },
+            { label: '30d', value: '30d' },
+          ]}
+        />
       </Group>
 
       <LineChart
         h={250}
-        data={data}
-        dataKey="day"
+        data={displayed}
+        dataKey="date"
         series={[
-          { name: 'users', color: '#0B6B55' },
-          { name: 'active', color: '#F472B6' },
-          { name: 'new', color: '#A78BFA' },
+          { name: 'users', label: 'New Users', color: '#0B6B55' },
+          { name: 'circles', label: 'New Circles', color: '#F472B6' },
         ]}
         curveType="natural"
         withDots={false}
