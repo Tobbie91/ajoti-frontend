@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Button, Card, Group, PasswordInput, Text, TextInput, Divider, Select, Alert } from '@mantine/core'
+import {
+  Button,
+  Card,
+  Group,
+  PasswordInput,
+  Text,
+  TextInput,
+  Divider,
+  Select,
+  Alert,
+} from '@mantine/core'
 import { DateInput } from '@mantine/dates'
 import { IconUsers, IconUserCircle, IconAlertCircle } from '@tabler/icons-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -7,7 +17,7 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
 import { register } from '@/utils/api'
 
-const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL ?? 'http://localhost:5179'
+const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL ?? 'https://admin.ajoti.com'
 
 export function Signup() {
   const { login } = useAuth()
@@ -45,12 +55,15 @@ export function Signup() {
         role: 'MEMBER',
       })
       localStorage.setItem('verify_email', email.trim())
-      localStorage.setItem('user', JSON.stringify({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        dob: dob.toISOString().split('T')[0],
-      }))
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          dob: dob.toISOString().split('T')[0],
+        })
+      )
       navigate('/verify-otp')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
@@ -111,7 +124,11 @@ export function Signup() {
         </div>
 
         <div className="order-1 flex items-center lg:order-2">
-          <Card withBorder radius="xl" className="w-full border-[#E6F4EF] bg-white p-6 shadow-lg sm:p-8">
+          <Card
+            withBorder
+            radius="xl"
+            className="w-full border-[#E6F4EF] bg-white p-6 shadow-lg sm:p-8"
+          >
             <div className="space-y-6">
               <div>
                 <Text fw={700} size="lg" className="text-[#0F172A]">
