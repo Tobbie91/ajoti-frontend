@@ -45,6 +45,7 @@ import {
   getCircleContributions,
   getAdminCircleContributions,
   getAdminDisbursements,
+  type AdminContributionsResponse,
   type Disbursement as ApiDisbursement,
   getAdminCircleDetail,
   activateRoscaCircle,
@@ -550,7 +551,7 @@ export function GroupDetail() {
   const [inviteBy, setInviteBy] = useState<string | null>('email')
 
   // Payment Oversight state
-  const [selectedRound, setSelectedRound] = useState<string | null>('4')
+  const [selectedRound, setSelectedRound] = useState<string | null>('1')
 
   // Restart group modal state
   const [restartModal, setRestartModal] = useState(false)
@@ -761,7 +762,7 @@ export function GroupDetail() {
   const [contribLoading, setContribLoading] = useState(false)
 
   // Payment Oversight state
-  const [paymentContribs, setPaymentContribs] = useState<ApiContribution[]>([])
+  const [paymentContribs, setPaymentContribs] = useState<AdminContributionsResponse | null>(null)
   const [paymentContribsLoading, setPaymentContribsLoading] = useState(false)
   const [disbursements, setDisbursements] = useState<ApiDisbursement[]>([])
   const [disbursementsLoading, setDisbursementsLoading] = useState(false)
@@ -782,15 +783,6 @@ export function GroupDetail() {
         .finally(() => setContribLoading(false))
     }
     if (activeTab === 'payments' && id) {
-      setPaymentContribsLoading(true)
-      getAdminCircleContributions(id)
-        .then((data) => {
-          const arr = Array.isArray(data) ? data : ((data as Record<string, unknown>)?.data ?? []) as ApiContribution[]
-          setPaymentContribs(arr)
-        })
-        .catch(() => setPaymentContribs([]))
-        .finally(() => setPaymentContribsLoading(false))
-
       setDisbursementsLoading(true)
       getAdminDisbursements(id)
         .then(setDisbursements)
@@ -807,6 +799,15 @@ export function GroupDetail() {
       loadInvites()
     }
   }, [activeTab, id])
+
+  useEffect(() => {
+    if (activeTab !== 'payments' || !id || !selectedRound) return
+    setPaymentContribsLoading(true)
+    getAdminCircleContributions(id, Number(selectedRound))
+      .then(setPaymentContribs)
+      .catch(() => setPaymentContribs(null))
+      .finally(() => setPaymentContribsLoading(false))
+  }, [activeTab, selectedRound, id])
 
   async function handleProcessPayout() {
     const cycleNum = parseInt(processCycleInput)
@@ -1405,58 +1406,72 @@ export function GroupDetail() {
                 <Text fw={600} fz="md">Financial Health</Text>
                 {financialHealthLoading && <Loader size="xs" color={PRIMARY} />}
               </Group>
-              {financialHealth ? (
-                <Stack gap="md">
-                  <SimpleGrid cols={4} spacing="md">
-                    <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
-                      <Text fz="xs" c="dimmed" mb={4}>Total Expected</Text>
-                      <Text fz="lg" fw={700}>₦{Number(financialHealth.totalExpected ?? 0).toLocaleString('en-NG')}</Text>
-                    </Box>
-                    <Box style={{ textAlign: 'center', background: '#f0faf7', borderRadius: 8, padding: '12px 8px' }}>
-                      <Text fz="xs" c="dimmed" mb={4}>Total Collected</Text>
-                      <Text fz="lg" fw={700} style={{ color: PRIMARY }}>₦{Number(financialHealth.totalCollected ?? 0).toLocaleString('en-NG')}</Text>
-                    </Box>
-                    <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
-                      <Text fz="xs" c="dimmed" mb={4}>Collection Rate</Text>
-                      <Text fz="lg" fw={700}>{financialHealth.collectionRate != null ? `${Number(financialHealth.collectionRate).toFixed(1)}%` : '—'}</Text>
-                    </Box>
-                    <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
-                      <Text fz="xs" c="dimmed" mb={4}>Total Disbursed</Text>
-                      <Text fz="lg" fw={700}>₦{Number(financialHealth.totalDisbursed ?? 0).toLocaleString('en-NG')}</Text>
-                    </Box>
-                  </SimpleGrid>
-                  {financialHealth.cycles && financialHealth.cycles.length > 0 && (
-                    <Table verticalSpacing="sm" horizontalSpacing="md">
-                      <Table.Thead>
-                        <Table.Tr style={{ background: '#f8f9fa' }}>
-                          <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Cycle</Table.Th>
-                          <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Expected</Table.Th>
-                          <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Collected</Table.Th>
-                          <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Rate</Table.Th>
-                          <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Disbursed</Table.Th>
-                          <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Pending</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {financialHealth.cycles.map((cyc) => (
-                          <Table.Tr key={cyc.cycle}>
-                            <Table.Td><Text fz="sm" fw={500}>Cycle {cyc.cycle}</Text></Table.Td>
-                            <Table.Td><Text fz="sm">₦{Number(cyc.expectedContributions ?? 0).toLocaleString('en-NG')}</Text></Table.Td>
-                            <Table.Td><Text fz="sm" style={{ color: PRIMARY }}>₦{Number(cyc.actualContributions ?? 0).toLocaleString('en-NG')}</Text></Table.Td>
-                            <Table.Td>
-                              <Badge size="sm" radius="sm" style={{ background: cyc.collectionRate >= 80 ? '#e6f5f1' : '#fdf3e7', color: cyc.collectionRate >= 80 ? PRIMARY : '#e67e22', border: 'none', fontWeight: 600 }}>
-                                {Number(cyc.collectionRate ?? 0).toFixed(0)}%
-                              </Badge>
-                            </Table.Td>
-                            <Table.Td><Text fz="sm">₦{Number(cyc.disbursed ?? 0).toLocaleString('en-NG')}</Text></Table.Td>
-                            <Table.Td><Text fz="sm" c="dimmed">₦{Number(cyc.pendingDisbursements ?? 0).toLocaleString('en-NG')}</Text></Table.Td>
+              {financialHealth ? (() => {
+                const cycles = financialHealth.cycles ?? []
+                const totalExpKobo = cycles.reduce((s, c) => s + Number(c.expectedPot ?? 0), 0)
+                const totalColKobo = cycles.reduce((s, c) => s + Number(c.collected ?? 0), 0)
+                const overallRate = totalExpKobo > 0 ? (totalColKobo / totalExpKobo) * 100 : 0
+                return (
+                  <Stack gap="md">
+                    <SimpleGrid cols={4} spacing="md">
+                      <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
+                        <Text fz="xs" c="dimmed" mb={4}>Total Expected</Text>
+                        <Text fz="lg" fw={700}>₦{(totalExpKobo / 100).toLocaleString('en-NG')}</Text>
+                      </Box>
+                      <Box style={{ textAlign: 'center', background: '#f0faf7', borderRadius: 8, padding: '12px 8px' }}>
+                        <Text fz="xs" c="dimmed" mb={4}>Total Collected</Text>
+                        <Text fz="lg" fw={700} style={{ color: PRIMARY }}>₦{(totalColKobo / 100).toLocaleString('en-NG')}</Text>
+                      </Box>
+                      <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
+                        <Text fz="xs" c="dimmed" mb={4}>Collection Rate</Text>
+                        <Text fz="lg" fw={700}>{overallRate.toFixed(1)}%</Text>
+                      </Box>
+                      <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
+                        <Text fz="xs" c="dimmed" mb={4}>Total Outstanding</Text>
+                        <Text fz="lg" fw={700}>₦{(cycles.reduce((s, c) => s + Number(c.outstanding ?? 0), 0) / 100).toLocaleString('en-NG')}</Text>
+                      </Box>
+                    </SimpleGrid>
+                    {cycles.length > 0 && (
+                      <Table verticalSpacing="sm" horizontalSpacing="md">
+                        <Table.Thead>
+                          <Table.Tr style={{ background: '#f8f9fa' }}>
+                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Cycle</Table.Th>
+                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Deadline</Table.Th>
+                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Expected Pot</Table.Th>
+                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Collected</Table.Th>
+                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Rate</Table.Th>
+                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Outstanding</Table.Th>
                           </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  )}
-                </Stack>
-              ) : !financialHealthLoading ? (
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {cycles.map((cyc) => {
+                            const exp = Number(cyc.expectedPot ?? 0)
+                            const col = Number(cyc.collected ?? 0)
+                            const rate = exp > 0 ? Math.round((col / exp) * 100) : 0
+                            const deadline = cyc.contributionDeadline
+                              ? new Date(cyc.contributionDeadline).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
+                              : '—'
+                            return (
+                              <Table.Tr key={cyc.cycleNumber}>
+                                <Table.Td><Text fz="sm" fw={500}>Cycle {cyc.cycleNumber}</Text></Table.Td>
+                                <Table.Td><Text fz="sm" c="dimmed">{deadline}</Text></Table.Td>
+                                <Table.Td><Text fz="sm">₦{(exp / 100).toLocaleString('en-NG')}</Text></Table.Td>
+                                <Table.Td><Text fz="sm" style={{ color: PRIMARY }}>₦{(col / 100).toLocaleString('en-NG')}</Text></Table.Td>
+                                <Table.Td>
+                                  <Badge size="sm" radius="sm" style={{ background: rate >= 80 ? '#e6f5f1' : '#fdf3e7', color: rate >= 80 ? PRIMARY : '#e67e22', border: 'none', fontWeight: 600 }}>
+                                    {rate}%
+                                  </Badge>
+                                </Table.Td>
+                                <Table.Td><Text fz="sm" c="dimmed">₦{(Number(cyc.outstanding ?? 0) / 100).toLocaleString('en-NG')}</Text></Table.Td>
+                              </Table.Tr>
+                            )
+                          })}
+                        </Table.Tbody>
+                      </Table>
+                    )}
+                  </Stack>
+                )
+              })() : !financialHealthLoading ? (
                 <Text fz="sm" c="dimmed">No financial health data available</Text>
               ) : null}
             </Paper>
@@ -1472,7 +1487,7 @@ export function GroupDetail() {
               >
                 <Text fw={600} fz="sm" c="white">Contributions In</Text>
                 <Select
-                  data={roundOptions}
+                  data={financialHealth?.cycles?.map((c) => ({ value: String(c.cycleNumber), label: `Round ${c.cycleNumber}` })) ?? roundOptions}
                   value={selectedRound}
                   onChange={setSelectedRound}
                   size="xs"
@@ -1507,29 +1522,24 @@ export function GroupDetail() {
                         <Loader size="sm" color={PRIMARY} />
                       </Table.Td>
                     </Table.Tr>
-                  ) : paymentContribs.length === 0 ? (
+                  ) : (paymentContribs?.contributions ?? []).length === 0 ? (
                     <Table.Tr>
                       <Table.Td colSpan={5}>
                         <Text c="dimmed" ta="center" py="xl" fz="sm">No contributions found</Text>
                       </Table.Td>
                     </Table.Tr>
                   ) : (
-                    paymentContribs.map((c) => {
-                      const memberObj = c.member as { firstName?: string; lastName?: string } | undefined
-                      const memberName = memberObj
-                        ? `${memberObj.firstName ?? ''} ${memberObj.lastName ?? ''}`.trim()
-                        : '—'
+                    (paymentContribs?.contributions ?? []).map((c) => {
                       const amountNaira = Number(c.amount) / 100
-                      const isPaid = (c.status ?? '').toUpperCase() === 'PAID' || (c.status ?? '').toUpperCase() === 'COMPLETED'
-                      const dateStr = c.createdAt
-                        ? new Date(c.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      const dateStr = c.paidAt
+                        ? new Date(c.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
                         : '—'
                       return (
-                        <Table.Tr key={c.id}>
+                        <Table.Tr key={c.contributionId}>
                           <Table.Td>
                             <Group gap="sm" align="center">
-                              <Avatar size={28} radius="xl" color="gray">{(memberName || '?').charAt(0)}</Avatar>
-                              <Text fz="sm" fw={500}>{memberName}</Text>
+                              <Avatar size={28} radius="xl" color="gray">{(c.memberName || '?').charAt(0)}</Avatar>
+                              <Text fz="sm" fw={500}>{c.memberName}</Text>
                             </Group>
                           </Table.Td>
                           <Table.Td><Text fz="sm">₦{amountNaira.toLocaleString('en-NG')}</Text></Table.Td>
@@ -1538,16 +1548,16 @@ export function GroupDetail() {
                               size="sm"
                               radius="sm"
                               style={{
-                                background: isPaid ? '#e6f5f1' : '#fdf3e7',
-                                color: isPaid ? PRIMARY : '#e67e22',
+                                background: c.isLate ? '#fdf3e7' : '#e6f5f1',
+                                color: c.isLate ? '#e67e22' : PRIMARY,
                                 border: 'none',
                                 fontWeight: 600,
                               }}
                             >
-                              {isPaid ? 'Paid' : c.status}
+                              {c.isLate ? 'Late' : 'Paid'}
                             </Badge>
                           </Table.Td>
-                          <Table.Td><Text fz="sm">{(c.payoutMethod as string) ?? 'Auto Debit'}</Text></Table.Td>
+                          <Table.Td><Text fz="sm">Wallet</Text></Table.Td>
                           <Table.Td><Text fz="sm">{dateStr}</Text></Table.Td>
                         </Table.Tr>
                       )
@@ -1567,23 +1577,27 @@ export function GroupDetail() {
                 <Group gap="xl">
                   <Box>
                     <Text fz="xs" c="dimmed">Total Expected</Text>
-                    <Text fz="sm" fw={600}>₦{(paymentContribs.length * (Number(circleData?.contributionAmount ?? 0) / 100)).toLocaleString('en-NG')}</Text>
+                    <Text fz="sm" fw={600}>
+                      ₦{(() => {
+                        const cyc = financialHealth?.cycles?.find((c) => c.cycleNumber === Number(selectedRound))
+                        return cyc ? (Number(cyc.expectedPot) / 100).toLocaleString('en-NG') : '0'
+                      })()}
+                    </Text>
                   </Box>
                   <Box>
                     <Text fz="xs" c="dimmed">Total Received</Text>
                     <Text fz="sm" fw={600} style={{ color: PRIMARY }}>
-                      ₦{paymentContribs
-                        .filter((c) => ['PAID','COMPLETED'].includes((c.status ?? '').toUpperCase()))
-                        .reduce((sum, c) => sum + Number(c.amount) / 100, 0)
-                        .toLocaleString('en-NG')}
+                      ₦{(Number(paymentContribs?.totalCollected ?? 0) / 100).toLocaleString('en-NG')}
                     </Text>
                   </Box>
                   <Box>
                     <Text fz="xs" c="dimmed">Complete Rate</Text>
                     <Text fz="sm" fw={600} style={{ color: PRIMARY }}>
-                      {paymentContribs.length > 0
-                        ? `${Math.round((paymentContribs.filter((c) => ['PAID','COMPLETED'].includes((c.status ?? '').toUpperCase())).length / paymentContribs.length) * 100)}%`
-                        : '—'}
+                      {(() => {
+                        const cyc = financialHealth?.cycles?.find((c) => c.cycleNumber === Number(selectedRound))
+                        if (!cyc || Number(cyc.expectedPot) === 0) return '—'
+                        return `${Math.round((Number(cyc.collected) / Number(cyc.expectedPot)) * 100)}%`
+                      })()}
                     </Text>
                   </Box>
                 </Group>
@@ -1666,25 +1680,26 @@ export function GroupDetail() {
                       </Table.Td>
                     </Table.Tr>
                   ) : disbursements.map((d) => {
-                    const personObj = (d.recipient ?? d.member) as { firstName?: string; lastName?: string } | undefined
-                    const name = personObj ? `${personObj.firstName ?? ''} ${personObj.lastName ?? ''}`.trim() : '—'
-                    const amountNaira = Number(d.amount) / 100
-                    const isSuccess = ['SUCCESS', 'COMPLETED', 'PAID'].includes((d.status ?? '').toUpperCase())
-                    const isUpcoming = ['UPCOMING', 'PENDING', 'SCHEDULED'].includes((d.status ?? '').toUpperCase())
-                    const dateStr = (d.disbursedAt ?? d.createdAt)
-                      ? new Date((d.disbursedAt ?? d.createdAt) as string).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                    const isSuccess = d.payoutStatus != null && ['SUCCESS', 'COMPLETED', 'PAID'].includes(d.payoutStatus.toUpperCase())
+                    const isUpcoming = d.payoutStatus == null || ['UPCOMING', 'PENDING'].includes((d.scheduleStatus ?? '').toUpperCase())
+                    const amountNaira = d.amountPaidOut != null ? (Number(d.amountPaidOut) / 100).toLocaleString('en-NG') : null
+                    const dateStr = (d.processedAt ?? (isUpcoming ? d.payoutDate : null))
+                      ? new Date((d.processedAt ?? d.payoutDate) as string).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
                       : '—'
                     return (
-                      <Table.Tr key={d.id} style={isUpcoming ? { background: '#f0faf7' } : undefined}>
+                      <Table.Tr key={d.cycleNumber} style={isUpcoming ? { background: '#f0faf7' } : undefined}>
                         <Table.Td>
                           <Group gap="sm" align="center">
-                            <Avatar size={28} radius="xl" color="gray">{(name || '?').charAt(0)}</Avatar>
-                            <Text fz="sm" fw={500}>{name}</Text>
+                            <Avatar size={28} radius="xl" color="gray">{(d.recipientName || '?').charAt(0)}</Avatar>
+                            <Box>
+                              <Text fz="sm" fw={500}>{d.recipientName}</Text>
+                              <Text fz="xs" c="dimmed">Cycle {d.cycleNumber}</Text>
+                            </Box>
                           </Group>
                         </Table.Td>
                         <Table.Td>
                           <Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>
-                            {isUpcoming ? 'Pending' : `₦${amountNaira.toLocaleString('en-NG')}`}
+                            {amountNaira ? `₦${amountNaira}` : 'Pending'}
                           </Text>
                         </Table.Td>
                         <Table.Td>
@@ -1692,17 +1707,17 @@ export function GroupDetail() {
                             size="sm"
                             radius="sm"
                             style={{
-                              background: isSuccess ? '#e6f5f1' : '#f1f3f5',
-                              color: isSuccess ? PRIMARY : '#868e96',
+                              background: isSuccess ? '#e6f5f1' : isUpcoming ? '#fdf3e7' : '#f1f3f5',
+                              color: isSuccess ? PRIMARY : isUpcoming ? '#e67e22' : '#868e96',
                               border: 'none',
                               fontWeight: 600,
                             }}
                           >
-                            {isSuccess ? 'Success' : isUpcoming ? 'Upcoming' : d.status}
+                            {isSuccess ? 'Disbursed' : isUpcoming ? 'Upcoming' : d.payoutStatus}
                           </Badge>
                         </Table.Td>
-                        <Table.Td><Text fz="sm">{(d.paymentMethod as string) ?? 'Wallet'}</Text></Table.Td>
-                        <Table.Td><Text fz="sm">{dateStr}</Text></Table.Td>
+                        <Table.Td><Text fz="sm">Wallet</Text></Table.Td>
+                        <Table.Td><Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>{dateStr}</Text></Table.Td>
                       </Table.Tr>
                     )
                   })}

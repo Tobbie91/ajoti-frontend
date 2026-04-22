@@ -590,33 +590,58 @@ export async function getCircleContributions(circleId: string): Promise<Contribu
 
 // GET /api/admin/rosca/{circleId}/disbursements — admin view of disbursements
 export interface Disbursement {
-  id: string
-  amount: number | string
-  status: string
-  createdAt?: string
-  disbursedAt?: string
-  paymentMethod?: string
-  recipient?: { firstName?: string; lastName?: string }
-  member?: { firstName?: string; lastName?: string }
+  cycleNumber: number
+  recipientId: string
+  recipientName: string
+  payoutDate: string
+  contributionDeadline: string
+  scheduleStatus: string
+  payoutStatus: string | null
+  amountPaidOut: string | null
+  processedAt: string | null
   [key: string]: unknown
 }
 
 export async function getAdminDisbursements(circleId: string): Promise<Disbursement[]> {
-  const res = await authRequest<{ data?: Disbursement[] } | Disbursement[]>(
+  const res = await authRequest<{ data?: { schedules?: Disbursement[] } }>(
     `/api/admin/rosca/${circleId}/disbursements`,
     { method: 'GET' },
   )
-  const raw = Array.isArray(res) ? res : (res as { data?: Disbursement[] }).data ?? []
-  return Array.isArray(raw) ? raw : []
+  return (res as { data?: { schedules?: Disbursement[] } }).data?.schedules ?? []
 }
 
 // GET /api/admin/rosca/{circleId}/contributions — admin view of contributions
-export async function getAdminCircleContributions(circleId: string): Promise<Contribution[]> {
-  const res = await authRequest<{ data?: Contribution[] } | Contribution[]>(
-    `/api/admin/rosca/${circleId}/contributions`,
-    { method: 'GET' },
-  )
-  return Array.isArray(res) ? res : (res as { data?: Contribution[] }).data ?? []
+export interface AdminContribution {
+  contributionId: string
+  userId: string
+  memberName: string
+  amount: string
+  penaltyAmount: string
+  isLate: boolean
+  paidAt: string
+}
+
+export interface AdminContributionsResponse {
+  cycleNumber: number
+  contributions: AdminContribution[]
+  totalCollected: string
+  totalPenalties: string
+}
+
+export async function getAdminCircleContributions(
+  circleId: string,
+  cycleNumber?: number,
+): Promise<AdminContributionsResponse> {
+  const url = cycleNumber != null
+    ? `/api/admin/rosca/${circleId}/contributions?cycleNumber=${cycleNumber}`
+    : `/api/admin/rosca/${circleId}/contributions`
+  const res = await authRequest<{ data?: AdminContributionsResponse }>(url, { method: 'GET' })
+  return (res as { data?: AdminContributionsResponse }).data ?? {
+    cycleNumber: cycleNumber ?? 1,
+    contributions: [],
+    totalCollected: '0',
+    totalPenalties: '0',
+  }
 }
 
 export function makeContribution(circleId: string, cycleNumber: number): Promise<{ message: string }> {
@@ -920,20 +945,21 @@ export async function notifyMissingContributors(
 // ── Financial Health ───────────────────────────────────────────────────────────
 
 export interface CycleHealth {
-  cycle: number
-  expectedContributions: number
-  actualContributions: number
-  collectionRate: number
-  disbursed: number
-  pendingDisbursements: number
+  cycleNumber: number
+  contributionDeadline?: string
+  scheduleStatus: string
+  expectedPot: string
+  collected: string
+  outstanding: string
+  expectedCount: number
+  collectedCount: number
   [key: string]: unknown
 }
 
 export interface FinancialHealth {
-  totalExpected?: number
-  totalCollected?: number
-  collectionRate?: number
-  totalDisbursed?: number
+  circleId?: string
+  contributionAmount?: string
+  filledSlots?: number
   cycles?: CycleHealth[]
   [key: string]: unknown
 }
