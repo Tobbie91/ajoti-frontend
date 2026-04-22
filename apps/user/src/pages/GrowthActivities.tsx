@@ -139,8 +139,8 @@ export function GrowthActivities() {
   const progressPercent = totalCycles > 0 ? (completedCycles / totalCycles) * 100 : 0
 
   const userMember = members.find((m) => m.userId === currentUserId)
-  const userTrustScore = userMember?.trustScore ?? 575
-  const trustPercent = Math.min(100, Math.round((userTrustScore / 1000) * 100))
+  const userTrustScore = userMember?.trustScore ?? 50
+  const trustPercent = Math.min(100, userTrustScore)
 
   // Next pending payout
   const nextSchedule = schedules
@@ -459,13 +459,13 @@ function MembersTab({
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <Progress
-                          value={Math.min(100, Math.round(((member.trustScore ?? 575) / 1000) * 100))}
+                          value={Math.min(100, member.trustScore ?? 50)}
                           size={6}
                           radius="xl"
                           color="#02A36E"
                           className="w-16"
                         />
-                        <Text fw={600} className="text-[13px] text-[#0F172A]">{member.trustScore ?? 575}</Text>
+                        <Text fw={600} className="text-[13px] text-[#0F172A]">{member.trustScore ?? 50}</Text>
                       </div>
                     </td>
                   </tr>
