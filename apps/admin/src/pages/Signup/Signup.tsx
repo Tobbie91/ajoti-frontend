@@ -1,238 +1,328 @@
-import { useState } from 'react'
-import { Button, Card, Group, PasswordInput, Text, TextInput, Select, Alert } from '@mantine/core'
-import { DateInput } from '@mantine/dates'
-import { Link, useNavigate } from 'react-router-dom'
-import { IconAlertCircle } from '@tabler/icons-react'
-import { register } from '@/utils/api'
+import { useState } from "react";
+import {
+    Button,
+    Card,
+    Group,
+    PasswordInput,
+    Text,
+    TextInput,
+    Select,
+    Alert,
+} from "@mantine/core";
+import { DateInput } from "@mantine/dates";
+import { Link, useNavigate } from "react-router-dom";
+import { IconAlertCircle } from "@tabler/icons-react";
+import { register } from "@/utils/api";
 
 export function Signup() {
-  const navigate = useNavigate()
+    const navigate = useNavigate();
 
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [dob, setDob] = useState<Date | null>(null)
-  const [gender, setGender] = useState<string | null>(null)
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
+    const [dob, setDob] = useState<Date | null>(null);
+    const [gender, setGender] = useState<string | null>(null);
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  async function handleSignup() {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !gender || !dob) {
-      setError('Please fill in all fields.')
-      return
+    async function handleSignup() {
+        if (
+            !firstName.trim() ||
+            !lastName.trim() ||
+            !email.trim() ||
+            !password ||
+            !gender ||
+            !dob
+        ) {
+            setError("Please fill in all fields.");
+            return;
+        }
+        setError(null);
+        setLoading(true);
+        try {
+            const dobString = dob.toISOString().split("T")[0];
+            await register({
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                email: email.trim(),
+                phone: phone.trim(),
+                dob: dobString,
+                gender: gender.toUpperCase() as "MALE" | "FEMALE",
+                password,
+            });
+            localStorage.setItem("admin_verify_email", email.trim());
+            localStorage.setItem(
+                "admin_user",
+                JSON.stringify({
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                    email: email.trim(),
+                    dob: dobString,
+                }),
+            );
+            navigate("/verify-otp");
+        } catch (err) {
+            setError(
+                err instanceof Error ? err.message : "Registration failed",
+            );
+        } finally {
+            setLoading(false);
+        }
     }
-    setError(null)
-    setLoading(true)
-    try {
-      const dobString = dob.toISOString().split('T')[0]
-      await register({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        dob: dobString,
-        gender: gender.toUpperCase() as 'MALE' | 'FEMALE',
-        password,
-        role: 'ADMIN',
-      })
-      localStorage.setItem('admin_verify_email', email.trim())
-      localStorage.setItem('admin_user', JSON.stringify({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        dob: dobString,
-      }))
-      navigate('/verify-otp')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  return (
-    <div className="min-h-screen bg-[#F7FBF9]">
-      <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-2 lg:gap-10 lg:px-6 lg:py-12">
-        <div className="order-2 flex flex-col justify-between rounded-3xl bg-[#0B6B55] px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <Text fw={700} size="xl" className="tracking-wide">
-                AJOTI
-              </Text>
-              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs">
-                Admin · Portal
-              </span>
+    return (
+        <div className="min-h-screen bg-[#F7FBF9]">
+            <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-2 lg:gap-10 lg:px-6 lg:py-12">
+                <div className="order-2 flex flex-col justify-between rounded-3xl bg-[#0B6B55] px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between">
+                            <Text fw={700} size="xl" className="tracking-wide">
+                                AJOTI
+                            </Text>
+                            <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs">
+                                Admin · Portal
+                            </span>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Text fw={700} size="xl">
+                                Start managing your group
+                            </Text>
+                            <Text size="sm" className="text-white/90">
+                                Create an admin account and bring your savings
+                                group online.
+                            </Text>
+                        </div>
+
+                        <div className="grid gap-3">
+                            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                                <Text fw={600} size="sm">
+                                    Easy setup
+                                </Text>
+                                <Text size="xs" className="mt-1 text-white/80">
+                                    Digitize your existing savings group in
+                                    minutes.
+                                </Text>
+                            </div>
+                            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                                <Text fw={600} size="sm">
+                                    Full control
+                                </Text>
+                                <Text size="xs" className="mt-1 text-white/80">
+                                    Manage members, payouts, and contributions
+                                    from one place.
+                                </Text>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-8 flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm">
+                        <span>Already have an account?</span>
+                        <Link to="/login" className="font-semibold text-white">
+                            Log in
+                        </Link>
+                    </div>
+                </div>
+
+                <div className="order-1 flex items-center lg:order-2">
+                    <Card
+                        withBorder
+                        radius="xl"
+                        className="w-full border-[#E6F4EF] bg-white p-6 shadow-lg sm:p-8"
+                    >
+                        <div className="space-y-6">
+                            <div>
+                                <Text
+                                    fw={700}
+                                    size="lg"
+                                    className="text-[#0F172A]"
+                                >
+                                    Create admin account
+                                </Text>
+                                <Text size="sm" className="text-[#6B7280]">
+                                    Get your savings group online.
+                                </Text>
+                            </div>
+
+                            {error && (
+                                <Alert
+                                    icon={<IconAlertCircle size={16} />}
+                                    color="red"
+                                    radius="md"
+                                    variant="light"
+                                >
+                                    {error}
+                                </Alert>
+                            )}
+
+                            <Group grow gap="sm">
+                                <TextInput
+                                    label="First name"
+                                    placeholder="First name"
+                                    radius="md"
+                                    value={firstName}
+                                    onChange={(e) =>
+                                        setFirstName(e.currentTarget.value)
+                                    }
+                                    styles={{
+                                        input: {
+                                            borderColor: "#BFEBD1",
+                                            backgroundColor: "#FFFFFF",
+                                        },
+                                    }}
+                                />
+                                <TextInput
+                                    label="Last name"
+                                    placeholder="Last name"
+                                    radius="md"
+                                    value={lastName}
+                                    onChange={(e) =>
+                                        setLastName(e.currentTarget.value)
+                                    }
+                                    styles={{
+                                        input: {
+                                            borderColor: "#BFEBD1",
+                                            backgroundColor: "#FFFFFF",
+                                        },
+                                    }}
+                                />
+                            </Group>
+                            <TextInput
+                                label="Email"
+                                placeholder="you@example.com"
+                                radius="md"
+                                value={email}
+                                onChange={(e) =>
+                                    setEmail(e.currentTarget.value)
+                                }
+                                styles={{
+                                    input: {
+                                        borderColor: "#BFEBD1",
+                                        backgroundColor: "#FFFFFF",
+                                    },
+                                }}
+                            />
+                            <TextInput
+                                label="Phone number"
+                                placeholder="+234 800 000 0000"
+                                radius="md"
+                                value={phone}
+                                onChange={(e) =>
+                                    setPhone(e.currentTarget.value)
+                                }
+                                styles={{
+                                    input: {
+                                        borderColor: "#BFEBD1",
+                                        backgroundColor: "#FFFFFF",
+                                    },
+                                }}
+                            />
+                            <Group grow gap="sm">
+                                <DateInput
+                                    label="Date of birth"
+                                    placeholder="DD/MM/YYYY"
+                                    radius="md"
+                                    valueFormat="DD/MM/YYYY"
+                                    maxDate={new Date()}
+                                    value={dob}
+                                    onChange={(value) =>
+                                        setDob(value ? new Date(value) : null)
+                                    }
+                                    dateParser={(input) => {
+                                        const [day, month, year] =
+                                            input.split("/");
+                                        if (
+                                            day &&
+                                            month &&
+                                            year &&
+                                            year.length === 4
+                                        ) {
+                                            return new Date(
+                                                Number(year),
+                                                Number(month) - 1,
+                                                Number(day),
+                                            );
+                                        }
+                                        return new Date(input);
+                                    }}
+                                    styles={{
+                                        input: {
+                                            borderColor: "#BFEBD1",
+                                            backgroundColor: "#FFFFFF",
+                                        },
+                                    }}
+                                />
+                                <Select
+                                    label="Gender"
+                                    placeholder="Select"
+                                    data={[
+                                        { value: "male", label: "Male" },
+                                        { value: "female", label: "Female" },
+                                    ]}
+                                    radius="md"
+                                    value={gender}
+                                    onChange={setGender}
+                                    styles={{
+                                        input: {
+                                            borderColor: "#BFEBD1",
+                                            backgroundColor: "#FFFFFF",
+                                        },
+                                    }}
+                                    allowDeselect={false}
+                                />
+                            </Group>
+
+                            <PasswordInput
+                                label="Password"
+                                placeholder="••••••••"
+                                radius="md"
+                                value={password}
+                                onChange={(e) =>
+                                    setPassword(e.currentTarget.value)
+                                }
+                                styles={{
+                                    input: {
+                                        borderColor: "#BFEBD1",
+                                        backgroundColor: "#FFFFFF",
+                                    },
+                                }}
+                            />
+
+                            <Group
+                                justify="space-between"
+                                className="text-xs text-[#6B7280]"
+                            >
+                                <Text component="span">
+                                    Already have an account?
+                                </Text>
+                                <Link to="/login" className="text-[#0B6B55]">
+                                    Log in
+                                </Link>
+                            </Group>
+
+                            <Button
+                                fullWidth
+                                radius="md"
+                                className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
+                                onClick={handleSignup}
+                                loading={loading}
+                            >
+                                Create account
+                            </Button>
+
+                            <Text
+                                size="xs"
+                                className="text-center text-[#6B7280]"
+                            >
+                                By creating an account, you agree to our Terms
+                                and Privacy Policy.
+                            </Text>
+                        </div>
+                    </Card>
+                </div>
             </div>
-
-            <div className="space-y-4">
-              <Text fw={700} size="xl">
-                Start managing your group
-              </Text>
-              <Text size="sm" className="text-white/90">
-                Create an admin account and bring your savings group online.
-              </Text>
-            </div>
-
-            <div className="grid gap-3">
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text fw={600} size="sm">
-                  Easy setup
-                </Text>
-                <Text size="xs" className="mt-1 text-white/80">
-                  Digitize your existing savings group in minutes.
-                </Text>
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text fw={600} size="sm">
-                  Full control
-                </Text>
-                <Text size="xs" className="mt-1 text-white/80">
-                  Manage members, payouts, and contributions from one place.
-                </Text>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm">
-            <span>Already have an account?</span>
-            <Link to="/login" className="font-semibold text-white">
-              Log in
-            </Link>
-          </div>
         </div>
-
-        <div className="order-1 flex items-center lg:order-2">
-          <Card withBorder radius="xl" className="w-full border-[#E6F4EF] bg-white p-6 shadow-lg sm:p-8">
-            <div className="space-y-6">
-              <div>
-                <Text fw={700} size="lg" className="text-[#0F172A]">
-                  Create admin account
-                </Text>
-                <Text size="sm" className="text-[#6B7280]">
-                  Get your savings group online.
-                </Text>
-              </div>
-
-              {error && (
-                <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
-                  {error}
-                </Alert>
-              )}
-
-              <Group grow gap="sm">
-                <TextInput
-                  label="First name"
-                  placeholder="First name"
-                  radius="md"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.currentTarget.value)}
-                  styles={{
-                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                  }}
-                />
-                <TextInput
-                  label="Last name"
-                  placeholder="Last name"
-                  radius="md"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.currentTarget.value)}
-                  styles={{
-                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                  }}
-                />
-              </Group>
-              <TextInput
-                label="Email"
-                placeholder="you@example.com"
-                radius="md"
-                value={email}
-                onChange={(e) => setEmail(e.currentTarget.value)}
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
-              />
-              <TextInput
-                label="Phone number"
-                placeholder="+234 800 000 0000"
-                radius="md"
-                value={phone}
-                onChange={(e) => setPhone(e.currentTarget.value)}
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
-              />
-              <Group grow gap="sm">
-                <DateInput
-                  label="Date of birth"
-                  placeholder="DD/MM/YYYY"
-                  radius="md"
-                  valueFormat="DD/MM/YYYY"
-                  maxDate={new Date()}
-                  value={dob}
-                  onChange={(value) => setDob(value ? new Date(value) : null)}
-                  dateParser={(input) => {
-                    const [day, month, year] = input.split('/')
-                    if (day && month && year && year.length === 4) {
-                      return new Date(Number(year), Number(month) - 1, Number(day))
-                    }
-                    return new Date(input)
-                  }}
-                  styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
-                />
-                <Select
-                  label="Gender"
-                  placeholder="Select"
-                  data={[
-                    { value: 'male', label: 'Male' },
-                    { value: 'female', label: 'Female' },
-                  ]}
-                  radius="md"
-                  value={gender}
-                  onChange={setGender}
-                  styles={{
-                    input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                  }}
-                  allowDeselect={false}
-                />
-              </Group>
-
-              <PasswordInput
-                label="Password"
-                placeholder="••••••••"
-                radius="md"
-                value={password}
-                onChange={(e) => setPassword(e.currentTarget.value)}
-                styles={{
-                  input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' },
-                }}
-              />
-
-              <Group justify="space-between" className="text-xs text-[#6B7280]">
-                <Text component="span">Already have an account?</Text>
-                <Link to="/login" className="text-[#0B6B55]">
-                  Log in
-                </Link>
-              </Group>
-
-              <Button
-                fullWidth
-                radius="md"
-                className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
-                onClick={handleSignup}
-                loading={loading}
-              >
-                Create account
-              </Button>
-
-              <Text size="xs" className="text-center text-[#6B7280]">
-                By creating an account, you agree to our Terms and Privacy Policy.
-              </Text>
-            </div>
-          </Card>
-        </div>
-      </div>
-    </div>
-  )
+    );
 }
