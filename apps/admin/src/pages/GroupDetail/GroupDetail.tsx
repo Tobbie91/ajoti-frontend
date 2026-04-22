@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { DateInput } from '@mantine/dates'
 import {
   Stack,
   Text,
@@ -672,7 +673,7 @@ export function GroupDetail() {
 
   // Activate circle modal state
   const [activateModal, setActivateModal] = useState(false)
-  const [activateStartDate, setActivateStartDate] = useState('')
+  const [activateStartDate, setActivateStartDate] = useState<Date | null>(null)
   const [activateLoading, setActivateLoading] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
   const [activateSuccess, setActivateSuccess] = useState(false)
@@ -682,7 +683,7 @@ export function GroupDetail() {
     setActivateLoading(true)
     setActivateError(null)
     try {
-      await activateRoscaCircle(id, activateStartDate)
+      await activateRoscaCircle(id, activateStartDate.toISOString().split('T')[0])
       setActivateSuccess(true)
       setTimeout(() => {
         setActivateModal(false)
@@ -921,7 +922,7 @@ export function GroupDetail() {
                       leftSection={<IconPlayerPlay size={14} />}
                       disabled={!slotsAreFull}
                       title={!slotsAreFull ? 'All slots must be filled before activating' : undefined}
-                      onClick={() => { setActivateStartDate(''); setActivateError(null); setActivateModal(true) }}
+                      onClick={() => { setActivateStartDate(null); setActivateError(null); setActivateModal(true) }}
                     >
                       {slotsAreFull ? 'Start Circle' : 'Waiting for members…'}
                     </Button>
@@ -2540,13 +2541,15 @@ export function GroupDetail() {
               <IconX size={20} stroke={1.5} color="#868e96" style={{ cursor: 'pointer' }} onClick={() => setActivateModal(false)} />
             </Group>
             <Text fz="sm" c="dimmed">Set a start date for <strong>{group.name}</strong>. Members will be notified and the cycle will begin on this date.</Text>
-            <TextInput
+            <DateInput
               label="Start Date"
-              placeholder="YYYY-MM-DD"
+              placeholder="Pick a start date"
               radius="md"
               size="sm"
+              valueFormat="DD MMM YYYY"
+              minDate={new Date()}
               value={activateStartDate}
-              onChange={(e) => setActivateStartDate(e.currentTarget.value)}
+              onChange={(val) => setActivateStartDate(val ? new Date(val) : null)}
               styles={{ input: { border: '1px solid #dee2e6' } }}
             />
             {activateError && <Text fz="sm" c="red">{activateError}</Text>}
@@ -2568,7 +2571,7 @@ export function GroupDetail() {
                 flex={1}
                 style={{ background: PRIMARY }}
                 loading={activateLoading}
-                disabled={!activateStartDate.trim()}
+                disabled={!activateStartDate}
                 onClick={handleActivateCircle}
                 leftSection={<IconPlayerPlay size={14} />}
               >
