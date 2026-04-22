@@ -633,7 +633,7 @@ export async function getAdminCircleContributions(
   cycleNumber?: number,
 ): Promise<AdminContributionsResponse> {
   const url = cycleNumber != null
-    ? `/api/admin/rosca/${circleId}/contributions?cycleNumber=${cycleNumber}`
+    ? `/api/admin/rosca/${circleId}/contributions?round=${cycleNumber}`
     : `/api/admin/rosca/${circleId}/contributions`
   const res = await authRequest<{ data?: AdminContributionsResponse }>(url, { method: 'GET' })
   return (res as { data?: AdminContributionsResponse }).data ?? {
