@@ -58,7 +58,6 @@ export interface RegisterPayload {
   gender: 'MALE' | 'FEMALE'
   phone: string
   password: string
-  role: 'MEMBER' | 'ADMIN' | 'SUPERADMIN'
 }
 
 export interface RegisterResponse {

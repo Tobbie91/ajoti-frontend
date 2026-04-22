@@ -52,7 +52,6 @@ export function Signup() {
         dob: dob.toISOString().split('T')[0],
         gender: gender as 'MALE' | 'FEMALE',
         password,
-        role: 'MEMBER',
       })
       localStorage.setItem('verify_email', email.trim())
       localStorage.setItem(
