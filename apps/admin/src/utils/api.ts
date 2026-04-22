@@ -406,7 +406,7 @@ export function createRoscaCircle(payload: CreateRoscaPayload): Promise<RoscaCir
 export function activateRoscaCircle(circleId: string, startDate: string): Promise<{ message: string }> {
   return authRequest(`/api/admin/rosca/${circleId}/activate`, {
     method: 'PATCH',
-    body: JSON.stringify({ startDate }),
+    body: JSON.stringify({ initialContributionDeadline: startDate }),
   })
 }
 
