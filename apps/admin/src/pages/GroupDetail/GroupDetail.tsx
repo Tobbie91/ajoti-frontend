@@ -1613,43 +1613,6 @@ export function GroupDetail() {
               </Group>
             </Paper>
 
-            {/* Auto Debit Logs */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
-              <Group justify="space-between" align="center" px="lg" py="md">
-                <Text fw={600} fz="md">Auto Debit Logs</Text>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  radius="md"
-                  leftSection={<IconFilter size={14} />}
-                  style={{ borderColor: '#dee2e6', color: '#495057' }}
-                  onClick={() => setDebitFilterModal(true)}
-                >
-                  Filters
-                </Button>
-              </Group>
-
-              <Table verticalSpacing="sm" horizontalSpacing="lg">
-                <Table.Thead>
-                  <Table.Tr style={{ background: PRIMARY }}>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Members Name</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date & Time</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount (₦)</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Failed Reason</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}></Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Text c="dimmed" ta="center" py="xl" fz="sm">No debit logs available</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
-
             {/* Disbursement Status */}
             <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
               <Group justify="space-between" align="center" px="lg" py="md">
