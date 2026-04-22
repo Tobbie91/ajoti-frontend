@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Title,
   Text,
@@ -62,6 +62,170 @@ function formatNaira(naira: string) {
   const n = parseFloat(naira)
   if (isNaN(n)) return '₦0.00'
   return `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+}
+
+// ── User Detail Body (extracted to reset TS instantiation depth) ─────────────
+
+function UserDetailBody({
+  detail,
+  actionLoading,
+  currentStatus,
+  currentRole,
+  onReactivate,
+  onOpenSuspend,
+  onOpenBan,
+  onOpenPromote,
+  onOpenApproveAdmin,
+  onOpenRejectAdmin,
+}: {
+  detail: SuperadminUserDetail
+  actionLoading: boolean
+  currentStatus: string
+  currentRole: string
+  onReactivate: () => void
+  onOpenSuspend: () => void
+  onOpenBan: () => void
+  onOpenPromote: () => void
+  onOpenApproveAdmin: () => void
+  onOpenRejectAdmin: () => void
+}) {
+  const user = detail.user as Record<string, unknown>
+  const wallet = detail.wallet
+  const roscaCount = detail.roscaParticipation.length
+  const debtCount = detail.outstandingDebts.length
+  const kyc = user.kyc as { status: string } | null
+
+  return (
+    <Stack gap="md">
+      {/* Identity */}
+      <Group gap="xs">
+        <ThemeIcon size={48} radius="xl" variant="light" color="primary">
+          <IconUser size={24} stroke={1.5} />
+        </ThemeIcon>
+        <Stack gap={2}>
+          <Text fw={600} fz="lg">
+            {user.firstName as string} {user.lastName as string}
+          </Text>
+          <Text fz="sm" c="dimmed">{user.email as string}</Text>
+        </Stack>
+      </Group>
+
+      <SimpleGrid cols={2} spacing="xs">
+        <InfoItem label="Phone" value={(user.phone as string) ?? '—'} />
+        <InfoItem label="Role" value={currentRole} />
+        <InfoItem
+          label="Status"
+          value={
+            <Badge color={STATUS_COLOR[currentStatus] ?? 'gray'} variant="light" size="sm">
+              {currentStatus}
+            </Badge>
+          }
+        />
+        <InfoItem
+          label="KYC"
+          value={
+            <Badge color={KYC_COLOR[kyc?.status ?? 'NOT_SUBMITTED'] ?? 'gray'} variant="light" size="sm">
+              {kyc?.status ?? 'NOT_SUBMITTED'}
+            </Badge>
+          }
+        />
+        <InfoItem label="Joined" value={user.createdAt ? new Date(user.createdAt as string).toLocaleDateString('en-NG') : '—'} />
+        <InfoItem label="Verified" value={(user.isVerified as boolean) ? 'Yes' : 'No'} />
+      </SimpleGrid>
+
+      <Divider />
+
+      {/* Wallet */}
+      <Group gap="xs">
+        <ThemeIcon size={36} radius="md" variant="light" color="blue">
+          <IconWallet size={18} stroke={1.5} />
+        </ThemeIcon>
+        <Stack gap={0}>
+          <Text fz="xs" c="dimmed">Wallet Balance</Text>
+          <Text fw={600}>{wallet ? formatNaira(wallet.balanceNaira) : 'No wallet'}</Text>
+        </Stack>
+        {wallet && (
+          <Badge ml="auto" size="xs" color={wallet.status === 'ACTIVE' ? 'green' : 'gray'} variant="light">
+            {wallet.status}
+          </Badge>
+        )}
+      </Group>
+
+      {/* Stats */}
+      <SimpleGrid cols={2} spacing="xs">
+        <Card withBorder p="sm" radius="md">
+          <Group gap="xs">
+            <ThemeIcon size={28} radius="md" variant="light" color="grape">
+              <IconTopologyRing size={14} stroke={1.5} />
+            </ThemeIcon>
+            <Stack gap={0}>
+              <Text fz="xs" c="dimmed">ROSCA Groups</Text>
+              <Text fw={600} fz="sm">{roscaCount}</Text>
+            </Stack>
+          </Group>
+        </Card>
+        <Card withBorder p="sm" radius="md">
+          <Group gap="xs">
+            <ThemeIcon size={28} radius="md" variant="light" color={debtCount > 0 ? 'red' : 'green'}>
+              <IconShieldCheck size={14} stroke={1.5} />
+            </ThemeIcon>
+            <Stack gap={0}>
+              <Text fz="xs" c="dimmed">Outstanding Debts</Text>
+              <Text fw={600} fz="sm" c={debtCount > 0 ? 'red' : undefined}>{debtCount}</Text>
+            </Stack>
+          </Group>
+        </Card>
+      </SimpleGrid>
+
+      {(user.suspensionReason as string | null) && (
+        <Alert color="orange" radius="md" variant="light">
+          <Text fz="xs" fw={500}>Suspension reason:</Text>
+          <Text fz="sm">{user.suspensionReason as string}</Text>
+        </Alert>
+      )}
+
+      <Divider />
+
+      {/* Pending admin request */}
+      {(user.adminRequestedAt as string | null) && (
+        <Alert color="orange" radius="md" variant="light" title="Pending Admin Request">
+          <Text fz="xs">Requested on {new Date(user.adminRequestedAt as string).toLocaleDateString('en-NG')}</Text>
+          <Group mt="xs" gap="xs">
+            <Button size="xs" color="green" variant="filled" onClick={onOpenApproveAdmin} loading={actionLoading}>
+              Approve
+            </Button>
+            <Button size="xs" color="red" variant="light" onClick={onOpenRejectAdmin} loading={actionLoading}>
+              Reject
+            </Button>
+          </Group>
+        </Alert>
+      )}
+
+      {/* Actions */}
+      <Stack gap="xs">
+        {currentStatus !== 'ACTIVE' && (
+          <Button fullWidth variant="light" color="green" onClick={onReactivate} loading={actionLoading}>
+            Reactivate Account
+          </Button>
+        )}
+        {currentStatus === 'ACTIVE' && (
+          <Button fullWidth variant="light" color="yellow" onClick={onOpenSuspend}>
+            Suspend Account
+          </Button>
+        )}
+        {currentStatus !== 'BANNED' && (
+          <Button fullWidth variant="light" color="red" onClick={onOpenBan}>
+            Ban Account
+          </Button>
+        )}
+        {currentRole !== 'SUPERADMIN' && (
+          <Button fullWidth variant="subtle" color="primary" onClick={onOpenPromote}>
+            Promote to Superadmin
+          </Button>
+        )}
+      </Stack>
+    </Stack>
+  )
 }
 
 // ── User Detail Drawer ────────────────────────────────────────────────────────
@@ -163,8 +327,6 @@ function UserDetailDrawer({
 
   const user = detail?.user as Record<string, unknown> | undefined
   const wallet = detail?.wallet
-  const roscaCount = detail?.roscaParticipation.length ?? 0
-  const debtCount = detail?.outstandingDebts.length ?? 0
   const currentStatus = (user?.status as string) ?? ''
   const currentRole = (user?.role as string) ?? ''
 
@@ -185,140 +347,18 @@ function UserDetailDrawer({
         ) : error ? (
           <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">{error}</Alert>
         ) : detail ? (
-          <Stack gap="md">
-            {/* Identity */}
-            <Group gap="xs">
-              <ThemeIcon size={48} radius="xl" variant="light" color="primary">
-                <IconUser size={24} stroke={1.5} />
-              </ThemeIcon>
-              <Stack gap={2}>
-                <Text fw={600} fz="lg">
-                  {(user?.firstName as string)} {(user?.lastName as string)}
-                </Text>
-                <Text fz="sm" c="dimmed">{user?.email as string}</Text>
-              </Stack>
-            </Group>
-
-            <SimpleGrid cols={2} spacing="xs">
-              <InfoItem label="Phone" value={(user?.phone as string) ?? '—'} />
-              <InfoItem label="Role" value={currentRole} />
-              <InfoItem
-                label="Status"
-                value={
-                  <Badge color={STATUS_COLOR[currentStatus] ?? 'gray'} variant="light" size="sm">
-                    {currentStatus}
-                  </Badge>
-                }
-              />
-              <InfoItem
-                label="KYC"
-                value={
-                  (() => {
-                    const kyc = user?.kyc as { status: string } | null
-                    return (
-                      <Badge color={KYC_COLOR[kyc?.status ?? 'NOT_SUBMITTED'] ?? 'gray'} variant="light" size="sm">
-                        {kyc?.status ?? 'NOT_SUBMITTED'}
-                      </Badge>
-                    )
-                  })()
-                }
-              />
-              <InfoItem label="Joined" value={user?.createdAt ? new Date(user.createdAt as string).toLocaleDateString('en-NG') : '—'} />
-              <InfoItem label="Verified" value={(user?.isVerified as boolean) ? 'Yes' : 'No'} />
-            </SimpleGrid>
-
-            <Divider />
-
-            {/* Wallet */}
-            <Group gap="xs">
-              <ThemeIcon size={36} radius="md" variant="light" color="blue">
-                <IconWallet size={18} stroke={1.5} />
-              </ThemeIcon>
-              <Stack gap={0}>
-                <Text fz="xs" c="dimmed">Wallet Balance</Text>
-                <Text fw={600}>{wallet ? formatNaira(wallet.balanceNaira) : 'No wallet'}</Text>
-              </Stack>
-              {wallet && (
-                <Badge ml="auto" size="xs" color={wallet.status === 'ACTIVE' ? 'green' : 'gray'} variant="light">
-                  {wallet.status}
-                </Badge>
-              )}
-            </Group>
-
-            {/* Stats row */}
-            <SimpleGrid cols={2} spacing="xs">
-              <Card withBorder p="sm" radius="md">
-                <Group gap="xs">
-                  <ThemeIcon size={28} radius="md" variant="light" color="grape">
-                    <IconTopologyRing size={14} stroke={1.5} />
-                  </ThemeIcon>
-                  <Stack gap={0}>
-                    <Text fz="xs" c="dimmed">ROSCA Groups</Text>
-                    <Text fw={600} fz="sm">{roscaCount}</Text>
-                  </Stack>
-                </Group>
-              </Card>
-              <Card withBorder p="sm" radius="md">
-                <Group gap="xs">
-                  <ThemeIcon size={28} radius="md" variant="light" color={debtCount > 0 ? 'red' : 'green'}>
-                    <IconShieldCheck size={14} stroke={1.5} />
-                  </ThemeIcon>
-                  <Stack gap={0}>
-                    <Text fz="xs" c="dimmed">Outstanding Debts</Text>
-                    <Text fw={600} fz="sm" c={debtCount > 0 ? 'red' : undefined}>{debtCount}</Text>
-                  </Stack>
-                </Group>
-              </Card>
-            </SimpleGrid>
-
-            {user?.suspensionReason && (
-              <Alert color="orange" radius="md" variant="light">
-                <Text fz="xs" fw={500}>Suspension reason:</Text>
-                <Text fz="sm">{user.suspensionReason as string}</Text>
-              </Alert>
-            )}
-
-            <Divider />
-
-            {/* Pending admin request alert */}
-            {(user?.adminRequestedAt as string | null) && (
-              <Alert color="orange" radius="md" variant="light" title="Pending Admin Request">
-                <Text fz="xs">Requested on {new Date(user!.adminRequestedAt as string).toLocaleDateString('en-NG')}</Text>
-                <Group mt="xs" gap="xs">
-                  <Button size="xs" color="green" variant="filled" onClick={openApproveAdmin} loading={actionLoading}>
-                    Approve
-                  </Button>
-                  <Button size="xs" color="red" variant="light" onClick={openRejectAdmin} loading={actionLoading}>
-                    Reject
-                  </Button>
-                </Group>
-              </Alert>
-            )}
-
-            {/* Actions */}
-            <Stack gap="xs">
-              {currentStatus !== 'ACTIVE' && (
-                <Button fullWidth variant="light" color="green" onClick={() => handleStatus('ACTIVE')} loading={actionLoading}>
-                  Reactivate Account
-                </Button>
-              )}
-              {currentStatus === 'ACTIVE' && (
-                <Button fullWidth variant="light" color="yellow" onClick={openSuspend}>
-                  Suspend Account
-                </Button>
-              )}
-              {currentStatus !== 'BANNED' && (
-                <Button fullWidth variant="light" color="red" onClick={openBan}>
-                  Ban Account
-                </Button>
-              )}
-              {currentRole !== 'SUPERADMIN' && (
-                <Button fullWidth variant="subtle" color="primary" onClick={openPromote}>
-                  Promote to Superadmin
-                </Button>
-              )}
-            </Stack>
-          </Stack>
+          <UserDetailBody
+            detail={detail}
+            actionLoading={actionLoading}
+            currentStatus={currentStatus}
+            currentRole={currentRole}
+            onReactivate={() => handleStatus('ACTIVE')}
+            onOpenSuspend={openSuspend}
+            onOpenBan={openBan}
+            onOpenPromote={openPromote}
+            onOpenApproveAdmin={openApproveAdmin}
+            onOpenRejectAdmin={openRejectAdmin}
+          />
         ) : null}
       </Drawer>
 
@@ -412,7 +452,7 @@ function UserDetailDrawer({
   )
 }
 
-function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
+function InfoItem({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack gap={2}>
       <Text fz="xs" c="dimmed">{label}</Text>

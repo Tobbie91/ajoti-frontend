@@ -184,7 +184,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
   // First attempt
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
-    headers: { ...contentTypeHeader, ...authHeaders(), ...(headers as Record<string, string>) },
+    headers: { ...contentTypeHeader, ...authHeaders(), ...(headers as Record<string, string> | undefined) } as Record<string, string>,
   })
 
   if (res.status !== 401) {

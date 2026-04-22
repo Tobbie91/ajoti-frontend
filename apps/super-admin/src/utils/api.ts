@@ -565,7 +565,7 @@ export function getAllTrustStats(params: {
   maxScore?: number
 } = {}): Promise<PaginatedResponse<TrustStatsRow>> {
   const q = new URLSearchParams(
-    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])),
   ).toString()
   return authRequest(`/api/superadmin/trust${q ? `?${q}` : ''}`, { method: 'GET' })
 }
