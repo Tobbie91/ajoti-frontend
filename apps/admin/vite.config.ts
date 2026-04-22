@@ -13,6 +13,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    dedupe: ['@mantine/core', '@mantine/hooks', 'react', 'react-dom'],
   },
 })
 
