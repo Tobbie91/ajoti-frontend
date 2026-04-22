@@ -26,7 +26,7 @@ import {
 
 type Step = 'overview' | 'form' | 'confirm' | 'pin' | 'processing' | 'success' | 'error'
 
-const SERVICE_FEE_RATE = 0.02
+const SERVICE_FEE_RATE = 0.10
 
 function fmt(n: number) {
   return n.toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -68,7 +68,9 @@ export function Loans() {
   }, [])
 
   const selectedCircle = circles.find((c) => c.id === selectedCircleId)
-  const payoutAmount = eligibility?.expectedPayout ?? (selectedCircle ? Number(selectedCircle.contributionAmount) * (selectedCircle.maxSlots ?? 1) : 0)
+  const payoutAmount = eligibility?.expectedPayoutAmount != null
+    ? Number(eligibility.expectedPayoutAmount) / 100
+    : (selectedCircle ? Number(selectedCircle.contributionAmount) / 100 * (selectedCircle.maxSlots ?? 1) : 0)
   const feeRate = eligibility?.feeRate ?? SERVICE_FEE_RATE
   const serviceFee = Math.round(payoutAmount * feeRate)
   const disbursementAmount = payoutAmount - serviceFee
@@ -149,7 +151,7 @@ export function Loans() {
         {selectedCircle && (
           <div className="w-full max-w-[340px] rounded-xl bg-[#FEF3C7] px-4 py-3">
             <Text fw={500} className="text-center text-[12px] text-[#92400E]">
-              Remember to continue your ₦{Number(selectedCircle.contributionAmount).toLocaleString()} {selectedCircle.frequency?.toLowerCase()} contributions.
+              Remember to continue your ₦{(Number(selectedCircle.contributionAmount) / 100).toLocaleString()} {selectedCircle.frequency?.toLowerCase()} contributions.
             </Text>
           </div>
         )}
@@ -328,7 +330,7 @@ export function Loans() {
               {!eligibility.eligible ? (
                 <div className="flex items-start gap-3 rounded-xl bg-[#FEF2F2] px-4 py-3">
                   <IconAlertTriangle size={16} color="#EF4444" className="mt-0.5" />
-                  <Text fw={400} className="text-[13px] text-red-600">{eligibility.reason ?? 'You are not eligible for a loan on this group.'}</Text>
+                  <Text fw={400} className="text-[13px] text-red-600">{eligibility.ineligibilityReason ?? eligibility.reason ?? 'You are not eligible for a loan on this group.'}</Text>
                 </div>
               ) : (
                 <>
@@ -354,7 +356,7 @@ export function Loans() {
                           <IconCash size={18} color="#6B7280" />
                           <div>
                             <Text fw={400} className="text-[11px] text-[#9CA3AF]">Contribution</Text>
-                            <Text fw={600} className="text-[14px] text-[#0F172A]">₦{Number(selectedCircle.contributionAmount).toLocaleString()}</Text>
+                            <Text fw={600} className="text-[14px] text-[#0F172A]">₦{(Number(selectedCircle.contributionAmount) / 100).toLocaleString()}</Text>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 rounded-xl bg-[#F9FAFB] p-3">
@@ -428,7 +430,7 @@ export function Loans() {
                 { label: 'ROSCA Group', value: selectedCircle.name },
                 { label: 'Payout Amount', value: `₦${fmt(payoutAmount)}`, bold: true },
                 { label: `Service Fee (${(feeRate * 100).toFixed(0)}%)`, value: `-₦${fmt(serviceFee)}`, red: true },
-                { label: 'Ongoing Contribution', value: `₦${Number(selectedCircle.contributionAmount).toLocaleString()} / ${(selectedCircle.frequency ?? '').toLowerCase()}` },
+                { label: 'Ongoing Contribution', value: `₦${(Number(selectedCircle.contributionAmount) / 100).toLocaleString()} / ${(selectedCircle.frequency ?? '').toLowerCase()}` },
               ].map(({ label, value, bold, red }, i, arr) => (
                 <div key={label} className={`flex items-center justify-between ${i < arr.length - 1 ? 'border-b border-[#F3F4F6] pb-4' : ''}`}>
                   <Text fw={400} className="text-[14px] text-[#6B7280]">{label}</Text>

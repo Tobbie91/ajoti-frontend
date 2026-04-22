@@ -1532,7 +1532,7 @@ export function GroupDetail() {
                     (paymentContribs?.contributions ?? []).map((c) => {
                       const amountNaira = Number(c.amount) / 100
                       const dateStr = c.paidAt
-                        ? new Date(c.paidAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                        ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : '—'
                       return (
                         <Table.Tr key={c.contributionId}>

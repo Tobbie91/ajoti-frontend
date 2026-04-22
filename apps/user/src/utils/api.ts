@@ -705,8 +705,9 @@ export async function getTrustScore(): Promise<TrustScore> {
 export interface LoanEligibility {
   eligible: boolean
   reason?: string
-  maxLoanAmount?: number
-  expectedPayout?: number
+  ineligibilityReason?: string
+  maxLoanAmount?: string
+  expectedPayoutAmount?: string
   feeRate?: number
   [key: string]: unknown
 }
