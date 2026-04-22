@@ -51,7 +51,6 @@ export function Signup() {
                 dob: dobString,
                 gender: gender.toUpperCase() as "MALE" | "FEMALE",
                 password,
-                role: 'ADMIN',
             });
             localStorage.setItem("admin_verify_email", email.trim());
             localStorage.setItem(

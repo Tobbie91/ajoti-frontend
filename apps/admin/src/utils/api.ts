@@ -57,7 +57,6 @@ export interface RegisterPayload {
   gender: 'MALE' | 'FEMALE'
   phone: string
   password: string
-  role?: string
 }
 
 export interface RegisterResponse {
