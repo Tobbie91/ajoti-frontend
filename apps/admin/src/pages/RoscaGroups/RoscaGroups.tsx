@@ -33,6 +33,7 @@ interface RoscaGroup {
   nextPayout: string
   roundProgress: string
   status: Status
+  readyToStart: boolean
 }
 
 function mapCircleToGroup(c: RoscaCircle): RoscaGroup {
@@ -42,6 +43,7 @@ function mapCircleToGroup(c: RoscaCircle): RoscaGroup {
   const s = (c.status || '').toUpperCase()
   if (s === 'ACTIVE' || s === 'STARTED') status = 'Active'
   else if (s === 'COMPLETED') status = 'Completed'
+  const readyToStart = status === 'Pending' && total > 0 && filled >= total
   return {
     id: c.id,
     name: c.name || 'Unnamed',
@@ -49,6 +51,7 @@ function mapCircleToGroup(c: RoscaCircle): RoscaGroup {
     nextPayout: status === 'Pending' ? 'Pending' : status === 'Completed' ? 'Completed' : '—',
     roundProgress: status === 'Pending' ? 'Pending' : `${filled} of ${c.durationCycles ?? total}`,
     status,
+    readyToStart,
   }
 }
 
@@ -314,7 +317,18 @@ export function RoscaGroups() {
                   />
                 </Table.Td>
                 <Table.Td>
-                  <Text fz="sm" fw={500}>{group.name}</Text>
+                  <Group gap={6} wrap="nowrap">
+                    <Text fz="sm" fw={500}>{group.name}</Text>
+                    {group.readyToStart && (
+                      <Badge
+                        size="xs"
+                        radius="sm"
+                        style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', fontWeight: 700, animation: 'pulse 2s infinite' }}
+                      >
+                        ● Ready to Start
+                      </Badge>
+                    )}
+                  </Group>
                 </Table.Td>
                 <Table.Td>
                   <Text fz="sm">{group.members}</Text>

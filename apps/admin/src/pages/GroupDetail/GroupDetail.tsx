@@ -980,6 +980,34 @@ export function GroupDetail() {
         </Group>
       </Paper>
 
+      {/* Ready-to-start banner */}
+      {isPending && slotsAreFull && (
+        <Paper
+          p="md"
+          radius="md"
+          style={{ background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+        >
+          <Group gap="sm">
+            <ThemeIcon size={36} radius="xl" style={{ background: '#dcfce7' }}>
+              <IconCheck size={20} color="#16a34a" />
+            </ThemeIcon>
+            <Box>
+              <Text fw={700} fz="sm" style={{ color: '#15803d' }}>All slots filled — circle is ready to start!</Text>
+              <Text fz="xs" style={{ color: '#166534' }}>Click "Start Circle" to set the first contribution deadline and activate the savings cycle.</Text>
+            </Box>
+          </Group>
+          <Button
+            radius="md"
+            size="sm"
+            style={{ background: '#16a34a', color: 'white', flexShrink: 0 }}
+            leftSection={<IconPlayerPlay size={14} />}
+            onClick={() => { setActivateStartDate(''); setActivateError(null); setActivateModal(true) }}
+          >
+            Start Circle
+          </Button>
+        </Paper>
+      )}
+
       {/* Tabs */}
       {isCompleted ? (
         <Tabs
