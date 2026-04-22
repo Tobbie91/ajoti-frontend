@@ -65,7 +65,7 @@ export interface RegisterResponse {
 }
 
 export function register(payload: RegisterPayload): Promise<RegisterResponse> {
-  return request('/api/auth/register', {
+  return request('/api/auth/register-admin', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
