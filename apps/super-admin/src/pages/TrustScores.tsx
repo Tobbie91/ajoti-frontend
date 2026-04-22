@@ -37,26 +37,25 @@ import {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function scoreColor(display: number) {
-  if (display >= 750) return 'green'
-  if (display >= 650) return 'teal'
-  if (display >= 550) return 'yellow'
-  if (display >= 450) return 'orange'
+  if (display >= 80) return 'green'
+  if (display >= 65) return 'teal'
+  if (display >= 50) return 'yellow'
+  if (display >= 35) return 'orange'
   return 'red'
 }
 
 function scoreLabel(display: number) {
-  if (display >= 750) return 'Excellent'
-  if (display >= 650) return 'Good'
-  if (display >= 550) return 'Fair'
-  if (display >= 450) return 'Poor'
+  if (display >= 80) return 'Excellent'
+  if (display >= 65) return 'Good'
+  if (display >= 50) return 'Fair'
+  if (display >= 35) return 'Poor'
   return 'Very Poor'
 }
 
 function ScoreBar({ display }: { display: number }) {
-  const pct = ((display - 300) / 550) * 100
   return (
     <Group gap={8} wrap="nowrap">
-      <Progress value={pct} color={scoreColor(display)} size="sm" style={{ flex: 1, minWidth: 80 }} />
+      <Progress value={display} color={scoreColor(display)} size="sm" style={{ flex: 1, minWidth: 80 }} />
       <Text size="sm" fw={700} c={scoreColor(display)} style={{ minWidth: 36 }}>
         {display}
       </Text>
@@ -170,14 +169,14 @@ function TrustDrawer({
               </Badge>
             </Group>
             <Progress
-              value={((full.displayScore - 300) / 550) * 100}
+              value={full.displayScore}
               color={scoreColor(full.displayScore)}
               size="lg"
               radius="xl"
             />
             <Group justify="space-between" mt={4}>
-              <Text size="xs" c="dimmed">300</Text>
-              <Text size="xs" c="dimmed">850</Text>
+              <Text size="xs" c="dimmed">0</Text>
+              <Text size="xs" c="dimmed">100</Text>
             </Group>
           </Paper>
 
