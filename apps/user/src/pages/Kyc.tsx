@@ -193,8 +193,18 @@ function PendingReviewScreen({
   forLevel: 2 | 3
   onRefresh: () => void
 }) {
+  const navigate = useNavigate()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
+      <div className="w-full max-w-[480px]">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
+        >
+          <IconArrowLeft size={18} />
+          Back
+        </button>
+      </div>
       <div className="w-full max-w-[480px] rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#FEF3C7]">
           <IconClock size={32} color="#D97706" />
@@ -226,6 +236,15 @@ function FullyVerifiedScreen() {
   const navigate = useNavigate()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
+      <div className="w-full max-w-[480px]">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
+        >
+          <IconArrowLeft size={18} />
+          Back
+        </button>
+      </div>
       <div className="w-full max-w-[480px] rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
           <IconShieldCheck size={32} color="#02A36E" />
@@ -539,6 +558,7 @@ function OnboardingFlow({
   initialNinVerified?: boolean
   initialBvnVerified?: boolean
 }) {
+  const navigate = useNavigate()
   const [step, setStep] = useState<OnboardingStep>(
     initialNinVerified && initialBvnVerified ? 3 : initialNinVerified ? 2 : 1
   )
@@ -640,16 +660,12 @@ function OnboardingFlow({
       {/* Header */}
       <div className="border-b border-[#E5E7EB] bg-white">
         <div className="mx-auto flex max-w-[600px] items-center gap-4 px-6 py-4">
-          {step > 1 ? (
-            <button
-              onClick={() => setStep((step - 1) as OnboardingStep)}
-              className="flex cursor-pointer items-center justify-center rounded-lg border border-[#E5E7EB] bg-white p-2 hover:bg-[#F9FAFB]"
-            >
-              <IconArrowLeft size={18} color="#374151" />
-            </button>
-          ) : (
-            <div className="w-[34px]" />
-          )}
+          <button
+            onClick={() => step > 1 ? setStep((step - 1) as OnboardingStep) : navigate(-1)}
+            className="flex cursor-pointer items-center justify-center rounded-lg border border-[#E5E7EB] bg-white p-2 hover:bg-[#F9FAFB]"
+          >
+            <IconArrowLeft size={18} color="#374151" />
+          </button>
           <div className="flex-1 text-center">
             <Text fw={700} className="text-[18px] text-[#0F172A]">Identity Verification</Text>
             <Text fw={400} className="text-[13px] text-[#6B7280]">
@@ -860,6 +876,15 @@ function OnboardingDoneScreen({ onContinue }: { onContinue: () => void }) {
   const navigate = useNavigate()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
+      <div className="w-full max-w-[480px]">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
+        >
+          <IconArrowLeft size={18} />
+          Back
+        </button>
+      </div>
       <div className="w-full max-w-[480px] rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
           <IconShieldCheck size={32} color="#02A36E" />
