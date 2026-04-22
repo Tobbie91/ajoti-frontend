@@ -492,6 +492,14 @@ export async function getCircleContributions(circleId: string): Promise<CircleCo
   return Array.isArray(res) ? res : (res as { data?: CircleContribution[] }).data ?? []
 }
 
+export async function makeContribution(circleId: string, cycleNumber: number): Promise<CircleContribution> {
+  const res = await authRequest<{ data?: CircleContribution } | CircleContribution>(
+    `/api/rosca/${circleId}/contributions`,
+    { method: 'POST', body: JSON.stringify({ cycleNumber }) },
+  )
+  return ('data' in res && res.data ? res.data : res) as CircleContribution
+}
+
 // ── Wallet ──────────────────────────────────────────────────────────────────
 
 export interface Wallet {
