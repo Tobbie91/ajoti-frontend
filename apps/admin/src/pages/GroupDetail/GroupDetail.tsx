@@ -537,8 +537,9 @@ export function GroupDetail() {
   const mockFallback = mockGroups.find((g) => g.id === id) || defaultGroup
   const groupName = circleData?.name ?? mockFallback.name
   const groupStatus = (circleData?.status ?? mockFallback.status) as string
-  const isPending = groupStatus === 'PENDING' || groupStatus === 'Pending'
+  const isPending = groupStatus === 'PENDING' || groupStatus === 'Pending' || groupStatus === 'DRAFT'
   const isCompleted = groupStatus === 'COMPLETED' || groupStatus === 'Completed'
+  const slotsAreFull = circleData != null && circleData.filledSlots >= circleData.maxSlots
   const badge = getStatusBadge(isPending ? 'Pending' : isCompleted ? 'Completed' : 'Active')
 
   const [activeTab, setActiveTab] = useState<string | null>(isCompleted ? 'overview' : 'members')
@@ -916,11 +917,13 @@ export function GroupDetail() {
                     <Button
                       size="xs"
                       radius="md"
-                      style={{ background: PRIMARY }}
+                      style={{ background: slotsAreFull ? PRIMARY : '#adb5bd' }}
                       leftSection={<IconPlayerPlay size={14} />}
+                      disabled={!slotsAreFull}
+                      title={!slotsAreFull ? 'All slots must be filled before activating' : undefined}
                       onClick={() => { setActivateStartDate(''); setActivateError(null); setActivateModal(true) }}
                     >
-                      Activate Circle
+                      {slotsAreFull ? 'Start Circle' : 'Waiting for members…'}
                     </Button>
                     <Button
                       size="xs"

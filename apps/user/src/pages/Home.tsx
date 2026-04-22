@@ -60,7 +60,7 @@ export function Home() {
 
         getCreditScore()
             .then((res) => {
-                const score = res.trustDisplayScore ?? res.compositeScore ?? res.finalScore ?? res.score ?? 0
+                const score = res.finalScore ?? res.compositeScore ?? res.score ?? 0
                 setCreditScore(Number(score))
             })
             .catch(() => setCreditScore(0))
