@@ -1002,7 +1002,7 @@ export function GroupDetail() {
             size="sm"
             style={{ background: '#16a34a', color: 'white', flexShrink: 0 }}
             leftSection={<IconPlayerPlay size={14} />}
-            onClick={() => { setActivateStartDate(''); setActivateError(null); setActivateModal(true) }}
+            onClick={() => { setActivateStartDate(null); setActivateError(null); setActivateModal(true) }}
           >
             Start Circle
           </Button>
