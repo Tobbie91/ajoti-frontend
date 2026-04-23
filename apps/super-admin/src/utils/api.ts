@@ -573,18 +573,20 @@ export function getAllTrustStats(params: {
   return authRequest(`/api/superadmin/trust${q ? `?${q}` : ''}`, { method: 'GET' })
 }
 
-export function getTrustStatsFull(userId: string): Promise<TrustStatsFull> {
-  return authRequest(`/api/superadmin/trust/${userId}`, { method: 'GET' })
+export async function getTrustStatsFull(userId: string): Promise<TrustStatsFull> {
+  const res = await authRequest<{ data: TrustStatsFull }>(`/api/superadmin/trust/${userId}`, { method: 'GET' })
+  return res.data
 }
 
-export function fireTrustEvent(
+export async function fireTrustEvent(
   userId: string,
   dto: { eventType: string; rating?: number; isPostPayout?: boolean },
 ): Promise<TrustEventResult> {
-  return authRequest(`/api/superadmin/trust/${userId}/event`, {
+  const res = await authRequest<{ data: TrustEventResult }>(`/api/superadmin/trust/${userId}/event`, {
     method: 'POST',
     body: JSON.stringify(dto),
   })
+  return res.data
 }
 
 // ── Simulations ───────────────────────────────────────────────────────────────
