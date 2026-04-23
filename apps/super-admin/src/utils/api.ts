@@ -461,6 +461,36 @@ export interface WalletRow {
   user: { id: string; firstName: string; lastName: string; email: string; phone: string | null }
 }
 
+export interface WalletResetResult {
+  walletId: string
+  resetEntryId: string
+  debitedAmountKobo: string
+  balanceAfterKobo: string
+}
+
+export interface WalletResetUndoResult {
+  walletId: string
+  resetEntryId: string
+  reversalEntryId: string
+  restoredAmountKobo: string
+  balanceAfterKobo: string
+}
+
+export function resetWalletBalance(walletId: string): Promise<{ success: boolean; message: string; data: WalletResetResult }> {
+  return authRequest(`/api/superadmin/analytics/wallets/${walletId}/reset-balance`, { method: 'POST' })
+}
+
+export function undoWalletBalanceReset(
+  walletId: string,
+  entryId: string,
+  reason?: string,
+): Promise<{ success: boolean; message: string; data: WalletResetUndoResult }> {
+  return authRequest(`/api/superadmin/analytics/wallets/${walletId}/reset-balance/${entryId}/undo`, {
+    method: 'POST',
+    body: JSON.stringify(reason ? { reason } : {}),
+  })
+}
+
 export function listWallets(params: {
   page?: number
   limit?: number
