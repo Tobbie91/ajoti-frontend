@@ -1762,21 +1762,23 @@ export function GroupDetail() {
                           : p.status === 'FAILED'
                           ? { bg: '#fef2f2', color: '#e74c3c' }
                           : { bg: '#f1f3f5', color: '#868e96' }
-                      const recipient = p.recipientName ?? (p.member as { firstName?: string; lastName?: string } | undefined)
-                        ? `${(p.member as { firstName?: string })?.firstName ?? ''} ${(p.member as { lastName?: string })?.lastName ?? ''}`.trim()
+                      const cycleNumber = p.cycleNumber ?? p.schedule?.cycleNumber
+                      const recipient = p.recipient
+                        ? `${p.recipient.firstName} ${p.recipient.lastName}`.trim()
                         : '—'
+                      const amountNaira = (Number(p.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
                       return (
                         <Table.Tr key={p.id}>
-                          <Table.Td><Text fz="sm" fw={500}>Cycle {p.cycleNumber}</Text></Table.Td>
+                          <Table.Td><Text fz="sm" fw={500}>{cycleNumber != null ? `Cycle ${cycleNumber}` : '—'}</Text></Table.Td>
                           <Table.Td>
                             <Group gap="sm" align="center">
                               <Avatar size={28} radius="xl" color="gray">{(recipient || '?').charAt(0)}</Avatar>
-                              <Text fz="sm">{recipient || '—'}</Text>
+                              <Text fz="sm">{recipient}</Text>
                             </Group>
                           </Table.Td>
                           <Table.Td>
                             <Text fz="sm" fw={600}>
-                              ₦{Number(p.amount).toLocaleString('en-NG')}
+                              ₦{amountNaira}
                             </Text>
                           </Table.Td>
                           <Table.Td>

@@ -523,13 +523,14 @@ export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
 
 export interface Payout {
   id: string
-  cycleNumber: number
+  cycleNumber?: number
   recipientId?: string
-  recipientName?: string
-  amount: number | string
+  recipient?: { firstName: string; lastName: string; email?: string }
+  amount: string
   status: string
   createdAt?: string
   processedAt?: string
+  schedule?: { cycleNumber: number; payoutDate: string }
   [key: string]: unknown
 }
 
