@@ -22,7 +22,7 @@ import { TrustScoreCard, CreditScoreCard } from "@/components/ScoreCards";
 import Rosca from "@/assets/Rosca.svg";
 import { useNavigate } from "react-router-dom";
 import { getWalletBalance, getWalletTransactions, getTrustScore, getCreditScore } from "@/utils/api";
-import type { WalletTransaction } from "@/utils/api";
+import type { WalletTransaction, TrustScore } from "@/utils/api";
 
 export function Home() {
     const navigate = useNavigate();
@@ -34,6 +34,7 @@ export function Home() {
     const [walletBalance, setWalletBalance] = useState<{ total: number; reserved: number; available: number } | null>(null)
     const [recentTxns, setRecentTxns] = useState<WalletTransaction[]>([])
     const [trustScore, setTrustScore] = useState<number | null>(null)
+    const [trustData, setTrustData] = useState<TrustScore | null>(null)
     const [creditScore, setCreditScore] = useState<number | null>(null)
 
     useEffect(() => {
@@ -53,10 +54,11 @@ export function Home() {
 
         getTrustScore()
             .then((res) => {
-                const score = res.trustScore ?? res.displayScore ?? res.score ?? 0
+                const score = res.trustScore ?? 0
                 setTrustScore(Number(score))
+                setTrustData(res)
             })
-            .catch(() => setTrustScore(0))
+            .catch(() => { setTrustScore(0); setTrustData(null) })
 
         getCreditScore()
             .then((res) => {
@@ -100,7 +102,7 @@ export function Home() {
 
                 {/* Trust & Credit Score cards */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                    <TrustScoreCard score={trustScore} />
+                    <TrustScoreCard score={trustScore} breakdown={trustData?.atiBreakdown ?? null} />
                     <CreditScoreCard score={creditScore ?? 0} />
                 </div>
 

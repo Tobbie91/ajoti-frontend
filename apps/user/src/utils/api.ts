@@ -686,13 +686,33 @@ export function getPinStatus(): Promise<{ hasPin: boolean }> {
 
 // ── Trust Score ───────────────────────────────────────────────────────────────
 
+export interface ATIBreakdown {
+  recentBehavior: number
+  historyBehavior: number
+  payoutReliability: number
+  peerScore: number
+  historyLength: number
+  weights: {
+    recentBehavior: number
+    historyBehavior: number
+    payoutReliability: number
+    peerScore: number
+    historyLength: number
+  }
+}
+
 export interface TrustScore {
-  score: number
-  tier?: string
-  totalContributions?: number
-  onTimePayments?: number
-  latePayments?: number
-  [key: string]: unknown
+  userId?: string
+  trustScore: number
+  displayScore?: number
+  totalExpectedPayments?: number
+  totalOnTimePayments?: number
+  totalLatePayments?: number
+  totalMissedPayments?: number
+  totalDefaults?: number
+  totalPeerRatings?: number
+  averagePeerRating?: number
+  atiBreakdown?: ATIBreakdown | null
 }
 
 export async function getTrustScore(): Promise<TrustScore> {
