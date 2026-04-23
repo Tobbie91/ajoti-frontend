@@ -316,23 +316,21 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
             <Table.Tr style={{ background: '#f8f9fa' }}>
               <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Member</Table.Th>
               <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Rounds Paid</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Contributed</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Expected</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Missed</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Status</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Payout Date</Table.Th>
+              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Late Payments</Table.Th>
+              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Payout Position</Table.Th>
+              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Payout Status</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {progress.length === 0 && !progressLoading && (
               <Table.Tr>
-                <Table.Td colSpan={7}>
+                <Table.Td colSpan={5}>
                   <Text c="dimmed" ta="center" py="xl" fz="sm">No progress data available</Text>
                 </Table.Td>
               </Table.Tr>
             )}
             {progress.map((p) => {
-              const isPaid = (p.status ?? '').toUpperCase() === 'PAID' || (p.status ?? '').toUpperCase() === 'COMPLETED'
+              const isPaid = (p.status ?? '').toUpperCase() === 'PAID'
               const hasMissed = Number(p.missedPayments ?? 0) > 0
               return (
                 <Table.Tr key={p.userId}>
@@ -346,15 +344,10 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
                     <Text fz="sm">{p.roundsPaid ?? 0} / {p.totalRounds ?? '—'}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm" style={{ color: PRIMARY }} fw={600}>
-                      ₦{Number(p.amountContributed ?? 0).toLocaleString('en-NG')}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm">₦{Number(p.expectedAmount ?? 0).toLocaleString('en-NG')}</Text>
-                  </Table.Td>
-                  <Table.Td>
                     <Text fz="sm" c={hasMissed ? 'red' : 'dimmed'}>{p.missedPayments ?? 0}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fz="sm" c="dimmed">#{p.payoutPosition ?? '—'}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Badge
@@ -367,13 +360,8 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
                         fontWeight: 600,
                       }}
                     >
-                      {isPaid ? 'Paid' : p.status ?? 'Pending'}
+                      {isPaid ? 'Paid Out' : 'Upcoming'}
                     </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm" c="dimmed">
-                      {p.payoutDate ? new Date(p.payoutDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                    </Text>
                   </Table.Td>
                 </Table.Tr>
               )

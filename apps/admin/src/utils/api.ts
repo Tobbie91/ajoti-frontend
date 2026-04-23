@@ -914,20 +914,37 @@ export interface MemberProgress {
   name: string
   roundsPaid?: number
   totalRounds?: number
-  amountContributed?: number
-  expectedAmount?: number
   missedPayments?: number
   status?: string
-  payoutDate?: string
+  payoutPosition?: number
   [key: string]: unknown
 }
 
+interface MemberProgressApiItem {
+  userId: string
+  name: string
+  completedCycles: number
+  durationCycles: number
+  payoutStatus: string
+  payoutPosition: number
+  totalLatePayments: number
+}
+
 export async function getMemberProgress(circleId: string): Promise<MemberProgress[]> {
-  const res = await authRequest<{ data?: MemberProgress[] } | MemberProgress[]>(
+  const res = await authRequest<{ data?: { members?: MemberProgressApiItem[] } }>(
     `/api/admin/rosca/${circleId}/members/progress`,
     { method: 'GET' },
   )
-  return Array.isArray(res) ? res : (res as { data?: MemberProgress[] }).data ?? []
+  const members = (res as { data?: { members?: MemberProgressApiItem[] } }).data?.members ?? []
+  return members.map((m) => ({
+    userId: m.userId,
+    name: m.name,
+    roundsPaid: m.completedCycles,
+    totalRounds: m.durationCycles,
+    missedPayments: m.totalLatePayments,
+    status: m.payoutStatus,
+    payoutPosition: m.payoutPosition,
+  }))
 }
 
 // ── Notify Missing Contributors ────────────────────────────────────────────────
