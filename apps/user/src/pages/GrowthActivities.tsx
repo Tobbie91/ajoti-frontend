@@ -615,7 +615,7 @@ function GrowthTab({
   }
 
   const deadlineFormatted = nextDeadline
-    ? new Date(nextDeadline).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? new Date(nextDeadline).toLocaleString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
     : nextPaymentDate
 
   const hasSufficientFunds = walletAvailable !== null && walletAvailable >= amountKobo / 100
