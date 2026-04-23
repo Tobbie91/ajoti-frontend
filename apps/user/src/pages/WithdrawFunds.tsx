@@ -1,42 +1,18 @@
-import { useState, useEffect } from 'react'
-import { Text, TextInput, Select } from '@mantine/core'
+import { useState, useEffect, useRef } from 'react'
+import { Text, TextInput, Select, Loader } from '@mantine/core'
 import {
   IconArrowLeft,
   IconCheck,
   IconBackspace,
   IconAlertCircle,
+  IconX,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getWalletBalance, initializeWithdrawal } from '@/utils/api'
+import { getWalletBalance, getBanks, resolveAccount, initializeWithdrawal } from '@/utils/api'
+import type { BankOption } from '@/utils/api'
 
 type Step = 'form' | 'pin' | 'processing' | 'success' | 'error'
-
-const NIGERIAN_BANKS: { label: string; value: string }[] = [
-  { label: 'Access Bank', value: '044' },
-  { label: 'Citibank Nigeria', value: '023' },
-  { label: 'Ecobank Nigeria', value: '050' },
-  { label: 'Fidelity Bank', value: '070' },
-  { label: 'First Bank of Nigeria', value: '011' },
-  { label: 'First City Monument Bank (FCMB)', value: '214' },
-  { label: 'Globus Bank', value: '00103' },
-  { label: 'Guaranty Trust Bank (GTB)', value: '058' },
-  { label: 'Heritage Bank', value: '030' },
-  { label: 'Keystone Bank', value: '082' },
-  { label: 'Kuda Bank', value: '50211' },
-  { label: 'Moniepoint MFB', value: '50515' },
-  { label: 'Opay', value: '999992' },
-  { label: 'Palmpay', value: '999991' },
-  { label: 'Polaris Bank', value: '076' },
-  { label: 'Providus Bank', value: '101' },
-  { label: 'Stanbic IBTC Bank', value: '221' },
-  { label: 'Standard Chartered Bank', value: '068' },
-  { label: 'Sterling Bank', value: '232' },
-  { label: 'Union Bank of Nigeria', value: '032' },
-  { label: 'United Bank for Africa (UBA)', value: '033' },
-  { label: 'Unity Bank', value: '215' },
-  { label: 'Wema Bank', value: '035' },
-  { label: 'Zenith Bank', value: '057' },
-]
+type ResolveState = 'idle' | 'loading' | 'success' | 'error'
 
 const WALLETS_STATIC = [{ value: 'ngn', label: 'NGN Wallet' }]
 
@@ -47,9 +23,17 @@ export function WithdrawFunds() {
   // Form
   const [wallet, setWallet] = useState<string | null>('ngn')
   const [accountNumber, setAccountNumber] = useState('')
-  const [accountName, setAccountName] = useState('')
   const [bankCode, setBankCode] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
+
+  // Account resolution
+  const [resolveState, setResolveState] = useState<ResolveState>('idle')
+  const [resolvedName, setResolvedName] = useState<string | null>(null)
+  const [resolveError, setResolveError] = useState<string | null>(null)
+  const resolveAbortRef = useRef<AbortController | null>(null)
+
+  // Banks list
+  const [banks, setBanks] = useState<{ label: string; value: string }[]>([])
 
   // PIN
   const [pin, setPin] = useState('')
@@ -62,7 +46,44 @@ export function WithdrawFunds() {
     getWalletBalance()
       .then((data) => setAvailableBalance(Number(data.available ?? data.total ?? 0) / 100))
       .catch(() => setAvailableBalance(0))
+
+    getBanks()
+      .then((list) => setBanks(list.map((b: BankOption) => ({ label: b.name, value: b.code }))))
+      .catch(() => {})
   }, [])
+
+  // Auto-resolve when both account number (10 digits) and bank are set
+  useEffect(() => {
+    // Reset resolved state whenever inputs change
+    setResolvedName(null)
+    setResolveError(null)
+
+    if (accountNumber.length !== 10 || !bankCode) {
+      setResolveState('idle')
+      return
+    }
+
+    // Cancel any in-flight request
+    resolveAbortRef.current?.abort()
+    const controller = new AbortController()
+    resolveAbortRef.current = controller
+
+    setResolveState('loading')
+
+    resolveAccount(accountNumber, bankCode)
+      .then((data) => {
+        if (controller.signal.aborted) return
+        setResolvedName(data.account_name)
+        setResolveState('success')
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return
+        setResolveError(err instanceof Error ? err.message : 'Could not verify account')
+        setResolveState('error')
+      })
+
+    return () => controller.abort()
+  }, [accountNumber, bankCode])
 
   const numericAmount = parseInt(amount.replace(/,/g, ''), 10) || 0
 
@@ -75,9 +96,8 @@ export function WithdrawFunds() {
   const canProceed =
     numericAmount > 0 &&
     numericAmount <= availableBalance &&
-    accountNumber.length === 10 &&
-    accountName.trim().length > 0 &&
-    bankCode !== null &&
+    resolveState === 'success' &&
+    resolvedName !== null &&
     wallet !== null
 
   function handleProceed() {
@@ -88,13 +108,13 @@ export function WithdrawFunds() {
     setStep('processing')
     setError(null)
 
-    const selectedBank = NIGERIAN_BANKS.find((b) => b.value === bankCode)
+    const selectedBank = banks.find((b) => b.value === bankCode)
 
     try {
       await initializeWithdrawal({
         amount: numericAmount,
         accountNumber,
-        accountName: accountName.trim(),
+        accountName: resolvedName!,
         bankCode: bankCode!,
         bankName: selectedBank?.label,
         narration: `Withdrawal of NGN ${amount}`,
@@ -260,6 +280,17 @@ export function WithdrawFunds() {
               Recipient Account
             </Text>
             <div className="flex flex-col gap-3">
+              <Select
+                data={banks}
+                value={bankCode}
+                onChange={(val) => { setBankCode(val) }}
+                placeholder="Select Bank"
+                radius="md"
+                size="md"
+                searchable
+                nothingFoundMessage="No bank found"
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
+              />
               <TextInput
                 placeholder="Account Number (10 digits)"
                 radius="md"
@@ -269,33 +300,37 @@ export function WithdrawFunds() {
                   const digits = e.currentTarget.value.replace(/\D/g, '').slice(0, 10)
                   setAccountNumber(digits)
                 }}
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
-              />
-              <TextInput
-                placeholder="Account Name"
-                radius="md"
-                size="md"
-                value={accountName}
-                onChange={(e) => setAccountName(e.currentTarget.value)}
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
-              />
-              <Select
-                data={NIGERIAN_BANKS}
-                value={bankCode}
-                onChange={setBankCode}
-                placeholder="Select Bank"
-                radius="md"
-                size="md"
-                searchable
+                maxLength={10}
                 styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
               />
 
-              {/* Account ready indicator */}
-              {accountNumber.length === 10 && bankCode && (
-                <div className="flex items-center gap-2 rounded-lg bg-[#F0FDF4] px-3 py-2">
+              {/* Resolution state */}
+              {resolveState === 'loading' && (
+                <div className="flex items-center gap-2 rounded-lg bg-[#F9FAFB] px-3 py-2.5">
+                  <Loader size={14} color="#02A36E" />
+                  <Text fw={400} className="text-[13px] text-[#6B7280]">
+                    Verifying account...
+                  </Text>
+                </div>
+              )}
+              {resolveState === 'success' && resolvedName && (
+                <div className="flex items-center gap-2 rounded-lg bg-[#F0FDF4] px-3 py-2.5">
                   <IconCheck size={16} color="#02A36E" />
-                  <Text fw={500} className="text-[13px] text-[#02A36E]">
-                    Ready to withdraw to {NIGERIAN_BANKS.find((b) => b.value === bankCode)?.label}
+                  <div>
+                    <Text fw={600} className="text-[13px] text-[#02A36E]">
+                      {resolvedName}
+                    </Text>
+                    <Text fw={400} className="text-[11px] text-[#6B7280]">
+                      Account verified
+                    </Text>
+                  </div>
+                </div>
+              )}
+              {resolveState === 'error' && (
+                <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2.5">
+                  <IconX size={16} color="#EF4444" />
+                  <Text fw={400} className="text-[13px] text-red-500">
+                    {resolveError ?? 'Could not verify account. Check the details and try again.'}
                   </Text>
                 </div>
               )}
@@ -377,8 +412,9 @@ export function WithdrawFunds() {
           <div className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-center">
             <Text fw={400} className="text-[13px] text-[#6B7280]">Withdrawing</Text>
             <Text fw={700} className="mt-1 text-[28px] text-[#0F172A]">₦{amount}</Text>
-            <Text fw={400} className="mt-1 text-[12px] text-[#9CA3AF]">
-              to {accountNumber} · {NIGERIAN_BANKS.find((b) => b.value === bankCode)?.label}
+            <Text fw={600} className="mt-1 text-[14px] text-[#0F172A]">{resolvedName}</Text>
+            <Text fw={400} className="text-[12px] text-[#9CA3AF]">
+              {accountNumber} · {banks.find((b) => b.value === bankCode)?.label}
             </Text>
           </div>
 

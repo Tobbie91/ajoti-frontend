@@ -659,6 +659,25 @@ export interface WithdrawalResponse {
   [key: string]: unknown
 }
 
+export interface BankOption {
+  id: number
+  code: string
+  name: string
+}
+
+export async function getBanks(): Promise<BankOption[]> {
+  const res = await authRequest<{ data: BankOption[] }>('/api/wallet/withdrawal/banks', { method: 'GET' })
+  return res.data ?? []
+}
+
+export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ account_number: string; account_name: string }> {
+  const res = await authRequest<{ data: { account_number: string; account_name: string } }>(
+    '/api/wallet/withdrawal/resolve-account',
+    { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) },
+  )
+  return res.data
+}
+
 export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<WithdrawalResponse> {
   const { amount, ...rest } = payload
   const res = await authRequest<{ data?: WithdrawalResponse } | WithdrawalResponse>(
