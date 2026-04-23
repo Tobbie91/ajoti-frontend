@@ -702,6 +702,23 @@ export async function getWalletBalance(): Promise<WalletBalance> {
   return ('data' in res && res.data ? res.data : res) as WalletBalance
 }
 
+// ── Virtual Account ───────────────────────────────────────────────────────────
+
+export interface VirtualAccount {
+  id: string
+  accountNumber: string
+  bankName: string
+  accountName: string
+  currency: string
+  isActive: boolean
+  [key: string]: unknown
+}
+
+export async function getVirtualAccount(): Promise<VirtualAccount> {
+  const res = await authRequest<{ data?: VirtualAccount } | VirtualAccount>('/api/wallet/virtual-account', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as VirtualAccount
+}
+
 // ── Wallet Funding ────────────────────────────────────────────────────────────
 
 export interface FundingInitResponse {
