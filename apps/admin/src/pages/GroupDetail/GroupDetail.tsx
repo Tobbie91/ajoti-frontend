@@ -1882,41 +1882,31 @@ export function GroupDetail() {
                     </Table.Tr>
                   )}
                   {contributions.map((c, i) => {
-                    const m = (c as ApiContribution).member as { firstName?: string; lastName?: string } | undefined
-                    const memberName = m ? `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() : '—'
-                    const st = (c as ApiContribution).status
-                    const statusColor =
-                      st === 'COMPLETED' || st === 'PAID'
-                        ? { bg: '#e6f5f1', color: PRIMARY }
-                        : st === 'FAILED'
-                        ? { bg: '#fef2f2', color: '#e74c3c' }
-                        : { bg: '#f1f3f5', color: '#868e96' }
-                    const cycleNum = (c as ApiContribution).cycleNumber
-                    const createdAt = (c as ApiContribution).createdAt
+                    const amountNaira = (Number(c.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
                     return (
-                      <Table.Tr key={(c as ApiContribution).id ?? i}>
+                      <Table.Tr key={c.contributionId ?? i}>
                         <Table.Td>
                           <Group gap="sm" align="center">
-                            <Avatar size={28} radius="xl" color="gray">{(memberName || '?').charAt(0)}</Avatar>
-                            <Text fz="sm" fw={500}>{memberName}</Text>
+                            <Avatar size={28} radius="xl" color="gray">{(c.memberName || '?').charAt(0)}</Avatar>
+                            <Text fz="sm" fw={500}>{c.memberName}</Text>
                           </Group>
                         </Table.Td>
-                        <Table.Td><Text fz="sm">Cycle {cycleNum}</Text></Table.Td>
+                        <Table.Td><Text fz="sm">Cycle {c.cycleNumber}</Text></Table.Td>
                         <Table.Td>
-                          <Text fz="sm" fw={600}>₦{Number((c as ApiContribution).amount).toLocaleString('en-NG')}</Text>
+                          <Text fz="sm" fw={600}>₦{amountNaira}</Text>
                         </Table.Td>
                         <Table.Td>
                           <Badge
                             size="sm"
                             radius="sm"
-                            style={{ background: statusColor.bg, color: statusColor.color, border: 'none', fontWeight: 600 }}
+                            style={{ background: c.isLate ? '#fef2f2' : '#e6f5f1', color: c.isLate ? '#e74c3c' : PRIMARY, border: 'none', fontWeight: 600 }}
                           >
-                            {st}
+                            {c.isLate ? 'Late' : 'On Time'}
                           </Badge>
                         </Table.Td>
                         <Table.Td>
                           <Text fz="sm" c="dimmed">
-                            {createdAt ? new Date(createdAt).toLocaleDateString('en-NG') : '—'}
+                            {c.paidAt ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                           </Text>
                         </Table.Td>
                       </Table.Tr>

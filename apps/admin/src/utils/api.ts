@@ -572,21 +572,23 @@ export function triggerPayoutScheduler(): Promise<{ message: string }> {
 // ── Contributions ─────────────────────────────────────────────────────────────
 
 export interface Contribution {
-  id: string
+  contributionId: string
+  userId: string
+  memberName: string
   cycleNumber: number
-  amount: number | string
-  status: string
-  createdAt?: string
-  member?: { firstName?: string; lastName?: string; [key: string]: unknown }
+  amount: string
+  penaltyAmount: string
+  isLate: boolean
+  paidAt: string | null
   [key: string]: unknown
 }
 
 export async function getCircleContributions(circleId: string): Promise<Contribution[]> {
-  const res = await authRequest<{ data?: Contribution[] } | Contribution[]>(
-    `/api/rosca/${circleId}/contributions`,
+  const res = await authRequest<{ data?: Contribution[] }>(
+    `/api/admin/rosca/${circleId}/contributions-all`,
     { method: 'GET' },
   )
-  return Array.isArray(res) ? res : (res as { data?: Contribution[] }).data ?? []
+  return (res as { data?: Contribution[] }).data ?? []
 }
 
 // GET /api/admin/rosca/{circleId}/disbursements — admin view of disbursements
