@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Select, Loader } from '@mantine/core'
+import { Text, TextInput, Select, Loader, Modal, Badge, Divider } from '@mantine/core'
 import {
   IconArrowLeft,
   IconSearch,
@@ -19,6 +19,7 @@ type Transaction = {
   amount: string
   direction: 'credit' | 'debit'
   date: string
+  raw: WalletTransaction
 }
 
 function mapApiTxn(tx: WalletTransaction): Transaction {
@@ -47,7 +48,87 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
     amount: `₦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
     direction: entryType === 'CREDIT' ? 'credit' : 'debit',
     date: dateLabel,
+    raw: tx,
   }
+}
+
+function formatKobo(val: string | number | undefined): string {
+  if (val == null) return '—'
+  return `₦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2">
+      <Text fz={13} c="dimmed" style={{ flexShrink: 0 }}>{label}</Text>
+      <Text fz={13} fw={500} ta="right" style={{ wordBreak: 'break-all' }}>{value}</Text>
+    </div>
+  )
+}
+
+function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClose: () => void }) {
+  if (!tx) return null
+  const raw = tx.raw
+  const d = new Date(raw.createdAt)
+  const isCredit = tx.direction === 'credit'
+  const color = isCredit ? '#02A36E' : '#EF4444'
+
+  const metaEntries = raw.metadata
+    ? Object.entries(raw.metadata).filter(([, v]) => v != null && v !== '' && typeof v !== 'object')
+    : []
+
+  return (
+    <Modal
+      opened={!!tx}
+      onClose={onClose}
+      title="Transaction Details"
+      radius={16}
+      size="sm"
+      centered
+    >
+      {/* Amount hero */}
+      <div className="mb-4 flex flex-col items-center gap-2 py-4">
+        <div
+          className="flex h-14 w-14 items-center justify-center rounded-full"
+          style={{ background: `${color}15` }}
+        >
+          {isCredit
+            ? <IconArrowDownLeft size={26} color={color} />
+            : <IconArrowUpRight size={26} color={color} />}
+        </div>
+        <Text fw={700} fz={28} style={{ color, lineHeight: 1 }}>
+          {isCredit ? '+' : '-'}{tx.amount}
+        </Text>
+        <Badge
+          variant="light"
+          size="sm"
+          style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}
+        >
+          {tx.type}
+        </Badge>
+      </div>
+
+      <Divider mb="sm" />
+
+      <div className="flex flex-col divide-y divide-[#F3F4F6]">
+        <DetailRow label="Description" value={tx.name} />
+        {raw.movementType && <DetailRow label="Movement" value={raw.movementType} />}
+        {raw.bucketType && <DetailRow label="Bucket" value={raw.bucketType} />}
+        {raw.sourceType && <DetailRow label="Source" value={raw.sourceType} />}
+        <DetailRow label="Date" value={d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })} />
+        <DetailRow label="Time" value={d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })} />
+        {raw.balanceBefore != null && <DetailRow label="Balance Before" value={formatKobo(raw.balanceBefore as string)} />}
+        {raw.balanceAfter != null && <DetailRow label="Balance After" value={formatKobo(raw.balanceAfter as string)} />}
+        {metaEntries.map(([k, v]) => (
+          <DetailRow key={k} label={k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} value={String(v)} />
+        ))}
+        <DetailRow
+          label="Reference"
+          value={<span style={{ fontFamily: 'monospace', fontSize: 11, color: '#9CA3AF' }}>{raw.id}</span>}
+        />
+      </div>
+    </Modal>
+  )
 }
 
 const STATUS_OPTIONS = ['All', 'Successful', 'Pending', 'Failed']
@@ -63,6 +144,7 @@ export function Transactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [walletBalance, setWalletBalance] = useState('₦ —')
   const [loading, setLoading] = useState(true)
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -205,7 +287,8 @@ export function Transactions() {
                 {transactions.map((tx) => (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between rounded-xl border border-[#F3F4F6] bg-white px-4 py-3"
+                    onClick={() => setSelectedTx(tx)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-[#F3F4F6] bg-white px-4 py-3 transition-colors hover:bg-[#F9FAFB] active:bg-[#F3F4F6]"
                   >
                     <div className="flex items-center gap-3">
                       <div
@@ -245,6 +328,8 @@ export function Transactions() {
           ))}
         </div>
       )}
+
+      <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
     </div>
   )
 }
