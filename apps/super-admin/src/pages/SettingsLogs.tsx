@@ -258,6 +258,7 @@ function AuditLogsTab() {
       )}
 
       <Paper withBorder radius="md">
+        <Table.ScrollContainer minWidth={700}>
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr bg="#066F5B">
@@ -319,6 +320,7 @@ function AuditLogsTab() {
             )}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
 
         <Group justify="space-between" p="md">
           <Text size="sm" c="dimmed">

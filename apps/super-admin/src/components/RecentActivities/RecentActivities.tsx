@@ -49,6 +49,7 @@ export function RecentActivities() {
           No admin activity yet
         </Text>
       ) : (
+        <Table.ScrollContainer minWidth={400}>
         <Table verticalSpacing="sm">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
@@ -81,6 +82,7 @@ export function RecentActivities() {
             ))}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
       )}
     </Card>
   )

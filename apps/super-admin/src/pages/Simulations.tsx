@@ -475,6 +475,7 @@ function SandboxTab() {
         ) : (
           <Stack gap="xs">
             <Text size="xs" c="dimmed">Created {users.length} users</Text>
+            <Table.ScrollContainer minWidth={600}>
             <Table withTableBorder withColumnBorders fz="xs">
               <Table.Thead>
                 <Table.Tr>
@@ -495,6 +496,7 @@ function SandboxTab() {
                 ))}
               </Table.Tbody>
             </Table>
+            </Table.ScrollContainer>
           </Stack>
         )}
       </Paper>

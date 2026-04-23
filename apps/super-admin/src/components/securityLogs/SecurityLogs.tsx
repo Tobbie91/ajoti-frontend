@@ -341,6 +341,7 @@ export function SecurityLogs() {
       />
 
       <Paper withBorder radius="md">
+        <Table.ScrollContainer minWidth={700}>
         <Table striped highlightOnHover styles={{
           th: { padding: '16px 20px' },
           td: { padding: '16px 20px' },
@@ -407,6 +408,7 @@ export function SecurityLogs() {
             )}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
 
         {/* Footer */}
         {totalEntries > 0 && (

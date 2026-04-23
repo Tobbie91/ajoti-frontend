@@ -418,6 +418,7 @@ function CirclesTab() {
       )}
 
       <Paper withBorder radius="md">
+        <Table.ScrollContainer minWidth={900}>
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr bg="#066F5B">
@@ -489,6 +490,7 @@ function CirclesTab() {
             )}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
 
         <Group justify="space-between" p="md">
           <Text size="sm" c="dimmed">
@@ -538,6 +540,7 @@ function DefaultersTab() {
       )}
 
       <Paper withBorder radius="md">
+        <Table.ScrollContainer minWidth={700}>
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr bg="#066F5B">
@@ -588,6 +591,7 @@ function DefaultersTab() {
             )}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
 
         <Group justify="space-between" p="md">
           <Text size="sm" c="dimmed">

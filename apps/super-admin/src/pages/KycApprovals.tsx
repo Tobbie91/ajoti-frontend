@@ -422,6 +422,7 @@ export function KycApprovals() {
       )}
 
       <Card withBorder p={0} radius="md">
+        <Table.ScrollContainer minWidth={900}>
         <Table verticalSpacing="sm" horizontalSpacing="md">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
@@ -492,6 +493,7 @@ export function KycApprovals() {
             )}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
       </Card>
 
       <Group justify="space-between">

@@ -19,6 +19,7 @@ export function AdminLayout() {
       styles={{
         main: {
           backgroundColor: '#F8F9FA',
+          overflowX: 'auto',
         },
       }}
     >
