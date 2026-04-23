@@ -447,6 +447,32 @@ export function exportCsv(params: {
   }).then((r) => r.blob())
 }
 
+// ── Wallets ───────────────────────────────────────────────────────────────────
+
+export interface WalletRow {
+  walletId: string
+  userId: string
+  status: string
+  currency: string
+  createdAt: string
+  balanceKobo: string
+  balanceNaira: string
+  lastActivityAt: string | null
+  user: { id: string; firstName: string; lastName: string; email: string; phone: string | null }
+}
+
+export function listWallets(params: {
+  page?: number
+  limit?: number
+  search?: string
+  status?: string
+}): Promise<PaginatedResponse<WalletRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/analytics/wallets?${q}`, { method: 'GET' })
+}
+
 // ── Circles ───────────────────────────────────────────────────────────────────
 
 export interface CircleRow {

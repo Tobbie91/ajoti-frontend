@@ -11,6 +11,7 @@ import {
   KycApprovals,
   TrustScores,
   Simulations,
+  Wallets,
 } from '@/pages'
 
 import { FixedSavings } from '@/pages/savings/FixedSavings'
@@ -35,6 +36,7 @@ function App() {
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/trust-scores" element={<TrustScores />} />
             <Route path="/simulations" element={<Simulations />} />
+            <Route path="/wallets" element={<Wallets />} />
             <Route path="/settings-logs" element={<SettingsLogs />} />
           </Route>
         </Route>

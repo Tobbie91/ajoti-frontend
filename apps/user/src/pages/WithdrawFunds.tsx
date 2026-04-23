@@ -48,7 +48,15 @@ export function WithdrawFunds() {
       .catch(() => setAvailableBalance(0))
 
     getBanks()
-      .then((list) => setBanks(list.map((b: BankOption) => ({ label: b.name, value: b.code }))))
+      .then((list) => {
+        const seen = new Set<string>()
+        const unique = list.filter((b: BankOption) => {
+          if (seen.has(b.code)) return false
+          seen.add(b.code)
+          return true
+        })
+        setBanks(unique.map((b: BankOption) => ({ label: b.name, value: b.code })))
+      })
       .catch(() => {})
   }, [])
 
