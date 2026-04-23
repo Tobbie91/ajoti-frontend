@@ -37,25 +37,29 @@ import {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function scoreColor(display: number) {
-  if (display >= 80) return 'green'
-  if (display >= 65) return 'teal'
-  if (display >= 50) return 'yellow'
-  if (display >= 35) return 'orange'
+  if (display >= 750) return 'green'
+  if (display >= 700) return 'teal'
+  if (display >= 650) return 'yellow'
+  if (display >= 575) return 'orange'
   return 'red'
 }
 
 function scoreLabel(display: number) {
-  if (display >= 80) return 'Excellent'
-  if (display >= 65) return 'Good'
-  if (display >= 50) return 'Fair'
-  if (display >= 35) return 'Poor'
+  if (display >= 750) return 'Excellent'
+  if (display >= 700) return 'Good'
+  if (display >= 650) return 'Fair'
+  if (display >= 575) return 'Poor'
   return 'Very Poor'
+}
+
+function scorePercent(display: number) {
+  return Math.round(((display - 300) / 550) * 100)
 }
 
 function ScoreBar({ display }: { display: number }) {
   return (
     <Group gap={8} wrap="nowrap">
-      <Progress value={display} color={scoreColor(display)} size="sm" style={{ flex: 1, minWidth: 80 }} />
+      <Progress value={scorePercent(display)} color={scoreColor(display)} size="sm" style={{ flex: 1, minWidth: 80 }} />
       <Text size="sm" fw={700} c={scoreColor(display)} style={{ minWidth: 36 }}>
         {display}
       </Text>
@@ -136,8 +140,8 @@ function TrustDrawer({
       title={
         full ? (
           <div>
-            <Text fw={700}>{full.user.firstName} {full.user.lastName}</Text>
-            <Text size="xs" c="dimmed">{full.user.email}</Text>
+            <Text fw={700}>{full.user?.firstName} {full.user?.lastName}</Text>
+            <Text size="xs" c="dimmed">{full.user?.email}</Text>
           </div>
         ) : 'Trust Score Details'
       }
@@ -169,14 +173,14 @@ function TrustDrawer({
               </Badge>
             </Group>
             <Progress
-              value={full.displayScore}
+              value={scorePercent(full.displayScore)}
               color={scoreColor(full.displayScore)}
               size="lg"
               radius="xl"
             />
             <Group justify="space-between" mt={4}>
-              <Text size="xs" c="dimmed">0</Text>
-              <Text size="xs" c="dimmed">100</Text>
+              <Text size="xs" c="dimmed">300</Text>
+              <Text size="xs" c="dimmed">850</Text>
             </Group>
           </Paper>
 
@@ -211,37 +215,33 @@ function TrustDrawer({
             <Text size="sm" fw={600} mb="sm">Contribution Stats</Text>
             <Stack gap={6}>
               <Group justify="space-between">
-                <Text size="xs" c="dimmed">Total Contributions</Text>
-                <Text size="xs" fw={600}>{full.totalContributions}</Text>
+                <Text size="xs" c="dimmed">Total Expected</Text>
+                <Text size="xs" fw={600}>{full.totalExpectedPayments}</Text>
               </Group>
               <Group justify="space-between">
                 <Text size="xs" c="dimmed">On Time</Text>
-                <Text size="xs" fw={600} c="green">{full.onTimeContributions}</Text>
+                <Text size="xs" fw={600} c="green">{full.totalOnTimePayments}</Text>
               </Group>
               <Group justify="space-between">
                 <Text size="xs" c="dimmed">Late</Text>
-                <Text size="xs" fw={600} c="orange">{full.lateContributions}</Text>
+                <Text size="xs" fw={600} c="orange">{full.totalLatePayments}</Text>
               </Group>
               <Group justify="space-between">
                 <Text size="xs" c="dimmed">Missed</Text>
-                <Text size="xs" fw={600} c="red">{full.missedContributions}</Text>
+                <Text size="xs" fw={600} c="red">{full.totalMissedPayments}</Text>
               </Group>
               <Group justify="space-between">
-                <Text size="xs" c="dimmed">Payout Received</Text>
-                <Badge size="xs" color={full.payoutReceived ? 'green' : 'gray'} variant="light">
-                  {full.payoutReceived ? 'Yes' : 'No'}
-                </Badge>
+                <Text size="xs" c="dimmed">Defaults</Text>
+                <Text size="xs" fw={600} c="red">{full.totalDefaults}</Text>
               </Group>
               <Group justify="space-between">
-                <Text size="xs" c="dimmed">Defaulted Post-Payout</Text>
-                <Badge size="xs" color={full.defaultedPostPayout ? 'red' : 'green'} variant="light">
-                  {full.defaultedPostPayout ? 'Yes' : 'No'}
-                </Badge>
+                <Text size="xs" c="dimmed">Post-Payout Expected</Text>
+                <Text size="xs" fw={600}>{full.expectedPostPayoutPayments}</Text>
               </Group>
-              {full.peerRatingCount > 0 && (
+              {full.totalPeerRatings > 0 && (
                 <Group justify="space-between">
                   <Text size="xs" c="dimmed">Peer Rating</Text>
-                  <Text size="xs" fw={600}>{full.peerRatingAvg.toFixed(1)} / 5 ({full.peerRatingCount} ratings)</Text>
+                  <Text size="xs" fw={600}>{full.averagePeerRating.toFixed(1)} / 5 ({full.totalPeerRatings} ratings)</Text>
                 </Group>
               )}
             </Stack>
@@ -359,22 +359,22 @@ export function TrustScores() {
       {/* Filters */}
       <Group gap="sm">
         <NumberInput
-          placeholder="Min score (e.g. 300)"
+          placeholder="Min ATI (e.g. 0)"
           value={minScore}
           onChange={(v) => { setMinScore(v); setPage(1) }}
-          min={300}
-          max={850}
+          min={0}
+          max={95}
           style={{ width: 180 }}
           radius="md"
           size="sm"
           leftSection={<IconShield size={14} />}
         />
         <NumberInput
-          placeholder="Max score (e.g. 850)"
+          placeholder="Max ATI (e.g. 95)"
           value={maxScore}
           onChange={(v) => { setMaxScore(v); setPage(1) }}
-          min={300}
-          max={850}
+          min={0}
+          max={95}
           style={{ width: 180 }}
           radius="md"
           size="sm"
@@ -429,41 +429,41 @@ export function TrustScores() {
                 rows.map((row) => (
                   <Table.Tr key={row.userId}>
                     <Table.Td>
-                      <Text size="sm" fw={500}>{row.user.firstName} {row.user.lastName}</Text>
-                      <Text size="xs" c="dimmed">{row.user.email}</Text>
+                      <Text size="sm" fw={500}>{row.user?.firstName} {row.user?.lastName}</Text>
+                      <Text size="xs" c="dimmed">{row.user?.email}</Text>
                     </Table.Td>
                     <Table.Td style={{ minWidth: 160 }}>
                       <ScoreBar display={row.displayScore} />
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{row.totalContributions}</Text>
+                      <Text size="sm">{row.totalExpectedPayments}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Group gap={4}>
                         <Tooltip label="On time">
-                          <Badge size="xs" color="green" variant="light">{row.onTimeContributions}</Badge>
+                          <Badge size="xs" color="green" variant="light">{row.totalOnTimePayments}</Badge>
                         </Tooltip>
                         <Tooltip label="Late">
-                          <Badge size="xs" color="orange" variant="light">{row.lateContributions}</Badge>
+                          <Badge size="xs" color="orange" variant="light">{row.totalLatePayments}</Badge>
                         </Tooltip>
                         <Tooltip label="Missed">
-                          <Badge size="xs" color="red" variant="light">{row.missedContributions}</Badge>
+                          <Badge size="xs" color="red" variant="light">{row.totalMissedPayments}</Badge>
                         </Tooltip>
                       </Group>
                     </Table.Td>
                     <Table.Td>
-                      {row.peerRatingCount > 0 ? (
-                        <Text size="sm">{row.peerRatingAvg.toFixed(1)} <Text span size="xs" c="dimmed">/ 5</Text></Text>
+                      {row.totalPeerRatings > 0 ? (
+                        <Text size="sm">{row.averagePeerRating.toFixed(1)} <Text span size="xs" c="dimmed">/ 5</Text></Text>
                       ) : (
                         <Text size="xs" c="dimmed">—</Text>
                       )}
                     </Table.Td>
                     <Table.Td>
                       <Group gap={4}>
-                        <Badge size="xs" color={row.payoutReceived ? 'green' : 'gray'} variant="light">
-                          {row.payoutReceived ? 'Received' : 'None'}
+                        <Badge size="xs" color={row.expectedPostPayoutPayments > 0 ? 'green' : 'gray'} variant="light">
+                          {row.expectedPostPayoutPayments > 0 ? 'Received' : 'None'}
                         </Badge>
-                        {row.defaultedPostPayout && (
+                        {row.totalDefaults > 0 && (
                           <Badge size="xs" color="red" variant="filled">Defaulted</Badge>
                         )}
                       </Group>

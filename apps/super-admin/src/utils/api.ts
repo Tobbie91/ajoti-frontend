@@ -530,16 +530,19 @@ export function reconcileFunding(reference: string): Promise<{ success: boolean;
 
 export interface TrustStatsRow {
   userId: string
-  score: number
+  trustScore: number
   displayScore: number
-  totalContributions: number
-  onTimeContributions: number
-  lateContributions: number
-  missedContributions: number
-  payoutReceived: boolean
-  defaultedPostPayout: boolean
-  peerRatingAvg: number
-  peerRatingCount: number
+  totalExpectedPayments: number
+  totalOnTimePayments: number
+  totalLatePayments: number
+  totalMissedPayments: number
+  totalDefaults: number
+  expectedPostPayoutPayments: number
+  postPayoutOnTimePayments: number
+  totalPeerRatings: number
+  averagePeerRating: number
+  consecutiveLatePayments: number
+  lastUpdated: string
   user: { firstName: string; lastName: string; email: string }
 }
 
@@ -550,7 +553,7 @@ export interface TrustStatsFull extends TrustStatsRow {
     payoutReliability: number
     peerScore: number
     historyLength: number
-  }
+  } | null
 }
 
 export interface TrustEventResult {
