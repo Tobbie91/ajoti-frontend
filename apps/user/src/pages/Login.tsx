@@ -40,7 +40,13 @@ export function Login() {
       localStorage.setItem('user', JSON.stringify(merged))
       navigate('/home')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
+      const message = err instanceof Error ? err.message : 'Login failed. Please try again.'
+      if (message.toLowerCase().includes('email not verified') || message.toLowerCase().includes('not verified')) {
+        localStorage.setItem('verify_email', email.trim())
+        navigate('/verify-otp')
+        return
+      }
+      setError(message)
     } finally {
       setLoading(false)
     }
