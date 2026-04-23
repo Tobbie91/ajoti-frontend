@@ -8,6 +8,11 @@ export function VerifyOtp() {
   const navigate = useNavigate()
   const email = localStorage.getItem('verify_email') ?? ''
 
+  if (!email) {
+    navigate('/login', { replace: true })
+    return null
+  }
+
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'input' | 'verifying'>('input')
   const [resent, setResent] = useState(false)
