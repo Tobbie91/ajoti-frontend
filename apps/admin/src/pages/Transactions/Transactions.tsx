@@ -111,9 +111,9 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
 
       <div className="flex flex-col divide-y divide-[#F3F4F6]">
         <DetailRow label="Description" value={tx.name} />
-        {(raw as Record<string, unknown>).movementType && <DetailRow label="Movement" value={(raw as Record<string, unknown>).movementType as string} />}
-        {(raw as Record<string, unknown>).bucketType && <DetailRow label="Bucket" value={(raw as Record<string, unknown>).bucketType as string} />}
-        {(raw as Record<string, unknown>).sourceType && <DetailRow label="Source" value={(raw as Record<string, unknown>).sourceType as string} />}
+        {!!(raw as Record<string, unknown>).movementType && <DetailRow label="Movement" value={(raw as Record<string, unknown>).movementType as string} />}
+        {!!(raw as Record<string, unknown>).bucketType && <DetailRow label="Bucket" value={(raw as Record<string, unknown>).bucketType as string} />}
+        {!!(raw as Record<string, unknown>).sourceType && <DetailRow label="Source" value={(raw as Record<string, unknown>).sourceType as string} />}
         <DetailRow label="Date" value={d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })} />
         <DetailRow label="Time" value={d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })} />
         {(raw as Record<string, unknown>).balanceBefore != null && <DetailRow label="Balance Before" value={formatKobo((raw as Record<string, unknown>).balanceBefore as string)} />}
