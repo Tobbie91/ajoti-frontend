@@ -410,6 +410,11 @@ export function activateRoscaCircle(circleId: string, startDate: string): Promis
   })
 }
 
+// PATCH /api/admin/rosca/{circleId}/close — close (cancel) a circle
+export function closeRoscaCircle(circleId: string): Promise<{ message: string }> {
+  return authRequest(`/api/admin/rosca/${circleId}/close`, { method: 'PATCH' })
+}
+
 // GET /api/admin/rosca/dashboard — admin dashboard stats
 export interface AdminDashboard {
   totalGroups: number

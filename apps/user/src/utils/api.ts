@@ -860,6 +860,27 @@ export async function getMyInvites(): Promise<PendingInvite[]> {
   return Array.isArray(res) ? res : (res as { data?: PendingInvite[] }).data ?? []
 }
 
+export interface InvitePreview {
+  token: string
+  email: string
+  expiresAt: string
+  usedAt: string | null
+  circle: {
+    name: string
+    contributionAmount: string
+    frequency: string
+    durationCycles: number
+    maxSlots: number
+    filledSlots: number
+    adminName: string
+  }
+}
+
+export async function getInvitePreview(token: string): Promise<InvitePreview> {
+  const res = await authRequest<{ data: InvitePreview }>(`/api/rosca/invite-preview/${token}`, { method: 'GET' })
+  return (res as { data: InvitePreview }).data
+}
+
 export async function joinByInvite(token: string): Promise<{ message: string }> {
   return authRequest('/api/rosca/join-by-invite', {
     method: 'POST',

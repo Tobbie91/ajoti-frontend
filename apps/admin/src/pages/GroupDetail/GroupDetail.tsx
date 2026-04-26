@@ -58,6 +58,7 @@ import {
   notifyMissingContributors,
   getFinancialHealth,
   getCircleJoinRequests,
+  closeRoscaCircle,
   type Payout,
   type Contribution as ApiContribution,
   type RoscaCircle,
@@ -303,7 +304,7 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
       </Paper>
 
       {/* ── Member Progress ── */}
-      <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+      <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
         <Group justify="space-between" align="center" px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
           <Box>
             <Text fw={700} fz="md">Member Lifecycle Progress</Text>
@@ -311,7 +312,7 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
           </Box>
           {progressLoading && <Loader size="xs" color={PRIMARY} />}
         </Group>
-        <Table verticalSpacing="sm" horizontalSpacing="lg">
+        <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 480 }}>
           <Table.Thead>
             <Table.Tr style={{ background: '#f8f9fa' }}>
               <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Member</Table.Th>
@@ -367,11 +368,11 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
               )
             })}
           </Table.Tbody>
-        </Table>
+        </Table></div>
       </Paper>
 
       {/* ── Peer Review Section ── */}
-      <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+      <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
         <Group justify="space-between" align="center" px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
           <Box>
             <Text fw={700} fz="md">Peer Reviews</Text>
@@ -385,7 +386,7 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
           )}
         </Group>
 
-        <Table verticalSpacing="sm" horizontalSpacing="lg">
+        <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 480 }}>
           <Table.Thead>
             <Table.Tr style={{ background: '#f8f9fa' }}>
               <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Member</Table.Th>
@@ -445,7 +446,7 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
               )
             })}
           </Table.Tbody>
-        </Table>
+        </Table></div>
       </Paper>
 
       {/* Review Modal */}
@@ -687,6 +688,26 @@ export function GroupDetail() {
     }
   }
 
+  // Close group modal state
+  const [closeModal, setCloseModal] = useState(false)
+  const [closeLoading, setCloseLoading] = useState(false)
+  const [closeError, setCloseError] = useState<string | null>(null)
+
+  async function handleCloseGroup() {
+    if (!id) return
+    setCloseLoading(true)
+    setCloseError(null)
+    try {
+      await closeRoscaCircle(id)
+      setCloseModal(false)
+      navigate('/rosca/groups')
+    } catch (err) {
+      setCloseError(err instanceof Error ? err.message : 'Failed to close group')
+    } finally {
+      setCloseLoading(false)
+    }
+  }
+
   // Assign position modal state
   const [assignModal, setAssignModal] = useState(false)
   const [assignMember, setAssignMember] = useState<{ userId: string; name: string } | null>(null)
@@ -866,7 +887,7 @@ export function GroupDetail() {
       )}
       {/* Group Header */}
       <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
           <Group gap="lg" align="center">
             <ThemeIcon
               size={72}
@@ -901,41 +922,50 @@ export function GroupDetail() {
                     })()
                   : group.tagline}
               </Text>
-              <Group gap="sm">
+              <Stack gap={8}>
                 {isPending && (
                   <>
-                    <Button
-                      size="xs"
-                      radius="md"
-                      style={{ background: slotsAreFull ? PRIMARY : '#adb5bd' }}
-                      leftSection={<IconPlayerPlay size={14} />}
-                      disabled={!slotsAreFull}
-                      title={!slotsAreFull ? 'All slots must be filled before activating' : undefined}
-                      onClick={() => { setActivateStartDate(null); setActivateError(null); setActivateModal(true) }}
-                    >
-                      {slotsAreFull ? 'Start Circle' : 'Waiting for members…'}
-                    </Button>
-                    <Button
-                      size="xs"
-                      radius="md"
-                      variant="outline"
-                      style={{ borderColor: PRIMARY, color: PRIMARY }}
-                      onClick={() => navigate(`/rosca/groups/${id}/edit`)}
-                    >
-                      Edit Group
-                    </Button>
-                    <Button
-                      size="xs"
-                      radius="md"
-                      variant="outline"
-                      color="red"
-                    >
-                      Close Group
-                    </Button>
+                    {slotsAreFull ? (
+                      <Box>
+                        <Button
+                          size="xs"
+                          radius="md"
+                          style={{ background: PRIMARY }}
+                          leftSection={<IconPlayerPlay size={14} />}
+                          onClick={() => { setActivateStartDate(null); setActivateError(null); setActivateModal(true) }}
+                        >
+                          Start Circle
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Text fz={12} c="dimmed" style={{ fontStyle: 'italic' }}>
+                        {circleData?.filledSlots ?? 0}/{circleData?.maxSlots ?? '?'} slots filled — invite more members to start
+                      </Text>
+                    )}
+                    <Group gap="sm">
+                      <Button
+                        size="xs"
+                        radius="md"
+                        variant="outline"
+                        style={{ borderColor: PRIMARY, color: PRIMARY }}
+                        onClick={() => navigate(`/rosca/groups/${id}/edit`)}
+                      >
+                        Edit Group
+                      </Button>
+                      <Button
+                        size="xs"
+                        radius="md"
+                        variant="outline"
+                        color="red"
+                        onClick={() => setCloseModal(true)}
+                      >
+                        Close Group
+                      </Button>
+                    </Group>
                   </>
                 )}
                 {isCompleted && (
-                  <>
+                  <Group gap="sm">
                     <Button
                       size="xs"
                       radius="md"
@@ -949,12 +979,13 @@ export function GroupDetail() {
                       radius="md"
                       variant="outline"
                       color="red"
+                      onClick={() => setCloseModal(true)}
                     >
                       Close Group
                     </Button>
-                  </>
+                  </Group>
                 )}
-              </Group>
+              </Stack>
             </Box>
           </Group>
 
@@ -962,7 +993,7 @@ export function GroupDetail() {
           <Paper
             p="md"
             radius="md"
-            style={{ background: PRIMARY, minWidth: 180 }}
+            style={{ background: PRIMARY, minWidth: 180, flex: '1 1 180px' }}
           >
             <Text fz="xs" c="white" style={{ opacity: 0.8 }}>Total Group Balance</Text>
             <Text fz={24} fw={700} c="white" mt={4}>{group.balance}</Text>
@@ -1017,7 +1048,7 @@ export function GroupDetail() {
           <Tabs.Panel value="overview" pt="lg">
             <Stack gap="lg">
               <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-                <Group grow gap="lg">
+                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
                   <Box ta="center">
                     <Text fz="xs" c="dimmed" mb={4}>Total Members</Text>
                     <Text fz="xl" fw={700}>6</Text>
@@ -1034,11 +1065,11 @@ export function GroupDetail() {
                     <Text fz="xs" c="dimmed" mb={4}>Contribution Rate</Text>
                     <Text fz="xl" fw={700} style={{ color: PRIMARY }}>100%</Text>
                   </Box>
-                </Group>
+                </SimpleGrid>
               </Paper>
 
               <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-                <Group grow gap="lg">
+                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
                   <Box ta="center">
                     <Text fz="xs" c="dimmed" mb={4}>Start</Text>
                     <Text fz="md" fw={600}>Nov 2024</Text>
@@ -1055,7 +1086,7 @@ export function GroupDetail() {
                     <Text fz="xs" c="dimmed" mb={4}>Disbursement Amount</Text>
                     <Text fz="md" fw={600}>₦60,000</Text>
                   </Box>
-                </Group>
+                </SimpleGrid>
               </Paper>
 
               <Button
@@ -1071,12 +1102,12 @@ export function GroupDetail() {
 
           {/* History Tab */}
           <Tabs.Panel value="history" pt="lg">
-            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
               <Group px="lg" py="md">
                 <Text fw={600} fz="md">History</Text>
               </Group>
 
-              <Table verticalSpacing="sm" horizontalSpacing="lg">
+              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: PRIMARY }}>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
@@ -1106,7 +1137,7 @@ export function GroupDetail() {
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
-              </Table>
+              </Table></div>
             </Paper>
           </Tabs.Panel>
         </Tabs>
@@ -1119,12 +1150,12 @@ export function GroupDetail() {
           tab: { fontWeight: 500, fontSize: 14, paddingBottom: 12 },
         }}
       >
-        <Tabs.List>
-          <Tabs.Tab value="members">Member Management</Tabs.Tab>
-          <Tabs.Tab value="payments">Payment Oversight</Tabs.Tab>
-          <Tabs.Tab value="progress">Notifications & Reviews</Tabs.Tab>
-          <Tabs.Tab value="payouts">Payouts</Tabs.Tab>
-          <Tabs.Tab value="contributions">Contributions</Tabs.Tab>
+        <Tabs.List style={{ overflowX: 'auto', flexWrap: 'nowrap' }}>
+          <Tabs.Tab value="members" style={{ whiteSpace: 'nowrap' }}>Member Management</Tabs.Tab>
+          <Tabs.Tab value="payments" style={{ whiteSpace: 'nowrap' }}>Payment Oversight</Tabs.Tab>
+          <Tabs.Tab value="progress" style={{ whiteSpace: 'nowrap' }}>Notifications & Reviews</Tabs.Tab>
+          <Tabs.Tab value="payouts" style={{ whiteSpace: 'nowrap' }}>Payouts</Tabs.Tab>
+          <Tabs.Tab value="contributions" style={{ whiteSpace: 'nowrap' }}>Contributions</Tabs.Tab>
         </Tabs.List>
 
         {/* Member Management Tab */}
@@ -1132,8 +1163,8 @@ export function GroupDetail() {
           <Stack gap="lg">
             {/* Invite Member + Pending Requests */}
             {!isCompleted && (
-              <Group align="flex-start" gap="lg" wrap="nowrap">
-                <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef', flex: 1 }}>
+              <Group align="flex-start" gap="lg" wrap="wrap">
+                <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef', flex: '1 1 260px' }}>
                   <Text fw={600} fz="md" mb="md">Invite Member</Text>
                   <Stack gap="sm">
                     <TextInput
@@ -1159,7 +1190,7 @@ export function GroupDetail() {
                         label="Invite by"
                         data={[
                           { value: 'email', label: 'Email' },
-                          { value: 'phone', label: 'Phone' },
+                          { value: 'phone', label: 'Phone (Coming Soon)', disabled: true },
                         ]}
                         value={inviteBy}
                         onChange={setInviteBy}
@@ -1187,7 +1218,7 @@ export function GroupDetail() {
                   radius="md"
                   style={{
                     border: '1px solid #e9ecef',
-                    minWidth: 200,
+                    flex: '1 1 200px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -1213,7 +1244,7 @@ export function GroupDetail() {
             )}
 
             {/* Manage Members */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
               <Group justify="space-between" align="center" px="lg" py="md">
                 <Text fw={600} fz="md">Manage Members</Text>
                 <TextInput
@@ -1228,7 +1259,7 @@ export function GroupDetail() {
                 />
               </Group>
 
-              <Table verticalSpacing="sm" horizontalSpacing="lg">
+              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: PRIMARY }}>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Name</Table.Th>
@@ -1296,12 +1327,12 @@ export function GroupDetail() {
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
-              </Table>
+              </Table></div>
             </Paper>
 
             {/* Sent Invites */}
             {!isCompleted && (
-              <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+              <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
                 <Group justify="space-between" align="center" px="lg" py="md">
                   <Text fw={600} fz="md">Sent Invites</Text>
                   <Button
@@ -1315,7 +1346,7 @@ export function GroupDetail() {
                     Refresh
                   </Button>
                 </Group>
-                <Table verticalSpacing="sm" horizontalSpacing="lg">
+                <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
                   <Table.Thead>
                     <Table.Tr style={{ background: '#f8f9fa' }}>
                       <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Name / Contact</Table.Th>
@@ -1379,7 +1410,7 @@ export function GroupDetail() {
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
-                </Table>
+                </Table></div>
               </Paper>
             )}
           </Stack>
@@ -1401,7 +1432,7 @@ export function GroupDetail() {
                 const overallRate = totalExpKobo > 0 ? (totalColKobo / totalExpKobo) * 100 : 0
                 return (
                   <Stack gap="md">
-                    <SimpleGrid cols={4} spacing="md">
+                    <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
                       <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
                         <Text fz="xs" c="dimmed" mb={4}>Total Expected</Text>
                         <Text fz="lg" fw={700}>₦{(totalExpKobo / 100).toLocaleString('en-NG')}</Text>
@@ -1420,7 +1451,7 @@ export function GroupDetail() {
                       </Box>
                     </SimpleGrid>
                     {cycles.length > 0 && (
-                      <Table verticalSpacing="sm" horizontalSpacing="md">
+                      <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="md" style={{ minWidth: 480 }}>
                         <Table.Thead>
                           <Table.Tr style={{ background: '#f8f9fa' }}>
                             <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Cycle</Table.Th>
@@ -1455,7 +1486,7 @@ export function GroupDetail() {
                             )
                           })}
                         </Table.Tbody>
-                      </Table>
+                      </Table></div>
                     )}
                   </Stack>
                 )
@@ -1465,7 +1496,7 @@ export function GroupDetail() {
             </Paper>
 
             {/* Contributions In */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
               <Group
                 justify="space-between"
                 align="center"
@@ -1493,7 +1524,7 @@ export function GroupDetail() {
                 />
               </Group>
 
-              <Table verticalSpacing="sm" horizontalSpacing="lg">
+              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: '#f8f9fa' }}>
                     <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Members Name</Table.Th>
@@ -1552,7 +1583,7 @@ export function GroupDetail() {
                     })
                   )}
                 </Table.Tbody>
-              </Table>
+              </Table></div>
 
               {/* Summary footer */}
               <Group
@@ -1602,12 +1633,12 @@ export function GroupDetail() {
             </Paper>
 
             {/* Disbursement Status */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
               <Group justify="space-between" align="center" px="lg" py="md">
                 <Text fw={600} fz="md">Disbursement Status</Text>
               </Group>
 
-              <Table verticalSpacing="sm" horizontalSpacing="lg">
+              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: PRIMARY }}>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Members Name</Table.Th>
@@ -1673,7 +1704,7 @@ export function GroupDetail() {
                     )
                   })}
                 </Table.Tbody>
-              </Table>
+              </Table></div>
             </Paper>
           </Stack>
         </Tabs.Panel>
@@ -1712,7 +1743,7 @@ export function GroupDetail() {
             </Paper>
 
             {/* Payout History */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
               <Group justify="space-between" align="center" px="lg" py="md">
                 <Text fw={600} fz="md">Payout History</Text>
                 <Button
@@ -1736,7 +1767,7 @@ export function GroupDetail() {
                   <Loader size="sm" color={PRIMARY} />
                 </Group>
               ) : (
-                <Table verticalSpacing="sm" horizontalSpacing="lg">
+                <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
                   <Table.Thead>
                     <Table.Tr style={{ background: PRIMARY }}>
                       <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
@@ -1831,7 +1862,7 @@ export function GroupDetail() {
                       )
                     })}
                   </Table.Tbody>
-                </Table>
+                </Table></div>
               )}
             </Paper>
           </Stack>
@@ -1839,7 +1870,7 @@ export function GroupDetail() {
 
         {/* ── Contributions Tab ── */}
         <Tabs.Panel value="contributions" pt="lg">
-          <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
+          <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
             <Group justify="space-between" align="center" px="lg" py="md">
               <Text fw={600} fz="md">Contribution History</Text>
               <Button
@@ -1863,7 +1894,7 @@ export function GroupDetail() {
                 <Loader size="sm" color={PRIMARY} />
               </Group>
             ) : (
-              <Table verticalSpacing="sm" horizontalSpacing="lg">
+              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: PRIMARY }}>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Member</Table.Th>
@@ -1913,7 +1944,7 @@ export function GroupDetail() {
                     )
                   })}
                 </Table.Tbody>
-              </Table>
+              </Table></div>
             )}
           </Paper>
         </Tabs.Panel>
@@ -2538,6 +2569,59 @@ export function GroupDetail() {
             </Group>
           </Stack>
         )}
+      </Modal>
+
+      {/* Close Group confirmation modal */}
+      <Modal
+        opened={closeModal}
+        onClose={() => { setCloseModal(false); setCloseError(null) }}
+        title="Close Group"
+        centered
+        radius="md"
+        size="sm"
+      >
+        <Stack gap="md">
+          <Text fz={14} c="dimmed">
+            Are you sure you want to close <strong>{group.name}</strong>? This will:
+          </Text>
+          <Box
+            style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '12px 16px' }}
+          >
+            <Stack gap={6}>
+              {[
+                'Release collateral back to all members',
+                'Cancel all pending memberships',
+                'Mark the group as Closed permanently',
+              ].map((item) => (
+                <Text key={item} fz={13} style={{ color: '#B91C1C' }}>• {item}</Text>
+              ))}
+            </Stack>
+          </Box>
+          <Text fz={13} c="dimmed">This action cannot be undone.</Text>
+          {closeError && (
+            <Text fz={13} style={{ color: '#EF4444' }}>{closeError}</Text>
+          )}
+          <Group justify="flex-end" gap="sm">
+            <Button
+              variant="default"
+              radius="md"
+              size="sm"
+              onClick={() => { setCloseModal(false); setCloseError(null) }}
+              disabled={closeLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              radius="md"
+              size="sm"
+              loading={closeLoading}
+              onClick={handleCloseGroup}
+            >
+              Close Group
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Stack>
   )
