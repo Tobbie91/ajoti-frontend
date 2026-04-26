@@ -221,15 +221,15 @@ export function MyProfile() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Email Address</Text>
               {editing ? (
                 <TextInput value={email} onChange={(e) => setEmail(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconMail size={16} color="#9CA3AF" />} styles={inputStyles} />
               ) : (
-                <div className="flex items-center gap-2">
-                  <IconMail size={15} color="#9CA3AF" />
-                  <Text fw={500} className="text-[14px] text-[#0F172A]">{email}</Text>
+                <div className="flex items-start gap-2">
+                  <IconMail size={15} color="#9CA3AF" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <Text fw={500} className="text-[14px] text-[#0F172A]" style={{ wordBreak: 'break-all' }}>{email}</Text>
                 </div>
               )}
             </div>
@@ -239,8 +239,8 @@ export function MyProfile() {
                 <TextInput value={phone} onChange={(e) => setPhone(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconPhone size={16} color="#9CA3AF" />} styles={inputStyles} />
               ) : (
                 <div className="flex items-center gap-2">
-                  <IconPhone size={15} color="#9CA3AF" />
-                  <Text fw={500} className="text-[14px] text-[#0F172A]">{phone}</Text>
+                  <IconPhone size={15} color="#9CA3AF" style={{ flexShrink: 0 }} />
+                  <Text fw={500} className="text-[14px] text-[#0F172A]" style={{ wordBreak: 'break-all' }}>{phone}</Text>
                 </div>
               )}
             </div>

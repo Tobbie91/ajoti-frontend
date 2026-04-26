@@ -38,7 +38,13 @@ export function Login() {
         if (v !== '' && v !== null && v !== undefined) merged[k] = v
       }
       localStorage.setItem('user', JSON.stringify(merged))
-      navigate('/home')
+      const pendingRedirect = localStorage.getItem('pending_redirect')
+      if (pendingRedirect) {
+        localStorage.removeItem('pending_redirect')
+        navigate(pendingRedirect)
+      } else {
+        navigate('/home')
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed. Please try again.'
       if (message.toLowerCase().includes('email not verified') || message.toLowerCase().includes('not verified')) {
