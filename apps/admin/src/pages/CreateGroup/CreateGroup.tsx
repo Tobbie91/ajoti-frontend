@@ -19,7 +19,7 @@ import {
   Alert,
   Loader,
 } from '@mantine/core'
-import { useDisclosure } from '@mantine/hooks'
+import { useDisclosure, useMediaQuery } from '@mantine/hooks'
 import {
   IconPlus,
   IconArrowLeft,
@@ -54,6 +54,7 @@ export function CreateGroup() {
 
   // Rules modal
   const [rulesOpened, { open: openRules, close: closeRules }] = useDisclosure(false)
+  const isMobile = useMediaQuery('(max-width: 639px)')
   const [selectedRules, setSelectedRules] = useState<string[]>([])
 
   return (
@@ -93,9 +94,9 @@ export function CreateGroup() {
       {/* Step content */}
       {active === 0 && (
         <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef' }}>
-          <Group align="flex-start" gap="xl" wrap="nowrap">
+          <Box style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 20 : 32, alignItems: 'flex-start' }}>
             {/* Left: Form fields */}
-            <Stack gap="md" style={{ flex: 1 }}>
+            <Stack gap="md" style={{ flex: 1, width: '100%' }}>
               <TextInput
                 label="Group Name"
                 placeholder="e.g. Hustle, Grind & Win"
@@ -132,8 +133,8 @@ export function CreateGroup() {
             {/* Right: Image upload */}
             <Box
               style={{
-                width: 220,
-                height: 220,
+                width: isMobile ? '100%' : 220,
+                height: 180,
                 border: '2px dashed #dee2e6',
                 borderRadius: 12,
                 display: 'flex',
@@ -170,7 +171,7 @@ export function CreateGroup() {
                 Upload Image
               </Button>
             </Box>
-          </Group>
+          </Box>
         </Paper>
       )}
 
@@ -488,7 +489,7 @@ export function CreateGroup() {
                 Edit
               </Button>
             </Group>
-            <Group align="flex-start" gap="xl" wrap="nowrap">
+            <Box style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'flex-start' }}>
               <Stack gap="xs" style={{ flex: 1 }}>
                 <Box>
                   <Text fz="xs" c="dimmed">Group Name</Text>
@@ -517,7 +518,7 @@ export function CreateGroup() {
               >
                 <IconUpload size={24} color="#adb5bd" stroke={1.5} />
               </Box>
-            </Group>
+            </Box>
           </Paper>
 
           {/* Contribution & Payout */}

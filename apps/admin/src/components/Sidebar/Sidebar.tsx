@@ -18,7 +18,11 @@ const roscaChildren = [
   { label: 'Join Requests', path: '/manage-join-request', icon: IconUserCheck },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   const location = useLocation()
   const roscaPaths = ['/rosca', '/create-group', '/manage-join-request']
   const isRoscaSection = roscaPaths.some((p) => location.pathname.startsWith(p))
@@ -37,6 +41,7 @@ export function Sidebar() {
           label="Dashboard"
           leftSection={<IconLayoutDashboard size={19} stroke={1.5} />}
           active={location.pathname === '/dashboard'}
+          onClick={onClose}
           styles={{
             root: {
               borderRadius: 8,
@@ -62,6 +67,7 @@ export function Sidebar() {
               label={child.label}
               leftSection={child.icon ? <child.icon size={15} stroke={1.5} /> : undefined}
               active={isActive(child.path)}
+              onClick={onClose}
               styles={{ root: { borderRadius: 8 } }}
             />
           ))}
@@ -73,6 +79,7 @@ export function Sidebar() {
           label="My Wallet"
           leftSection={<IconWallet size={19} stroke={1.5} />}
           active={isActive('/my-wallet')}
+          onClick={onClose}
           styles={{
             root: {
               borderRadius: 8,
@@ -87,6 +94,7 @@ export function Sidebar() {
           label="Loans"
           leftSection={<IconCash size={19} stroke={1.5} />}
           active={isActive('/loans')}
+          onClick={onClose}
           styles={{
             root: {
               borderRadius: 8,
@@ -103,6 +111,7 @@ export function Sidebar() {
           label="My Profile"
           leftSection={<IconUserCircle size={19} stroke={1.5} />}
           active={isActive('/my-profile')}
+          onClick={onClose}
           styles={{
             root: {
               borderRadius: 8,

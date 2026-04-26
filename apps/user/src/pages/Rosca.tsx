@@ -182,22 +182,22 @@ export function Rosca() {
   const isJoinedTab = activeTab === 'Joined'
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-6 py-6">
+    <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6">
       <div className="flex flex-col gap-6">
         {/* Hero Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#02A36E] to-[#00C853] px-10 py-10 text-white">
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="max-w-[480px]">
-              <Text fw={700} className="text-[28px] leading-tight">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#02A36E] to-[#00C853] px-6 py-8 sm:px-10 sm:py-10 text-white">
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Text fw={700} className="text-[22px] sm:text-[28px] leading-tight">
                 Welcome to ROSCA
               </Text>
-              <Text size="sm" className="mt-3 text-white/90 leading-relaxed">
+              <Text size="sm" className="mt-2 text-white/90 leading-relaxed">
                 Join trusted savings groups and grow your money together with others.
               </Text>
             </div>
             <button
               onClick={() => navigate('/rosca/how-it-works')}
-              className="flex-shrink-0 cursor-pointer rounded-lg bg-white px-7 py-3 text-sm font-semibold text-[#02A36E] shadow-sm"
+              className="w-fit flex-shrink-0 cursor-pointer rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-[#02A36E] shadow-sm"
             >
               How it Works
             </button>
@@ -295,7 +295,7 @@ export function Rosca() {
               <Text size="sm" className="text-[#9CA3AF]">Groups you've been approved to join will appear here.</Text>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {joinedGroups.map((group) => (
               <div
                 key={group.id}
@@ -409,7 +409,7 @@ export function Rosca() {
                 </button>
               </div>
             ) : displayed.length > 0 ? (
-              <div className="grid grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {displayed.map((group) => (
                   <div
                     key={group.id}

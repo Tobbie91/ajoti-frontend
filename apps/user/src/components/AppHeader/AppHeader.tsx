@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom'
-import { Popover, Text, ScrollArea, Loader } from '@mantine/core'
+import { Popover, Modal, Text, ScrollArea, Loader } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { IconBell } from '@tabler/icons-react'
 import styles from './AppHeader.module.css'
 import {
@@ -143,97 +144,102 @@ function NotificationPanel() {
     }
   }
 
-  return (
-    <Popover
-      opened={open}
-      onChange={handleOpen}
-      width={340}
-      position="bottom-end"
-      shadow="md"
-      radius="md"
-      withArrow
-    >
-      <Popover.Target>
-        <button
-          onClick={() => handleOpen(!open)}
-          className={styles.bellWrap}
-          aria-label="Notifications"
-        >
-          <IconBell className={styles.bellIcon} />
-          {unreadCount > 0 && (
-            <span className={styles.bellBadge}>
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </button>
-      </Popover.Target>
+  const isMobile = useMediaQuery('(max-width: 639px)')
 
-      <Popover.Dropdown style={{ padding: 0 }}>
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-3">
-          <Text fw={600} fz={14} style={{ color: '#0F172A' }}>
-            Notifications
-          </Text>
-          {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAll}
-              className="cursor-pointer text-[12px] font-medium text-[#02A36E] hover:underline"
-            >
-              Mark all as read
-            </button>
-          )}
-        </div>
-
-        {/* Body */}
-        <ScrollArea h={360}>
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader size="sm" color="#02A36E" />
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <IconBell size={32} color="#D1D5DB" />
-              <Text fz={13} style={{ color: '#9CA3AF' }}>
-                No notifications yet
-              </Text>
-            </div>
-          ) : (
-            <div className="flex flex-col divide-y divide-[#F3F4F6]">
-              {notifications.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => handleNotificationClick(n)}
-                  className={`w-full px-4 py-3 text-left transition-colors hover:bg-[#F9FAFB] ${
-                    !n.read ? 'bg-[#F0FDF4]' : ''
-                  } ${n.actionUrl ? 'cursor-pointer' : !n.read ? 'cursor-pointer' : 'cursor-default'}`}
-                >
-                  <div className="flex items-start gap-2">
-                    {!n.read && (
-                      <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#02A36E]" />
-                    )}
-                    <div className={!n.read ? '' : 'pl-4'}>
-                      <Text fw={600} fz={13} style={{ color: '#0F172A' }}>
-                        {n.title}
-                      </Text>
-                      <Text fw={400} fz={12} style={{ color: '#6B7280' }} mt={2}>
-                        {n.message}
-                      </Text>
-                      <Text fw={400} fz={11} style={{ color: '#9CA3AF' }} mt={4}>
-                        {new Date(n.createdAt).toLocaleDateString('en-NG', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                    </div>
+  const notificationList = (
+    <>
+      <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-3">
+        <Text fw={600} fz={14} style={{ color: '#0F172A' }}>Notifications</Text>
+        {unreadCount > 0 && (
+          <button
+            onClick={handleMarkAll}
+            className="cursor-pointer text-[12px] font-medium text-[#02A36E] hover:underline"
+          >
+            Mark all as read
+          </button>
+        )}
+      </div>
+      <ScrollArea h={isMobile ? undefined : 360} style={isMobile ? { maxHeight: '70vh' } : undefined}>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader size="sm" color="#02A36E" />
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12">
+            <IconBell size={32} color="#D1D5DB" />
+            <Text fz={13} style={{ color: '#9CA3AF' }}>No notifications yet</Text>
+          </div>
+        ) : (
+          <div className="flex flex-col divide-y divide-[#F3F4F6]">
+            {notifications.map((n) => (
+              <button
+                key={n.id}
+                onClick={() => handleNotificationClick(n)}
+                className={`w-full px-4 py-3.5 text-left transition-colors hover:bg-[#F9FAFB] ${
+                  !n.read ? 'bg-[#F0FDF4]' : ''
+                } ${n.actionUrl || !n.read ? 'cursor-pointer' : 'cursor-default'}`}
+              >
+                <div className="flex items-start gap-2">
+                  {!n.read && (
+                    <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#02A36E]" />
+                  )}
+                  <div className={!n.read ? '' : 'pl-4'}>
+                    <Text fw={600} fz={13} style={{ color: '#0F172A' }}>{n.title}</Text>
+                    <Text fw={400} fz={12} style={{ color: '#6B7280' }} mt={2}>{n.message}</Text>
+                    <Text fw={400} fz={11} style={{ color: '#9CA3AF' }} mt={4}>
+                      {new Date(n.createdAt).toLocaleDateString('en-NG', {
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                      })}
+                    </Text>
                   </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </Popover.Dropdown>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+    </>
+  )
+
+  const bellButton = (
+    <button
+      onClick={() => handleOpen(!open)}
+      className={styles.bellWrap}
+      aria-label="Notifications"
+    >
+      <IconBell className={styles.bellIcon} />
+      {unreadCount > 0 && (
+        <span className={styles.bellBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+      )}
+    </button>
+  )
+
+  if (isMobile) {
+    return (
+      <>
+        {bellButton}
+        <Modal
+          opened={open}
+          onClose={() => setOpen(false)}
+          withCloseButton={false}
+          padding={0}
+          radius="lg"
+          size="100%"
+          styles={{
+            content: { position: 'fixed', bottom: 0, left: 0, right: 0, margin: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, maxHeight: '85vh' },
+            body: { padding: 0 },
+          }}
+        >
+          {notificationList}
+        </Modal>
+      </>
+    )
+  }
+
+  return (
+    <Popover opened={open} onChange={handleOpen} width={340} position="bottom-end" shadow="md" radius="md" withArrow>
+      <Popover.Target>{bellButton}</Popover.Target>
+      <Popover.Dropdown style={{ padding: 0 }}>{notificationList}</Popover.Dropdown>
     </Popover>
   )
 }

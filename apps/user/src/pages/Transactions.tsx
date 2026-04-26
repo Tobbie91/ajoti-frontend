@@ -179,10 +179,10 @@ export function Transactions() {
       {/* Wallet balance banner */}
       <div className="mb-6 flex items-center justify-between rounded-2xl bg-[#02A36E] px-6 py-4">
         <div>
-          <Text fw={400} className="text-[12px] text-white/70">
+          <Text fw={400} className="text-[12px] text-white/60">
             Wallet Balance
           </Text>
-          <Text fw={700} className="text-[24px] text-white">
+          <Text fw={600} className="text-[24px] text-white/90">
             {walletBalance}
           </Text>
         </div>
@@ -209,7 +209,7 @@ export function Transactions() {
       </Text>
 
       {/* Filters */}
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-4 grid grid-cols-3 gap-2">
         <Select
           data={STATUS_OPTIONS}
           value={status}
@@ -218,7 +218,7 @@ export function Transactions() {
           radius="md"
           size="xs"
           styles={{
-            input: { borderColor: '#E5E7EB', fontSize: 13, height: 36, minWidth: 120 },
+            input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 },
           }}
         />
         <Select
@@ -229,7 +229,7 @@ export function Transactions() {
           radius="md"
           size="xs"
           styles={{
-            input: { borderColor: '#E5E7EB', fontSize: 13, height: 36, minWidth: 100 },
+            input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 },
           }}
         />
         <Select
@@ -240,7 +240,7 @@ export function Transactions() {
           radius="md"
           size="xs"
           styles={{
-            input: { borderColor: '#E5E7EB', fontSize: 13, height: 36, minWidth: 120 },
+            input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 },
           }}
         />
       </div>

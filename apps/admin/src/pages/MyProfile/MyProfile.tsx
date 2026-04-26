@@ -148,46 +148,48 @@ export function MyProfile() {
       )}
 
       {/* Profile header */}
-      <div className="mb-6 flex items-center gap-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
-        <Avatar size={72} radius="xl" style={{ background: '#0B6B55', color: 'white', fontWeight: 700, fontSize: 22 }}>
-          {initials}
-        </Avatar>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <Text fw={700} className="text-[22px] text-[#0F172A]">{fullName}</Text>
-            <Badge color="green" variant="light" size="sm">Admin</Badge>
-          </div>
-          <Text fw={400} className="mt-0.5 text-[13px] text-[#6B7280]">
-            {email}
-          </Text>
-          <div className="mt-2 flex gap-2">
-            {kycApproved ? (
-              <div className="flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
-                <IconShieldCheck size={13} color="#02A36E" />
-                <Text fw={500} className="text-[11px] text-[#02A36E]">KYC Verified</Text>
-              </div>
-            ) : (
-              <button
-                onClick={() => navigate('/kyc')}
-                className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 hover:bg-[#FDE68A]"
-              >
-                <IconShieldCheck size={13} color="#F59E0B" />
-                <Text fw={500} className="text-[11px] text-[#92400E]">Complete Verification</Text>
-              </button>
-            )}
-            <div className="flex w-fit items-center gap-1.5 rounded-full bg-[#EFF6FF] px-3 py-1">
-              <IconUserCircle size={13} color="#3B82F6" />
-              <Text fw={500} className="text-[11px] text-[#3B82F6]">Active Admin</Text>
+      <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <div className="flex items-center gap-4">
+          <Avatar size={64} radius="xl" style={{ background: '#0B6B55', color: 'white', fontWeight: 700, fontSize: 20, flexShrink: 0 }}>
+            {initials}
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <Text fw={700} className="truncate text-[18px] text-[#0F172A]">{fullName}</Text>
+              <Badge color="green" variant="light" size="sm" style={{ flexShrink: 0 }}>Admin</Badge>
             </div>
+            <Text fw={400} className="mt-0.5 truncate text-[13px] text-[#6B7280]">
+              {email}
+            </Text>
+          </div>
+          <button
+            onClick={() => setEditing(!editing)}
+            className="flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-[12px] font-medium text-[#374151] hover:bg-[#F9FAFB]"
+          >
+            <IconEdit size={14} />
+            {editing ? 'Cancel' : 'Edit'}
+          </button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {kycApproved ? (
+            <div className="flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
+              <IconShieldCheck size={13} color="#02A36E" />
+              <Text fw={500} className="text-[11px] text-[#02A36E]">KYC Verified</Text>
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate('/kyc')}
+              className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 hover:bg-[#FDE68A]"
+            >
+              <IconShieldCheck size={13} color="#F59E0B" />
+              <Text fw={500} className="text-[11px] text-[#92400E]">Complete Verification</Text>
+            </button>
+          )}
+          <div className="flex w-fit items-center gap-1.5 rounded-full bg-[#EFF6FF] px-3 py-1">
+            <IconUserCircle size={13} color="#3B82F6" />
+            <Text fw={500} className="text-[11px] text-[#3B82F6]">Active Admin</Text>
           </div>
         </div>
-        <button
-          onClick={() => setEditing(!editing)}
-          className="flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-[13px] font-medium text-[#374151] hover:bg-[#F9FAFB]"
-        >
-          <IconEdit size={15} />
-          {editing ? 'Cancel' : 'Edit Profile'}
-        </button>
       </div>
 
       {/* Personal Information */}

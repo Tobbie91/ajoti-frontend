@@ -42,27 +42,27 @@ function renderBlock(block: BodyBlock, index: number) {
   switch (block.type) {
     case 'heading':
       return (
-        <Text key={index} fw={700} className="mt-8 text-[20px] text-[#0F172A]">
+        <Text key={index} fw={700} className="mt-10 text-[20px] text-[#0F172A] first:mt-0">
           {block.text}
         </Text>
       )
     case 'subheading':
       return (
-        <Text key={index} fw={600} className="mt-6 text-[16px] text-[#0F172A]">
+        <Text key={index} fw={600} className="mt-7 text-[17px] text-[#0F172A]">
           {block.text}
         </Text>
       )
     case 'paragraph':
       return (
-        <Text key={index} fw={400} className="mt-3 text-[15px] leading-[1.8] text-[#374151]">
+        <Text key={index} fw={400} className="mt-4 text-[15px] leading-[1.9] text-[#374151]">
           {block.text}
         </Text>
       )
     case 'list':
       return (
-        <ul key={index} className="mt-3 flex flex-col gap-2 pl-5">
+        <ul key={index} className="mt-4 flex flex-col gap-3 pl-5">
           {block.items.map((item, i) => (
-            <li key={i} className="list-disc text-[15px] leading-[1.7] text-[#374151]">
+            <li key={i} className="list-disc text-[15px] leading-[1.8] text-[#374151]">
               {item}
             </li>
           ))}
@@ -70,9 +70,9 @@ function renderBlock(block: BodyBlock, index: number) {
       )
     case 'numbered':
       return (
-        <ol key={index} className="mt-3 flex flex-col gap-2 pl-5">
+        <ol key={index} className="mt-4 flex flex-col gap-3 pl-5">
           {block.items.map((item, i) => (
-            <li key={i} className="list-decimal text-[15px] leading-[1.7] text-[#374151]">
+            <li key={i} className="list-decimal text-[15px] leading-[1.8] text-[#374151]">
               {item}
             </li>
           ))}
@@ -82,9 +82,9 @@ function renderBlock(block: BodyBlock, index: number) {
       return (
         <div
           key={index}
-          className="mt-4 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] px-5 py-4"
+          className="mt-5 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] px-5 py-4"
         >
-          <Text fw={500} className="text-[14px] leading-[1.7] text-[#0C4A6E]">
+          <Text fw={500} className="text-[14px] leading-[1.8] text-[#0C4A6E]">
             {block.text}
           </Text>
         </div>
@@ -93,9 +93,9 @@ function renderBlock(block: BodyBlock, index: number) {
       return (
         <div
           key={index}
-          className="mt-4 border-l-4 border-[#02A36E] bg-[#F0FDF4] px-5 py-4"
+          className="mt-5 border-l-4 border-[#02A36E] bg-[#F0FDF4] px-5 py-4"
         >
-          <Text fw={500} className="italic text-[15px] leading-[1.7] text-[#374151]">
+          <Text fw={500} className="italic text-[15px] leading-[1.8] text-[#374151]">
             {block.text}
           </Text>
         </div>
@@ -146,7 +146,7 @@ export function ArticleDetail() {
           background: `linear-gradient(135deg, ${article.coverGradient[0]}, ${article.coverGradient[1]})`,
         }}
       >
-        <div className="mx-auto max-w-[760px] px-6 py-12">
+        <div className="mx-auto max-w-[760px] px-4 py-10 sm:px-6 sm:py-16">
           {/* Back */}
           <button
             onClick={() => navigate('/rosca/how-it-works')}
@@ -182,30 +182,30 @@ export function ArticleDetail() {
           </div>
 
           {/* Title */}
-          <Text fw={800} className="mt-4 max-w-[600px] text-[32px] leading-tight text-white">
+          <Text fw={800} className="mt-4 text-[22px] leading-snug text-white sm:max-w-[600px] sm:text-[32px]">
             {article.title}
           </Text>
 
           {/* Excerpt */}
-          <Text fw={400} className="mt-3 max-w-[520px] text-[15px] leading-relaxed text-white/80">
+          <Text fw={400} className="mt-3 text-[14px] leading-relaxed text-white/80 sm:max-w-[520px] sm:text-[15px]">
             {article.excerpt}
           </Text>
         </div>
 
-        {/* Decorative */}
-        <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10" />
-        <div className="absolute -bottom-12 right-28 h-48 w-48 rounded-full bg-white/10" />
-        <div className="absolute right-48 top-8 h-20 w-20 rounded-full bg-white/5" />
+        {/* Decorative — hidden on mobile to prevent overflow */}
+        <div className="absolute -right-16 -top-16 hidden h-72 w-72 rounded-full bg-white/10 sm:block" />
+        <div className="absolute -bottom-12 right-28 hidden h-48 w-48 rounded-full bg-white/10 sm:block" />
+        <div className="absolute right-48 top-8 hidden h-20 w-20 rounded-full bg-white/5 sm:block" />
 
         {/* Icon */}
-        <div className="absolute right-16 bottom-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
+        <div className="absolute right-6 bottom-6 hidden h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm sm:flex sm:right-16 sm:bottom-8 sm:h-20 sm:w-20">
           {getIcon(article, 40)}
         </div>
       </div>
 
       {/* Article Content */}
-      <div className="mx-auto max-w-[760px] px-6 py-10">
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-8 -mt-6 relative z-10 shadow-sm">
+      <div className="mx-auto max-w-[760px] px-4 py-8 sm:px-6 sm:py-12">
+        <div className="relative z-10 -mt-6 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-10">
           {article.body.map((block, i) => renderBlock(block, i))}
         </div>
 
@@ -215,7 +215,7 @@ export function ArticleDetail() {
             <Text fw={700} className="text-[18px] text-[#0F172A]">
               Related Articles
             </Text>
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {related.map((rel) => (
                 <div
                   key={rel.id}

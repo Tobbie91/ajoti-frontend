@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Text, Skeleton, CopyButton, ActionIcon, Tooltip } from '@mantine/core'
 import { IconArrowLeft, IconCopy, IconCheck, IconAlertCircle, IconRefresh } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getVirtualAccount, VirtualAccount } from '@/utils/api'
+import { getVirtualAccount, type VirtualAccount } from '@/utils/api'
 
 export function FundWallet() {
   const navigate = useNavigate()

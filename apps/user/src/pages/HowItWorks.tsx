@@ -60,14 +60,14 @@ export function HowItWorks() {
   const rest = filtered.filter((a) => !a.featured || activeCategory !== 'All')
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-6 py-8">
-      <div className="flex flex-col gap-8">
+    <div className="mx-auto w-full max-w-[1100px] overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex flex-col gap-6 sm:gap-8">
         {/* Page Title */}
         <div>
-          <Text fw={800} className="text-[32px] text-[#0F172A]">
+          <Text fw={800} className="text-[26px] text-[#0F172A] sm:text-[32px]">
             Learn & Grow
           </Text>
-          <Text fw={500} className="mt-1 text-[15px] text-[#6B7280]">
+          <Text fw={500} className="mt-1 text-[14px] text-[#6B7280] sm:text-[15px]">
             Everything you need to know about ROSCA savings on Ajoti
           </Text>
         </div>
@@ -81,8 +81,8 @@ export function HowItWorks() {
               background: `linear-gradient(135deg, ${featured.coverGradient[0]}, ${featured.coverGradient[1]})`,
             }}
           >
-            <div className="flex items-center">
-              <div className="relative z-10 flex-1 p-10">
+            <div className="flex flex-col sm:flex-row sm:items-center">
+              <div className="relative z-10 flex-1 p-6 sm:p-10">
                 <Badge
                   size="sm"
                   radius="xl"
@@ -98,13 +98,13 @@ export function HowItWorks() {
                 >
                   Featured
                 </Badge>
-                <Text fw={700} className="mt-4 text-[26px] leading-tight text-white">
+                <Text fw={700} className="mt-3 text-[20px] leading-tight text-white sm:mt-4 sm:text-[26px]">
                   {featured.title}
                 </Text>
-                <Text fw={400} className="mt-3 max-w-[440px] text-[14px] leading-relaxed text-white/85">
+                <Text fw={400} className="mt-2 text-[13px] leading-relaxed text-white/85 sm:mt-3 sm:max-w-[440px] sm:text-[14px]">
                   {featured.excerpt}
                 </Text>
-                <div className="mt-5 flex items-center gap-4">
+                <div className="mt-4 flex items-center gap-4">
                   <div className="flex items-center gap-1.5">
                     <IconClock size={14} color="rgba(255,255,255,0.7)" />
                     <Text fw={500} className="text-[12px] text-white/70">
@@ -127,13 +127,13 @@ export function HowItWorks() {
                     {featured.category}
                   </Badge>
                 </div>
-                <button className="mt-6 cursor-pointer rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold text-[#0F172A] shadow-sm">
+                <button className="mt-5 w-full cursor-pointer rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold text-[#0F172A] shadow-sm sm:w-auto">
                   Read Article →
                 </button>
               </div>
 
-              {/* Decorative side */}
-              <div className="relative flex h-full w-[280px] flex-shrink-0 items-center justify-center">
+              {/* Decorative side — hidden on mobile */}
+              <div className="relative hidden h-full w-[280px] flex-shrink-0 items-center justify-center sm:flex">
                 <div className="absolute right-8 h-48 w-48 rounded-full bg-white/10" />
                 <div className="absolute right-24 top-6 h-20 w-20 rounded-full bg-white/5" />
                 <div className="relative z-10 flex h-24 w-24 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
@@ -144,25 +144,24 @@ export function HowItWorks() {
           </div>
         )}
 
-        {/* Search + Filters row */}
-        <div className="flex items-center gap-4">
+        {/* Search + Filters */}
+        <div className="flex flex-col gap-3">
           <TextInput
             placeholder="Search articles..."
             leftSection={<IconSearch size={18} color="#9CA3AF" />}
             radius="md"
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
-            className="w-[300px]"
             styles={{
               input: { borderColor: '#E5E7EB', backgroundColor: '#FFFFFF' },
             }}
           />
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`cursor-pointer rounded-full px-4 py-2 text-[13px] font-semibold transition-colors ${
+                className={`flex-shrink-0 cursor-pointer rounded-full px-4 py-2 text-[13px] font-semibold transition-colors ${
                   activeCategory === cat
                     ? 'bg-[#02A36E] text-white'
                     : 'border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB]'
@@ -176,7 +175,7 @@ export function HowItWorks() {
 
         {/* Articles Grid */}
         {rest.length > 0 ? (
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {rest.map((article) => (
               <div
                 key={article.id}

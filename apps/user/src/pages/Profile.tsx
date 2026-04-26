@@ -175,40 +175,42 @@ export function Profile() {
       </button>
 
       {/* Profile header */}
-      <div className="mb-8 flex items-center gap-5">
-        <Avatar size={80} radius="xl" color="green" variant="filled">
-          {firstName[0]}
-          {lastName[0]}
-        </Avatar>
-        <div className="flex-1">
-          <Text fw={700} className="text-[24px] text-[#0F172A]">
-            {firstName} {lastName}
-          </Text>
-          <Text fw={400} className="text-[14px] text-[#6B7280]">
-            {email}
-          </Text>
-          {kycApproved ? (
-            <div className="mt-2 flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
-              <IconShieldCheck size={14} color="#02A36E" />
-              <Text fw={500} className="text-[12px] text-[#02A36E]">
-                KYC Verified
+      <div className="mb-8 flex flex-col gap-4">
+        {/* Avatar + name row — always side by side */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Avatar size={64} radius="xl" color="green" variant="filled">
+              {firstName[0]}
+              {lastName[0]}
+            </Avatar>
+            <div>
+              <Text fw={700} className="text-[20px] text-[#0F172A]">
+                {firstName} {lastName}
               </Text>
+              <Text fw={400} className="text-[13px] text-[#6B7280]">
+                {email}
+              </Text>
+              {kycApproved ? (
+                <div className="mt-1.5 flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
+                  <IconShieldCheck size={14} color="#02A36E" />
+                  <Text fw={500} className="text-[12px] text-[#02A36E]">KYC Verified</Text>
+                </div>
+              ) : (
+                <button
+                  onClick={() => navigate('/kyc')}
+                  className="mt-1.5 flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 hover:bg-[#FDE68A]"
+                >
+                  <IconShieldCheck size={14} color="#F59E0B" />
+                  <Text fw={500} className="text-[12px] text-[#92400E]">Complete Verification</Text>
+                </button>
+              )}
             </div>
-          ) : (
-            <button
-              onClick={() => navigate('/kyc')}
-              className="mt-2 flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 hover:bg-[#FDE68A]"
-            >
-              <IconShieldCheck size={14} color="#F59E0B" />
-              <Text fw={500} className="text-[12px] text-[#92400E]">
-                Complete Verification
-              </Text>
-            </button>
-          )}
+          </div>
         </div>
+        {/* Edit button below on its own row */}
         <button
           onClick={() => setEditing(!editing)}
-          className="flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-[13px] font-medium text-[#374151] hover:bg-[#F9FAFB]"
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-[13px] font-medium text-[#374151] hover:bg-[#F9FAFB]"
         >
           <IconEdit size={16} />
           {editing ? 'Cancel' : 'Edit Profile'}

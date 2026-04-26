@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Paper, Text, Box, Group, ThemeIcon, Divider, Modal, ScrollArea, Loader } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import {
   IconMessage2,
   IconTopologyRing,
@@ -20,6 +21,7 @@ const PRIMARY = '#0b6b55'
 
 export function QuickActions() {
   const navigate = useNavigate()
+  const isMobile = useMediaQuery('(max-width: 639px)')
 
   // Notifications state
   const [unreadCount, setUnreadCount] = useState(0)
@@ -132,26 +134,24 @@ export function QuickActions() {
       <Modal
         opened={notifModal}
         onClose={() => setNotifModal(false)}
-        title={
-          <Group justify="space-between" align="center" style={{ width: '100%' }}>
-            <Text fw={700} fz="md">Notifications</Text>
-            {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAll}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: PRIMARY }}
-              >
-                Mark all as read
-              </button>
-            )}
-          </Group>
-        }
-        centered
-        radius="md"
-        size="md"
-        withCloseButton
-        styles={{ title: { width: '100%' } }}
+        withCloseButton={false}
+        padding={0}
+        radius={isMobile ? 'lg' : 'md'}
+        size={isMobile ? '100%' : 'md'}
+        centered={!isMobile}
+        styles={isMobile
+          ? { content: { position: 'fixed', bottom: 0, left: 0, right: 0, margin: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, maxHeight: '85vh' }, body: { padding: 0 } }
+          : { body: { padding: 0 } }}
       >
-        <ScrollArea h={400}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #F3F4F6', padding: '12px 16px' }}>
+          <Text fw={700} fz="md">Notifications</Text>
+          {unreadCount > 0 && (
+            <button onClick={handleMarkAll} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: PRIMARY }}>
+              Mark all as read
+            </button>
+          )}
+        </div>
+        <ScrollArea h={isMobile ? undefined : 400} style={isMobile ? { maxHeight: '70vh' } : undefined}>
           {loading ? (
             <Box py="xl" style={{ display: 'flex', justifyContent: 'center' }}>
               <Loader size="sm" color={PRIMARY} />

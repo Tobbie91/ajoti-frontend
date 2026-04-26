@@ -36,7 +36,11 @@ const bottomLinks = [
   { label: 'Settings & Logs', icon: IconSettings, path: '/settings-logs' },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   const location = useLocation()
   const [savingsOpened, setSavingsOpened] = useState(
     location.pathname.startsWith('/savings'),
@@ -59,6 +63,7 @@ export function Sidebar() {
             label={link.label}
             leftSection={<link.icon size={20} stroke={1.5} />}
             active={location.pathname === link.path}
+            onClick={onClose}
           />
         ))}
 
@@ -87,6 +92,7 @@ export function Sidebar() {
               }
               leftSection={<child.icon size={18} stroke={1.5} />}
               active={location.pathname === child.path}
+              onClick={onClose}
             />
           ))}
         </NavLink>
@@ -99,6 +105,7 @@ export function Sidebar() {
             label={link.label}
             leftSection={<link.icon size={20} stroke={1.5} />}
             active={location.pathname === link.path}
+            onClick={onClose}
           />
         ))}
       </Stack>

@@ -253,7 +253,7 @@ export function Transactions() {
       )}
 
       {/* Stats */}
-      <Group grow gap="md">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           label={`Inflow (${period})`}
           value={formatNaira(analytics?.inflow.totalKobo ?? 0)}
@@ -282,7 +282,7 @@ export function Transactions() {
           color="#9333ea"
           loading={analyticsLoading}
         />
-      </Group>
+      </div>
 
       {/* Ledger filters */}
       <Group gap="sm">

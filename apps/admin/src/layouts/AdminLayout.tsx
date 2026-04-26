@@ -5,7 +5,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 
 export function AdminLayout() {
-  const [opened, { toggle }] = useDisclosure()
+  const [opened, { toggle, close }] = useDisclosure()
 
   return (
     <AppShell
@@ -30,7 +30,7 @@ export function AdminLayout() {
       </AppShell.Header>
 
       <AppShell.Navbar>
-        <Sidebar />
+        <Sidebar onClose={close} />
       </AppShell.Navbar>
 
       <AppShell.Main>

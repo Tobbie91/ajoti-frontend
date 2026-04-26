@@ -228,7 +228,7 @@ export function RoscaGroups() {
       </Box>
 
       {/* Search + Filters */}
-      <Group gap="sm" align="center">
+      <Stack gap="sm">
         <TextInput
           placeholder="Search groups..."
           leftSection={<IconSearch size={15} stroke={1.5} color="#868e96" />}
@@ -240,53 +240,57 @@ export function RoscaGroups() {
             setPage(1)
           }}
           styles={{ input: { border: '1px solid #dee2e6' } }}
-          style={{ flex: 1, maxWidth: 300 }}
         />
-        <Select
-          data={statusOptions}
-          value={statusFilter}
-          onChange={(val) => {
-            setStatusFilter(val || 'All')
-            setPage(1)
-          }}
-          size="sm"
-          radius="md"
-          rightSection={<IconChevronDown size={14} />}
-          styles={{ input: { border: '1px solid #dee2e6', minWidth: 130 } }}
-          allowDeselect={false}
-        />
-        <Select
-          data={bulkOptions}
-          value={bulkAction}
-          onChange={(val) => {
-            setBulkAction(val || '')
-            if (val === 'send-notification') openNotifModal()
-            if (val === 'delete') openDeleteModal()
-          }}
-          size="sm"
-          radius="md"
-          rightSection={<IconChevronDown size={14} />}
-          styles={{ input: { border: '1px solid #dee2e6', minWidth: 150 } }}
-          allowDeselect={false}
-        />
-        {bulkAction && selected.length > 0 && (
-          <Button
+        <Group gap="sm" wrap="wrap">
+          <Select
+            data={statusOptions}
+            value={statusFilter}
+            onChange={(val) => {
+              setStatusFilter(val || 'All')
+              setPage(1)
+            }}
             size="sm"
             radius="md"
-            style={{ background: bulkAction === 'delete' ? '#e74c3c' : PRIMARY }}
-            onClick={() => {
-              if (bulkAction === 'send-notification') openNotifModal()
-              if (bulkAction === 'delete') openDeleteModal()
+            rightSection={<IconChevronDown size={14} />}
+            styles={{ input: { border: '1px solid #dee2e6' } }}
+            style={{ flex: 1, minWidth: 120 }}
+            allowDeselect={false}
+          />
+          <Select
+            data={bulkOptions}
+            value={bulkAction}
+            onChange={(val) => {
+              setBulkAction(val || '')
+              if (val === 'send-notification') openNotifModal()
+              if (val === 'delete') openDeleteModal()
             }}
-          >
-            Apply ({selected.length})
-          </Button>
-        )}
-      </Group>
+            size="sm"
+            radius="md"
+            rightSection={<IconChevronDown size={14} />}
+            styles={{ input: { border: '1px solid #dee2e6' } }}
+            style={{ flex: 1, minWidth: 140 }}
+            allowDeselect={false}
+          />
+          {bulkAction && selected.length > 0 && (
+            <Button
+              size="sm"
+              radius="md"
+              style={{ background: bulkAction === 'delete' ? '#e74c3c' : PRIMARY }}
+              onClick={() => {
+                if (bulkAction === 'send-notification') openNotifModal()
+                if (bulkAction === 'delete') openDeleteModal()
+              }}
+            >
+              Apply ({selected.length})
+            </Button>
+          )}
+        </Group>
+      </Stack>
 
       {/* Table */}
-      <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
-        <Table verticalSpacing="sm" horizontalSpacing="lg">
+      <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 620 }}>
           <Table.Thead>
             <Table.Tr style={{ background: PRIMARY }}>
               <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>
@@ -368,6 +372,7 @@ export function RoscaGroups() {
             ))}
           </Table.Tbody>
         </Table>
+        </div>
 
         {/* Pagination */}
         <Group justify="space-between" align="center" px="lg" py="md" style={{ borderTop: '1px solid #e9ecef' }}>

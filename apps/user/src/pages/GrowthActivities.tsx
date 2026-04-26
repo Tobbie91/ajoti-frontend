@@ -180,18 +180,19 @@ export function GrowthActivities() {
           onChange={(v) => setActiveTab(v || 'Overview')}
           variant="default"
           styles={{
-            list: { display: 'flex' },
+            list: { display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none' },
             tab: {
-              flex: 1,
+              flexShrink: 0,
               textAlign: 'center',
               fontWeight: 500,
-              fontSize: 14,
-              padding: '10px 0',
+              fontSize: 13,
+              padding: '10px 12px',
               color: '#9CA3AF',
+              whiteSpace: 'nowrap',
             },
           }}
         >
-          <Tabs.List grow>
+          <Tabs.List>
             {GROUP_TABS.map((tab) => (
               <Tabs.Tab key={tab} value={tab}>{tab}</Tabs.Tab>
             ))}
@@ -311,7 +312,7 @@ function OverviewTab({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
           { label: 'Total Contributed', value: formatNaira(totalContributedKobo) },
           { label: `${frequency || 'Per Cycle'} Due`, value: formatNaira(contributionAmountKobo) },
@@ -328,7 +329,7 @@ function OverviewTab({
       </div>
 
       {/* Payout Timeline + Cycle Progress */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {/* Donut */}
         <div className="flex flex-col items-center rounded-2xl border border-[#E5E7EB] bg-white p-6">
           <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">Payout Timeline</Text>
@@ -426,14 +427,14 @@ function MembersTab({
         </Text>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-        <table className="w-full">
+      <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white">
+        <table className="w-full min-w-[480px]">
           <thead>
             <tr className="border-b border-[#E5E7EB] bg-[#F9FAFB]">
-              <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Name</th>
-              <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Join Date</th>
-              <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Payout Position</th>
-              <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Trust Score</th>
+              <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Name</th>
+              <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Join Date</th>
+              <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Payout Position</th>
+              <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Trust Score</th>
             </tr>
           </thead>
           <tbody>
@@ -448,30 +449,30 @@ function MembersTab({
                   : '—'
                 return (
                   <tr key={member.userId} className="border-b border-[#F3F4F6] last:border-b-0">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <Avatar size={32} radius="xl" color="teal" variant="filled">
+                    <td className="px-3 py-3.5 sm:px-5">
+                      <div className="flex items-center gap-2">
+                        <Avatar size={28} radius="xl" color="teal" variant="filled">
                           {(member.name || '?').charAt(0).toUpperCase()}
                         </Avatar>
                         <Text fw={600} className="text-[13px] text-[#0F172A]">{member.name}</Text>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5 sm:px-5">
                       <Text fw={500} className="text-[13px] text-[#6B7280]">{joinDate}</Text>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5 sm:px-5">
                       <Text fw={600} className="text-[13px] text-[#0F172A]">
                         {member.position != null ? `#${member.position}` : '—'}
                       </Text>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5 sm:px-5">
                       <div className="flex items-center gap-2">
                         <Progress
                           value={Math.min(100, member.trustScore ?? 50)}
                           size={6}
                           radius="xl"
                           color="#02A36E"
-                          className="w-16"
+                          className="w-12 sm:w-16"
                         />
                         <Text fw={600} className="text-[13px] text-[#0F172A]">{member.trustScore ?? 50}</Text>
                       </div>
@@ -717,7 +718,7 @@ function GrowthTab({
         )}
       </Modal>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {/* Trust Score */}
         <div className="flex flex-col items-center rounded-2xl border border-[#E5E7EB] bg-white p-6">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#D1FAE5]">
@@ -749,7 +750,7 @@ function GrowthTab({
 
       {/* Make Contribution CTA */}
       {canContribute && (
-        <div className="flex items-center justify-between rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4">
+        <div className="flex flex-col gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Text fw={700} className="text-[14px] text-[#15803D]">Cycle {nextCycleNumber} contribution due</Text>
             <Text fw={500} className="text-[12px] text-[#166534]">
@@ -758,7 +759,7 @@ function GrowthTab({
           </div>
           <button
             onClick={openModal}
-            className="flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white sm:w-auto"
           >
             <IconCash size={16} />
             Pay Now
@@ -787,15 +788,15 @@ function GrowthTab({
       {/* Payment History */}
       <div>
         <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">Payment History</Text>
-        <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
-          <table className="w-full">
+        <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white">
+          <table className="w-full min-w-[480px]">
             <thead>
               <tr className="border-b border-[#E5E7EB] bg-[#F9FAFB]">
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Cycle</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Date Paid</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Amount</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Penalty</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-[#6B7280]">Status</th>
+                <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Cycle</th>
+                <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Date Paid</th>
+                <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Amount</th>
+                <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Penalty</th>
+                <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -813,21 +814,21 @@ function GrowthTab({
                     : '—'
                   return (
                     <tr key={c.id} className="border-b border-[#F3F4F6] last:border-b-0">
-                      <td className="px-5 py-3.5">
+                      <td className="px-3 py-3.5 sm:px-5">
                         <Text fw={600} className="text-[13px] text-[#0F172A]">Cycle {c.cycleNumber}</Text>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-3 py-3.5 sm:px-5">
                         <Text fw={500} className="text-[13px] text-[#6B7280]">{date}</Text>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-3 py-3.5 sm:px-5">
                         <Text fw={600} className="text-[13px] text-[#0F172A]">{formatNaira(c.amount)}</Text>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-3 py-3.5 sm:px-5">
                         <Text fw={500} className={`text-[13px] ${penalty > 0 ? 'text-[#EF4444]' : 'text-[#6B7280]'}`}>
                           {penalty > 0 ? formatNaira(c.penaltyAmount) : '—'}
                         </Text>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-3 py-3.5 sm:px-5">
                         <Badge
                           size="sm"
                           radius="xl"
