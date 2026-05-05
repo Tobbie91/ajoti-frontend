@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom'
 import { NavLink, Stack, Box, Divider } from '@mantine/core'
 import {
@@ -10,7 +10,9 @@ import {
   IconUserCheck,
   IconCirclePlus,
   IconUsers,
+  IconMessageCircle,
 } from '@tabler/icons-react'
+import { getNotifications } from '@/utils/api'
 
 const roscaChildren = [
   { label: 'Groups', path: '/rosca/groups', icon: IconUsers },
@@ -27,6 +29,20 @@ export function Sidebar({ onClose }: SidebarProps) {
   const roscaPaths = ['/rosca', '/create-group', '/manage-join-request']
   const isRoscaSection = roscaPaths.some((p) => location.pathname.startsWith(p))
   const [roscaOpened, setRoscaOpened] = useState(isRoscaSection)
+  const [msgUnread, setMsgUnread] = useState(0)
+
+  useEffect(() => {
+    // Count only "Message from" notifications as unread messages
+    getNotifications()
+      .then((all) => setMsgUnread(all.filter((n) => !n.read && n.title?.startsWith('Message from')).length))
+      .catch(() => {})
+    const interval = setInterval(() => {
+      getNotifications()
+        .then((all) => setMsgUnread(all.filter((n) => !n.read && n.title?.startsWith('Message from')).length))
+        .catch(() => {})
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
@@ -101,6 +117,25 @@ export function Sidebar({ onClose }: SidebarProps) {
               fontWeight: isActive('/loans') ? 600 : 400,
             },
           }}
+        />
+
+        <NavLink
+          component={RouterNavLink}
+          to="/messages"
+          label={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              Messages
+              {msgUnread > 0 && (
+                <span style={{ background: '#02A36E', color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 700, padding: '1px 6px' }}>
+                  {msgUnread}
+                </span>
+              )}
+            </div>
+          }
+          leftSection={<IconMessageCircle size={19} stroke={1.5} />}
+          active={isActive('/messages')}
+          onClick={onClose}
+          styles={{ root: { borderRadius: 8, fontWeight: isActive('/messages') ? 600 : 400 } }}
         />
 
         <Divider my="xs" />

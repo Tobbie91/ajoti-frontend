@@ -22,6 +22,7 @@ import {
   MyProfile,
   FundWalletCallback,
   SetPin,
+  Messages,
 } from '@/pages'
 
 function KycPageGuard({ children }: { children: React.ReactNode }) {
@@ -55,6 +56,7 @@ function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/my-profile" element={<MyProfile />} />
           <Route path="/set-pin" element={<SetPin />} />
+          <Route path="/messages" element={<Messages />} />
         </Route>
 
         {/* Flutterwave callback — no layout */}
