@@ -895,8 +895,16 @@ export interface AppNotification {
 }
 
 export async function getNotifications(): Promise<AppNotification[]> {
-  const res = await authRequest<{ data?: AppNotification[] } | AppNotification[]>('/api/notifications', { method: 'GET' })
-  return Array.isArray(res) ? res : (res as { data?: AppNotification[] }).data ?? []
+  const res = await authRequest<{ data?: unknown[] } | unknown[]>('/api/notifications', { method: 'GET' })
+  const raw: unknown[] = Array.isArray(res) ? res : ((res as { data?: unknown[] }).data ?? [])
+  return raw.map((n: unknown) => {
+    const r = n as Record<string, unknown>
+    return {
+      ...r,
+      message: (r.message ?? r.body ?? '') as string,
+      read: (r.read ?? r.isRead ?? false) as boolean,
+    } as AppNotification
+  })
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
@@ -1030,4 +1038,39 @@ export async function getFinancialHealth(circleId: string): Promise<FinancialHea
   return ('data' in (res as object) && (res as Record<string, unknown>).data
     ? (res as Record<string, unknown>).data
     : res) as FinancialHealth
+}
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  id: string
+  circleId: string
+  senderId: string
+  senderName: string
+  senderInitials: string
+  body: string
+  createdAt: string
+}
+
+export interface ChatCircle {
+  id: string
+  name: string
+  lastMessage: ChatMessage | null
+}
+
+export function getChatBaseUrl(): string {
+  return BASE_URL
+}
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem('admin_access_token')
+}
+
+export async function getChatCircles(): Promise<ChatCircle[]> {
+  return authRequest('/api/chat/circles', { method: 'GET' })
+}
+
+export async function getChatMessages(circleId: string, before?: string): Promise<ChatMessage[]> {
+  const qs = before ? `?before=${encodeURIComponent(before)}` : ''
+  return authRequest(`/api/chat/circles/${circleId}/messages${qs}`, { method: 'GET' })
 }

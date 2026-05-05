@@ -158,7 +158,8 @@ function GroupNotificationsTab({ circleId, members }: { circleId: string; member
     setSendingAll(true)
     setNotifError(null)
     try {
-      const res = await notifyMissingContributors(circleId, { message: notifMessage.trim() })
+      const allMemberIds = activeMembers.map((m) => m.userId)
+      const res = await notifyMissingContributors(circleId, { memberIds: allMemberIds, message: notifMessage.trim() })
       const count = res.notified ?? activeMembers.length
       setNotifSuccess(`Reminder sent to ${count} member${count !== 1 ? 's' : ''}`)
       setNotifMessage('')

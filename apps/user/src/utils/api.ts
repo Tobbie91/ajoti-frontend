@@ -984,3 +984,38 @@ export async function getCirclePeerReviews(circleId: string): Promise<PeerReview
 export function requestAdminAccess(): Promise<{ message: string }> {
   return authRequest('/api/users/me/request-admin', { method: 'POST' })
 }
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  id: string
+  circleId: string
+  senderId: string
+  senderName: string
+  senderInitials: string
+  body: string
+  createdAt: string
+}
+
+export interface ChatCircle {
+  id: string
+  name: string
+  lastMessage: ChatMessage | null
+}
+
+export function getChatBaseUrl(): string {
+  return BASE_URL
+}
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem('access_token')
+}
+
+export async function getChatCircles(): Promise<ChatCircle[]> {
+  return authRequest('/api/chat/circles', { method: 'GET' })
+}
+
+export async function getChatMessages(circleId: string, before?: string): Promise<ChatMessage[]> {
+  const qs = before ? `?before=${encodeURIComponent(before)}` : ''
+  return authRequest(`/api/chat/circles/${circleId}/messages${qs}`, { method: 'GET' })
+}
