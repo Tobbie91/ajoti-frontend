@@ -23,7 +23,7 @@ export function Messages() {
 
   useEffect(() => {
     getNotifications()
-      .then(setNotifications)
+      .then((all) => setNotifications(all.filter((n) => n.title?.startsWith('Reminder from'))))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -57,7 +57,7 @@ export function Messages() {
               </span>
             )}
           </div>
-          <Text fz={13} c="dimmed">Notifications and messages from your circles</Text>
+          <Text fz={13} c="dimmed">Messages from your circle admins</Text>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export function Messages() {
         <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E5E7EB] bg-white py-20">
           <IconInbox size={40} color="#D1D5DB" />
           <Text fw={600} fz={15} style={{ color: '#374151', marginTop: 12 }}>No messages yet</Text>
-          <Text fz={13} c="dimmed" mt={4}>Circle updates and admin messages will appear here.</Text>
+          <Text fz={13} c="dimmed" mt={4}>Messages from your circle admins will appear here.</Text>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
