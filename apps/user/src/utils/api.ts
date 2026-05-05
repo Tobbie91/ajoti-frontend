@@ -888,6 +888,13 @@ export async function joinByInvite(token: string): Promise<{ message: string }> 
   })
 }
 
+export async function messageAdmin(circleId: string, message: string): Promise<{ message: string }> {
+  return authRequest(`/api/rosca/${circleId}/message-admin`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  })
+}
+
 export async function getNotifications(): Promise<AppNotification[]> {
   const res = await authRequest<{ data?: unknown[] } | unknown[]>('/api/notifications', { method: 'GET' })
   const raw: unknown[] = Array.isArray(res) ? res : ((res as { data?: unknown[] }).data ?? [])

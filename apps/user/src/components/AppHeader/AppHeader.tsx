@@ -104,9 +104,11 @@ function NotificationPanel() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    getUnreadNotificationCount()
-      .then(setUnreadCount)
-      .catch(() => {})
+    getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
+    const interval = setInterval(() => {
+      getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
+    }, 30_000)
+    return () => clearInterval(interval)
   }, [])
 
   function handleOpen(isOpen: boolean) {

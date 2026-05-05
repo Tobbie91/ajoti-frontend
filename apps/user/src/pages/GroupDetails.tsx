@@ -16,6 +16,7 @@ import {
   getCircleMembers,
   submitPeerReview,
   getCirclePeerReviews,
+  messageAdmin,
   type RoscaCircle,
   type RoscaSchedule,
   type CircleMember,
@@ -688,9 +689,15 @@ export function GroupDetails() {
                   </button>
                   <button
                     disabled={!message.trim()}
-                    onClick={() => {
+                    onClick={async () => {
+                      if (!id || !message.trim()) return
                       setMessageStep('sending')
-                      setTimeout(() => setMessageStep('sent'), 2000)
+                      try {
+                        await messageAdmin(id, message.trim())
+                        setMessageStep('sent')
+                      } catch {
+                        setMessageStep('compose')
+                      }
                     }}
                     className={`flex-1 cursor-pointer rounded-lg py-3 text-[13px] font-semibold text-white ${
                       message.trim() ? 'bg-[#02A36E]' : 'cursor-not-allowed bg-[#9CA3AF]'
