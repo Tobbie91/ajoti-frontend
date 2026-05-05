@@ -18,6 +18,7 @@ import {
   makeContribution,
   getWalletBalance,
   submitPeerReview,
+  getTrustScore,
   type RoscaCircle,
   type RoscaSchedule,
   type CircleContribution,
@@ -88,6 +89,7 @@ export function GrowthActivities() {
   const [circle, setCircle] = useState<RoscaCircle | null>(null)
   const [schedules, setSchedules] = useState<RoscaSchedule[]>([])
   const [contributions, setContributions] = useState<CircleContribution[]>([])
+  const [userTrustScore, setUserTrustScore] = useState(0)
 
   const currentUserId = (() => {
     try {
@@ -103,11 +105,13 @@ export function GrowthActivities() {
       getRoscaCircle(id),
       getRoscaSchedules(id).catch(() => [] as RoscaSchedule[]),
       getCircleContributions(id).catch(() => [] as CircleContribution[]),
+      getTrustScore().catch(() => ({ trustScore: 0 } as { trustScore: number })),
     ])
-      .then(([c, s, contrib]) => {
+      .then(([c, s, contrib, ts]) => {
         setCircle(c)
         setSchedules(s)
         setContributions(contrib)
+        setUserTrustScore((ts as { trustScore: number }).trustScore ?? 0)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -141,8 +145,6 @@ export function GrowthActivities() {
   const totalCycles = cycles.length || circle.durationCycles || 1
   const progressPercent = totalCycles > 0 ? (completedCycles / totalCycles) * 100 : 0
 
-  const userMember = members.find((m) => m.userId === currentUserId)
-  const userTrustScore = userMember?.trustScore ?? 50
   const trustPercent = Math.min(100, userTrustScore)
 
   // Next pending payout

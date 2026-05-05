@@ -4,7 +4,6 @@ import {
   IconArrowLeft,
   IconUsers,
   IconLock,
-  IconMessageCircle,
   IconCircleCheck,
   IconX,
   IconStar,
@@ -16,7 +15,6 @@ import {
   getCircleMembers,
   submitPeerReview,
   getCirclePeerReviews,
-  messageAdmin,
   type RoscaCircle,
   type RoscaSchedule,
   type CircleMember,
@@ -54,10 +52,6 @@ export function GroupDetails() {
   const [group, setGroup] = useState<GroupData | null>(null)
   const [schedule, setSchedule] = useState<ScheduleRow[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [messageOpen, setMessageOpen] = useState(false)
-  const [message, setMessage] = useState('')
-  const [messageStep, setMessageStep] = useState<'compose' | 'sending' | 'sent'>('compose')
 
   // Peer review state
   const [members, setMembers] = useState<CircleMember[]>([])
@@ -378,18 +372,6 @@ export function GroupDetails() {
               >
                 View Activities
               </button>
-            ) : isInviteOnly ? (
-              <button
-                onClick={() => {
-                  setMessageOpen(true)
-                  setMessage('')
-                  setMessageStep('compose')
-                }}
-                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
-              >
-                <IconMessageCircle size={18} />
-                Message Admin
-              </button>
             ) : (
               <button
                 onClick={() => navigate(`/rosca/${id}/join`)}
@@ -640,113 +622,7 @@ export function GroupDetails() {
         </div>
       )}
 
-      {/* Message Admin Modal */}
-      {messageOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="mx-4 w-full max-w-[420px] rounded-2xl bg-white p-8">
-            {messageStep === 'compose' && (
-              <>
-                <div className="flex items-center justify-between">
-                  <Text fw={700} className="text-[18px] text-[#0F172A]">
-                    Message Admin
-                  </Text>
-                  <button
-                    onClick={() => setMessageOpen(false)}
-                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full hover:bg-[#F3F4F6]"
-                  >
-                    <IconX size={18} color="#6B7280" />
-                  </button>
-                </div>
-
-                <div className="mt-3 flex items-center gap-3">
-                  <Avatar size={40} radius="xl" color="dark" variant="filled">
-                    {group.admin.charAt(0)}
-                  </Avatar>
-                  <div>
-                    <Text fw={600} className="text-[14px] text-[#0F172A]">{group.admin}</Text>
-                    <Text fw={400} className="text-[12px] text-[#6B7280]">Admin of {group.name}</Text>
-                  </div>
-                </div>
-
-                <Textarea
-                  placeholder="Hi, I'd like to request an invite to join this group..."
-                  value={message}
-                  onChange={(e) => setMessage(e.currentTarget.value)}
-                  minRows={5}
-                  radius="md"
-                  className="mt-5"
-                  styles={{
-                    input: { borderColor: '#E5E7EB', fontSize: 13 },
-                  }}
-                />
-
-                <div className="mt-5 flex gap-3">
-                  <button
-                    onClick={() => setMessageOpen(false)}
-                    className="flex-1 cursor-pointer rounded-lg border border-[#E5E7EB] py-3 text-[13px] font-semibold text-[#374151]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    disabled={!message.trim()}
-                    onClick={async () => {
-                      if (!id || !message.trim()) return
-                      setMessageStep('sending')
-                      try {
-                        await messageAdmin(id, message.trim())
-                        setMessageStep('sent')
-                      } catch {
-                        setMessageStep('compose')
-                      }
-                    }}
-                    className={`flex-1 cursor-pointer rounded-lg py-3 text-[13px] font-semibold text-white ${
-                      message.trim() ? 'bg-[#02A36E]' : 'cursor-not-allowed bg-[#9CA3AF]'
-                    }`}
-                  >
-                    Send
-                  </button>
-                </div>
-              </>
-            )}
-
-            {messageStep === 'sending' && (
-              <div className="flex flex-col items-center py-8">
-                <Loader color="#02A36E" size="lg" />
-                <Text fw={700} className="mt-5 text-[18px] text-[#0F172A]">
-                  Sending your message
-                </Text>
-                <Text fw={500} className="mt-1 text-[13px] text-[#6B7280]">
-                  Please wait...
-                </Text>
-              </div>
-            )}
-
-            {messageStep === 'sent' && (
-              <div className="flex flex-col items-center py-8">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
-                  <IconCircleCheck size={36} color="#02A36E" />
-                </div>
-                <Text fw={700} className="mt-5 text-[18px] text-[#0F172A]">
-                  Message sent
-                </Text>
-                <Text fw={500} className="mt-1 text-center text-[13px] text-[#6B7280]">
-                  Your request has been sent to {group.admin}. You'll be notified when they respond.
-                </Text>
-                <button
-                  onClick={() => {
-                    setMessageOpen(false)
-                    setMessage('')
-                    setMessageStep('compose')
-                  }}
-                  className="mt-6 cursor-pointer rounded-lg bg-[#02A36E] px-8 py-3 text-[13px] font-semibold text-white"
-                >
-                  Done
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Message Admin Modal — disabled */}
     </div>
   )
 }

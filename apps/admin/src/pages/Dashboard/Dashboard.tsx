@@ -6,15 +6,16 @@ import { StatsCard } from '@/components/StatsCard'
 import { TrustScoreCard, CreditScoreCard } from '@/components/ScoreCards'
 import { GroupTable } from '@/components/GroupTable'
 import { QuickActions } from '@/components/QuickActions'
-import { getTrustScore, getAdminWalletBalance, getWalletBalance, getCreditScore, getAdminDashboard, type AdminDashboard } from '@/utils/api'
+import { getTrustScore, getAdminWalletBalance, getWalletBalance, getCreditScore, getAdminDashboard, getUserProfile, type AdminDashboard, type TrustScore } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
 export function Dashboard() {
-  const [trustScore, setTrustScore] = useState<number | null>(null)
+  const [trustScoreData, setTrustScoreData] = useState<TrustScore | null>(null)
   const [creditScore, setCreditScore] = useState<number | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
   const [dashStats, setDashStats] = useState<AdminDashboard | null>(null)
+  const [adminName, setAdminName] = useState('')
 
   const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
   const userId = storedUser.id ?? storedUser._id ?? ''
@@ -24,9 +25,13 @@ export function Dashboard() {
       .then(setDashStats)
       .catch(() => {})
 
+    getUserProfile()
+      .then((p) => setAdminName(`${p.firstName} ${p.lastName}`.trim()))
+      .catch(() => {})
+
     getTrustScore()
-      .then((res) => setTrustScore(res.trustScore ?? res.displayScore ?? 0))
-      .catch(() => setTrustScore(0))
+      .then((res) => setTrustScoreData(res))
+      .catch(() => setTrustScoreData({ trustScore: 0 }))
 
     getCreditScore()
       .then((res) => { const r = res as Record<string, number>; setCreditScore(r.trustDisplayScore ?? r.finalScore ?? r.externalScore ?? r.compositeScore ?? r.score ?? 0) })
@@ -51,7 +56,7 @@ export function Dashboard() {
       {/* Page heading */}
       <Box>
         <Text fz={22} fw={700} mb={2}>
-          Hi, Admin
+          Hi, {adminName || 'Admin'}
         </Text>
         <Text fz="sm" c="dimmed">
           Here's today's ROSCA snapshot
@@ -122,7 +127,7 @@ export function Dashboard() {
 
       {/* Trust Score & Credit Score */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-        <TrustScoreCard score={trustScore} />
+        <TrustScoreCard score={trustScoreData?.trustScore ?? null} breakdown={trustScoreData?.atiBreakdown} />
         <CreditScoreCard score={creditScore} />
       </SimpleGrid>
 

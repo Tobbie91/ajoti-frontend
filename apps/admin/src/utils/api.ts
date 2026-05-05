@@ -787,9 +787,25 @@ export function getPinStatus(): Promise<{ hasPin: boolean }> {
 
 // ── Trust Score ───────────────────────────────────────────────────────────────
 
+export interface ATIBreakdown {
+  recentBehavior: number
+  historyBehavior: number
+  payoutReliability: number
+  peerScore: number
+  historyLength: number
+  weights: {
+    recentBehavior: number
+    historyBehavior: number
+    payoutReliability: number
+    peerScore: number
+    historyLength: number
+  }
+}
+
 export interface TrustScore {
   trustScore: number
   displayScore?: number
+  atiBreakdown?: ATIBreakdown | null
   [key: string]: unknown
 }
 

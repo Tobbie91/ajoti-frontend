@@ -8,6 +8,7 @@ import {
   getUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
+  getUserProfile,
   type AppNotification,
 } from '@/utils/api'
 
@@ -148,8 +149,19 @@ function NotificationPanel() {
 export function Header({ opened, onToggle }: HeaderProps) {
   const navigate = useNavigate()
   const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
-  const firstName = storedUser.firstName ?? 'Admin'
-  const initials = firstName.charAt(0).toUpperCase()
+  const [fullName, setFullName] = useState(
+    [storedUser.firstName, storedUser.lastName].filter(Boolean).join(' ') || 'Admin'
+  )
+  const initials = fullName.charAt(0).toUpperCase()
+
+  useEffect(() => {
+    getUserProfile()
+      .then((p) => {
+        const name = `${p.firstName} ${p.lastName}`.trim()
+        if (name) setFullName(name)
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <Group h="100%" px="md" justify="space-between">
@@ -167,7 +179,7 @@ export function Header({ opened, onToggle }: HeaderProps) {
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
         >
           <Box style={{ textAlign: 'right' }}>
-            <Text fz="sm" fw={600} lh={1.2}>{firstName}</Text>
+            <Text fz="sm" fw={600} lh={1.2}>{fullName}</Text>
             <Text fz="xs" c="dimmed" lh={1.2}>Admin</Text>
           </Box>
           <Avatar

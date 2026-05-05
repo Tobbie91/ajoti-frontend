@@ -931,7 +931,7 @@ export interface CircleMember {
   name: string
   firstName?: string
   lastName?: string
-  position?: number
+  position?: number 
   status?: string
   joinedAt?: string
   trustScore?: number
