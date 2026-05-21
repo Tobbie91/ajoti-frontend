@@ -239,9 +239,9 @@ export interface KycStatus {
   ninVerified: boolean
   bvnVerified: boolean
   nokSubmitted: boolean
-  status: string  // e.g. "NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED"
-  step?: string   // e.g. "NIN_REQUIRED", "BVN_REQUIRED", "NOK_REQUIRED", "SUBMITTED", "PHOTO_REQUIRED", "PROOF_OF_ADDRESS_REQUIRED"
-  kycLevel: number  // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
+  status: string  // "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED"
+  step?: string   // "PROVE_REQUIRED" | "PROVE_PENDING" | "NOK_REQUIRED" | "SUBMITTED" | "PHOTO_REQUIRED" | "PROOF_OF_ADDRESS_REQUIRED"
+  kycLevel: number  // 0 = none, 1 = Prove+NOK, 2 = +GovID, 3 = +ProofOfAddress
   rejectionReason?: string | null
 }
 
@@ -253,29 +253,21 @@ export function resubmitKyc(): Promise<KycStatus> {
   return authRequest('/api/kyc/resubmit', { method: 'POST' })
 }
 
-export interface VerifyNinPayload {
+export interface ProveInitiatePayload {
   nin: string
-  firstName: string
-  lastName: string
-  dob: string  // "YYYY-MM-DD"
-}
-
-export function verifyNin(payload: VerifyNinPayload): Promise<{ message: string }> {
-  return authRequest('/api/kyc/verify-nin', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export interface VerifyBvnPayload {
   bvn: string
   firstName: string
   lastName: string
   dob: string  // "YYYY-MM-DD"
 }
 
-export function verifyBvn(payload: VerifyBvnPayload): Promise<{ message: string }> {
-  return authRequest('/api/kyc/verify-bvn', {
+export interface ProveInitiateResult {
+  monoUrl: string | null   // null = test bypass (auto-verified, skip widget)
+  reference: string
+}
+
+export function proveInitiate(payload: ProveInitiatePayload): Promise<ProveInitiateResult> {
+  return authRequest('/api/kyc/prove/initiate', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

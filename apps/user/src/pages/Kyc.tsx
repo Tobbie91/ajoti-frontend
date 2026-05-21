@@ -11,7 +11,6 @@ import {
   IconHome,
   IconFileText,
   IconId,
-  IconBuildingBank,
   IconShieldCheck,
   IconCamera,
   IconAlertCircle,
@@ -21,8 +20,7 @@ import {
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import {
-  verifyNin as verifyNinApi,
-  verifyBvn as verifyBvnApi,
+  proveInitiate,
   submitNok,
   getKycStatus,
   resubmitKyc,
@@ -33,12 +31,13 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type OnboardingStep = 1 | 2 | 3   // NIN → BVN → NOK
+type OnboardingStep = 1 | 2   // Prove (NIN+BVN) → NOK
 
 // Which top-level view to render
 type PageView =
   | 'loading'
-  | 'onboarding'       // Level 0: 3-step NIN/BVN/NOK flow
+  | 'onboarding'       // Level 0: Prove widget → NOK flow
+  | 'prove-pending'    // Mono widget opened, waiting for webhook
   | 'onboarding-done'  // Just completed Level 1 (auto-approved)
   | 'upgrade-l2'       // Level 1 approved, ready to upgrade
   | 'pending-l2'       // Level 2 docs submitted, under review
@@ -53,8 +52,7 @@ function resolveView(kyc: KycStatus | null): PageView {
   const { kycLevel, status, step } = kyc
 
   if (kycLevel === 0) {
-    if (status === 'REJECTED') return 'onboarding'  // resubmit resets to step 3 internally
-    if (status === 'NOT_SUBMITTED' || !status) return 'onboarding'
+    if (step === 'PROVE_PENDING') return 'prove-pending'
     return 'onboarding'
   }
 
@@ -543,41 +541,89 @@ function UpgradeSection({
   )
 }
 
-// ── Onboarding flow (Level 0 → 1) ─────────────────────────────────────────────
+// ── Prove pending screen ─────────────────────────────────────────────────────
+// Shown after user opens Mono widget. Polls every 4s until step changes.
 
-const ONBOARDING_LABELS = ['NIN', 'BVN', 'Next of Kin']
+function ProvePendingScreen({ onVerified }: { onVerified: () => void }) {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const id = setInterval(async () => {
+      try {
+        const kyc = await getKycStatus()
+        if (kyc.step === 'NOK_REQUIRED' || (kyc.ninVerified && kyc.bvnVerified)) {
+          clearInterval(id)
+          onVerified()
+        }
+      } catch { /* ignore */ }
+    }, 4_000)
+    return () => clearInterval(id)
+  }, [onVerified])
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
+      <div className="w-full max-w-[480px]">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
+        >
+          <IconArrowLeft size={18} />
+          Back
+        </button>
+      </div>
+      <div className="w-full max-w-[480px] rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#EFF6FF]">
+          <IconClock size={32} color="#3B82F6" />
+        </div>
+        <Text fw={700} className="mb-2 text-[20px] text-[#0F172A]">Verification in Progress</Text>
+        <Text fw={400} className="mb-6 text-[14px] leading-[1.6] text-[#6B7280]">
+          Complete the identity check in the Mono window you just opened. This page will
+          update automatically once your verification is confirmed.
+        </Text>
+        <Loader color="#02A36E" size="sm" className="mx-auto" />
+        <Text fw={400} className="mt-4 text-[12px] text-[#9CA3AF]">
+          Closed the window by mistake?{' '}
+          <button
+            onClick={() => navigate(0)}
+            className="cursor-pointer text-[#02A36E] underline"
+          >
+            Refresh to restart
+          </button>
+        </Text>
+      </div>
+    </div>
+  )
+}
+
+// ── Onboarding flow (Level 0 → 1) ─────────────────────────────────────────────
+// Step 1: Enter NIN + BVN → Mono Prove widget
+// Step 2: Next of Kin (reached after Prove webhook fires)
+
+const ONBOARDING_LABELS = ['Identity', 'Next of Kin']
 
 function OnboardingFlow({
   rejectionReason,
   onComplete,
-  initialNinVerified = false,
-  initialBvnVerified = false,
+  onProvePending,
+  identityVerified = false,
 }: {
   rejectionReason?: string | null
   onComplete: () => void
-  initialNinVerified?: boolean
-  initialBvnVerified?: boolean
+  onProvePending: () => void
+  identityVerified?: boolean
 }) {
   const navigate = useNavigate()
-  const [step, setStep] = useState<OnboardingStep>(
-    initialNinVerified && initialBvnVerified ? 3 : initialNinVerified ? 2 : 1
-  )
+  const [step, setStep] = useState<OnboardingStep>(identityVerified ? 2 : 1)
 
-  // NIN
+  // Step 1 — Prove fields
   const [nin, setNin] = useState('')
-  const [ninVerified, setNinVerified] = useState(initialNinVerified)
-  const [ninVerifying, setNinVerifying] = useState(false)
-
-  // BVN
   const [bvn, setBvn] = useState('')
-  const [bvnVerified, setBvnVerified] = useState(initialBvnVerified)
-  const [bvnVerifying, setBvnVerifying] = useState(false)
+  const [initiating, setInitiating] = useState(false)
 
-  // NOK
+  // Step 2 — NOK fields
   const [kinFullName, setKinFullName] = useState('')
   const [kinRelationship, setKinRelationship] = useState('')
   const [kinPhone, setKinPhone] = useState('')
-  const [kinEmail, setKinEmail] = useState('')
 
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -585,74 +631,56 @@ function OnboardingFlow({
   const storedUser = localStorage.getItem('user')
   const userProfile = storedUser ? JSON.parse(storedUser) : null
 
-  const progressValue = (step / 3) * 100
+  const progressValue = (step / 2) * 100
 
   function canProceed() {
-    if (step === 1) return ninVerified
-    if (step === 2) return bvnVerified
-    if (step === 3) return kinFullName.trim() && kinPhone.trim() && kinRelationship.trim()
-    return false
+    if (step === 1) return nin.length === 11 && bvn.length === 11
+    return kinFullName.trim() !== '' && kinPhone.trim() !== '' && kinRelationship.trim() !== ''
   }
 
-  async function handleVerifyNin() {
-    if (nin.trim().length !== 11) return
+  async function handleProveInitiate() {
     setError(null)
-    setNinVerifying(true)
+    setInitiating(true)
     try {
       const p = userProfile ?? {}
-      await verifyNinApi({
+      const result = await proveInitiate({
         nin: nin.trim(),
-        firstName: p.firstName || p.firstname || '',
-        lastName: p.lastName || p.lastname || '',
-        dob: p.dob || (p.DOB ? p.DOB.split('T')[0] : ''),
-      })
-      setNinVerified(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'NIN verification failed')
-    } finally {
-      setNinVerifying(false)
-    }
-  }
-
-  async function handleVerifyBvn() {
-    if (bvn.trim().length !== 11) return
-    setError(null)
-    setBvnVerifying(true)
-    try {
-      const p = userProfile ?? {}
-      await verifyBvnApi({
         bvn: bvn.trim(),
         firstName: p.firstName || p.firstname || '',
         lastName: p.lastName || p.lastname || '',
         dob: p.dob || (p.DOB ? p.DOB.split('T')[0] : ''),
       })
-      setBvnVerified(true)
+
+      if (result.monoUrl) {
+        // Open Mono widget in a new tab, then show the waiting screen
+        window.open(result.monoUrl, '_blank', 'noopener,noreferrer')
+        onProvePending()
+      } else {
+        // Test bypass — already verified, go straight to NOK
+        setStep(2)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'BVN verification failed')
+      setError(err instanceof Error ? err.message : 'Failed to start verification. Please try again.')
     } finally {
-      setBvnVerifying(false)
+      setInitiating(false)
     }
   }
 
-  async function handleNext() {
+  async function handleSubmitNok() {
     setError(null)
-    if (step === 3) {
-      setSubmitting(true)
-      try {
-        await submitNok({
-          nextOfKinName: kinFullName.trim(),
-          nextOfKinRelationship: kinRelationship.trim(),
-          nextOfKinPhone: kinPhone.trim(),
-        })
-        onComplete()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to submit next of kin')
-      } finally {
-        setSubmitting(false)
-      }
-      return
+    setSubmitting(true)
+    try {
+      await submitNok({
+        nextOfKinName: kinFullName.trim(),
+        nextOfKinRelationship: kinRelationship.trim(),
+        nextOfKinPhone: kinPhone.trim(),
+      })
+      onComplete()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
-    setStep((step + 1) as OnboardingStep)
   }
 
   return (
@@ -669,7 +697,7 @@ function OnboardingFlow({
           <div className="flex-1 text-center">
             <Text fw={700} className="text-[18px] text-[#0F172A]">Identity Verification</Text>
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              Step {step} of 3 — {ONBOARDING_LABELS[step - 1]}
+              Step {step} of 2 — {ONBOARDING_LABELS[step - 1]}
             </Text>
           </div>
           <div className="w-[34px]" />
@@ -681,14 +709,14 @@ function OnboardingFlow({
 
       <div className="mx-auto max-w-[600px] px-6 py-8">
         {/* Rejection banner */}
-        {rejectionReason && step === 3 && (
+        {rejectionReason && (
           <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" mb="lg" title="Previous submission was rejected">
             {rejectionReason}
           </Alert>
         )}
 
         {/* Step indicators */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-center gap-12">
           {ONBOARDING_LABELS.map((label, i) => {
             const n = i + 1
             const isActive = n === step
@@ -718,127 +746,84 @@ function OnboardingFlow({
           </Alert>
         )}
 
-        {/* Step 1: NIN */}
+        {/* Step 1: Prove (NIN + BVN) */}
         {step === 1 && (
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-            <div className="mb-6 flex items-center gap-3">
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-5">
+            <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EFF6FF]">
-                <IconId size={20} color="#3B82F6" />
+                <IconShieldCheck size={20} color="#3B82F6" />
               </div>
               <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">NIN Verification</Text>
-                <Text fw={400} className="text-[13px] text-[#6B7280]">Enter your 11-digit National Identification Number</Text>
+                <Text fw={700} className="text-[16px] text-[#0F172A]">Verify Your Identity</Text>
+                <Text fw={400} className="text-[13px] text-[#6B7280]">Enter your NIN and BVN to begin</Text>
               </div>
             </div>
-            <div className="flex flex-col gap-4">
-              <TextInput
-                label="National Identification Number (NIN)"
-                placeholder="Enter your 11-digit NIN"
-                radius="md"
-                value={nin}
-                onChange={(e) => { setNin(e.currentTarget.value.replace(/\D/g, '').slice(0, 11)); setNinVerified(false) }}
-                styles={inputStyles}
-                maxLength={11}
-                required
-              />
-              {ninVerified ? (
-                <div className="flex items-center gap-3 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#02A36E]">
-                    <IconShieldCheck size={20} color="white" />
-                  </div>
-                  <div>
-                    <Text fw={600} className="text-[14px] text-[#065F46]">NIN Verified Successfully</Text>
-                    <Text fw={400} className="text-[12px] text-[#6B7280]">Your identity has been confirmed</Text>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={handleVerifyNin}
-                  disabled={nin.length !== 11 || ninVerifying}
-                  className={`w-full rounded-xl px-6 py-3 text-[14px] font-semibold text-white ${
-                    nin.length === 11 && !ninVerifying
-                      ? 'cursor-pointer bg-[#3B82F6] hover:bg-[#2563EB]'
-                      : 'cursor-not-allowed bg-[#9CA3AF]'
-                  }`}
-                >
-                  {ninVerifying ? 'Verifying...' : 'Verify NIN'}
-                </button>
-              )}
-            </div>
-            <div className="mt-6 rounded-xl bg-[#F9FAFB] p-4">
-              <Text fw={500} className="mb-1 text-[12px] text-[#374151]">Where to find your NIN?</Text>
-              <Text fw={400} className="text-[12px] leading-[1.6] text-[#6B7280]">
-                Your NIN is on your National ID card, or dial *346# on your registered phone number.
+
+            {/* Info banner */}
+            <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
+              <Text fw={400} className="text-[13px] leading-[1.6] text-[#1E40AF]">
+                After submitting, a secure Mono identity verification window will open. Complete the
+                short liveness check there — it takes under a minute.
               </Text>
             </div>
+
+            <TextInput
+              label="National Identification Number (NIN)"
+              placeholder="11-digit NIN"
+              radius="md"
+              value={nin}
+              onChange={(e) => setNin(e.currentTarget.value.replace(/\D/g, '').slice(0, 11))}
+              styles={inputStyles}
+              maxLength={11}
+              required
+              rightSection={nin.length === 11 ? <IconCheck size={16} color="#02A36E" /> : null}
+            />
+
+            <TextInput
+              label="Bank Verification Number (BVN)"
+              placeholder="11-digit BVN"
+              radius="md"
+              value={bvn}
+              onChange={(e) => setBvn(e.currentTarget.value.replace(/\D/g, '').slice(0, 11))}
+              styles={inputStyles}
+              maxLength={11}
+              required
+              rightSection={bvn.length === 11 ? <IconCheck size={16} color="#02A36E" /> : null}
+            />
+
+            <div className="rounded-xl bg-[#F9FAFB] p-4 flex flex-col gap-1">
+              <Text fw={500} className="text-[12px] text-[#374151]">Where to find these?</Text>
+              <Text fw={400} className="text-[12px] leading-[1.6] text-[#6B7280]">
+                <strong>NIN:</strong> on your National ID card or dial *346#
+              </Text>
+              <Text fw={400} className="text-[12px] leading-[1.6] text-[#6B7280]">
+                <strong>BVN:</strong> dial *565*0# or check your bank app
+              </Text>
+            </div>
+
+            <button
+              onClick={handleProveInitiate}
+              disabled={!canProceed() || initiating}
+              className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
+                canProceed() && !initiating
+                  ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
+                  : 'cursor-not-allowed bg-[#9CA3AF]'
+              }`}
+            >
+              {initiating ? 'Opening verification...' : 'Start Identity Check'}
+            </button>
           </div>
         )}
 
-        {/* Step 2: BVN */}
+        {/* Step 2: Next of Kin */}
         {step === 2 && (
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0FDF4]">
-                <IconBuildingBank size={20} color="#02A36E" />
-              </div>
-              <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">BVN Verification</Text>
-                <Text fw={400} className="text-[13px] text-[#6B7280]">Enter your 11-digit Bank Verification Number</Text>
-              </div>
-            </div>
-            <div className="flex flex-col gap-4">
-              <TextInput
-                label="Bank Verification Number (BVN)"
-                placeholder="Enter your 11-digit BVN"
-                radius="md"
-                value={bvn}
-                onChange={(e) => { setBvn(e.currentTarget.value.replace(/\D/g, '').slice(0, 11)); setBvnVerified(false) }}
-                styles={inputStyles}
-                maxLength={11}
-                required
-              />
-              {bvnVerified ? (
-                <div className="flex items-center gap-3 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#02A36E]">
-                    <IconShieldCheck size={20} color="white" />
-                  </div>
-                  <div>
-                    <Text fw={600} className="text-[14px] text-[#065F46]">BVN Verified Successfully</Text>
-                    <Text fw={400} className="text-[12px] text-[#6B7280]">Your bank identity has been confirmed</Text>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={handleVerifyBvn}
-                  disabled={bvn.length !== 11 || bvnVerifying}
-                  className={`w-full rounded-xl px-6 py-3 text-[14px] font-semibold text-white ${
-                    bvn.length === 11 && !bvnVerifying
-                      ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
-                      : 'cursor-not-allowed bg-[#9CA3AF]'
-                  }`}
-                >
-                  {bvnVerifying ? 'Verifying...' : 'Verify BVN'}
-                </button>
-              )}
-            </div>
-            <div className="mt-6 rounded-xl bg-[#F9FAFB] p-4">
-              <Text fw={500} className="mb-1 text-[12px] text-[#374151]">Where to find your BVN?</Text>
-              <Text fw={400} className="text-[12px] leading-[1.6] text-[#6B7280]">
-                Dial *565*0# on your registered phone number, or check your bank app.
-              </Text>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Next of Kin */}
-        {step === 3 && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FEF3C7]">
                 <IconUser size={20} color="#D97706" />
               </div>
               <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">Next of Kin Information</Text>
+                <Text fw={700} className="text-[16px] text-[#0F172A]">Next of Kin</Text>
                 <Text fw={400} className="text-[13px] text-[#6B7280]">Provide details of your next of kin</Text>
               </div>
             </div>
@@ -846,25 +831,21 @@ function OnboardingFlow({
               <TextInput label="Full Name" placeholder="Enter next of kin's full name" radius="md" value={kinFullName} onChange={(e) => setKinFullName(e.currentTarget.value)} styles={inputStyles} required />
               <TextInput label="Relationship" placeholder="e.g. Spouse, Parent, Sibling" radius="md" value={kinRelationship} onChange={(e) => setKinRelationship(e.currentTarget.value)} styles={inputStyles} required />
               <TextInput label="Phone Number" placeholder="+234 800 000 0000" radius="md" value={kinPhone} onChange={(e) => setKinPhone(e.currentTarget.value)} styles={inputStyles} leftSection={<IconPhone size={16} color="#9CA3AF" />} required />
-              <TextInput label="Email Address (Optional)" placeholder="email@example.com" radius="md" value={kinEmail} onChange={(e) => setKinEmail(e.currentTarget.value)} styles={inputStyles} />
             </div>
+
+            <button
+              onClick={handleSubmitNok}
+              disabled={!canProceed() || submitting}
+              className={`mt-6 w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
+                canProceed() && !submitting
+                  ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
+                  : 'cursor-not-allowed bg-[#9CA3AF]'
+              }`}
+            >
+              {submitting ? 'Submitting...' : 'Submit & Complete Level 1'}
+            </button>
           </div>
         )}
-
-        {/* Action button */}
-        <div className="mt-8">
-          <button
-            onClick={handleNext}
-            disabled={!canProceed() || submitting}
-            className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-              canProceed() && !submitting
-                ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
-                : 'cursor-not-allowed bg-[#9CA3AF]'
-            }`}
-          >
-            {submitting ? 'Submitting...' : step === 3 ? 'Submit & Complete Level 1' : 'Continue'}
-          </button>
-        </div>
       </div>
     </div>
   )
@@ -990,13 +971,21 @@ export function Kyc() {
     )
   }
 
+  if (view === 'prove-pending') {
+    return (
+      <ProvePendingScreen
+        onVerified={() => loadStatus()}
+      />
+    )
+  }
+
   if (view === 'onboarding') {
     return (
       <OnboardingFlow
         rejectionReason={kycData?.kycLevel === 0 ? (kycData.rejectionReason ?? null) : null}
         onComplete={() => setView('onboarding-done')}
-        initialNinVerified={kycData?.ninVerified ?? false}
-        initialBvnVerified={kycData?.bvnVerified ?? false}
+        onProvePending={() => setView('prove-pending')}
+        identityVerified={(kycData?.ninVerified && kycData?.bvnVerified) ?? false}
       />
     )
   }
