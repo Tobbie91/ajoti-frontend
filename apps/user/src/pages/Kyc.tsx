@@ -648,7 +648,9 @@ function OnboardingFlow({
         bvn: bvn.trim(),
         firstName: p.firstName || p.firstname || '',
         lastName: p.lastName || p.lastname || '',
-        dob: p.dob || (p.DOB ? p.DOB.split('T')[0] : ''),
+        phone: p.phone || p.phoneNumber || '',
+        ...(p.email ? { email: p.email } : {}),
+        kyc_level: 'tier_1',
       })
 
       if (result.monoUrl) {

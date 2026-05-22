@@ -258,7 +258,11 @@ export interface ProveInitiatePayload {
   bvn: string
   firstName: string
   lastName: string
-  dob: string  // "YYYY-MM-DD"
+  dob?: string  // "YYYY-MM-DD" — optional
+  phone: string
+  email?: string
+  kyc_level: 'tier_1' | 'tier_2' | 'tier_3' | 'custom'
+  bank_accounts?: boolean
 }
 
 export interface ProveInitiateResult {
