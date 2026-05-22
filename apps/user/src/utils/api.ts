@@ -240,9 +240,10 @@ export interface KycStatus {
   bvnVerified: boolean
   nokSubmitted: boolean
   status: string  // "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED"
-  step?: string   // "PROVE_REQUIRED" | "PROVE_PENDING" | "NOK_REQUIRED" | "SUBMITTED" | "PHOTO_REQUIRED" | "PROOF_OF_ADDRESS_REQUIRED"
-  kycLevel: number  // 0 = none, 1 = Prove+NOK, 2 = +GovID, 3 = +ProofOfAddress
+  step?: string   // "PROVE_REQUIRED" | "PROVE_PENDING" | "PROVE_PENDING_L2" | "PROVE_PENDING_L3" | "NOK_REQUIRED" | "SUBMITTED" | "PHOTO_REQUIRED" | "PROOF_OF_ADDRESS_REQUIRED"
+  kycLevel: number  // 0 = none, 1 = Prove+NOK, 2 = +GovID via Mono, 3 = +Address via Mono
   rejectionReason?: string | null
+  verificationData?: Record<string, unknown> | null
 }
 
 export function getKycStatus(): Promise<KycStatus> {
@@ -254,15 +255,12 @@ export function resubmitKyc(): Promise<KycStatus> {
 }
 
 export interface ProveInitiatePayload {
-  nin: string
-  bvn: string
-  firstName: string
-  lastName: string
-  dob?: string  // "YYYY-MM-DD" — optional
-  phone: string
+  nin?: string
+  bvn?: string
+  firstName?: string
+  lastName?: string
+  phone?: string
   email?: string
-  kyc_level: 'tier_1' | 'tier_2' | 'tier_3' | 'custom'
-  bank_accounts?: boolean
 }
 
 export interface ProveInitiateResult {
@@ -288,44 +286,6 @@ export function submitNok(payload: SubmitNokPayload): Promise<{ message: string 
     method: 'POST',
     body: JSON.stringify(payload),
   })
-}
-
-export interface SubmitPhotoPayload {
-  governmentIdType: string
-  address: string
-  city: string
-  state: string
-  lga?: string
-  country: string
-  selfie: File
-  governmentIdFront: File
-  governmentIdBack?: File
-}
-
-export function submitPhoto(payload: SubmitPhotoPayload): Promise<KycStatus> {
-  const form = new FormData()
-  form.append('governmentIdType', payload.governmentIdType)
-  form.append('address', payload.address)
-  form.append('city', payload.city)
-  form.append('state', payload.state)
-  form.append('country', payload.country)
-  if (payload.lga) form.append('lga', payload.lga)
-  form.append('selfie', payload.selfie)
-  form.append('governmentIdFront', payload.governmentIdFront)
-  if (payload.governmentIdBack) form.append('governmentIdBack', payload.governmentIdBack)
-  return authRequest('/api/kyc/submit-photo', { method: 'POST', body: form })
-}
-
-export interface SubmitProofOfAddressPayload {
-  proofOfAddressType: string
-  proofOfAddress: File
-}
-
-export function submitProofOfAddress(payload: SubmitProofOfAddressPayload): Promise<KycStatus> {
-  const form = new FormData()
-  form.append('proofOfAddressType', payload.proofOfAddressType)
-  form.append('proofOfAddress', payload.proofOfAddress)
-  return authRequest('/api/kyc/submit-proof-of-address', { method: 'POST', body: form })
 }
 
 // ── Logout ──────────────────────────────────────────────────────────────────

@@ -1,18 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
-import { Text, TextInput, Textarea, Progress, Alert, Loader, Select, Badge } from '@mantine/core'
+import { useState, useEffect } from 'react'
+import { Text, TextInput, Progress, Alert, Loader, Badge } from '@mantine/core'
 import {
   IconArrowLeft,
-  IconUpload,
   IconCheck,
-  IconFile,
-  IconX,
   IconUser,
   IconPhone,
-  IconHome,
-  IconFileText,
-  IconId,
   IconShieldCheck,
-  IconCamera,
   IconAlertCircle,
   IconLock,
   IconArrowRight,
@@ -24,8 +17,6 @@ import {
   submitNok,
   getKycStatus,
   resubmitKyc,
-  submitPhoto,
-  submitProofOfAddress,
   type KycStatus,
 } from '@/utils/api'
 
@@ -33,38 +24,41 @@ import {
 
 type OnboardingStep = 1 | 2   // Prove (NIN+BVN) → NOK
 
-// Which top-level view to render
 type PageView =
   | 'loading'
   | 'onboarding'       // Level 0: Prove widget → NOK flow
-  | 'prove-pending'    // Mono widget opened, waiting for webhook
+  | 'prove-pending'    // Mono widget opened, waiting for webhook (any level)
   | 'onboarding-done'  // Just completed Level 1 (auto-approved)
   | 'upgrade-l2'       // Level 1 approved, ready to upgrade
-  | 'pending-l2'       // Level 2 docs submitted, under review
-  | 'rejected-l2'      // Level 2 docs rejected
+  | 'pending-l2'       // Level 2 under superadmin review
+  | 'rejected-l2'      // Level 2 rejected
   | 'upgrade-l3'       // Level 2 approved, ready to upgrade
-  | 'pending-l3'       // Level 3 docs submitted, under review
-  | 'rejected-l3'      // Level 3 docs rejected
+  | 'pending-l3'       // Level 3 under superadmin review
+  | 'rejected-l3'      // Level 3 rejected
   | 'fully-verified'   // Level 3 approved
+
+const PROVE_PENDING_STEPS = new Set(['PROVE_PENDING', 'PROVE_PENDING_L2', 'PROVE_PENDING_L3'])
 
 function resolveView(kyc: KycStatus | null): PageView {
   if (!kyc) return 'onboarding'
   const { kycLevel, status, step } = kyc
 
   if (kycLevel === 0) {
-    if (step === 'PROVE_PENDING') return 'prove-pending'
+    if (step && PROVE_PENDING_STEPS.has(step)) return 'prove-pending'
     return 'onboarding'
   }
 
   if (kycLevel >= 3) return 'fully-verified'
 
   if (kycLevel === 2) {
+    if (step && PROVE_PENDING_STEPS.has(step)) return 'prove-pending'
     if (step === 'PROOF_OF_ADDRESS_REQUIRED' && status === 'REJECTED') return 'rejected-l3'
     if (step === 'PROOF_OF_ADDRESS_REQUIRED') return 'pending-l3'
     return 'upgrade-l3'
   }
 
   // kycLevel === 1
+  if (step && PROVE_PENDING_STEPS.has(step)) return 'prove-pending'
   if (step === 'PHOTO_REQUIRED' && status === 'REJECTED') return 'rejected-l2'
   if (step === 'PHOTO_REQUIRED') return 'pending-l2'
   return 'upgrade-l2'
@@ -75,71 +69,6 @@ function resolveView(kyc: KycStatus | null): PageView {
 const inputStyles = {
   input: { borderColor: '#E5E7EB', backgroundColor: '#FFFFFF' },
   label: { fontWeight: 500, fontSize: 14, color: '#374151', marginBottom: 4 },
-}
-
-function FileUploadBox({
-  label,
-  hint,
-  file,
-  onFile,
-  onClear,
-  accept = 'image/jpg,image/jpeg,image/png',
-  icon,
-  iconColor,
-}: {
-  label: React.ReactNode
-  hint: string
-  file: File | null
-  onFile: (f: File) => void
-  onClear: () => void
-  accept?: string
-  icon: React.ReactNode
-  iconColor: string
-}) {
-  const ref = useRef<HTMLInputElement>(null)
-  return (
-    <div>
-      <Text fw={600} className="mb-2 text-[13px] text-[#374151]">{label}</Text>
-      <Text fw={400} className="mb-3 text-[12px] text-[#6B7280]">{hint}</Text>
-      <input
-        ref={ref}
-        type="file"
-        accept={accept}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f) }}
-        className="hidden"
-      />
-      {!file ? (
-        <button
-          onClick={() => ref.current?.click()}
-          className="flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#D1D5DB] bg-[#F9FAFB] px-6 py-8 transition-colors hover:border-[#02A36E] hover:bg-[#F0FDF4]"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E5E7EB]">
-            <IconUpload size={22} color="#6B7280" />
-          </div>
-          <div className="text-center">
-            <Text fw={600} className="text-[14px] text-[#374151]">Click to upload</Text>
-            <Text fw={400} className="mt-1 text-[12px] text-[#9CA3AF]">{accept.includes('pdf') ? 'JPG, PNG or PDF (Max 5MB)' : 'JPG or PNG (Max 5MB)'}</Text>
-          </div>
-        </button>
-      ) : (
-        <div className="flex items-center gap-3 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: iconColor }}>
-            {icon}
-          </div>
-          <div className="flex-1">
-            <Text fw={600} className="text-[13px] text-[#0F172A]">{file.name}</Text>
-            <Text fw={400} className="text-[12px] text-[#6B7280]">{(file.size / 1024).toFixed(1)} KB</Text>
-          </div>
-          <button
-            onClick={onClear}
-            className="flex cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-[#FEE2E2]"
-          >
-            <IconX size={16} color="#EF4444" />
-          </button>
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ── Level badge ───────────────────────────────────────────────────────────────
@@ -209,7 +138,7 @@ function PendingReviewScreen({
         </div>
         <Text fw={700} className="mb-2 text-[20px] text-[#0F172A]">Under Review</Text>
         <Text fw={400} className="mb-6 text-[14px] leading-[1.6] text-[#6B7280]">
-          Your Level {forLevel} documents have been submitted and are currently being reviewed by our
+          Your Level {forLevel} verification has been submitted and is currently being reviewed by our
           compliance team. This typically takes 24–48 hours.
         </Text>
         <LimitCard level={forLevel - 1} />
@@ -264,78 +193,54 @@ function FullyVerifiedScreen() {
   )
 }
 
-// ── Upgrade section (Level 2 or Level 3) ────────────────────────────────────
+// ── Upgrade section (Level 2 or Level 3 via Mono Prove) ──────────────────────
 
 function UpgradeSection({
   targetLevel,
   rejectionReason,
-  onSubmitted,
+  onProvePending,
 }: {
   targetLevel: 2 | 3
   rejectionReason?: string | null
-  onSubmitted: () => void
+  onProvePending: () => void
 }) {
-  const [submitting, setSubmitting] = useState(false)
+  const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Level 2 fields
-  const [govIdType, setGovIdType] = useState<string | null>(null)
-  const [address, setAddress] = useState('')
-  const [city, setCity] = useState('')
-  const [addrState, setAddrState] = useState<string | null>(null)
-  const [lga, setLga] = useState('')
-  const [selfieFile, setSelfieFile] = useState<File | null>(null)
-  const [idFrontFile, setIdFrontFile] = useState<File | null>(null)
-  const [idBackFile, setIdBackFile] = useState<File | null>(null)
-
-  // Level 3 fields
-  const [proofType, setProofType] = useState<string | null>(null)
-  const [proofFile, setProofFile] = useState<File | null>(null)
-
-  const canSubmitL2 = govIdType && address.trim() && city.trim() && addrState && selfieFile && idFrontFile
-  const canSubmitL3 = proofType && proofFile
-
-  async function handleSubmit() {
-    setError(null)
-    setSubmitting(true)
-    try {
-      if (targetLevel === 2) {
-        if (!govIdType || !selfieFile || !idFrontFile || !addrState) return
-        await submitPhoto({
-          governmentIdType: govIdType,
-          address: address.trim(),
-          city: city.trim(),
-          state: addrState,
-          country: 'Nigeria',
-          ...(lga.trim() ? { lga: lga.trim() } : {}),
-          selfie: selfieFile,
-          governmentIdFront: idFrontFile,
-          ...(idBackFile ? { governmentIdBack: idBackFile } : {}),
-        })
-      } else {
-        if (!proofType || !proofFile) return
-        await submitProofOfAddress({
-          proofOfAddressType: proofType,
-          proofOfAddress: proofFile,
-        })
-      }
-      onSubmitted()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Submission failed. Please try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const nextLimits = targetLevel === 2
     ? { single: '₦100,000', daily: '₦500,000' }
     : { single: '₦5,000,000', daily: '₦25,000,000' }
 
+  const docDescription = targetLevel === 2
+    ? 'government-issued photo ID and a short liveness check'
+    : 'proof of address document and a liveness check'
+
+  async function handleStart() {
+    setError(null)
+    setStarting(true)
+    try {
+      // No payload needed — backend reads NIN/BVN from DB for level upgrades
+      const result = await proveInitiate({})
+
+      if (result.monoUrl) {
+        window.open(result.monoUrl, '_blank', 'noopener,noreferrer')
+        onProvePending()
+      } else {
+        // Test bypass — skip widget
+        onProvePending()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start verification. Please try again.')
+    } finally {
+      setStarting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {rejectionReason && (
-        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" title="Documents rejected">
-          {rejectionReason}. Please re-upload valid documents to try again.
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" title="Previous verification rejected">
+          {rejectionReason}. Please start the verification again.
         </Alert>
       )}
 
@@ -364,185 +269,34 @@ function UpgradeSection({
         </Alert>
       )}
 
-      {targetLevel === 2 && (
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EFF6FF]">
-              <IconId size={20} color="#2563EB" />
-            </div>
-            <div>
-              <Text fw={700} className="text-[16px] text-[#0F172A]">Government ID</Text>
-              <Text fw={400} className="text-[13px] text-[#6B7280]">Upload a clear photo of your government-issued ID</Text>
-            </div>
-          </div>
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-4">
+        <Text fw={400} className="text-[14px] leading-[1.6] text-[#6B7280]">
+          To upgrade to Level {targetLevel}, you'll complete a quick identity verification powered
+          by Mono. You'll need your {docDescription}.
+        </Text>
+        <Text fw={400} className="text-[13px] leading-[1.6] text-[#9CA3AF]">
+          The verification widget will open in a new tab. Return to this page after completing it —
+          your status will update automatically.
+        </Text>
 
-          <Select
-            label="ID Type"
-            placeholder="Select document type"
-            data={[
-              { value: 'NIN_SLIP', label: 'NIN Slip' },
-              { value: 'NATIONAL_ID', label: 'National ID Card' },
-              { value: 'DRIVERS_LICENSE', label: "Driver's Licence" },
-              { value: 'PASSPORT', label: 'International Passport' },
-              { value: 'VOTERS_CARD', label: "Voter's Card" },
-            ]}
-            value={govIdType}
-            onChange={setGovIdType}
-            radius="md"
-            styles={inputStyles}
-            required
-          />
-
-          {/* Address */}
-          <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 flex flex-col gap-3">
-            <Text fw={600} className="text-[13px] text-[#374151]">Residential Address</Text>
-            <Textarea
-              label="House Address"
-              placeholder="e.g. 12 Allen Avenue"
-              radius="md"
-              minRows={2}
-              value={address}
-              onChange={(e) => setAddress(e.currentTarget.value)}
-              styles={inputStyles}
-              required
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <TextInput
-                label="City"
-                placeholder="e.g. Ikeja"
-                radius="md"
-                value={city}
-                onChange={(e) => setCity(e.currentTarget.value)}
-                styles={inputStyles}
-                required
-              />
-              <Select
-                label="State"
-                placeholder="Select state"
-                data={['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']}
-                value={addrState}
-                onChange={setAddrState}
-                radius="md"
-                styles={inputStyles}
-                searchable
-                required
-              />
-            </div>
-            <TextInput
-              label="LGA (Optional)"
-              placeholder="e.g. Ikeja LGA"
-              radius="md"
-              value={lga}
-              onChange={(e) => setLga(e.currentTarget.value)}
-              styles={inputStyles}
-            />
-          </div>
-
-          <FileUploadBox
-            label={<>Selfie / Live Photo <span className="text-red-500">*</span></>}
-            hint="Take a clear, well-lit photo of your face. No sunglasses or hats."
-            file={selfieFile}
-            onFile={setSelfieFile}
-            onClear={() => setSelfieFile(null)}
-            accept="image/jpg,image/jpeg,image/png"
-            icon={<IconCamera size={20} color="white" />}
-            iconColor="#0284C7"
-          />
-
-          <FileUploadBox
-            label={<>ID Front <span className="text-red-500">*</span></>}
-            hint="Upload the front of your selected ID document."
-            file={idFrontFile}
-            onFile={setIdFrontFile}
-            onClear={() => setIdFrontFile(null)}
-            accept="image/jpg,image/jpeg,image/png"
-            icon={<IconId size={20} color="white" />}
-            iconColor="#02A36E"
-          />
-
-          <FileUploadBox
-            label="ID Back (optional)"
-            hint="Upload the back of your ID if applicable."
-            file={idBackFile}
-            onFile={setIdBackFile}
-            onClear={() => setIdBackFile(null)}
-            accept="image/jpg,image/jpeg,image/png"
-            icon={<IconId size={20} color="white" />}
-            iconColor="#9333ea"
-          />
-
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmitL2 || submitting}
-            className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-              canSubmitL2 && !submitting
-                ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
-                : 'cursor-not-allowed bg-[#9CA3AF]'
-            }`}
-          >
-            {submitting ? 'Submitting...' : 'Submit for Review'}
-          </button>
-        </div>
-      )}
-
-      {targetLevel === 3 && (
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF7ED]">
-              <IconFileText size={20} color="#F97316" />
-            </div>
-            <div>
-              <Text fw={700} className="text-[16px] text-[#0F172A]">Proof of Address</Text>
-              <Text fw={400} className="text-[13px] text-[#6B7280]">Upload a document that verifies your current address</Text>
-            </div>
-          </div>
-
-          <Select
-            label="Document Type"
-            placeholder="Select document type"
-            data={[
-              { value: 'UTILITY_BILL', label: 'Utility Bill (not older than 3 months)' },
-              { value: 'BANK_STATEMENT', label: 'Bank Statement' },
-              { value: 'TENANCY_AGREEMENT', label: 'Tenancy Agreement' },
-              { value: 'GOVERNMENT_LETTER', label: 'Government-issued letter with address' },
-            ]}
-            value={proofType}
-            onChange={setProofType}
-            radius="md"
-            styles={inputStyles}
-            required
-          />
-
-          <FileUploadBox
-            label={<>Proof Document <span className="text-red-500">*</span></>}
-            hint="Upload a clear scan or photo of your proof of address document."
-            file={proofFile}
-            onFile={setProofFile}
-            onClear={() => setProofFile(null)}
-            accept=".pdf,image/jpg,image/jpeg,image/png"
-            icon={<IconFile size={20} color="white" />}
-            iconColor="#F97316"
-          />
-
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmitL3 || submitting}
-            className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-              canSubmitL3 && !submitting
-                ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
-                : 'cursor-not-allowed bg-[#9CA3AF]'
-            }`}
-          >
-            {submitting ? 'Submitting...' : 'Submit for Review'}
-          </button>
-        </div>
-      )}
+        <button
+          onClick={handleStart}
+          disabled={starting}
+          className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
+            !starting
+              ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
+              : 'cursor-not-allowed bg-[#9CA3AF]'
+          }`}
+        >
+          {starting ? 'Opening verification...' : `Start Level ${targetLevel} Verification`}
+        </button>
+      </div>
     </div>
   )
 }
 
 // ── Prove pending screen ─────────────────────────────────────────────────────
-// Shown after user opens Mono widget. Polls every 4s until step changes.
+// Shown after user opens Mono widget (any level). Polls until step leaves PROVE_PENDING*.
 
 function ProvePendingScreen({ onVerified }: { onVerified: () => void }) {
   const navigate = useNavigate()
@@ -551,7 +305,7 @@ function ProvePendingScreen({ onVerified }: { onVerified: () => void }) {
     const id = setInterval(async () => {
       try {
         const kyc = await getKycStatus()
-        if (kyc.step === 'NOK_REQUIRED' || (kyc.ninVerified && kyc.bvnVerified)) {
+        if (!kyc.step || !PROVE_PENDING_STEPS.has(kyc.step)) {
           clearInterval(id)
           onVerified()
         }
@@ -596,8 +350,6 @@ function ProvePendingScreen({ onVerified }: { onVerified: () => void }) {
 }
 
 // ── Onboarding flow (Level 0 → 1) ─────────────────────────────────────────────
-// Step 1: Enter NIN + BVN → Mono Prove widget
-// Step 2: Next of Kin (reached after Prove webhook fires)
 
 const ONBOARDING_LABELS = ['Identity', 'Next of Kin']
 
@@ -615,12 +367,10 @@ function OnboardingFlow({
   const navigate = useNavigate()
   const [step, setStep] = useState<OnboardingStep>(identityVerified ? 2 : 1)
 
-  // Step 1 — Prove fields
   const [nin, setNin] = useState('')
   const [bvn, setBvn] = useState('')
   const [initiating, setInitiating] = useState(false)
 
-  // Step 2 — NOK fields
   const [kinFullName, setKinFullName] = useState('')
   const [kinRelationship, setKinRelationship] = useState('')
   const [kinPhone, setKinPhone] = useState('')
@@ -650,11 +400,9 @@ function OnboardingFlow({
         lastName: p.lastName || p.lastname || '',
         phone: p.phone || p.phoneNumber || '',
         ...(p.email ? { email: p.email } : {}),
-        kyc_level: 'tier_1',
       })
 
       if (result.monoUrl) {
-        // Open Mono widget in a new tab, then show the waiting screen
         window.open(result.monoUrl, '_blank', 'noopener,noreferrer')
         onProvePending()
       } else {
@@ -687,7 +435,6 @@ function OnboardingFlow({
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      {/* Header */}
       <div className="border-b border-[#E5E7EB] bg-white">
         <div className="mx-auto flex max-w-[600px] items-center gap-4 px-6 py-4">
           <button
@@ -710,14 +457,12 @@ function OnboardingFlow({
       </div>
 
       <div className="mx-auto max-w-[600px] px-6 py-8">
-        {/* Rejection banner */}
         {rejectionReason && (
           <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" mb="lg" title="Previous submission was rejected">
             {rejectionReason}
           </Alert>
         )}
 
-        {/* Step indicators */}
         <div className="mb-8 flex items-center justify-center gap-12">
           {ONBOARDING_LABELS.map((label, i) => {
             const n = i + 1
@@ -748,7 +493,6 @@ function OnboardingFlow({
           </Alert>
         )}
 
-        {/* Step 1: Prove (NIN + BVN) */}
         {step === 1 && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-5">
             <div className="flex items-center gap-3">
@@ -761,7 +505,6 @@ function OnboardingFlow({
               </div>
             </div>
 
-            {/* Info banner */}
             <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
               <Text fw={400} className="text-[13px] leading-[1.6] text-[#1E40AF]">
                 After submitting, a secure Mono identity verification window will open. Complete the
@@ -817,7 +560,6 @@ function OnboardingFlow({
           </div>
         )}
 
-        {/* Step 2: Next of Kin */}
         {step === 2 && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
@@ -897,16 +639,16 @@ function OnboardingDoneScreen({ onContinue }: { onContinue: () => void }) {
   )
 }
 
-// ── Level card for upgrade page header ───────────────────────────────────────
+// ── Upgrade page (Level 2 or Level 3) ────────────────────────────────────────
 
 function UpgradePage({
   kycLevel,
   rejectionReason,
-  onSubmitted,
+  onProvePending,
 }: {
   kycLevel: number
   rejectionReason?: string | null
-  onSubmitted: () => void
+  onProvePending: () => void
 }) {
   const navigate = useNavigate()
   const targetLevel = (kycLevel + 1) as 2 | 3
@@ -934,7 +676,7 @@ function UpgradePage({
         <UpgradeSection
           targetLevel={targetLevel}
           rejectionReason={rejectionReason}
-          onSubmitted={onSubmitted}
+          onProvePending={onProvePending}
         />
       </div>
     </div>
@@ -951,7 +693,6 @@ export function Kyc() {
     try {
       const kyc = await getKycStatus()
       setKycData(kyc)
-      // If rejected, auto-call resubmit for Level 0 so they can redo NOK
       if (kyc.kycLevel === 0 && kyc.status === 'REJECTED') {
         try { await resubmitKyc() } catch { /* ignore */ }
         setView('onboarding')
@@ -959,7 +700,7 @@ export function Kyc() {
         setView(resolveView(kyc))
       }
     } catch {
-      setView('onboarding')  // No KYC record — start fresh
+      setView('onboarding')
     }
   }
 
@@ -974,11 +715,7 @@ export function Kyc() {
   }
 
   if (view === 'prove-pending') {
-    return (
-      <ProvePendingScreen
-        onVerified={() => loadStatus()}
-      />
-    )
+    return <ProvePendingScreen onVerified={() => loadStatus()} />
   }
 
   if (view === 'onboarding') {
@@ -1017,10 +754,7 @@ export function Kyc() {
     <UpgradePage
       kycLevel={kycLevel}
       rejectionReason={rejectionReason}
-      onSubmitted={() => {
-        if (view === 'upgrade-l2' || view === 'rejected-l2') setView('pending-l2')
-        else setView('pending-l3')
-      }}
+      onProvePending={() => setView('prove-pending')}
     />
   )
 }
