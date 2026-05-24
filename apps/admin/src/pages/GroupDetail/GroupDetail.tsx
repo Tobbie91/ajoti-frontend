@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { DateInput } from '@mantine/dates'
 import {
@@ -517,6 +517,7 @@ export function GroupDetail() {
       .catch(() => {})
       .finally(() => setCircleLoading(false))
     // Fetch financial health early so the balance card is populated immediately
+    financialHealthFetched.current = true
     getFinancialHealth(id)
       .then(setFinancialHealth)
       .catch(() => {})
@@ -639,6 +640,9 @@ export function GroupDetail() {
   // Financial health state
   const [financialHealth, setFinancialHealth] = useState<FinancialHealth | null>(null)
   const [financialHealthLoading, setFinancialHealthLoading] = useState(false)
+  const financialHealthFetched = useRef(false)
+  const payoutsFetched = useRef(false)
+  const contribsFetched = useRef(false)
   const [pendingJoinCount, setPendingJoinCount] = useState<number>(0)
 
   const totalCollectedKobo = financialHealth?.cycles
@@ -778,14 +782,16 @@ export function GroupDetail() {
   const [disbursementsLoading, setDisbursementsLoading] = useState(false)
 
   useEffect(() => {
-    if (activeTab === 'payouts' && id) {
+    if (activeTab === 'payouts' && id && !payoutsFetched.current) {
+      payoutsFetched.current = true
       setPayoutsLoading(true)
       getPayoutHistory(id)
         .then(setPayouts)
         .catch(() => setPayouts([]))
         .finally(() => setPayoutsLoading(false))
     }
-    if (activeTab === 'contributions' && id) {
+    if (activeTab === 'contributions' && id && !contribsFetched.current) {
+      contribsFetched.current = true
       setContribLoading(true)
       getCircleContributions(id)
         .then((data) => setContributions(data))
@@ -799,11 +805,14 @@ export function GroupDetail() {
         .catch(() => setDisbursements([]))
         .finally(() => setDisbursementsLoading(false))
 
-      setFinancialHealthLoading(true)
-      getFinancialHealth(id)
-        .then(setFinancialHealth)
-        .catch(() => {})
-        .finally(() => setFinancialHealthLoading(false))
+      if (!financialHealthFetched.current) {
+        financialHealthFetched.current = true
+        setFinancialHealthLoading(true)
+        getFinancialHealth(id)
+          .then(setFinancialHealth)
+          .catch(() => {})
+          .finally(() => setFinancialHealthLoading(false))
+      }
     }
     if (activeTab === 'members' && id) {
       loadInvites()

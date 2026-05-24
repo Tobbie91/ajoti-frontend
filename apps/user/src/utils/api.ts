@@ -229,7 +229,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
     })
     // If refresh ultimately fails the queue gets cleared and this will never resolve,
     // but clearSessionAndRedirect() will navigate away anyway.
-    setTimeout(() => reject(new Error('Session expired')), 10_000)
+    setTimeout(() => reject(new Error('Session expired')), 30_000)
   })
 }
 

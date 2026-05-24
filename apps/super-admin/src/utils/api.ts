@@ -101,7 +101,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
         }),
       )
     })
-    setTimeout(() => reject(new Error('Session expired')), 10_000)
+    setTimeout(() => reject(new Error('Session expired')), 30_000)
   })
 }
 
@@ -332,12 +332,8 @@ export interface KycQueueRow {
   state: string | null
   lga: string | null
   country: string | null
-  selfieUrl: string | null
-  governmentIdType: string | null
-  governmentIdFrontUrl: string | null
-  governmentIdBackUrl: string | null
-  proofOfAddressType: string | null
-  proofOfAddressUrl: string | null
+  verificationData: Record<string, unknown> | null
+  monoProveStatus: string | null
   user: {
     id: string
     firstName: string

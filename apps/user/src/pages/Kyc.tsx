@@ -10,6 +10,7 @@ import {
   IconLock,
   IconArrowRight,
   IconClock,
+  IconFingerprint,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -111,14 +112,58 @@ function LimitCard({ level }: { level: number }) {
   )
 }
 
+// ── Mono verification result card ────────────────────────────────────────────
+
+function VerificationDataCard({ data }: { data: Record<string, unknown> | null | undefined }) {
+  if (!data) return null
+
+  // Mono stores the full webhook body: { event, data: { customer, kyc_level, ... } }
+  const inner = (data.data ?? data) as Record<string, any>
+  const customer = inner?.customer as Record<string, any> | undefined
+  const name: string | undefined = customer?.name
+  const phone: string | undefined = customer?.phone
+  const identityType: string | undefined = customer?.identity?.type?.toUpperCase()
+  const tier: string | undefined = (inner?.kyc_level as string)?.replace('_', ' ')
+  const verifiedAt: string | undefined = inner?.updated_at ?? inner?.created_at ?? inner?.verified_at
+
+  const rows: { label: string; value: string }[] = [
+    ...(name ? [{ label: 'Verified Name', value: name }] : []),
+    ...(phone ? [{ label: 'Phone', value: phone }] : []),
+    ...(identityType ? [{ label: 'Identity Type', value: identityType }] : []),
+    ...(tier ? [{ label: 'KYC Tier', value: tier.charAt(0).toUpperCase() + tier.slice(1) }] : []),
+    ...(verifiedAt ? [{ label: 'Verified At', value: new Date(verifiedAt).toLocaleString('en-NG', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }] : []),
+  ]
+
+  if (rows.length === 0) return null
+
+  return (
+    <div className="rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4 text-left">
+      <div className="flex items-center gap-2 mb-3">
+        <IconFingerprint size={16} color="#02A36E" />
+        <Text fw={600} className="text-[13px] text-[#065F46]">Verified by Mono</Text>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        {rows.map(({ label, value }) => (
+          <div key={label}>
+            <Text fw={400} className="text-[11px] text-[#6B7280]">{label}</Text>
+            <Text fw={600} className="text-[13px] text-[#0F172A]">{value}</Text>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Pending review screen ─────────────────────────────────────────────────────
 
 function PendingReviewScreen({
   forLevel,
   onRefresh,
+  verificationData,
 }: {
   forLevel: 2 | 3
   onRefresh: () => void
+  verificationData?: Record<string, unknown> | null
 }) {
   const navigate = useNavigate()
   return (
@@ -142,6 +187,7 @@ function PendingReviewScreen({
           compliance team. This typically takes 24–48 hours.
         </Text>
         <LimitCard level={forLevel - 1} />
+        <VerificationDataCard data={verificationData} />
         <Text fw={400} className="mt-4 text-[13px] text-[#9CA3AF]">
           You can continue using the app with your current Level {forLevel - 1} limits while we
           complete the review.
@@ -223,6 +269,7 @@ function UpgradeSection({
       const result = await proveInitiate({})
 
       if (result.monoUrl) {
+        sessionStorage.setItem('kyc_widget_opened', 'true')
         window.open(result.monoUrl, '_blank', 'noopener,noreferrer')
         onProvePending()
       } else {
@@ -298,20 +345,32 @@ function UpgradeSection({
 // ── Prove pending screen ─────────────────────────────────────────────────────
 // Shown after user opens Mono widget (any level). Polls until step leaves PROVE_PENDING*.
 
-function ProvePendingScreen({ onVerified }: { onVerified: () => void }) {
+function ProvePendingScreen({
+  onVerified,
+  onRestart,
+}: {
+  onVerified: () => void
+  onRestart: () => void
+}) {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const id = setInterval(async () => {
+    async function check() {
+      if (document.hidden) return
       try {
         const kyc = await getKycStatus()
         if (!kyc.step || !PROVE_PENDING_STEPS.has(kyc.step)) {
-          clearInterval(id)
           onVerified()
         }
       } catch { /* ignore */ }
-    }, 4_000)
-    return () => clearInterval(id)
+    }
+
+    const id = setInterval(check, 10_000)
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', check)
+    }
   }, [onVerified])
 
   return (
@@ -338,7 +397,7 @@ function ProvePendingScreen({ onVerified }: { onVerified: () => void }) {
         <Text fw={400} className="mt-4 text-[12px] text-[#9CA3AF]">
           Closed the window by mistake?{' '}
           <button
-            onClick={() => navigate(0)}
+            onClick={onRestart}
             className="cursor-pointer text-[#02A36E] underline"
           >
             Refresh to restart
@@ -403,6 +462,7 @@ function OnboardingFlow({
       })
 
       if (result.monoUrl) {
+        sessionStorage.setItem('kyc_widget_opened', 'true')
         window.open(result.monoUrl, '_blank', 'noopener,noreferrer')
         onProvePending()
       } else {
@@ -597,7 +657,7 @@ function OnboardingFlow({
 
 // ── Onboarding done (Level 1 just approved) ──────────────────────────────────
 
-function OnboardingDoneScreen({ onContinue }: { onContinue: () => void }) {
+function OnboardingDoneScreen({ onContinue, verificationData }: { onContinue: () => void; verificationData?: Record<string, unknown> | null }) {
   const navigate = useNavigate()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F9FAFB] px-6">
@@ -619,6 +679,7 @@ function OnboardingDoneScreen({ onContinue }: { onContinue: () => void }) {
           Your basic identity has been verified. You can now send and receive money on Ajoti.
         </Text>
         <LimitCard level={1} />
+        <VerificationDataCard data={verificationData} />
         <div className="mt-6 flex flex-col gap-3">
           <button
             onClick={onContinue}
@@ -696,15 +757,34 @@ export function Kyc() {
       if (kyc.kycLevel === 0 && kyc.status === 'REJECTED') {
         try { await resubmitKyc() } catch { /* ignore */ }
         setView('onboarding')
-      } else {
-        setView(resolveView(kyc))
+        return
       }
+      const resolved = resolveView(kyc)
+      // Only show the pending screen if the widget was actually opened this session.
+      // Without this, navigating back to /kyc after calling initiate (but before opening
+      // the widget) lands on the blocking pending screen instead of the form.
+      if (resolved === 'prove-pending' && sessionStorage.getItem('kyc_widget_opened') !== 'true') {
+        setView(kyc.kycLevel === 0 ? 'onboarding' : kyc.kycLevel === 1 ? 'upgrade-l2' : 'upgrade-l3')
+        return
+      }
+      setView(resolved)
     } catch {
       setView('onboarding')
     }
   }
 
-  useEffect(() => { loadStatus() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Mono redirects back to /kyc?status=success&reason=... after widget completion.
+    // This can land in a new tab (since we open the widget with window.open), so
+    // sessionStorage won't carry the flag from the original tab. Set it here so
+    // loadStatus() correctly shows the pending screen instead of the form.
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('status') === 'success') {
+      sessionStorage.setItem('kyc_widget_opened', 'true')
+      window.history.replaceState({}, '', '/kyc')
+    }
+    loadStatus()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (view === 'loading') {
     return (
@@ -715,7 +795,31 @@ export function Kyc() {
   }
 
   if (view === 'prove-pending') {
-    return <ProvePendingScreen onVerified={() => loadStatus()} />
+    const isUpgrade = (kycData?.kycLevel ?? 0) >= 1
+
+    async function handleRestart() {
+      sessionStorage.removeItem('kyc_widget_opened')
+      if (!isUpgrade) {
+        // Level 0: go back to onboarding form so user can re-enter NIN/BVN
+        setView('onboarding')
+        return
+      }
+      // Level upgrade: re-call initiate and reopen the widget
+      try {
+        const result = await proveInitiate({})
+        if (result.monoUrl) {
+          sessionStorage.setItem('kyc_widget_opened', 'true')
+          window.open(result.monoUrl, '_blank', 'noopener,noreferrer')
+        }
+      } catch { /* ignore, stay on pending */ }
+    }
+
+    return (
+      <ProvePendingScreen
+        onVerified={() => { sessionStorage.removeItem('kyc_widget_opened'); loadStatus() }}
+        onRestart={handleRestart}
+      />
+    )
   }
 
   if (view === 'onboarding') {
@@ -730,15 +834,15 @@ export function Kyc() {
   }
 
   if (view === 'onboarding-done') {
-    return <OnboardingDoneScreen onContinue={() => setView('upgrade-l2')} />
+    return <OnboardingDoneScreen onContinue={() => setView('upgrade-l2')} verificationData={kycData?.verificationData} />
   }
 
   if (view === 'pending-l2') {
-    return <PendingReviewScreen forLevel={2} onRefresh={loadStatus} />
+    return <PendingReviewScreen forLevel={2} onRefresh={loadStatus} verificationData={kycData?.verificationData} />
   }
 
   if (view === 'pending-l3') {
-    return <PendingReviewScreen forLevel={3} onRefresh={loadStatus} />
+    return <PendingReviewScreen forLevel={3} onRefresh={loadStatus} verificationData={kycData?.verificationData} />
   }
 
   if (view === 'fully-verified') {

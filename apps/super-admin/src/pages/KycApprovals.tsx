@@ -18,11 +18,10 @@ import {
   Textarea,
   Button,
   Tabs,
-  Anchor,
   SimpleGrid,
   ThemeIcon,
-  Image,
-  Box,
+  ScrollArea,
+  Code,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
@@ -32,9 +31,7 @@ import {
   IconUser,
   IconCheck,
   IconX,
-  IconFileText,
-  IconPhoto,
-  IconId,
+  IconShieldCheck,
 } from '@tabler/icons-react'
 import { listKycQueue, approveKyc, rejectKyc, type KycQueueRow } from '@/utils/api'
 
@@ -54,54 +51,6 @@ function fmt(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-NG', {
     day: '2-digit', month: 'short', year: 'numeric',
   })
-}
-
-function DocLink({ label, url, icon }: { label: string; url: string | null; icon: React.ReactNode }) {
-  if (!url) {
-    return (
-      <Box
-        p="sm"
-        style={{
-          border: '1px dashed var(--mantine-color-gray-3)',
-          borderRadius: 'var(--mantine-radius-md)',
-          textAlign: 'center',
-        }}
-      >
-        {icon}
-        <Text fz="xs" c="dimmed" mt={4}>{label}</Text>
-        <Text fz="xs" c="dimmed">Not submitted</Text>
-      </Box>
-    )
-  }
-
-  // Try to render as an image, fall back to a link
-  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url)
-
-  return (
-    <Box
-      style={{
-        border: '1px solid var(--mantine-color-gray-2)',
-        borderRadius: 'var(--mantine-radius-md)',
-        overflow: 'hidden',
-      }}
-    >
-      {isImage ? (
-        <Anchor href={url} target="_blank" rel="noreferrer">
-          <Image src={url} alt={label} h={100} fit="cover" />
-        </Anchor>
-      ) : (
-        <Box p="sm" style={{ textAlign: 'center' }}>
-          {icon}
-          <Text fz="xs" c="dimmed" mt={4}>{label}</Text>
-        </Box>
-      )}
-      <Box px="xs" py={4} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-        <Anchor href={url} target="_blank" rel="noreferrer" fz="xs">
-          Open document
-        </Anchor>
-      </Box>
-    </Box>
-  )
 }
 
 // ── KYC Detail Drawer ────────────────────────────────────────────────────────
@@ -183,9 +132,14 @@ function KycDetailDrawer({
                 <Text fw={600} fz="lg">{u?.firstName} {u?.lastName}</Text>
                 <Text fz="sm" c="dimmed">{u?.email}</Text>
               </Stack>
-              <Badge ml="auto" color={STATUS_COLOR[record.status] ?? 'gray'} variant="light">
-                {record.status}
-              </Badge>
+              <Group ml="auto" gap="xs">
+                <Badge color="blue" variant="light">
+                  Level {record.kycLevel}
+                </Badge>
+                <Badge color={STATUS_COLOR[record.status] ?? 'gray'} variant="light">
+                  {record.status}
+                </Badge>
+              </Group>
             </Group>
 
             <SimpleGrid cols={2} spacing="xs">
@@ -193,8 +147,10 @@ function KycDetailDrawer({
               <InfoRow label="Gender" value={u?.gender ?? '—'} />
               <InfoRow label="Date of Birth" value={u?.dob ? fmt(u.dob) : '—'} />
               <InfoRow label="Submitted" value={fmt(record.submittedAt)} />
-              <InfoRow label="NIN Verified" value={record.ninVerifiedAt ? fmt(record.ninVerifiedAt) : 'No'} />
-              <InfoRow label="BVN Verified" value={record.bvnVerifiedAt ? fmt(record.bvnVerifiedAt) : 'No'} />
+              <InfoRow label="KYC Level" value={`Level ${record.kycLevel}`} />
+              <InfoRow label="Step" value={record.step ?? '—'} />
+              <InfoRow label="Mono Status" value={record.monoProveStatus ?? '—'} />
+              <InfoRow label="Reviewed" value={record.reviewedAt ? fmt(record.reviewedAt) : '—'} />
             </SimpleGrid>
 
             {/* Next of kin */}
@@ -221,30 +177,25 @@ function KycDetailDrawer({
               </>
             )}
 
-            {/* Documents */}
-            <Divider label="Documents" labelPosition="left" />
-            <SimpleGrid cols={3} spacing="sm">
-              <DocLink
-                label="Selfie"
-                url={record.selfieUrl}
-                icon={<IconPhoto size={24} color="gray" stroke={1.5} />}
-              />
-              <DocLink
-                label={record.governmentIdType ? `Gov ID · ${record.governmentIdType}` : 'Gov ID (Front)'}
-                url={record.governmentIdFrontUrl}
-                icon={<IconId size={24} color="gray" stroke={1.5} />}
-              />
-              <DocLink
-                label="Gov ID (Back)"
-                url={record.governmentIdBackUrl}
-                icon={<IconId size={24} color="gray" stroke={1.5} />}
-              />
-              <DocLink
-                label={record.proofOfAddressType ? `Address Proof · ${record.proofOfAddressType}` : 'Proof of Address'}
-                url={record.proofOfAddressUrl}
-                icon={<IconFileText size={24} color="gray" stroke={1.5} />}
-              />
-            </SimpleGrid>
+            {/* Mono Verification Data */}
+            <Divider
+              label={
+                <Group gap={4}>
+                  <IconShieldCheck size={14} />
+                  <Text fz="xs">Mono Prove Verification</Text>
+                </Group>
+              }
+              labelPosition="left"
+            />
+            {record.verificationData ? (
+              <ScrollArea h={220} type="auto">
+                <Code block fz="xs" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                  {JSON.stringify(record.verificationData, null, 2)}
+                </Code>
+              </ScrollArea>
+            ) : (
+              <Text fz="sm" c="dimmed">No Mono verification data yet.</Text>
+            )}
 
             {record.rejectionReason && (
               <Alert color="red" radius="md" variant="light">
@@ -430,8 +381,8 @@ export function KycApprovals() {
               <Table.Th style={{ color: 'white' }}>Email</Table.Th>
               <Table.Th style={{ color: 'white' }}>Phone</Table.Th>
               <Table.Th style={{ color: 'white' }}>Submitted</Table.Th>
-              <Table.Th style={{ color: 'white' }}>NIN</Table.Th>
-              <Table.Th style={{ color: 'white' }}>BVN</Table.Th>
+              <Table.Th style={{ color: 'white' }}>Level</Table.Th>
+              <Table.Th style={{ color: 'white' }}>Step</Table.Th>
               <Table.Th style={{ color: 'white' }}>Status</Table.Th>
               <Table.Th style={{ color: 'white' }} w={60} />
             </Table.Tr>
@@ -469,14 +420,12 @@ export function KycApprovals() {
                     <Text fz="sm">{fmt(r.submittedAt)}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Badge size="xs" variant="light" color={r.ninVerifiedAt ? 'green' : 'gray'}>
-                      {r.ninVerifiedAt ? 'Verified' : 'Pending'}
+                    <Badge size="xs" variant="light" color="blue">
+                      Level {r.kycLevel}
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Badge size="xs" variant="light" color={r.bvnVerifiedAt ? 'green' : 'gray'}>
-                      {r.bvnVerifiedAt ? 'Verified' : 'Pending'}
-                    </Badge>
+                    <Text fz="xs" c="dimmed">{r.step}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Badge color={STATUS_COLOR[r.status] ?? 'gray'} variant="filled" size="sm" radius="sm">

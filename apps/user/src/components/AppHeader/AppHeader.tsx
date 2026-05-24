@@ -106,8 +106,10 @@ function NotificationPanel() {
   useEffect(() => {
     getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
     const interval = setInterval(() => {
-      getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
-    }, 30_000)
+      if (!document.hidden) {
+        getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
+      }
+    }, 60_000)
     return () => clearInterval(interval)
   }, [])
 

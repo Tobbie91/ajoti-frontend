@@ -8,7 +8,6 @@ import {
   getUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
-  getUserProfile,
   type AppNotification,
 } from '@/utils/api'
 
@@ -28,8 +27,10 @@ function NotificationPanel() {
   useEffect(() => {
     getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
     const interval = setInterval(() => {
-      getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
-    }, 30_000)
+      if (!document.hidden) {
+        getUnreadNotificationCount().then(setUnreadCount).catch(() => {})
+      }
+    }, 60_000)
     return () => clearInterval(interval)
   }, [])
 
@@ -154,14 +155,6 @@ export function Header({ opened, onToggle }: HeaderProps) {
   )
   const initials = fullName.charAt(0).toUpperCase()
 
-  useEffect(() => {
-    getUserProfile()
-      .then((p) => {
-        const name = `${p.firstName} ${p.lastName}`.trim()
-        if (name) setFullName(name)
-      })
-      .catch(() => {})
-  }, [])
 
   return (
     <Group h="100%" px="md" justify="space-between">

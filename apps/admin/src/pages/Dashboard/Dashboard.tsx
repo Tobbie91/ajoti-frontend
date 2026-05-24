@@ -6,7 +6,7 @@ import { StatsCard } from '@/components/StatsCard'
 import { TrustScoreCard, CreditScoreCard } from '@/components/ScoreCards'
 import { GroupTable } from '@/components/GroupTable'
 import { QuickActions } from '@/components/QuickActions'
-import { getTrustScore, getAdminWalletBalance, getWalletBalance, getCreditScore, getAdminDashboard, getUserProfile, type AdminDashboard, type TrustScore } from '@/utils/api'
+import { getTrustScore, getAdminWalletBalance, getWalletBalance, getCreditScore, getAdminDashboard, type AdminDashboard, type TrustScore } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -15,29 +15,15 @@ export function Dashboard() {
   const [creditScore, setCreditScore] = useState<number | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
   const [dashStats, setDashStats] = useState<AdminDashboard | null>(null)
-  const [adminName, setAdminName] = useState('')
+  const [adminName] = useState(
+    [storedUser.firstName, storedUser.lastName].filter(Boolean).join(' ') || ''
+  )
 
   const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
   const userId = storedUser.id ?? storedUser._id ?? ''
 
   useEffect(() => {
-    getAdminDashboard()
-      .then(setDashStats)
-      .catch(() => {})
-
-    getUserProfile()
-      .then((p) => setAdminName(`${p.firstName} ${p.lastName}`.trim()))
-      .catch(() => {})
-
-    getTrustScore()
-      .then((res) => setTrustScoreData(res))
-      .catch(() => setTrustScoreData({ trustScore: 0 }))
-
-    getCreditScore()
-      .then((res) => { const r = res as Record<string, number>; setCreditScore(r.trustDisplayScore ?? r.finalScore ?? r.externalScore ?? r.compositeScore ?? r.score ?? 0) })
-      .catch(() => setCreditScore(0))
-
-    const balanceFetch = userId
+    const balancePromise = userId
       ? getAdminWalletBalance(userId)
           .then((data) => setBalance(data.available ?? data.total ?? 0))
           .catch(() =>
@@ -48,7 +34,15 @@ export function Dashboard() {
       : getWalletBalance()
           .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
           .catch(() => setBalance(0))
-    void balanceFetch
+
+    Promise.allSettled([
+      getAdminDashboard().then(setDashStats),
+      getTrustScore().then(setTrustScoreData).catch(() => setTrustScoreData({ trustScore: 0 })),
+      getCreditScore()
+        .then((res) => { const r = res as Record<string, number>; setCreditScore(r.trustDisplayScore ?? r.finalScore ?? r.externalScore ?? r.compositeScore ?? r.score ?? 0) })
+        .catch(() => setCreditScore(0)),
+      balancePromise,
+    ])
   }, [userId])
 
   return (

@@ -15,6 +15,7 @@ import {
   IconLock,
   IconChevronRight,
   IconUsers,
+  IconFingerprint,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -71,6 +72,36 @@ const NIGERIAN_STATES = [
   'Zamfara',
 ]
 
+function VerificationDataCard({ data }: { data: Record<string, unknown> | null | undefined }) {
+  if (!data) return null
+  const inner = (data.data ?? data) as Record<string, any>
+  const customer = inner?.customer as Record<string, any> | undefined
+  const rows: { label: string; value: string }[] = [
+    ...(customer?.name ? [{ label: 'Verified Name', value: customer.name }] : []),
+    ...(customer?.phone ? [{ label: 'Phone', value: customer.phone }] : []),
+    ...(customer?.identity?.type ? [{ label: 'Identity Type', value: String(customer.identity.type).toUpperCase() }] : []),
+    ...(inner?.kyc_level ? [{ label: 'KYC Tier', value: String(inner.kyc_level).replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) }] : []),
+    ...((inner?.updated_at ?? inner?.created_at) ? [{ label: 'Verified At', value: new Date((inner.updated_at ?? inner.created_at) as string).toLocaleString('en-NG', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }] : []),
+  ]
+  if (rows.length === 0) return null
+  return (
+    <div className="rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <IconFingerprint size={15} color="#02A36E" />
+        <Text fw={600} className="text-[13px] text-[#065F46]">Verified by Mono</Text>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        {rows.map(({ label, value }) => (
+          <div key={label}>
+            <Text fw={400} className="text-[11px] text-[#6B7280]">{label}</Text>
+            <Text fw={600} className="text-[13px] text-[#0F172A]">{value}</Text>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function Profile() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
@@ -93,10 +124,28 @@ export function Profile() {
   const [userRole, setUserRole] = useState<string>(user.role || '')
 
   useEffect(() => {
-    getKycStatus()
-      .then(setKycStatus)
-      .catch(() => {})
+    getKycStatus().then(setKycStatus).catch(() => {})
   }, [])
+
+  // Poll while PROVE_PENDING and re-fetch when tab becomes visible
+  useEffect(() => {
+    const PROVE_PENDING_STEPS = new Set(['PROVE_PENDING', 'PROVE_PENDING_L2', 'PROVE_PENDING_L3'])
+    const isPending = kycStatus?.step ? PROVE_PENDING_STEPS.has(kycStatus.step) : false
+
+    const refresh = () => getKycStatus().then(setKycStatus).catch(() => {})
+
+    const onVisible = () => { if (!document.hidden) refresh() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    const interval = isPending
+      ? setInterval(() => { if (!document.hidden) refresh() }, 10_000)
+      : null
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      if (interval) clearInterval(interval)
+    }
+  }, [kycStatus?.step])
 
   useEffect(() => {
     getUserProfile()
@@ -422,24 +471,27 @@ export function Profile() {
                   )}
                 </div>
                 {level > 0 ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">
-                        Single transaction
-                      </Text>
-                      <Text fw={700} className="text-[15px] text-[#0F172A]">
-                        {limits[level].single}
-                      </Text>
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Text fw={400} className="text-[11px] text-[#9CA3AF]">
+                          Single transaction
+                        </Text>
+                        <Text fw={700} className="text-[15px] text-[#0F172A]">
+                          {limits[level].single}
+                        </Text>
+                      </div>
+                      <div>
+                        <Text fw={400} className="text-[11px] text-[#9CA3AF]">
+                          Daily limit
+                        </Text>
+                        <Text fw={700} className="text-[15px] text-[#0F172A]">
+                          {limits[level].daily}
+                        </Text>
+                      </div>
                     </div>
-                    <div>
-                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">
-                        Daily limit
-                      </Text>
-                      <Text fw={700} className="text-[15px] text-[#0F172A]">
-                        {limits[level].daily}
-                      </Text>
-                    </div>
-                  </div>
+                    <VerificationDataCard data={kycStatus?.verificationData} />
+                  </>
                 ) : (
                   <Text fw={400} className="text-[12px] text-[#6B7280]">
                     Complete identity verification to start transacting.

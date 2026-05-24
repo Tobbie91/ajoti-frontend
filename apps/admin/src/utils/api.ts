@@ -196,7 +196,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
         }),
       )
     })
-    setTimeout(() => reject(new Error('Session expired')), 10_000)
+    setTimeout(() => reject(new Error('Session expired')), 30_000)
   })
 }
 
@@ -219,29 +219,17 @@ export function resubmitKyc(): Promise<KycStatus> {
   return authRequest('/api/kyc/resubmit', { method: 'POST' })
 }
 
-export interface VerifyNinPayload {
-  nin: string
-  firstName: string
-  lastName: string
-  dob: string
+export interface ProveInitiatePayload {
+  nin?: string
+  bvn?: string
+  firstName?: string
+  lastName?: string
+  phone?: string
+  email?: string
 }
 
-export function verifyNin(payload: VerifyNinPayload): Promise<{ message: string }> {
-  return authRequest('/api/kyc/verify-nin', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export interface VerifyBvnPayload {
-  bvn: string
-  firstName: string
-  lastName: string
-  dob: string
-}
-
-export function verifyBvn(payload: VerifyBvnPayload): Promise<{ message: string }> {
-  return authRequest('/api/kyc/verify-bvn', {
+export function proveInitiate(payload: ProveInitiatePayload): Promise<{ monoUrl: string | null; reference: string }> {
+  return authRequest('/api/kyc/initiate-prove', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

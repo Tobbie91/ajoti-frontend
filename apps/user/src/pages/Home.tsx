@@ -38,34 +38,24 @@ export function Home() {
     const [creditScore, setCreditScore] = useState<number | null>(null)
 
     useEffect(() => {
-        getWalletBalance()
-            .then((data) => {
-                setWalletBalance({
+        Promise.allSettled([
+            getWalletBalance()
+                .then((data) => setWalletBalance({
                     total: Number(data.total ?? 0) / 100,
                     reserved: Number(data.reserved ?? 0) / 100,
                     available: Number(data.available ?? 0) / 100,
-                })
-            })
-            .catch(() => setWalletBalance({ total: 0, reserved: 0, available: 0 }))
-
-        getWalletTransactions()
-            .then((txns) => setRecentTxns(txns.slice(0, 5)))
-            .catch(() => {})
-
-        getTrustScore()
-            .then((res) => {
-                const score = res.trustScore ?? 0
-                setTrustScore(Number(score))
-                setTrustData(res)
-            })
-            .catch(() => { setTrustScore(0); setTrustData(null) })
-
-        getCreditScore()
-            .then((res) => {
-                const score = res.finalScore ?? res.compositeScore ?? res.score ?? 0
-                setCreditScore(Number(score))
-            })
-            .catch(() => setCreditScore(0))
+                }))
+                .catch(() => setWalletBalance({ total: 0, reserved: 0, available: 0 })),
+            getWalletTransactions()
+                .then((txns) => setRecentTxns(txns.slice(0, 5)))
+                .catch(() => {}),
+            getTrustScore()
+                .then((res) => { setTrustScore(Number(res.trustScore ?? 0)); setTrustData(res) })
+                .catch(() => { setTrustScore(0); setTrustData(null) }),
+            getCreditScore()
+                .then((res) => { const score = res.finalScore ?? res.compositeScore ?? res.score ?? 0; setCreditScore(Number(score)) })
+                .catch(() => setCreditScore(0)),
+        ])
     }, [])
 
     return (
