@@ -123,14 +123,14 @@ export function Kyc() {
     setInitiateError(null)
     setInitiating(true)
     try {
-      const p = userProfile ?? {}
+      const p = userProfile
       const result = await proveInitiate({
         nin: nin.trim(),
         bvn: bvn.trim(),
-        firstName: (p.firstName as string) || '',
-        lastName: (p.lastName as string) || '',
-        phone: (p.phone as string) || '',
-        ...((p.email as string) ? { email: p.email as string } : {}),
+        firstName: p?.firstName || '',
+        lastName: p?.lastName || '',
+        phone: (p?.phone as string) || '',
+        ...(p?.email ? { email: p.email as string } : {}),
       })
       if (result.monoUrl) {
         sessionStorage.setItem('kyc_widget_opened', 'true')
@@ -402,7 +402,7 @@ export function Kyc() {
         {/* Step indicators */}
         <div className="mt-8 flex items-center justify-center gap-12">
           {['Identity', 'Next of Kin'].map((label, i) => {
-            const isDone = i === 0 && phase === 'nok'
+            const isDone = false
             const isActive = i === 0
             return (
               <div key={label} className="flex flex-col items-center gap-2">

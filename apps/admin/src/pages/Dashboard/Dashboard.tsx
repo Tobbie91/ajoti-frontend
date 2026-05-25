@@ -15,11 +15,10 @@ export function Dashboard() {
   const [creditScore, setCreditScore] = useState<number | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
   const [dashStats, setDashStats] = useState<AdminDashboard | null>(null)
+  const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
   const [adminName] = useState(
     [storedUser.firstName, storedUser.lastName].filter(Boolean).join(' ') || ''
   )
-
-  const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
   const userId = storedUser.id ?? storedUser._id ?? ''
 
   useEffect(() => {
