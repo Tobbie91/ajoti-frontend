@@ -374,6 +374,13 @@ export function rejectKyc(userId: string, rejectionReason: string): Promise<unkn
   })
 }
 
+export function overrideKycLevel(userId: string, kycLevel: number): Promise<unknown> {
+  return authRequest(`/api/kyc/override/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ kycLevel }),
+  })
+}
+
 // ── Ledger & Audit ────────────────────────────────────────────────────────────
 
 export interface LedgerRow {
