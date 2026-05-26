@@ -310,6 +310,10 @@ export function rejectAdminRequest(userId: string): Promise<{ success: boolean; 
   return authRequest(`/api/superadmin/users/${userId}/reject-admin`, { method: 'PATCH' })
 }
 
+export function clearUserVirtualAccount(userId: string): Promise<{ success: boolean; message: string }> {
+  return authRequest(`/api/superadmin/users/${userId}/virtual-account`, { method: 'DELETE' })
+}
+
 // ── KYC ───────────────────────────────────────────────────────────────────────
 
 export interface KycQueueRow {
@@ -572,6 +576,18 @@ export function flagMember(
     method: 'PATCH',
     body: JSON.stringify({ reason }),
   })
+}
+
+export function releaseCircleCollateral(circleId: string): Promise<{ success: boolean; data: { released: number; message: string } }> {
+  return authRequest(`/api/superadmin/circles/${circleId}/release-collateral`, { method: 'POST' })
+}
+
+export function deleteCircle(circleId: string): Promise<{ success: boolean; data: { deleted: boolean } }> {
+  return authRequest(`/api/superadmin/circles/${circleId}`, { method: 'DELETE' })
+}
+
+export function releaseUserReservedFunds(userId: string): Promise<{ success: boolean; data: { released: number; message: string } }> {
+  return authRequest(`/api/superadmin/users/${userId}/release-reserved-funds`, { method: 'POST' })
 }
 
 export interface ReconcileResult {

@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  CopyButton,
   Group,
   Pagination,
   Paper,
@@ -15,11 +16,14 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core'
 import {
   IconAlertCircle,
   IconArrowDownRight,
   IconArrowUpRight,
+  IconCheck,
+  IconCopy,
   IconCurrencyNaira,
   IconDownload,
   IconRefresh,
@@ -367,9 +371,20 @@ export function Transactions() {
                         <Text size="sm">{formatNaira(balKobo)}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="xs" c="dimmed" style={{ fontFamily: 'monospace', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {row.reference}
-                        </Text>
+                        <Group gap={4} wrap="nowrap">
+                          <Text size="xs" c="dimmed" style={{ fontFamily: 'monospace', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {row.reference}
+                          </Text>
+                          <CopyButton value={row.reference} timeout={1500}>
+                            {({ copied, copy }) => (
+                              <Tooltip label={copied ? 'Copied!' : 'Copy'} withArrow position="top">
+                                <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                                  {copied ? <IconCheck size={11} /> : <IconCopy size={11} />}
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
+                          </CopyButton>
+                        </Group>
                       </Table.Td>
                       <Table.Td>
                         {user ? (

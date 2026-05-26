@@ -30,15 +30,19 @@ import {
   IconFlag,
   IconRefresh,
   IconSearch,
+  IconTrash,
+  IconLock,
 } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   cancelCircle,
+  deleteCircle,
   flagMember,
   getCircleDetail,
   getDefaulters,
   getAllRoscaCircles,
   listCircles,
+  releaseCircleCollateral,
   type CircleRow,
   type PaginatedResponse,
 } from '@/utils/api'
@@ -87,6 +91,15 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
   const [flagging, setFlagging] = useState(false)
   const [flagError, setFlagError] = useState<string | null>(null)
 
+  // Release collateral
+  const [releasing, setReleasing] = useState(false)
+  const [releaseResult, setReleaseResult] = useState<string | null>(null)
+
+  // Delete circle
+  const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!circleId || !opened) return
     setLoading(true)
@@ -112,6 +125,36 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
       setCancelError(e instanceof Error ? e.message : 'Failed to cancel circle')
     } finally {
       setCancelling(false)
+    }
+  }
+
+  async function handleReleaseCollateral() {
+    if (!circleId) return
+    setReleasing(true)
+    setReleaseResult(null)
+    try {
+      const res = await releaseCircleCollateral(circleId)
+      setReleaseResult(res.data.message)
+    } catch (e) {
+      setReleaseResult(e instanceof Error ? e.message : 'Failed to release collateral')
+    } finally {
+      setReleasing(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!circleId) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteCircle(circleId)
+      closeDelete()
+      onCancelled()
+      onClose()
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Failed to delete circle')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -230,6 +273,36 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
                 Cancel Circle
               </Button>
             )}
+
+            {/* Release collateral — only for cancelled circles */}
+            {String(circle.status ?? '').toUpperCase() === 'CANCELLED' && (
+              <Stack gap="xs">
+                <Button
+                  color="orange"
+                  variant="light"
+                  leftSection={<IconLock size={16} />}
+                  loading={releasing}
+                  onClick={handleReleaseCollateral}
+                >
+                  Release Reserved Funds
+                </Button>
+                {releaseResult && (
+                  <Text size="xs" c="dimmed">{releaseResult}</Text>
+                )}
+              </Stack>
+            )}
+
+            {/* Delete — only for cancelled circles */}
+            {String(circle.status ?? '').toUpperCase() === 'CANCELLED' && (
+              <Button
+                color="red"
+                variant="outline"
+                leftSection={<IconTrash size={16} />}
+                onClick={openDelete}
+              >
+                Delete Circle
+              </Button>
+            )}
           </Stack>
         )}
       </Drawer>
@@ -262,6 +335,26 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
               onClick={handleCancel}
             >
               Confirm Cancel
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Delete circle modal */}
+      <Modal opened={deleteOpened} onClose={closeDelete} title="Delete Circle" centered size="sm">
+        <Stack gap="md">
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+            This permanently deletes the circle and all its records. This cannot be undone. Release all reserved funds first.
+          </Alert>
+          {deleteError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+              {deleteError}
+            </Alert>
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeDelete}>Cancel</Button>
+            <Button color="red" loading={deleting} onClick={handleDelete} leftSection={<IconTrash size={14} />}>
+              Delete Permanently
             </Button>
           </Group>
         </Stack>

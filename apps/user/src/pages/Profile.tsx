@@ -24,6 +24,7 @@ import {
   updateUserProfile,
   getKycStatus,
   requestAdminAccess,
+  deleteMyAccount,
   type KycStatus,
 } from '@/utils/api'
 
@@ -123,6 +124,13 @@ export function Profile() {
   const [adminRequestError, setAdminRequestError] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>(user.role || '')
 
+  const [deleteExpanded, setDeleteExpanded] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   useEffect(() => {
     getKycStatus().then(setKycStatus).catch(() => {})
   }, [])
@@ -196,6 +204,23 @@ export function Profile() {
     } catch (err) {
       setAdminRequestError(err instanceof Error ? err.message : 'Request failed')
       setAdminRequestState('idle')
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteMyAccount(deletePassword, deleteReason || undefined)
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+      localStorage.removeItem('kyc_completed')
+      navigate('/')
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete account')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -744,11 +769,89 @@ export function Profile() {
       {/* Logout */}
       <button
         onClick={handleLogout}
-        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EF4444] bg-white py-3.5 text-[14px] font-semibold text-[#EF4444] hover:bg-[#FEF2F2]"
+        className="mb-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EF4444] bg-white py-3.5 text-[14px] font-semibold text-[#EF4444] hover:bg-[#FEF2F2]"
       >
         <IconLogout size={18} />
         Log Out
       </button>
+
+      {/* Delete Account */}
+      <div className="rounded-2xl border border-[#FCA5A5] bg-white p-5">
+        <button
+          onClick={() => setDeleteExpanded(!deleteExpanded)}
+          className="flex w-full cursor-pointer items-center justify-between"
+        >
+          <Text fw={600} className="text-[14px] text-[#EF4444]">Delete Account</Text>
+          <span className="text-[#EF4444] text-[18px]">{deleteExpanded ? '−' : '+'}</span>
+        </button>
+
+        {deleteExpanded && (
+          <div className="mt-4 flex flex-col gap-4">
+            <Text fw={400} className="text-[12px] text-[#6B7280]">
+              This permanently closes your account, deletes your data, and cannot be undone.
+              Make sure your wallet balance is zero and you have no active circle memberships before proceeding.
+            </Text>
+
+            {deleteError && (
+              <div className="rounded-xl bg-red-50 px-4 py-3">
+                <Text fw={500} className="text-[12px] text-red-600">{deleteError}</Text>
+              </div>
+            )}
+
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+              <TextInput
+                type="password"
+                placeholder="Enter your password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                leftSection={<IconLock size={16} color="#9CA3AF" />}
+                styles={{ input: { borderColor: '#FCA5A5', fontSize: 14 } }}
+              />
+            </div>
+
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text>
+              <TextInput
+                placeholder="Why are you leaving?"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+              />
+            </div>
+
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
+                Type <strong>DELETE</strong> to confirm
+              </Text>
+              <TextInput
+                placeholder="DELETE"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                styles={{ input: { borderColor: '#FCA5A5', fontSize: 14 } }}
+              />
+            </div>
+
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting || deleteConfirm !== 'DELETE' || deletePassword.length < 8}
+              className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${
+                deleting || deleteConfirm !== 'DELETE' || deletePassword.length < 8
+                  ? 'cursor-not-allowed bg-[#FCA5A5]'
+                  : 'cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]'
+              }`}
+            >
+              {deleting ? 'Deleting...' : 'Permanently Delete Account'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

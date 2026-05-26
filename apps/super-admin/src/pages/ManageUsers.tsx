@@ -39,6 +39,8 @@ import {
   promoteToSuperadmin,
   approveAdminRequest,
   rejectAdminRequest,
+  clearUserVirtualAccount,
+  releaseUserReservedFunds,
   type SuperadminUserRow,
   type SuperadminUserDetail,
 } from '@/utils/api'
@@ -77,6 +79,8 @@ function UserDetailBody({
   onOpenPromote,
   onOpenApproveAdmin,
   onOpenRejectAdmin,
+  onOpenClearVa,
+  onOpenReleaseReserved,
 }: {
   detail: SuperadminUserDetail
   actionLoading: boolean
@@ -88,6 +92,8 @@ function UserDetailBody({
   onOpenPromote: () => void
   onOpenApproveAdmin: () => void
   onOpenRejectAdmin: () => void
+  onOpenClearVa: () => void
+  onOpenReleaseReserved: () => void
 }) {
   const user = detail.user as Record<string, unknown>
   const wallet = detail.wallet
@@ -223,6 +229,13 @@ function UserDetailBody({
             Promote to Superadmin
           </Button>
         )}
+        <Divider />
+        <Button fullWidth variant="subtle" color="orange" onClick={onOpenClearVa}>
+          Reset Virtual Account
+        </Button>
+        <Button fullWidth variant="subtle" color="violet" onClick={onOpenReleaseReserved}>
+          Release Reserved Funds
+        </Button>
       </Stack>
     </Stack>
   )
@@ -251,6 +264,10 @@ function UserDetailDrawer({
   const [promoteModal, { open: openPromote, close: closePromote }] = useDisclosure(false)
   const [approveAdminModal, { open: openApproveAdmin, close: closeApproveAdmin }] = useDisclosure(false)
   const [rejectAdminModal, { open: openRejectAdmin, close: closeRejectAdmin }] = useDisclosure(false)
+  const [clearVaModal, { open: openClearVa, close: closeClearVa }] = useDisclosure(false)
+  const [releaseReservedModal, { open: openReleaseReserved, close: closeReleaseReserved }] = useDisclosure(false)
+  const [releaseReservedLoading, setReleaseReservedLoading] = useState(false)
+  const [releaseReservedResult, setReleaseReservedResult] = useState<string | null>(null)
   const [reason, setReason] = useState('')
 
   useEffect(() => {
@@ -325,6 +342,34 @@ function UserDetailDrawer({
     }
   }
 
+  async function handleClearVa() {
+    if (!userId) return
+    setActionLoading(true)
+    try {
+      await clearUserVirtualAccount(userId)
+      closeClearVa()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Clear VA failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleReleaseReserved() {
+    if (!userId) return
+    setReleaseReservedLoading(true)
+    setReleaseReservedResult(null)
+    try {
+      const res = await releaseUserReservedFunds(userId)
+      setReleaseReservedResult(res.data.message)
+    } catch (e) {
+      setReleaseReservedResult(e instanceof Error ? e.message : 'Release failed')
+    } finally {
+      setReleaseReservedLoading(false)
+    }
+  }
+
   const user = detail?.user as Record<string, unknown> | undefined
   const wallet = detail?.wallet
   const currentStatus = (user?.status as string) ?? ''
@@ -358,6 +403,8 @@ function UserDetailDrawer({
             onOpenPromote={openPromote}
             onOpenApproveAdmin={openApproveAdmin}
             onOpenRejectAdmin={openRejectAdmin}
+            onOpenClearVa={openClearVa}
+            onOpenReleaseReserved={openReleaseReserved}
           />
         ) : null}
       </Drawer>
@@ -444,6 +491,47 @@ function UserDetailDrawer({
             <Button variant="default" onClick={closeRejectAdmin}>Cancel</Button>
             <Button color="red" loading={actionLoading} onClick={handleRejectAdmin}>
               Reject
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Reset virtual account modal */}
+      <Modal opened={clearVaModal} onClose={closeClearVa} title="Reset Virtual Account" size="sm">
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            This will remove the stale virtual account for{' '}
+            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong> from the database.
+            The next time they visit Fund Wallet, a fresh live account will be provisioned automatically.
+          </Text>
+          <Alert color="orange" variant="light">
+            <Text fz="xs">Use this only for accounts created in sandbox/test mode that are no longer valid.</Text>
+          </Alert>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeClearVa}>Cancel</Button>
+            <Button color="orange" loading={actionLoading} onClick={handleClearVa}>
+              Reset VA
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      {/* Release reserved funds modal */}
+      <Modal opened={releaseReservedModal} onClose={closeReleaseReserved} title="Release Reserved Funds" size="sm">
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            Releases any unreleased ROSCA collateral across all circle memberships back to{' '}
+            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong>'s wallet.
+            Run this before deleting an account that has reserved funds.
+          </Text>
+          {releaseReservedResult && (
+            <Alert color="teal" variant="light">
+              <Text fz="xs">{releaseReservedResult}</Text>
+            </Alert>
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeReleaseReserved}>Close</Button>
+            <Button color="violet" loading={releaseReservedLoading} onClick={handleReleaseReserved}>
+              Release Funds
             </Button>
           </Group>
         </Stack>
