@@ -59,6 +59,7 @@ import {
   getFinancialHealth,
   getCircleJoinRequests,
   closeRoscaCircle,
+  extendCycleDeadline,
   type Payout,
   type Contribution as ApiContribution,
   type RoscaCircle,
@@ -780,6 +781,10 @@ export function GroupDetail() {
   const [paymentContribsLoading, setPaymentContribsLoading] = useState(false)
   const [disbursements, setDisbursements] = useState<ApiDisbursement[]>([])
   const [disbursementsLoading, setDisbursementsLoading] = useState(false)
+  const [extendModal, setExtendModal] = useState<{ cycleNumber: number } | null>(null)
+  const [extendDate, setExtendDate] = useState<Date | null>(null)
+  const [extendLoading, setExtendLoading] = useState(false)
+  const [extendError, setExtendError] = useState<string | null>(null)
 
   useEffect(() => {
     if (activeTab === 'payouts' && id && !payoutsFetched.current) {
@@ -827,6 +832,27 @@ export function GroupDetail() {
       .catch(() => setPaymentContribs(null))
       .finally(() => setPaymentContribsLoading(false))
   }, [activeTab, selectedRound, id])
+
+  async function handleExtendDeadline() {
+    if (!id || !extendModal || !extendDate) return
+    setExtendLoading(true)
+    setExtendError(null)
+    try {
+      await extendCycleDeadline(id, extendModal.cycleNumber, extendDate.toISOString())
+      setExtendModal(null)
+      setExtendDate(null)
+      const [updated, updatedHealth] = await Promise.all([
+        getAdminDisbursements(id),
+        getFinancialHealth(id),
+      ])
+      setDisbursements(updated)
+      setFinancialHealth(updatedHealth)
+    } catch (err) {
+      setExtendError(err instanceof Error ? err.message : 'Failed to extend deadline')
+    } finally {
+      setExtendLoading(false)
+    }
+  }
 
   async function handleProcessPayout() {
     const cycleNum = parseInt(processCycleInput)
@@ -1656,30 +1682,32 @@ export function GroupDetail() {
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Payment Method</Table.Th>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date Disbursed</Table.Th>
+                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }} w={140} />
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {disbursementsLoading ? (
                     <Table.Tr>
-                      <Table.Td colSpan={5} style={{ textAlign: 'center', padding: '24px 0' }}>
+                      <Table.Td colSpan={6} style={{ textAlign: 'center', padding: '24px 0' }}>
                         <Loader size="sm" color={PRIMARY} />
                       </Table.Td>
                     </Table.Tr>
                   ) : disbursements.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={5}>
+                      <Table.Td colSpan={6}>
                         <Text c="dimmed" ta="center" py="xl" fz="sm">No disbursements found</Text>
                       </Table.Td>
                     </Table.Tr>
                   ) : disbursements.map((d) => {
                     const isSuccess = d.payoutStatus != null && ['SUCCESS', 'COMPLETED', 'PAID'].includes(d.payoutStatus.toUpperCase())
                     const isUpcoming = d.payoutStatus == null || ['UPCOMING', 'PENDING'].includes((d.scheduleStatus ?? '').toUpperCase())
+                    const isStuck = isUpcoming && d.payoutDate != null && new Date(d.payoutDate) < new Date()
                     const amountNaira = d.amountPaidOut != null ? (Number(d.amountPaidOut) / 100).toLocaleString('en-NG') : null
                     const dateStr = (d.processedAt ?? (isUpcoming ? d.payoutDate : null))
                       ? new Date((d.processedAt ?? d.payoutDate) as string).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
                       : '—'
                     return (
-                      <Table.Tr key={d.cycleNumber} style={isUpcoming ? { background: '#f0faf7' } : undefined}>
+                      <Table.Tr key={d.cycleNumber} style={isStuck ? { background: '#fff5f5' } : isUpcoming ? { background: '#f0faf7' } : undefined}>
                         <Table.Td>
                           <Group gap="sm" align="center">
                             <Avatar size={28} radius="xl" color="gray">{(d.recipientName || '?').charAt(0)}</Avatar>
@@ -1699,17 +1727,29 @@ export function GroupDetail() {
                             size="sm"
                             radius="sm"
                             style={{
-                              background: isSuccess ? '#e6f5f1' : isUpcoming ? '#fdf3e7' : '#f1f3f5',
-                              color: isSuccess ? PRIMARY : isUpcoming ? '#e67e22' : '#868e96',
+                              background: isSuccess ? '#e6f5f1' : isStuck ? '#ffe3e3' : isUpcoming ? '#fdf3e7' : '#f1f3f5',
+                              color: isSuccess ? PRIMARY : isStuck ? '#c92a2a' : isUpcoming ? '#e67e22' : '#868e96',
                               border: 'none',
                               fontWeight: 600,
                             }}
                           >
-                            {isSuccess ? 'Disbursed' : isUpcoming ? 'Upcoming' : d.payoutStatus}
+                            {isSuccess ? 'Disbursed' : isStuck ? 'Overdue' : isUpcoming ? 'Upcoming' : d.payoutStatus}
                           </Badge>
                         </Table.Td>
                         <Table.Td><Text fz="sm">Wallet</Text></Table.Td>
                         <Table.Td><Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>{dateStr}</Text></Table.Td>
+                        <Table.Td>
+                          {isStuck && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              color="orange"
+                              onClick={() => { setExtendModal({ cycleNumber: d.cycleNumber }); setExtendDate(null); setExtendError(null) }}
+                            >
+                              Extend Deadline
+                            </Button>
+                          )}
+                        </Table.Td>
                       </Table.Tr>
                     )
                   })}
@@ -2023,6 +2063,52 @@ export function GroupDetail() {
               onClick={handleReversePayout}
             >
               Confirm Reverse
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Extend Deadline Modal */}
+      <Modal
+        opened={extendModal !== null}
+        onClose={() => { setExtendModal(null); setExtendDate(null); setExtendError(null) }}
+        centered
+        radius="md"
+        size="sm"
+        title={<Text fw={700} fz="md">Extend Cycle Deadline</Text>}
+      >
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            Set a new payout date for cycle <b>{extendModal?.cycleNumber}</b>. All subsequent cycles will also shift forward by the same amount.
+          </Text>
+          <DateInput
+            label="New Payout Date"
+            placeholder="Pick a date"
+            value={extendDate}
+            onChange={setExtendDate}
+            minDate={new Date(Date.now() + 86400000)}
+            radius="md"
+            size="sm"
+          />
+          {extendError && <Text fz="sm" c="red">{extendError}</Text>}
+          <Group justify="flex-end" gap="sm" mt="xs">
+            <Button
+              variant="default"
+              radius="md"
+              size="sm"
+              onClick={() => { setExtendModal(null); setExtendDate(null); setExtendError(null) }}
+            >
+              Cancel
+            </Button>
+            <Button
+              radius="md"
+              size="sm"
+              color="orange"
+              loading={extendLoading}
+              disabled={!extendDate}
+              onClick={handleExtendDeadline}
+            >
+              Confirm Extension
             </Button>
           </Group>
         </Stack>

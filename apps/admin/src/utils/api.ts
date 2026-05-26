@@ -606,6 +606,17 @@ export async function getAdminDisbursements(circleId: string): Promise<Disbursem
   return (res as { data?: { schedules?: Disbursement[] } }).data?.schedules ?? []
 }
 
+export function extendCycleDeadline(
+  circleId: string,
+  cycleNumber: number,
+  newPayoutDate: string,
+): Promise<{ message: string }> {
+  return authRequest(`/api/admin/rosca/${circleId}/schedules/${cycleNumber}/extend`, {
+    method: 'PATCH',
+    body: JSON.stringify({ newPayoutDate }),
+  })
+}
+
 // GET /api/admin/rosca/{circleId}/contributions — admin view of contributions
 export interface AdminContribution {
   contributionId: string
