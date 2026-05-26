@@ -33,8 +33,9 @@ import {
   IconCheck,
   IconX,
   IconShieldCheck,
+  IconRefresh,
 } from '@tabler/icons-react'
-import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, type KycQueueRow } from '@/utils/api'
+import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, getMonoIdentity, type KycQueueRow } from '@/utils/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,9 @@ function KycDetailDrawer({
   const [rejectionReason, setRejectionReason] = useState('')
   const [overrideLevel, setOverrideLevel] = useState<string>('')
   const [overrideLoading, setOverrideLoading] = useState(false)
+  const [monoFetchLoading, setMonoFetchLoading] = useState(false)
+  const [monoFetchError, setMonoFetchError] = useState<string | null>(null)
+  const [monoLiveData, setMonoLiveData] = useState<Record<string, unknown> | null>(null)
 
   async function handleOverride() {
     if (!record || overrideLevel === '') return
@@ -140,6 +144,20 @@ function KycDetailDrawer({
       setActionError(e instanceof Error ? e.message : 'Override failed')
     } finally {
       setOverrideLoading(false)
+    }
+  }
+
+  async function handleMonoRefetch() {
+    if (!record) return
+    setMonoFetchLoading(true)
+    setMonoFetchError(null)
+    try {
+      const data = await getMonoIdentity(record.userId)
+      setMonoLiveData(data)
+    } catch (err) {
+      setMonoFetchError(err instanceof Error ? err.message : 'Failed to fetch from Mono')
+    } finally {
+      setMonoFetchLoading(false)
     }
   }
 
@@ -259,7 +277,27 @@ function KycDetailDrawer({
               }
               labelPosition="left"
             />
-            {record.verificationData ? (
+            <Group justify="space-between" align="center" mb={4}>
+              <Text fz="xs" c="dimmed">Stored snapshot</Text>
+              <Button
+                size="xs"
+                variant="subtle"
+                color="blue"
+                leftSection={<IconRefresh size={12} />}
+                loading={monoFetchLoading}
+                onClick={handleMonoRefetch}
+              >
+                Re-fetch from Mono
+              </Button>
+            </Group>
+            {monoFetchError && (
+              <Alert color="red" radius="md" variant="light" mb={4}>
+                <Text fz="xs">{monoFetchError}</Text>
+              </Alert>
+            )}
+            {monoLiveData ? (
+              <MonoVerificationCard data={monoLiveData} />
+            ) : record.verificationData ? (
               <MonoVerificationCard data={record.verificationData as Record<string, unknown>} />
             ) : (
               <Text fz="sm" c="dimmed">No Mono verification data yet.</Text>

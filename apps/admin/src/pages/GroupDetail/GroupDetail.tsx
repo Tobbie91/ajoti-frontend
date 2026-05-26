@@ -782,7 +782,7 @@ export function GroupDetail() {
   const [disbursements, setDisbursements] = useState<ApiDisbursement[]>([])
   const [disbursementsLoading, setDisbursementsLoading] = useState(false)
   const [extendModal, setExtendModal] = useState<{ cycleNumber: number } | null>(null)
-  const [extendDate, setExtendDate] = useState<Date | null>(null)
+  const [extendDate, setExtendDate] = useState<string | null>(null)
   const [extendLoading, setExtendLoading] = useState(false)
   const [extendError, setExtendError] = useState<string | null>(null)
 
@@ -838,7 +838,7 @@ export function GroupDetail() {
     setExtendLoading(true)
     setExtendError(null)
     try {
-      await extendCycleDeadline(id, extendModal.cycleNumber, extendDate.toISOString())
+      await extendCycleDeadline(id, extendModal.cycleNumber, new Date(extendDate).toISOString())
       setExtendModal(null)
       setExtendDate(null)
       const [updated, updatedHealth] = await Promise.all([

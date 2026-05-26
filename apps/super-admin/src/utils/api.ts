@@ -381,6 +381,10 @@ export function overrideKycLevel(userId: string, kycLevel: number): Promise<unkn
   })
 }
 
+export function getMonoIdentity(userId: string): Promise<Record<string, unknown>> {
+  return authRequest(`/api/kyc/mono-identity/${userId}`, {})
+}
+
 // ── Ledger & Audit ────────────────────────────────────────────────────────────
 
 export interface LedgerRow {
