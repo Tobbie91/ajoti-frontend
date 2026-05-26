@@ -786,9 +786,18 @@ export function GroupDetail() {
   const [extendLoading, setExtendLoading] = useState(false)
   const [extendError, setExtendError] = useState<string | null>(null)
 
+  // Load payouts eagerly so Member Management tab can check who's been paid
   useEffect(() => {
-    if (activeTab === 'payouts' && id && !payoutsFetched.current) {
+    if (id && !payoutsFetched.current) {
       payoutsFetched.current = true
+      getPayoutHistory(id)
+        .then(setPayouts)
+        .catch(() => setPayouts([]))
+    }
+  }, [id])
+
+  useEffect(() => {
+    if (activeTab === 'payouts' && id) {
       setPayoutsLoading(true)
       getPayoutHistory(id)
         .then(setPayouts)
@@ -1315,7 +1324,12 @@ export function GroupDetail() {
                       </Table.Td>
                     </Table.Tr>
                   )}
-                  {filteredMembers.map((member) => (
+                  {filteredMembers.map((member) => {
+                    const hasPayout = payouts.some(
+                      (p) => p.recipientId === member.userId &&
+                        ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase())
+                    )
+                    return (
                     <Table.Tr key={member.userId}>
                       <Table.Td>
                         <Group gap="sm" align="center">
@@ -1354,14 +1368,17 @@ export function GroupDetail() {
                           variant="outline"
                           size="xs"
                           radius="md"
-                          style={{ borderColor: PRIMARY, color: PRIMARY }}
-                          onClick={() => openAssignModal({ userId: member.userId, name: member.name })}
+                          disabled={hasPayout}
+                          title={hasPayout ? 'Position cannot be changed after payout' : undefined}
+                          style={hasPayout ? { borderColor: '#dee2e6', color: '#adb5bd' } : { borderColor: PRIMARY, color: PRIMARY }}
+                          onClick={() => !hasPayout && openAssignModal({ userId: member.userId, name: member.name })}
                         >
-                          Assign Position
+                          {hasPayout ? 'Paid Out' : 'Assign Position'}
                         </Button>
                       </Table.Td>
                     </Table.Tr>
-                  ))}
+                    )
+                  })}
                 </Table.Tbody>
               </Table></div>
             </Paper>
