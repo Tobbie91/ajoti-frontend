@@ -653,6 +653,37 @@ export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<
   return ('data' in res && res.data ? res.data : res) as WithdrawalResponse
 }
 
+// ── Saved Bank Accounts ───────────────────────────────────────────────────────
+
+export interface SavedBankAccount {
+  id: string
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  isDefault: boolean
+  createdAt: string
+}
+
+export function listBankAccounts(): Promise<{ data: SavedBankAccount[] }> {
+  return authRequest('/api/users/me/bank-accounts', { method: 'GET' })
+}
+
+export function addBankAccount(bankCode: string, bankName: string, accountNumber: string): Promise<{ data: SavedBankAccount }> {
+  return authRequest('/api/users/me/bank-accounts', {
+    method: 'POST',
+    body: JSON.stringify({ bankCode, bankName, accountNumber }),
+  })
+}
+
+export function removeBankAccount(id: string): Promise<{ data: { deleted: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}`, { method: 'DELETE' })
+}
+
+export function setDefaultBankAccount(id: string): Promise<{ data: { updated: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}/set-default`, { method: 'PATCH' })
+}
+
 // ── Transaction PIN ───────────────────────────────────────────────────────────
 
 export function setTransactionPin(pin: string, currentPin?: string): Promise<{ message: string }> {
