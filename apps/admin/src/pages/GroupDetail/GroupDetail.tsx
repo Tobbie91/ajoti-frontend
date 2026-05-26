@@ -2568,26 +2568,71 @@ export function GroupDetail() {
               <Paper p="sm" radius="md" style={{ background: '#f8f9fa', border: '1px solid #e9ecef' }}>
                 <Text fz="xs" fw={600} c="dimmed" mb={6}>Current Assignments</Text>
                 <Stack gap={4}>
-                  {existingAssignments.map((a) => (
-                    <Group key={a.userId} justify="space-between">
-                      <Text fz="xs" fw={500}>{a.name}</Text>
-                      <Text fz="xs" c={a.position ? PRIMARY : '#868e96'}>
-                        {a.position ? `Position ${a.position}` : 'Unassigned'}
-                      </Text>
-                    </Group>
-                  ))}
+                  {existingAssignments.map((a) => {
+                    const isPaidOut = payouts.some(
+                      (p) => p.recipientId === a.userId &&
+                        ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase())
+                    )
+                    return (
+                      <Group key={a.userId} justify="space-between">
+                        <Text fz="xs" fw={500}>{a.name}</Text>
+                        <Group gap={4}>
+                          <Text fz="xs" c={a.position ? PRIMARY : '#868e96'}>
+                            {a.position ? `Position ${a.position}` : 'Unassigned'}
+                          </Text>
+                          {isPaidOut && (
+                            <Badge size="xs" radius="sm" style={{ background: '#e6f5f1', color: PRIMARY, border: 'none' }}>
+                              Paid
+                            </Badge>
+                          )}
+                        </Group>
+                      </Group>
+                    )
+                  })}
                 </Stack>
               </Paper>
             )}
-            <TextInput
-              label="Position Number"
-              placeholder="e.g. 1, 2, 3..."
-              radius="md"
-              size="sm"
-              value={assignPosition}
-              onChange={(e) => setAssignPosition(e.currentTarget.value.replace(/\D/g, ''))}
-              styles={{ input: { border: '1px solid #dee2e6' } }}
-            />
+            {(() => {
+              const totalSlots = existingAssignments.length || apiMembers.length
+              const paidPositions = new Set(
+                payouts
+                  .filter(p => ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase()))
+                  .map(p => existingAssignments.find(a => a.userId === p.recipientId)?.position)
+                  .filter(Boolean)
+              )
+              const takenPositions = new Set(
+                existingAssignments
+                  .filter(a => a.userId !== assignMember?.userId && a.position != null)
+                  .map(a => a.position)
+              )
+              const availablePositions = Array.from({ length: totalSlots }, (_, i) => i + 1)
+                .filter(pos => !paidPositions.has(pos) && !takenPositions.has(pos))
+              return (
+                <Stack gap={8}>
+                  <Text fz="sm" fw={500}>Select Position</Text>
+                  {availablePositions.length === 0 ? (
+                    <Text fz="sm" c="dimmed">No positions available — all slots are taken or paid out.</Text>
+                  ) : (
+                    <Group gap="sm">
+                      {availablePositions.map(pos => (
+                        <Button
+                          key={pos}
+                          size="sm"
+                          radius="md"
+                          variant={assignPosition === String(pos) ? 'filled' : 'outline'}
+                          style={assignPosition === String(pos)
+                            ? { background: PRIMARY, color: 'white', border: 'none' }
+                            : { borderColor: PRIMARY, color: PRIMARY }}
+                          onClick={() => setAssignPosition(String(pos))}
+                        >
+                          Position {pos}
+                        </Button>
+                      ))}
+                    </Group>
+                  )}
+                </Stack>
+              )
+            })()}
             {assignError && <Text fz="sm" c="red">{assignError}</Text>}
             <Group gap="sm">
               <Button
