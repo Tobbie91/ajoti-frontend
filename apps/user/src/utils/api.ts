@@ -369,6 +369,10 @@ export async function listRoscaCircles(): Promise<RoscaCircle[]> {
   return Array.isArray(res) ? res : (res as { data?: RoscaCircle[] }).data ?? []
 }
 
+export function leaveRoscaCircle(circleId: string): Promise<{ success: boolean; message: string }> {
+  return authRequest(`/api/rosca/${circleId}/leave`, { method: 'DELETE' })
+}
+
 export function joinRoscaCircle(circleId: string): Promise<{ message: string }> {
   return authRequest(`/api/rosca/${circleId}/join`, { method: 'POST' })
 }
