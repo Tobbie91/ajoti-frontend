@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   getWalletBalance,
   getBanks,
+  resolveAccount,
   initializeWithdrawal,
   listBankAccounts,
   addBankAccount,
@@ -47,6 +48,8 @@ export function WithdrawFunds() {
   const [resolveError, setResolveError] = useState<string | null>(null)
   const [savingAccount, setSavingAccount] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [addAccountPin, setAddAccountPin] = useState('')
+  const [showAddPin, setShowAddPin] = useState(false)
 
   // Amount
   const [amount, setAmount] = useState('')
@@ -96,36 +99,46 @@ export function WithdrawFunds() {
 
     setResolveState('loading')
 
-    // Import resolveAccount inline to avoid circular dependency on component re-renders
-    import('@/utils/api').then(({ resolveAccount }) => {
-      resolveAccount(newAccountNumber, newBankCode)
-        .then((data) => {
-          setResolvedName(data.account_name)
-          setResolveState('success')
-        })
-        .catch((err) => {
-          setResolveError(err instanceof Error ? err.message : 'Could not verify account')
-          setResolveState('error')
-        })
-    })
+    resolveAccount(newAccountNumber, newBankCode)
+      .then((data) => {
+        setResolvedName(data.account_name)
+        setResolveState('success')
+      })
+      .catch((err) => {
+        setResolveError(err instanceof Error ? err.message : 'Could not verify account')
+        setResolveState('error')
+      })
   }, [newAccountNumber, newBankCode])
 
-  async function handleSaveAccount() {
+  function handleAddPinDigit(digit: string) {
+    if (addAccountPin.length < 4) {
+      const newPin = addAccountPin + digit
+      setAddAccountPin(newPin)
+      if (newPin.length === 4) {
+        setTimeout(() => handleSaveAccount(newPin), 300)
+      }
+    }
+  }
+
+  async function handleSaveAccount(pin: string) {
     if (resolveState !== 'success' || !resolvedName || !newBankCode) return
     const bankLabel = banks.find((b) => b.value === newBankCode)?.label ?? newBankCode
     setSavingAccount(true)
     setSaveError(null)
     try {
-      await addBankAccount(newBankCode, bankLabel, newAccountNumber)
+      await addBankAccount(newBankCode, bankLabel, newAccountNumber, pin)
       setNewBankCode('')
       setNewAccountNumber('')
       setBankSearch('')
       setResolveState('idle')
       setResolvedName(null)
+      setAddAccountPin('')
+      setShowAddPin(false)
       loadAccounts()
       setStep('select-account')
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save account')
+      setAddAccountPin('')
     } finally {
       setSavingAccount(false)
     }
@@ -458,17 +471,65 @@ export function WithdrawFunds() {
             </div>
           </div>
 
-          <button
-            onClick={handleSaveAccount}
-            disabled={resolveState !== 'success' || savingAccount}
-            className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${
-              resolveState === 'success' && !savingAccount
-                ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
-                : 'cursor-not-allowed bg-[#9CA3AF]'
-            }`}
-          >
-            {savingAccount ? 'Saving...' : 'Save Account'}
-          </button>
+          {resolveState === 'success' && !showAddPin && (
+            <button
+              onClick={() => { setShowAddPin(true); setAddAccountPin(''); setSaveError(null) }}
+              className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
+            >
+              Continue
+            </button>
+          )}
+
+          {showAddPin && (
+            <div className="flex flex-col items-center gap-6 rounded-2xl border border-[#E5E7EB] bg-white p-5">
+              <div className="text-center">
+                <Text fw={700} className="text-[18px] text-[#0F172A]">Confirm with PIN</Text>
+                <Text fw={400} className="mt-1 text-[13px] text-[#6B7280]">Enter your transaction PIN to save this account</Text>
+              </div>
+
+              <div className="flex gap-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`flex h-12 w-12 items-center justify-center rounded-xl border-2 ${
+                      i < addAccountPin.length ? 'border-[#02A36E] bg-[#F0FDF4]' : 'border-[#E5E7EB] bg-white'
+                    }`}
+                  >
+                    {i < addAccountPin.length && <div className="h-2.5 w-2.5 rounded-full bg-[#02A36E]" />}
+                  </div>
+                ))}
+              </div>
+
+              {savingAccount && (
+                <div className="flex items-center gap-2">
+                  <Loader size={14} color="#02A36E" />
+                  <Text fw={400} className="text-[13px] text-[#6B7280]">Saving...</Text>
+                </div>
+              )}
+
+              <div className="grid w-[240px] grid-cols-3 gap-2.5">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'].map((key) => {
+                  if (key === '') return <div key="empty" />
+                  if (key === 'back') {
+                    return (
+                      <button key="back" onClick={() => setAddAccountPin((p) => p.slice(0, -1))} className="flex h-14 cursor-pointer items-center justify-center rounded-2xl bg-[#F3F4F6] hover:bg-[#E5E7EB]">
+                        <IconBackspace size={20} color="#374151" />
+                      </button>
+                    )
+                  }
+                  return (
+                    <button key={key} onClick={() => handleAddPinDigit(key)} disabled={savingAccount} className="flex h-14 cursor-pointer items-center justify-center rounded-2xl bg-[#F9FAFB] text-[18px] font-semibold text-[#0F172A] hover:bg-[#E5E7EB] disabled:opacity-50">
+                      {key}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button onClick={() => { setShowAddPin(false); setAddAccountPin('') }} className="cursor-pointer text-[13px] text-[#9CA3AF] hover:text-[#6B7280]">
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
 

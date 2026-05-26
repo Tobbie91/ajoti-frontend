@@ -669,10 +669,10 @@ export function listBankAccounts(): Promise<{ data: SavedBankAccount[] }> {
   return authRequest('/api/users/me/bank-accounts', { method: 'GET' })
 }
 
-export function addBankAccount(bankCode: string, bankName: string, accountNumber: string): Promise<{ data: SavedBankAccount }> {
+export function addBankAccount(bankCode: string, bankName: string, accountNumber: string, transactionPin: string): Promise<{ data: SavedBankAccount }> {
   return authRequest('/api/users/me/bank-accounts', {
     method: 'POST',
-    body: JSON.stringify({ bankCode, bankName, accountNumber }),
+    body: JSON.stringify({ bankCode, bankName, accountNumber, transactionPin }),
   })
 }
 
