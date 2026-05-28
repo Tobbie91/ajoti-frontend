@@ -1,0 +1,239 @@
+.header {
+  width: 100%;
+  height: 106px;
+  background: #ffffff;
+  box-shadow: 0px 4px 12px rgba(209, 217, 230, 0.25);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 16px;
+}
+
+.logo {
+  font-family: "Bodoni MT", serif;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 35px;
+  color: #066f5b;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 24px;
+}
+
+/* Nav row */
+.nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 50px;
+}
+
+.navItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.navButton {
+  font: inherit;
+}
+
+.navLabel {
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 27px;
+}
+
+.active {
+  color: #066f5b;
+}
+
+.inactive {
+  color: #bbbaba;
+}
+
+.navIconHome {
+  width: 22px;
+  height: 24.75px;
+}
+
+.navIcon {
+  width: 26px;
+  height: 24.7px;
+}
+
+.navIconRosca {
+  width: 30.75px;
+  height: 19.57px;
+}
+
+.navIconInvest {
+  width: 24.7px;
+  height: 26px;
+}
+
+.navIconWallet {
+  width: 24px;
+  height: 24px;
+}
+
+.chevron {
+  width: 16px;
+  height: 16px;
+  color: #bbbaba;
+}
+
+/* Right side */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-shrink: 0;
+}
+
+/* Bell circle */
+.bellWrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(0, 200, 83, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.bellIcon {
+  width: 18px;
+  height: 18px;
+  color: #00c853;
+}
+
+/* Notification badge */
+.bellBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #EF4444;
+  color: #ffffff;
+  font-family: "Poppins", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  border: 2px solid #ffffff;
+}
+
+/* Account */
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatarRing {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 0.766667px solid #066f5b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatarImg {
+  width: 41.4px;
+  height: 41.4px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.avatarInitials {
+  width: 41.4px;
+  height: 41.4px;
+  border-radius: 999px;
+  background: #066f5b;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Poppins", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.accountText {
+  font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 21px;
+  color: #525252;
+  white-space: nowrap;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .header {
+    padding: 0 20px;
+  }
+  .logo {
+    margin-left: 0;
+    font-size: 24px;
+  }
+  .nav {
+    gap: 30px;
+  }
+  .navLabel {
+    font-size: 15px;
+  }
+}
+
+/* Mobile — hide nav, show burger space */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px 0 56px; /* left space for burger */
+    height: 70px;
+  }
+  .logo {
+    font-size: 22px;
+    margin-left: 0;
+  }
+  .nav {
+    display: none;
+  }
+  .accountText {
+    display: none;
+  }
+  .right {
+    margin-left: auto;
+    gap: 14px;
+  }
+  .avatarRing {
+    width: 36px;
+    height: 36px;
+  }
+  .avatarInitials {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+}

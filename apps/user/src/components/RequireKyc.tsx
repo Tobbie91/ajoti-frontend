@@ -1,0 +1,10 @@
+import type { ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
+
+interface RequireKycProps {
+  children: ReactNode
+}
+
+export function RequireKyc({ children }: RequireKycProps) {
+  return <>{children}</>
+}

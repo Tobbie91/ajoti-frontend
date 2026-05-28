@@ -15,6 +15,29 @@ A minimal, clean, and scalable React + TypeScript boilerplate for fintech applic
 | **ESLint + Prettier** | Code quality and formatting |
 | **pnpm** | Package manager |
 
+## Project Progress (February 4, 2026)
+
+### Completed
+
+- Home dashboard UI with quick actions, transactions card, and invite prompt.
+- Shared application shell with header navigation and responsive layout.
+- Auth screens (Login/Signup) with modern layout and Google OAuth support.
+- Routing for Home, Login, Signup, Create Wallet, ROSCA, and Investments.
+- Placeholder pages for ROSCA and Investments to prevent dead-end navigation.
+- Google OAuth provider initializes only when `VITE_GOOGLE_CLIENT_ID` is set.
+
+### In Progress
+
+- Replacing placeholder pages with full ROSCA and Investments flows.
+- Wiring dashboard actions (fund wallet, transfer, quick access tiles) to real features.
+- Transactions list component and API integration.
+
+### Next Steps
+
+- Implement auth-backed route protection and session persistence improvements.
+- Connect UI to backend services and finalize API contracts.
+- Add e2e flow coverage for onboarding and dashboard journeys.
+
 ## Stack Choices
 
 - **Mantine over Material UI**: Mantine provides a cleaner API, better TypeScript support, and is more lightweight. It's ideal for fintech applications that need a professional, neutral aesthetic.
@@ -141,3 +164,4 @@ export const theme = createTheme({
 ## License
 
 Private
+

@@ -1,0 +1,674 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Stack,
+  Text,
+  Box,
+  Group,
+  TextInput,
+  Textarea,
+  Button,
+  Stepper,
+  Paper,
+  ActionIcon,
+  Select,
+  Checkbox,
+  Radio,
+  NumberInput,
+  Modal,
+  Alert,
+  Loader,
+} from '@mantine/core'
+import { useDisclosure, useMediaQuery } from '@mantine/hooks'
+import {
+  IconPlus,
+  IconArrowLeft,
+  IconUpload,
+  IconAlertTriangle,
+  IconEdit,
+  IconCheck,
+} from '@tabler/icons-react'
+import { createRoscaCircle } from '@/utils/api'
+
+const PRIMARY = '#0b6b55'
+
+export function CreateGroup() {
+  const navigate = useNavigate()
+  const [active, setActive] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const [groupName, setGroupName] = useState('')
+  const [tagline, setTagline] = useState('')
+  const [description, setDescription] = useState('')
+
+  // Step 2 state
+  const [currency, setCurrency] = useState<string | null>('NGN')
+  const [amount, setAmount] = useState('10,000')
+  const [frequency, setFrequency] = useState<string[]>([])
+  const [payoutStructure, setPayoutStructure] = useState('SEQUENTIAL')
+
+  // Step 3 state
+  const [privacyAccess, setPrivacyAccess] = useState('open')
+  const [participants, setParticipants] = useState<number | string>(10)
+
+  // Rules modal
+  const [rulesOpened, { open: openRules, close: closeRules }] = useDisclosure(false)
+  const isMobile = useMediaQuery('(max-width: 639px)')
+  const [selectedRules, setSelectedRules] = useState<string[]>([])
+
+  return (
+    <Stack gap="lg">
+      {/* Back + Title */}
+      <Group gap="sm">
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size="lg"
+          radius="xl"
+          onClick={() => navigate('/dashboard')}
+        >
+          <IconArrowLeft size={20} stroke={1.5} />
+        </ActionIcon>
+        <Text fz={22} fw={700}>
+          Create New ROSCA Group
+        </Text>
+      </Group>
+
+      {/* Stepper */}
+      <Stepper
+        active={active}
+        onStepClick={setActive}
+        color={PRIMARY}
+        size="sm"
+        styles={{
+          separator: { marginLeft: 4, marginRight: 4 },
+          stepIcon: { borderWidth: 2 },
+        }}
+      >
+        <Stepper.Step label="Group Details" />
+        <Stepper.Step label="Contribution & Payouts" />
+        <Stepper.Step label="Settings & Controls" />
+      </Stepper>
+
+      {/* Step content */}
+      {active === 0 && (
+        <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef' }}>
+          <Box style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 20 : 32, alignItems: 'flex-start' }}>
+            {/* Left: Form fields */}
+            <Stack gap="md" style={{ flex: 1, width: '100%' }}>
+              <TextInput
+                label="Group Name"
+                placeholder="e.g. Hustle, Grind & Win"
+                value={groupName}
+                onChange={(e) => setGroupName(e.currentTarget.value)}
+                styles={{
+                  label: { fontWeight: 600, marginBottom: 4 },
+                  input: { border: '1px solid #dee2e6' },
+                }}
+              />
+              <TextInput
+                label="Tagline"
+                placeholder="Short Sentences"
+                value={tagline}
+                onChange={(e) => setTagline(e.currentTarget.value)}
+                styles={{
+                  label: { fontWeight: 600, marginBottom: 4 },
+                  input: { border: '1px solid #dee2e6' },
+                }}
+              />
+              <Textarea
+                label="Description"
+                placeholder="You can describe the group"
+                minRows={4}
+                value={description}
+                onChange={(e) => setDescription(e.currentTarget.value)}
+                styles={{
+                  label: { fontWeight: 600, marginBottom: 4 },
+                  input: { border: '1px solid #dee2e6' },
+                }}
+              />
+            </Stack>
+
+            {/* Right: Image upload */}
+            <Box
+              style={{
+                width: isMobile ? '100%' : 220,
+                height: 180,
+                border: '2px dashed #dee2e6',
+                borderRadius: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                background: '#f8f9fa',
+                flexShrink: 0,
+              }}
+            >
+              <Box
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: '#e6f5f1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <IconUpload size={22} color={PRIMARY} stroke={1.5} />
+              </Box>
+              <Text fz="xs" c="dimmed" ta="center" px="md">
+                Drag & drop or click to upload group image
+              </Text>
+              <Button
+                variant="outline"
+                size="xs"
+                radius="md"
+                style={{ borderColor: PRIMARY, color: PRIMARY }}
+              >
+                Upload Image
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+
+      {active === 1 && (
+        <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef' }}>
+          <Text fw={700} fz="md" mb="lg">
+            Contribution Setup
+          </Text>
+
+          <Stack gap="md">
+            <Select
+              label="Which Currency?"
+              placeholder="Select currency"
+              value={currency}
+              onChange={setCurrency}
+              data={[
+                { value: 'NGN', label: '🇳🇬 NGN — Nigerian Naira' },
+                { value: 'USD', label: '🇺🇸 USD — US Dollar' },
+                { value: 'GBP', label: '🇬🇧 GBP — British Pound' },
+              ]}
+              styles={{
+                label: { fontWeight: 600, marginBottom: 4 },
+                input: { border: '1px solid #dee2e6' },
+              }}
+            />
+
+            <TextInput
+              label="Amount"
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(e.currentTarget.value)}
+              leftSection={
+                <Text fz="sm" fw={600} c="dimmed">
+                  ₦
+                </Text>
+              }
+              styles={{
+                label: { fontWeight: 600, marginBottom: 4 },
+                input: { border: '1px solid #dee2e6' },
+              }}
+            />
+
+            <Box>
+              <Text fw={600} fz="sm" mb="xs">
+                Frequency
+              </Text>
+              <Group gap="lg">
+                <Checkbox
+                  label="Weekly"
+                  checked={frequency.includes('weekly')}
+                  onChange={(e) => {
+                    const isChecked = e.currentTarget.checked
+                    setFrequency((prev) =>
+                      isChecked ? [...prev, 'weekly'] : prev.filter((f) => f !== 'weekly'),
+                    )
+                  }}
+                  color={PRIMARY}
+                  styles={{ label: { fontWeight: 400 } }}
+                />
+                <Checkbox
+                  label="Bi-weekly"
+                  checked={frequency.includes('biweekly')}
+                  onChange={(e) => {
+                    const isChecked = e.currentTarget.checked
+                    setFrequency((prev) =>
+                      isChecked ? [...prev, 'biweekly'] : prev.filter((f) => f !== 'biweekly'),
+                    )
+                  }}
+                  color={PRIMARY}
+                  styles={{ label: { fontWeight: 400 } }}
+                />
+                <Checkbox
+                  label="Monthly"
+                  checked={frequency.includes('monthly')}
+                  onChange={(e) => {
+                    const isChecked = e.currentTarget.checked
+                    setFrequency((prev) =>
+                      isChecked ? [...prev, 'monthly'] : prev.filter((f) => f !== 'monthly'),
+                    )
+                  }}
+                  color={PRIMARY}
+                  styles={{ label: { fontWeight: 400 } }}
+                />
+              </Group>
+            </Box>
+
+            <Box>
+              <Text fw={600} fz="sm" mb="xs">
+                Payout Structure
+              </Text>
+              <Radio.Group value={payoutStructure} onChange={setPayoutStructure}>
+                <Stack gap="xs">
+                  <Radio
+                    value="SEQUENTIAL"
+                    label="Sequential"
+                    description="Members receive payouts in the order they joined"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="RANDOM_DRAW"
+                    label="Random Draw"
+                    description="Payout order is randomly assigned each cycle"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="TRUST_SCORE"
+                    label="Trust Score"
+                    description="Members with higher trust scores get priority payouts"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="COMBINED"
+                    label="Combined"
+                    description="Uses a mix of trust score and random draw"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="ADMIN_ASSIGNED"
+                    label="Admin Assigned"
+                    description="Admin manually assigns the payout order"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                </Stack>
+              </Radio.Group>
+            </Box>
+          </Stack>
+        </Paper>
+      )}
+
+      {active === 2 && (
+        <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef' }}>
+          <Stack gap="lg">
+            {/* Privacy Access Type */}
+            <Box>
+              <Text fw={600} fz="sm" mb="xs">
+                Privacy Access Type
+              </Text>
+              <Radio.Group value={privacyAccess} onChange={setPrivacyAccess}>
+                <Stack gap="xs">
+                  <Radio
+                    value="open"
+                    label="Open to All"
+                    description="Anyone can discover and join this group"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                  <Radio
+                    value="invite"
+                    label="Invite Only"
+                    description="Only invited members can join this group"
+                    color={PRIMARY}
+                    styles={{ label: { fontWeight: 400 } }}
+                  />
+                </Stack>
+              </Radio.Group>
+            </Box>
+
+            {/* Number of Participants */}
+            <NumberInput
+              label="Number of Participants"
+              value={participants}
+              onChange={setParticipants}
+              min={2}
+              max={100}
+              styles={{
+                label: { fontWeight: 600, marginBottom: 4 },
+                input: { border: '1px solid #dee2e6' },
+              }}
+            />
+
+            {/* Add Rules */}
+            <Button
+              variant="subtle"
+              leftSection={<IconPlus size={16} stroke={1.5} />}
+              style={{ color: PRIMARY, alignSelf: 'flex-start' }}
+              px={0}
+              onClick={openRules}
+            >
+              Add Rules
+            </Button>
+
+            {/* Selected rules displayed on the page */}
+            {selectedRules.length > 0 && (
+              <Box>
+                <Text fw={600} fz="sm" mb="xs">
+                  Group Rules
+                </Text>
+                <Stack gap="xs">
+                  {selectedRules.map((rule) => (
+                    <Checkbox
+                      key={rule}
+                      label={rule}
+                      checked={true}
+                      onChange={() => {}}
+                      color={PRIMARY}
+                      styles={{
+                        label: { fontWeight: 400, fontSize: 13 },
+                        body: { alignItems: 'flex-start' },
+                        input: { cursor: 'default' },
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Rules Modal */}
+      <Modal
+        opened={rulesOpened}
+        onClose={closeRules}
+        title={
+          <Text fw={700} fz="lg">
+            Group Rules
+          </Text>
+        }
+        size="lg"
+        radius="md"
+        centered
+      >
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            Select or enter rules that members must agree to.
+          </Text>
+
+          <Stack gap="xs">
+            {[
+              'Late payment incurs a 2% penalty.',
+              'All contributions must be available before the due date of every circle.',
+              'Payout order is final and cannot be changed.',
+              'Members must acknowledge their assigned payout slot before the group starts.',
+              'The group admin has final say in resolving any disputes and managing participation.',
+            ].map((rule) => (
+              <Checkbox
+                key={rule}
+                label={rule}
+                checked={selectedRules.includes(rule)}
+                onChange={(e) => {
+                  const isChecked = e.currentTarget.checked
+                  setSelectedRules((prev) =>
+                    isChecked
+                      ? [...prev, rule]
+                      : prev.filter((r) => r !== rule),
+                  )
+                }}
+                color={PRIMARY}
+                styles={{
+                  label: { fontWeight: 400, fontSize: 13 },
+                  body: { alignItems: 'flex-start' },
+                }}
+              />
+            ))}
+          </Stack>
+
+          <Alert
+            icon={<IconAlertTriangle size={16} />}
+            color="red"
+            variant="outline"
+            radius="md"
+          >
+            <Text fz="xs" fw={500}>
+              Custom privilege rules prohibited
+            </Text>
+          </Alert>
+
+          <Group justify="space-between" mt="sm">
+            <Button variant="default" radius="md" onClick={closeRules}>
+              Back
+            </Button>
+            <Button radius="md" style={{ background: PRIMARY }} onClick={closeRules}>
+              Next
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Step 4: Review */}
+      {active === 3 && (
+        <Stack gap="md">
+          <Box>
+            <Text fz={20} fw={700} mb={4}>
+              Review Your Group Setup
+            </Text>
+            <Text fz="sm" c="dimmed">
+              Confirm the details below before creating your ROSCA group.
+            </Text>
+          </Box>
+
+          {submitError && (
+            <Alert icon={<IconAlertTriangle size={16} />} color="red" radius="md" variant="light">
+              {submitError}
+            </Alert>
+          )}
+
+          {/* Group Details */}
+          <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+            <Group justify="space-between" mb="md">
+              <Text fw={700} fz="md">
+                Group Details
+              </Text>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={<IconEdit size={14} stroke={1.5} />}
+                style={{ color: PRIMARY }}
+                onClick={() => setActive(0)}
+              >
+                Edit
+              </Button>
+            </Group>
+            <Box style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'flex-start' }}>
+              <Stack gap="xs" style={{ flex: 1 }}>
+                <Box>
+                  <Text fz="xs" c="dimmed">Group Name</Text>
+                  <Text fz="sm" fw={500}>{groupName || '—'}</Text>
+                </Box>
+                <Box>
+                  <Text fz="xs" c="dimmed">Tagline</Text>
+                  <Text fz="sm" fw={500}>{tagline || '—'}</Text>
+                </Box>
+                <Box>
+                  <Text fz="xs" c="dimmed">Description</Text>
+                  <Text fz="sm" fw={500}>{description || '—'}</Text>
+                </Box>
+              </Stack>
+              <Box
+                style={{
+                  width: 100,
+                  height: 100,
+                  borderRadius: 12,
+                  background: '#f1f3f5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <IconUpload size={24} color="#adb5bd" stroke={1.5} />
+              </Box>
+            </Box>
+          </Paper>
+
+          {/* Contribution & Payout */}
+          <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+            <Group justify="space-between" mb="md">
+              <Text fw={700} fz="md">
+                Contribution & Payout
+              </Text>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={<IconEdit size={14} stroke={1.5} />}
+                style={{ color: PRIMARY }}
+                onClick={() => setActive(1)}
+              >
+                Edit
+              </Button>
+            </Group>
+            <Group gap="xl">
+              <Box>
+                <Text fz="xs" c="dimmed">Amount</Text>
+                <Text fz="sm" fw={500}>₦{amount}</Text>
+              </Box>
+              <Box>
+                <Text fz="xs" c="dimmed">Frequency</Text>
+                <Text fz="sm" fw={500}>{frequency.length > 0 ? frequency.join(', ') : '—'}</Text>
+              </Box>
+              <Box>
+                <Text fz="xs" c="dimmed">Payout Order</Text>
+                <Text fz="sm" fw={500}>{payoutStructure || '—'}</Text>
+              </Box>
+            </Group>
+          </Paper>
+
+          {/* Settings & Controls */}
+          <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+            <Group justify="space-between" mb="md">
+              <Text fw={700} fz="md">
+                Settings & Controls
+              </Text>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={<IconEdit size={14} stroke={1.5} />}
+                style={{ color: PRIMARY }}
+                onClick={() => setActive(2)}
+              >
+                Edit
+              </Button>
+            </Group>
+            <Group gap="xl">
+              <Box>
+                <Text fz="xs" c="dimmed">Access Type</Text>
+                <Text fz="sm" fw={500}>
+                  {privacyAccess === 'open' ? 'Open to All' : 'Invite Only'}
+                </Text>
+              </Box>
+              <Box>
+                <Text fz="xs" c="dimmed">Participants</Text>
+                <Text fz="sm" fw={500}>{participants}</Text>
+              </Box>
+            </Group>
+          </Paper>
+
+          {/* Group Rules */}
+          {selectedRules.length > 0 && (
+            <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+              <Text fw={700} fz="md" mb="md">
+                Group Rules
+              </Text>
+              <Stack gap="xs">
+                {selectedRules.map((rule) => (
+                  <Group key={rule} gap="xs" align="flex-start" wrap="nowrap">
+                    <IconCheck size={16} color={PRIMARY} stroke={2} style={{ marginTop: 2, flexShrink: 0 }} />
+                    <Text fz="sm">{rule}</Text>
+                  </Group>
+                ))}
+              </Stack>
+            </Paper>
+          )}
+        </Stack>
+      )}
+
+      {/* Bottom buttons */}
+      <Group justify="space-between">
+        {active === 3 ? (
+          <>
+            <Button
+              variant="default"
+              radius="md"
+              onClick={() => setActive(0)}
+            >
+              Back to Edit
+            </Button>
+            <Button
+              radius="md"
+              style={{ background: PRIMARY }}
+              loading={submitting}
+              leftSection={submitting ? <Loader size={14} color="white" /> : null}
+              onClick={async () => {
+                setSubmitting(true)
+                setSubmitError(null)
+                try {
+                  const rawAmount = String(Number(amount.replace(/,/g, '')) * 100) // convert naira → kobo
+                  const freqMap: Record<string, string> = { weekly: 'WEEKLY', biweekly: 'BI_WEEKLY', monthly: 'MONTHLY' }
+                  const freq = freqMap[frequency[0]] || 'MONTHLY'
+                  const visibility = privacyAccess === 'open' ? 'PUBLIC' : 'PRIVATE'
+                  await createRoscaCircle({
+                    name: groupName,
+                    description: description || tagline,
+                    contributionAmount: rawAmount,
+                    frequency: freq as 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY',
+                    durationCycles: Number(participants) || 10,
+                    maxSlots: Number(participants) || 10,
+                    payoutLogic: payoutStructure,
+                    autoStartOnFull: true,
+                    visibility,
+                  })
+                  navigate('/rosca/groups')
+                } catch (err) {
+                  setSubmitError(err instanceof Error ? err.message : 'Failed to create group')
+                  setSubmitting(false)
+                }
+              }}
+            >
+              {submitting ? 'Creating...' : 'Create Group'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="default"
+              radius="md"
+              onClick={() => {
+                if (active > 0) setActive(active - 1)
+                else navigate('/dashboard')
+              }}
+            >
+              Back
+            </Button>
+            <Button
+              radius="md"
+              style={{ background: PRIMARY }}
+              onClick={() => setActive(active + 1)}
+            >
+              Save & Continue
+            </Button>
+          </>
+        )}
+      </Group>
+    </Stack>
+  )
+}
