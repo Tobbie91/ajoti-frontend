@@ -3,7 +3,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider } from '@/components/AuthProvider'
 import { KycGate } from '@/components/KycGate'
 import { AppLayout, BlogLayout } from '@/layouts'
-import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, InviteAccept, MyInvites, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, FundWalletCallback, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword, SetPin, Messages } from '@/pages'
+import { Home, Login, Signup, CreateNewWallet2, Rosca, GroupDetails, RequestToJoin, JoinSummary, MyGroupRequests, InviteAccept, MyInvites, Investments, CreateNewWallet, VerifyOtp, GrowthActivities, BecomeAdmin, HowItWorks, ArticleDetail, Kyc, FundWallet, FundWalletCallback, WithdrawFunds, Transactions, Loans, Profile, ForgotPassword, ResetPassword, SetPin, Messages, Support, SupportTicket } from '@/pages'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const hasGoogleClientId = Boolean(googleClientId)
@@ -202,6 +202,22 @@ function App() {
             element={
               <AppLayout>
                 <Messages />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/support"
+            element={
+              <AppLayout>
+                <Support />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/support/:ticketId"
+            element={
+              <AppLayout>
+                <SupportTicket />
               </AppLayout>
             }
           />

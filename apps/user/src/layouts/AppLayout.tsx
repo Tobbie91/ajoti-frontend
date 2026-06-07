@@ -10,6 +10,7 @@ import {
   IconUser,
   IconReceipt2,
   IconLogout,
+  IconHeadset,
 } from '@tabler/icons-react'
 
 interface AppLayoutProps {
@@ -78,6 +79,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <NavLink component={RouterNavLink} to="/rosca" onClick={close} label="ROSCA" leftSection={<IconUsers size={20} stroke={1.5} />} active={location.pathname.startsWith('/rosca')} />
             <NavLink component={RouterNavLink} to="/create-wallet" onClick={close} label="Wallet" leftSection={<IconWallet size={20} stroke={1.5} />} active={location.pathname.startsWith('/create-wallet') || location.pathname.startsWith('/fund') || location.pathname.startsWith('/withdraw')} />
             <NavLink component={RouterNavLink} to="/transactions" onClick={close} label="Transactions" leftSection={<IconReceipt2 size={20} stroke={1.5} />} active={location.pathname === '/transactions'} />
+            <NavLink component={RouterNavLink} to="/support" onClick={close} label="Support" leftSection={<IconHeadset size={20} stroke={1.5} />} active={location.pathname.startsWith('/support')} />
             <Divider my={4} />
             <NavLink component={RouterNavLink} to="/profile" onClick={close} label="Profile" leftSection={<IconUser size={20} stroke={1.5} />} active={location.pathname === '/profile'} />
           </Stack>

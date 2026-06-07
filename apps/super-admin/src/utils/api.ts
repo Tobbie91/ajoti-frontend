@@ -695,6 +695,96 @@ export function runAutoSimulation(): Promise<{ success: boolean; data: AutoSimRe
   return authRequest('/api/superadmin/simulate/auto', { method: 'POST' })
 }
 
+// ── Support ───────────────────────────────────────────────────────────────────
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+export type TicketCategory = 'ACCOUNT' | 'WALLET' | 'TRANSACTION' | 'KYC' | 'ROSCA' | 'LOAN' | 'OTHER'
+export type TicketSenderRole = 'USER' | 'ADMIN' | 'SUPERADMIN'
+
+export interface SupportMessage {
+  id: string
+  body: string
+  senderRole: TicketSenderRole
+  sender: { id: string; firstName: string; lastName: string; role: string }
+  createdAt: string
+}
+
+export interface SupportTicketRow {
+  id: string
+  category: TicketCategory
+  subject: string
+  status: TicketStatus
+  refType: string | null
+  refId: string | null
+  createdAt: string
+  updatedAt: string
+  user: { id: string; firstName: string; lastName: string; email: string; role: string }
+  assignedTo: { id: string; firstName: string; lastName: string } | null
+  messages: Pick<SupportMessage, 'body' | 'createdAt' | 'senderRole'>[]
+  _count: { messages: number }
+}
+
+export interface SupportTicketDetail extends SupportTicketRow {
+  messages: SupportMessage[]
+}
+
+export function listSupportTickets(params: {
+  page?: number
+  limit?: number
+  status?: TicketStatus | ''
+  category?: TicketCategory | ''
+  search?: string
+}): Promise<PaginatedResponse<SupportTicketRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/support?${q}`, { method: 'GET' })
+}
+
+export function getSupportTicketDetail(ticketId: string): Promise<SupportTicketDetail> {
+  return authRequest(`/api/superadmin/support/${ticketId}`, { method: 'GET' })
+}
+
+export function replySupportTicket(
+  ticketId: string,
+  body: string,
+): Promise<SupportMessage> {
+  return authRequest(`/api/superadmin/support/${ticketId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+}
+
+export function assignSupportTicket(
+  ticketId: string,
+  assignedToId?: string,
+): Promise<{ id: string; assignedToId: string; status: TicketStatus }> {
+  return authRequest(`/api/superadmin/support/${ticketId}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify(assignedToId ? { assignedToId } : {}),
+  })
+}
+
+export function updateSupportTicketStatus(
+  ticketId: string,
+  status: 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED',
+): Promise<SupportTicketDetail> {
+  return authRequest(`/api/superadmin/support/${ticketId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export function setAdminRole(
+  userId: string,
+  adminRole: 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'SUPERADMIN',
+): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/admin-role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ adminRole }),
+  })
+}
+
 export function runManualSimulation(dto: ManualSimConfig): Promise<{ success: boolean; data: SimResult }> {
   return authRequest('/api/superadmin/simulate/manual', { method: 'POST', body: JSON.stringify(dto) })
 }
