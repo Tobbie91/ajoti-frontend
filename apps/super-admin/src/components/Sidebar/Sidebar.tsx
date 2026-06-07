@@ -14,6 +14,7 @@ import {
   IconAward,
   IconTestPipe,
   IconWallet,
+  IconHeadset,
 } from '@tabler/icons-react'
 
 const mainLinks = [
@@ -24,6 +25,7 @@ const mainLinks = [
   { label: 'Wallets', icon: IconWallet, path: '/wallets' },
   { label: 'Trust Scores', icon: IconAward, path: '/trust-scores' },
   { label: 'Simulations', icon: IconTestPipe, path: '/simulations' },
+  { label: 'Support', icon: IconHeadset, path: '/support' },
 ]
 
 const savingsChildren = [

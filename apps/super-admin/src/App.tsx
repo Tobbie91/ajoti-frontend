@@ -12,6 +12,8 @@ import {
   TrustScores,
   Simulations,
   Wallets,
+  SupportInbox,
+  SupportTicketDetail,
 } from '@/pages'
 
 import { FixedSavings } from '@/pages/savings/FixedSavings'
@@ -38,6 +40,8 @@ function App() {
             <Route path="/simulations" element={<Simulations />} />
             <Route path="/wallets" element={<Wallets />} />
             <Route path="/settings-logs" element={<SettingsLogs />} />
+            <Route path="/support" element={<SupportInbox />} />
+            <Route path="/support/:ticketId" element={<SupportTicketDetail />} />
           </Route>
         </Route>
 
