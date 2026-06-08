@@ -229,7 +229,7 @@ export interface ProveInitiatePayload {
 }
 
 export function proveInitiate(payload: ProveInitiatePayload): Promise<{ monoUrl: string | null; reference: string }> {
-  return authRequest('/api/kyc/initiate-prove', {
+  return authRequest('/api/kyc/prove/initiate', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
