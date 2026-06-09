@@ -37,7 +37,7 @@ export function AdminRequestModal({
       <Stack gap="xl">
         {/* User Info */}
         <Group align="flex-start" gap="lg">
-          <Avatar size={80} radius="md" color="#066F5B">
+          <Avatar size={80} radius="md" color="#0B6B55">
             {requestData.name.split(' ').map(n => n[0]).join('')}
           </Avatar>
           
@@ -75,7 +75,7 @@ export function AdminRequestModal({
         {/* Reason for Request Paper */}
         <Stack gap="sm">
           <Group gap="xs">
-            <IconMessage size={18} color="#066F5B" />
+            <IconMessage size={18} color="#0B6B55" />
             <Text fw={600}>Reason for Request</Text>
           </Group>
           <Text>{requestData.reason}</Text>
@@ -85,7 +85,7 @@ export function AdminRequestModal({
         <Stack gap="sm">
           <Group justify="space-between" align="center">
             <Group gap="xs">
-              <IconShield size={18} color="#066F5B" />
+              <IconShield size={18} color="#0B6B55" />
               <Text fw={600}>Trust Score</Text>
             </Group>
             <Badge 

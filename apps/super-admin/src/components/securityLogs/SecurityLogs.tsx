@@ -347,7 +347,7 @@ export function SecurityLogs() {
           td: { padding: '16px 20px' },
         }}>
           <Table.Thead>
-            <Table.Tr bg="#066F5B">
+            <Table.Tr bg="#0B6B55">
               <Table.Th c="white">Time Stamp</Table.Th>
               <Table.Th c="white">User/Admin</Table.Th>
               <Table.Th c="white">IP Address</Table.Th>
@@ -422,7 +422,7 @@ export function SecurityLogs() {
                 total={totalPages} 
                 value={currentPage} 
                 onChange={onPageChange}
-                color="#066F5B"
+                color="#0B6B55"
               />
             )}
           </Group>

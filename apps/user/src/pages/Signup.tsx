@@ -286,7 +286,7 @@ export function Signup() {
                           login(credentialResponse.credential)
                         }
                       }}
-                      onError={() => console.log('Login Failed')}
+                      onError={() => {}}
                       theme="outline"
                       size="large"
                       text="signup_with"

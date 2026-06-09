@@ -25,9 +25,6 @@ import {
 type Step = 'select-account' | 'add-account' | 'amount' | 'pin' | 'processing' | 'success' | 'error'
 type ResolveState = 'idle' | 'loading' | 'success' | 'error'
 
-const WALLETS_STATIC = [{ value: 'ngn', label: 'NGN Wallet' }]
-void WALLETS_STATIC
-
 export function WithdrawFunds() {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('select-account')

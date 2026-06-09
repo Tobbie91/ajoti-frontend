@@ -141,6 +141,7 @@ export function Transactions() {
   const [sourceType, setSourceType] = useState<string | null>(null)
 
   const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [reconcileRef, setReconcileRef] = useState('')
@@ -201,6 +202,7 @@ export function Transactions() {
   async function handleExport() {
     if (!analytics) return
     setExporting(true)
+    setExportError(null)
     try {
       const blob = await exportCsv({
         type: 'transactions',
@@ -213,8 +215,8 @@ export function Transactions() {
       a.download = `transactions-${period}.csv`
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
-      // silent — export errors are non-critical
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Failed to export CSV')
     } finally {
       setExporting(false)
     }
@@ -253,6 +255,11 @@ export function Transactions() {
       {analyticsError && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
           {analyticsError}
+        </Alert>
+      )}
+      {exportError && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" withCloseButton onClose={() => setExportError(null)}>
+          Export failed: {exportError}
         </Alert>
       )}
 
@@ -322,7 +329,7 @@ export function Transactions() {
         <Table.ScrollContainer minWidth={800}>
           <Table highlightOnHover>
             <Table.Thead>
-              <Table.Tr bg="#066F5B">
+              <Table.Tr bg="#0B6B55">
                 <Table.Th c="white">Date</Table.Th>
                 <Table.Th c="white">Type</Table.Th>
                 <Table.Th c="white">Amount</Table.Th>

@@ -261,7 +261,9 @@ function UserDetailDrawer({
 
   const [suspendModal, { open: openSuspend, close: closeSuspend }] = useDisclosure(false)
   const [banModal, { open: openBan, close: closeBan }] = useDisclosure(false)
-  const [promoteModal, { open: openPromote, close: closePromote }] = useDisclosure(false)
+  const [promoteModal, { open: openPromote, close: _closePromote }] = useDisclosure(false)
+  const [promoteRole, setPromoteRole] = useState<'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | null>(null)
+  function closePromote() { _closePromote(); setPromoteRole(null) }
   const [approveAdminModal, { open: openApproveAdmin, close: closeApproveAdmin }] = useDisclosure(false)
   const [rejectAdminModal, { open: openRejectAdmin, close: closeRejectAdmin }] = useDisclosure(false)
   const [clearVaModal, { open: openClearVa, close: closeClearVa }] = useDisclosure(false)
@@ -298,10 +300,10 @@ function UserDetailDrawer({
   }
 
   async function handlePromote() {
-    if (!userId) return
+    if (!userId || !promoteRole) return
     setActionLoading(true)
     try {
-      await promoteToSuperadmin(userId)
+      await promoteToSuperadmin(userId, promoteRole)
       closePromote()
       onStatusChange()
       onClose()
@@ -451,13 +453,27 @@ function UserDetailDrawer({
       <Modal opened={promoteModal} onClose={closePromote} title="Promote to Superadmin" size="sm">
         <Stack gap="md">
           <Text fz="sm" c="dimmed">
-            This will grant full superadmin access to{' '}
-            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong>.
+            Promoting <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong> to
+            Superadmin. Choose a role scope — this controls which parts of the platform they can access.
             This action is logged in the audit trail.
           </Text>
+          <Select
+            label="Admin role"
+            placeholder="Select a role scope"
+            required
+            value={promoteRole}
+            onChange={(v) => setPromoteRole(v as typeof promoteRole)}
+            data={[
+              { value: 'SUPERADMIN', label: 'Superadmin — Full platform access' },
+              { value: 'SUPPORT', label: 'Support — Customer support operations' },
+              { value: 'COMPLIANCE', label: 'Compliance — Compliance & KYC review' },
+              { value: 'OPERATIONS', label: 'Operations — Day-to-day platform operations' },
+            ]}
+            allowDeselect={false}
+          />
           <Group justify="flex-end">
             <Button variant="default" onClick={closePromote}>Cancel</Button>
-            <Button color="primary" loading={actionLoading} onClick={handlePromote}>
+            <Button color="primary" loading={actionLoading} disabled={!promoteRole} onClick={handlePromote}>
               Confirm Promote
             </Button>
           </Group>

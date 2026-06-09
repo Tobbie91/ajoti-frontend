@@ -583,7 +583,7 @@ export function KycApprovals() {
       <Group justify="space-between">
         <Text fz="sm" c="dimmed">
           {total > 0
-            ? `Showing ${Math.min((page - 1) * PAGE_SIZE + 1, total)}–${Math.min(page * PAGE_SIZE, total)} of ${total}`
+            ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}`
             : 'No records'}
         </Text>
         {totalPages > 1 && (

@@ -16,8 +16,9 @@ import {
   ScrollArea,
   Button,
   Modal,
+  Alert,
 } from '@mantine/core'
-import { IconSearch, IconX, IconWallet, IconRotateClockwise2 } from '@tabler/icons-react'
+import { IconSearch, IconX, IconWallet, IconRotateClockwise2, IconAlertCircle } from '@tabler/icons-react'
 import { useState, useEffect, useCallback } from 'react'
 import { listWallets, resetWalletBalance, undoWalletBalanceReset, getLedger, type WalletRow, type LedgerRow } from '@/utils/api'
 
@@ -49,6 +50,8 @@ export function Wallets() {
   const [totalPages, setTotalPages] = useState(1)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -71,6 +74,7 @@ export function Wallets() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const res = await listWallets({
         page,
@@ -81,8 +85,8 @@ export function Wallets() {
       setWallets(res.data)
       setTotal(res.meta.total)
       setTotalPages(res.meta.totalPages)
-    } catch {
-      // silently fail — table stays empty
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Failed to load wallets')
     } finally {
       setLoading(false)
     }
@@ -109,6 +113,7 @@ export function Wallets() {
 
   const handleResetWallet = async (wallet: WalletRow) => {
     setResettingWalletId(wallet.walletId)
+    setResetError(null)
     try {
       const res = await resetWalletBalance(wallet.walletId)
       setLastResetEntryByWallet((prev) => ({ ...prev, [wallet.walletId]: res.data.resetEntryId }))
@@ -117,8 +122,8 @@ export function Wallets() {
         await openDrawer(wallet)
       }
       void load()
-    } catch {
-      // silent — could add a notification here
+    } catch (e) {
+      setResetError(e instanceof Error ? e.message : 'Failed to reset wallet balance')
     } finally {
       setResettingWalletId(null)
     }
@@ -168,6 +173,12 @@ export function Wallets() {
 
   return (
     <Stack mt="xl" gap="lg">
+      {loadError && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" withCloseButton onClose={() => setLoadError(null)}>
+          {loadError}
+        </Alert>
+      )}
+
       <Group justify="space-between">
         <Group>
           <Title order={3}>User Wallets</Title>
@@ -192,6 +203,11 @@ export function Wallets() {
         <Text size="sm" c="dimmed" mb="lg">
           This creates a ledger adjustment that zeros only this wallet's available balance. You can undo it later.
         </Text>
+        {resetError && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" mb="md">
+            {resetError}
+          </Alert>
+        )}
         <Group justify="flex-end">
           <Button variant="default" onClick={() => setResetConfirmWallet(null)}>Cancel</Button>
           <Button
@@ -239,7 +255,7 @@ export function Wallets() {
         <Table.ScrollContainer minWidth={920}>
           <Table striped highlightOnHover styles={{ th: { padding: '14px 18px' }, td: { padding: '14px 18px' } }}>
             <Table.Thead>
-              <Table.Tr bg="#066F5B">
+              <Table.Tr bg="#0B6B55">
                 <Table.Th c="white">User</Table.Th>
                 <Table.Th c="white">Wallet ID</Table.Th>
                 <Table.Th c="white">Balance</Table.Th>
@@ -331,7 +347,7 @@ export function Wallets() {
               Showing {Math.min((page - 1) * 20 + 1, total)}–{Math.min(page * 20, total)} of {total}
             </Text>
             {totalPages > 1 && (
-              <Pagination total={totalPages} value={page} onChange={setPage} color="#066F5B" />
+              <Pagination total={totalPages} value={page} onChange={setPage} color="#0B6B55" />
             )}
           </Group>
         )}

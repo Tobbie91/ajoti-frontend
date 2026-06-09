@@ -113,6 +113,7 @@ export interface SuperadminUser {
   firstName: string
   lastName: string
   role: string
+  adminRole: string | null
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
@@ -156,6 +157,7 @@ export async function login(
     firstName: (jwtPayload.firstName ?? '') as string,
     lastName: (jwtPayload.lastName ?? '') as string,
     role: (jwtPayload.role ?? '') as string,
+    adminRole: (jwtPayload.adminRole ?? null) as string | null,
   }
 
   return { token, refreshToken, user }
@@ -298,8 +300,14 @@ export function updateUserStatus(
   })
 }
 
-export function promoteToSuperadmin(userId: string): Promise<{ success: boolean; data: unknown }> {
-  return authRequest(`/api/superadmin/users/${userId}/promote`, { method: 'PATCH' })
+export function promoteToSuperadmin(
+  userId: string,
+  adminRole: 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS',
+): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/promote`, {
+    method: 'PATCH',
+    body: JSON.stringify({ adminRole }),
+  })
 }
 
 export function approveAdminRequest(userId: string): Promise<{ success: boolean; data: unknown }> {
@@ -368,25 +376,25 @@ export function getKycDetail(userId: string): Promise<Record<string, unknown>> {
 }
 
 export function approveKyc(userId: string): Promise<unknown> {
-  return authRequest(`/api/kyc/approve/${userId}`, { method: 'PATCH' })
+  return authRequest(`/api/superadmin/kyc/approve/${userId}`, { method: 'PATCH' })
 }
 
 export function rejectKyc(userId: string, rejectionReason: string): Promise<unknown> {
-  return authRequest(`/api/kyc/reject/${userId}`, {
+  return authRequest(`/api/superadmin/kyc/reject/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify({ rejectionReason }),
   })
 }
 
 export function overrideKycLevel(userId: string, kycLevel: number): Promise<unknown> {
-  return authRequest(`/api/kyc/override/${userId}`, {
+  return authRequest(`/api/superadmin/kyc/override/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify({ kycLevel }),
   })
 }
 
 export function getMonoIdentity(userId: string): Promise<Record<string, unknown>> {
-  return authRequest(`/api/kyc/mono-identity/${userId}`, {})
+  return authRequest(`/api/superadmin/kyc/mono-identity/${userId}`, {})
 }
 
 // ── Ledger & Audit ────────────────────────────────────────────────────────────

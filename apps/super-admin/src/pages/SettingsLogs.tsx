@@ -25,26 +25,19 @@ import { getAuditLogs, type AuditLogRow, type PaginatedResponse } from '@/utils/
 // ── Settings tab (static / coming-soon) ─────────────────────────────────────
 
 function SettingsTab() {
-  const [enableRegistration, setEnableRegistration] = useState(true)
-  const [maintenanceMode, setMaintenanceMode] = useState(false)
-  const [enable2FA, setEnable2FA] = useState(false)
-  const [autoLogout, setAutoLogout] = useState<string | null>('30 mins')
-  const [failedLogins, setFailedLogins] = useState<string | number>(5)
-
   return (
     <Stack gap="lg" pt="md">
-      <Paper withBorder radius="md" p="md">
+      <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
+        Platform settings are not yet wired to the backend. These controls are read-only previews — changes will have no effect until backend configuration endpoints are implemented.
+      </Alert>
+
+      <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
         <Text fw={600} size="lg" mb="md">General</Text>
 
         <Stack gap="md">
           <Group justify="space-between">
             <Text fw={500}>Enable Registration</Text>
-            <Switch
-              checked={enableRegistration}
-              onChange={(e) => setEnableRegistration(e.currentTarget.checked)}
-              size="md"
-              color="#066F5B"
-            />
+            <Switch checked size="md" color="#0B6B55" readOnly />
           </Group>
 
           <div>
@@ -57,6 +50,7 @@ function SettingsTab() {
               ]}
               defaultValue="WAT"
               radius="md"
+              disabled
             />
           </div>
 
@@ -71,29 +65,20 @@ function SettingsTab() {
               ]}
               defaultValue="en"
               radius="md"
+              disabled
             />
           </div>
         </Stack>
       </Paper>
 
-      <Paper withBorder radius="md" p="md">
+      <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
         <Group justify="space-between" align="center" mb="md">
           <Text fw={600} size="lg">Maintenance Mode</Text>
-          <Switch
-            checked={maintenanceMode}
-            onChange={(e) => setMaintenanceMode(e.currentTarget.checked)}
-            size="md"
-            color="#066F5B"
-          />
+          <Switch size="md" color="#0B6B55" readOnly />
         </Group>
-        {maintenanceMode && (
-          <Alert color="orange" radius="md" variant="light">
-            Maintenance mode is ON. The app will show a maintenance page to all users.
-          </Alert>
-        )}
       </Paper>
 
-      <Paper withBorder radius="md" p="md">
+      <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
         <Text fw={600} size="lg" mb="md">Security</Text>
         <Stack gap="md">
           <div>
@@ -105,17 +90,13 @@ function SettingsTab() {
               ]}
               defaultValue="standard"
               radius="md"
+              disabled
             />
           </div>
 
           <Group justify="space-between">
             <Text fw={500}>Require 2FA for Superadmins</Text>
-            <Switch
-              checked={enable2FA}
-              onChange={(e) => setEnable2FA(e.currentTarget.checked)}
-              size="md"
-              color="#066F5B"
-            />
+            <Switch size="md" color="#0B6B55" readOnly />
           </Group>
 
           <Divider />
@@ -124,26 +105,23 @@ function SettingsTab() {
             <Text fw={500} mb="xs">Auto logout after inactivity</Text>
             <Select
               data={[
-                { value: '15 mins', label: '15 minutes' },
                 { value: '30 mins', label: '30 minutes' },
-                { value: '1 hour', label: '1 hour' },
-                { value: '2 hours', label: '2 hours' },
               ]}
-              value={autoLogout}
-              onChange={setAutoLogout}
+              defaultValue="30 mins"
               radius="md"
+              disabled
             />
           </div>
 
           <div>
             <Text fw={500} mb="xs">Lock account after failed logins</Text>
             <NumberInput
-              value={failedLogins}
-              onChange={setFailedLogins}
+              value={5}
               min={1}
               max={10}
               rightSection={<Text size="sm" c="dimmed" pr="xs">times</Text>}
               radius="md"
+              disabled
             />
           </div>
         </Stack>
@@ -261,7 +239,7 @@ function AuditLogsTab() {
         <Table.ScrollContainer minWidth={700}>
         <Table highlightOnHover>
           <Table.Thead>
-            <Table.Tr bg="#066F5B">
+            <Table.Tr bg="#0B6B55">
               <Table.Th c="white">Timestamp</Table.Th>
               <Table.Th c="white">Actor</Table.Th>
               <Table.Th c="white">Action</Table.Th>

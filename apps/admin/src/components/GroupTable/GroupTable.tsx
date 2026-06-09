@@ -49,7 +49,7 @@ export function GroupTable() {
         const circles = Array.isArray(res) ? res : ((res as Record<string, unknown>)?.data ?? (res as Record<string, unknown>)?.circles ?? []) as RoscaCircle[]
         setGroups(circles.slice(0, 5).map(mapCircle))
       })
-      .catch((err) => console.error('GroupTable fetch error:', err))
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
