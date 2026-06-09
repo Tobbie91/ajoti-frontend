@@ -42,13 +42,19 @@ export function Signup() {
       return
     }
 
+    const cleanPhone = phone.trim().replace(/^0/, '')
+    if (!/^\d{10}$/.test(cleanPhone)) {
+      setError('Enter a valid 10-digit Nigerian phone number (e.g. 8012345678)')
+      return
+    }
+
     setLoading(true)
     try {
       await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        phone: `+234${phone.trim()}`,
+        phone: `+234${cleanPhone}`,
         dob: dob.toISOString().split('T')[0],
         gender: gender as 'MALE' | 'FEMALE',
         password,
@@ -173,10 +179,11 @@ export function Signup() {
               />
               <TextInput
                 label="Phone number"
-                placeholder="800 000 0000"
+                placeholder="8012345678"
                 radius="md"
                 value={phone}
-                onChange={(e) => setPhone(e.currentTarget.value)}
+                onChange={(e) => setPhone(e.currentTarget.value.replace(/\D/g, '').slice(0, 10))}
+                maxLength={10}
                 leftSection={<Text size="sm" c="dimmed">+234</Text>}
                 styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />

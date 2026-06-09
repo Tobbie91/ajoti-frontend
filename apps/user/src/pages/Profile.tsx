@@ -176,6 +176,13 @@ export function Profile() {
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
+
+    if (phone && !/^\+[1-9]\d{6,13}$/.test(phone.trim())) {
+      setSaveError('Phone number must be in international format, e.g. +2348012345678')
+      setSaving(false)
+      return
+    }
+
     try {
       await updateUserProfile({
         firstName,
