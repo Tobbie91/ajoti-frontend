@@ -164,7 +164,7 @@ export function WithdrawFunds() {
   }
 
   const canProceedToPin =
-    numericAmount > 0 &&
+    numericAmount >= 100 &&
     numericAmount <= availableBalance &&
     selectedAccount !== null
 
@@ -347,6 +347,9 @@ export function WithdrawFunds() {
                   className="h-[52px] w-full rounded-xl border border-[#E5E7EB] pl-8 pr-4 text-[20px] font-semibold text-[#0F172A] outline-none focus:border-[#02A36E]"
                 />
               </div>
+              {numericAmount > 0 && numericAmount < 100 && (
+                <Text fw={400} className="mt-2 text-[12px] text-red-500">Minimum withdrawal is ₦100</Text>
+              )}
               {numericAmount > availableBalance && numericAmount > 0 && (
                 <Text fw={400} className="mt-2 text-[12px] text-red-500">Amount exceeds available balance</Text>
               )}
