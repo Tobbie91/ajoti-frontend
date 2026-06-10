@@ -20,6 +20,7 @@ import {
   resubmitKyc,
   type KycStatus,
 } from '@/utils/api'
+import { PhoneInputField } from '@/components'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -444,7 +445,7 @@ function OnboardingFlow({
 
   function canProceed() {
     if (step === 1) return nin.length === 11 && bvn.length === 11
-    return kinFullName.trim() !== '' && kinPhone.trim() !== '' && kinRelationship.trim() !== ''
+    return kinFullName.trim() !== '' && kinPhone.replace(/\D/g, '').length >= 9 && kinRelationship.trim() !== ''
   }
 
   async function handleProveInitiate() {
@@ -634,7 +635,7 @@ function OnboardingFlow({
             <div className="flex flex-col gap-4">
               <TextInput label="Full Name" placeholder="Enter next of kin's full name" radius="md" value={kinFullName} onChange={(e) => setKinFullName(e.currentTarget.value)} styles={inputStyles} required />
               <TextInput label="Relationship" placeholder="e.g. Spouse, Parent, Sibling" radius="md" value={kinRelationship} onChange={(e) => setKinRelationship(e.currentTarget.value)} styles={inputStyles} required />
-              <TextInput label="Phone Number" placeholder="+234 800 000 0000" radius="md" value={kinPhone} onChange={(e) => setKinPhone(e.currentTarget.value)} styles={inputStyles} leftSection={<IconPhone size={16} color="#9CA3AF" />} required />
+              <PhoneInputField value={kinPhone} onChange={setKinPhone} label="Phone Number" required styles={inputStyles} />
             </div>
 
             <button

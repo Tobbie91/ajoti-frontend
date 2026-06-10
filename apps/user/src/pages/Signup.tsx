@@ -16,6 +16,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
 import { register } from '@/utils/api'
+import { PhoneInputField } from '@/components'
 
 const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL ?? 'https://admin.ajoti.com'
 
@@ -42,9 +43,8 @@ export function Signup() {
       return
     }
 
-    const cleanPhone = phone.trim().replace(/^0/, '')
-    if (!/^\d{10}$/.test(cleanPhone)) {
-      setError('Enter a valid 10-digit Nigerian phone number (e.g. 8012345678)')
+    if (phone.replace(/\D/g, '').length < 9) {
+      setError('Enter a valid phone number')
       return
     }
 
@@ -54,7 +54,7 @@ export function Signup() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        phone: `+234${cleanPhone}`,
+        phone,
         dob: dob.toISOString().split('T')[0],
         gender: gender as 'MALE' | 'FEMALE',
         password,
@@ -177,14 +177,10 @@ export function Signup() {
                 onChange={(e) => setEmail(e.currentTarget.value)}
                 styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
-              <TextInput
-                label="Phone number"
-                placeholder="8012345678"
-                radius="md"
+              <PhoneInputField
                 value={phone}
-                onChange={(e) => setPhone(e.currentTarget.value.replace(/\D/g, '').slice(0, 10))}
-                maxLength={10}
-                leftSection={<Text size="sm" c="dimmed">+234</Text>}
+                onChange={setPhone}
+                label="Phone number"
                 styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
               <Group grow gap="sm">

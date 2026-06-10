@@ -13,6 +13,7 @@ import { DateInput } from "@mantine/dates";
 import { Link, useNavigate } from "react-router-dom";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { register } from "@/utils/api";
+import { PhoneInputField } from "@/components";
 
 export function Signup() {
     const navigate = useNavigate();
@@ -47,7 +48,7 @@ export function Signup() {
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
                 email: email.trim(),
-                phone: `+234${phone.trim()}`,
+                phone,
                 dob: dobString,
                 gender: gender.toUpperCase() as "MALE" | "FEMALE",
                 password,
@@ -204,15 +205,10 @@ export function Signup() {
                                     },
                                 }}
                             />
-                            <TextInput
-                                label="Phone number"
-                                placeholder="800 000 0000"
-                                radius="md"
+                            <PhoneInputField
                                 value={phone}
-                                onChange={(e) =>
-                                    setPhone(e.currentTarget.value)
-                                }
-                                leftSection={<Text size="sm" c="dimmed">+234</Text>}
+                                onChange={setPhone}
+                                label="Phone number"
                                 styles={{
                                     input: {
                                         borderColor: "#BFEBD1",
