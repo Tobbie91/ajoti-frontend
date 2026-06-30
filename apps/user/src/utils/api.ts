@@ -9,6 +9,11 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
 
   const data = await res.json().catch(() => ({}))
 
+  if (res.status === 503 && (data as { maintenance?: boolean }).maintenance) {
+    window.location.replace('/maintenance')
+    throw new Error('Maintenance')
+  }
+
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
     throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')

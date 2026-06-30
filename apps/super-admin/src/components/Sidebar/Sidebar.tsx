@@ -15,6 +15,7 @@ import {
   IconTestPipe,
   IconWallet,
   IconHeadset,
+  IconUsersGroup,
 } from '@tabler/icons-react'
 import { type Permission, getAdminRoleFromStorage, hasPermission } from '@/utils/permissions'
 
@@ -37,8 +38,9 @@ const savingsChildren = [
 ]
 
 const bottomLinks: NavLink_[] = [
-  { label: 'Transactions',   icon: IconReceipt,  path: '/transactions',  permission: 'VIEW_LEDGER' },
-  { label: 'Settings & Logs',icon: IconSettings, path: '/settings-logs', permission: 'VIEW_AUDIT_LOGS' },
+  { label: 'Transactions',    icon: IconReceipt,     path: '/transactions',  permission: 'VIEW_LEDGER' },
+  { label: 'Staff Management',icon: IconUsersGroup,  path: '/staff',         permission: 'MANAGE_ADMIN_ACCOUNTS' },
+  { label: 'Settings & Logs', icon: IconSettings,    path: '/settings-logs', permission: 'VIEW_AUDIT_LOGS' },
 ]
 
 interface SidebarProps {

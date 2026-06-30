@@ -14,6 +14,9 @@ import {
   Wallets,
   SupportInbox,
   SupportTicketDetail,
+  StaffManagement,
+  StaffSetup,
+  Maintenance,
 } from '@/pages'
 
 import { FixedSavings } from '@/pages/savings/FixedSavings'
@@ -24,7 +27,9 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Public */}
+        <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/staff/setup" element={<StaffSetup />} />
 
         {/* Protected — require SUPERADMIN token */}
         <Route element={<RequireAuth />}>
@@ -60,6 +65,11 @@ function App() {
             <Route element={<RequirePermission permission="VIEW_LEDGER" />}>
               <Route path="/wallets" element={<Wallets />} />
               <Route path="/transactions" element={<Transactions />} />
+            </Route>
+
+            {/* MANAGE_ADMIN_ACCOUNTS — SUPERADMIN only */}
+            <Route element={<RequirePermission permission="MANAGE_ADMIN_ACCOUNTS" />}>
+              <Route path="/staff" element={<StaffManagement />} />
             </Route>
 
             {/* Savings (coming soon) — no permission gate yet */}
