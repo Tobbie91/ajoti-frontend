@@ -180,7 +180,7 @@ export function Login() {
                           login(credentialResponse.credential)
                         }
                       }}
-                      onError={() => console.log('Login Failed')}
+                      onError={() => {}}
                       theme="outline"
                       size="large"
                       text="signin_with"

@@ -14,26 +14,33 @@ import {
   IconAward,
   IconTestPipe,
   IconWallet,
+  IconHeadset,
+  IconUsersGroup,
 } from '@tabler/icons-react'
+import { type Permission, getAdminRoleFromStorage, hasPermission } from '@/utils/permissions'
 
-const mainLinks = [
-  { label: 'Dashboard', icon: IconLayoutDashboard, path: '/' },
-  { label: 'Manage Users', icon: IconUsers, path: '/manage-users' },
-  { label: 'KYC Approvals', icon: IconShieldCheck, path: '/kyc-approvals' },
-  { label: 'Manage ROSCA', icon: IconTopologyRing, path: '/manage-rosca' },
-  { label: 'Wallets', icon: IconWallet, path: '/wallets' },
-  { label: 'Trust Scores', icon: IconAward, path: '/trust-scores' },
-  { label: 'Simulations', icon: IconTestPipe, path: '/simulations' },
+type NavLink_ = { label: string; icon: React.FC<{ size?: number; stroke?: number }>; path: string; permission: Permission | null }
+
+const mainLinks: NavLink_[] = [
+  { label: 'Dashboard',     icon: IconLayoutDashboard, path: '/',              permission: null },
+  { label: 'Manage Users',  icon: IconUsers,            path: '/manage-users', permission: null },
+  { label: 'KYC Approvals', icon: IconShieldCheck,      path: '/kyc-approvals',permission: 'MANAGE_KYC' },
+  { label: 'Manage ROSCA',  icon: IconTopologyRing,     path: '/manage-rosca', permission: 'MANAGE_CIRCLES' },
+  { label: 'Wallets',       icon: IconWallet,            path: '/wallets',      permission: 'VIEW_LEDGER' },
+  { label: 'Trust Scores',  icon: IconAward,             path: '/trust-scores', permission: null },
+  { label: 'Simulations',   icon: IconTestPipe,          path: '/simulations',  permission: 'MANAGE_CIRCLES' },
+  { label: 'Support',       icon: IconHeadset,           path: '/support',      permission: 'MANAGE_TICKETS' },
 ]
 
 const savingsChildren = [
-  { label: 'Fixed Savings', icon: IconChartLine, path: '/savings/FixedSavings', comingSoon: true },
-  { label: 'Target Savings', icon: IconTarget, path: '/savings/TargetSavings', comingSoon: true },
+  { label: 'Fixed Savings',  icon: IconChartLine, path: '/savings/FixedSavings',  comingSoon: true },
+  { label: 'Target Savings', icon: IconTarget,    path: '/savings/TargetSavings', comingSoon: true },
 ]
 
-const bottomLinks = [
-  { label: 'Transactions', icon: IconReceipt, path: '/transactions' },
-  { label: 'Settings & Logs', icon: IconSettings, path: '/settings-logs' },
+const bottomLinks: NavLink_[] = [
+  { label: 'Transactions',    icon: IconReceipt,     path: '/transactions',  permission: 'VIEW_LEDGER' },
+  { label: 'Staff Management',icon: IconUsersGroup,  path: '/staff',         permission: 'MANAGE_ADMIN_ACCOUNTS' },
+  { label: 'Settings & Logs', icon: IconSettings,    path: '/settings-logs', permission: 'VIEW_AUDIT_LOGS' },
 ]
 
 interface SidebarProps {
@@ -46,6 +53,10 @@ export function Sidebar({ onClose }: SidebarProps) {
     location.pathname.startsWith('/savings'),
   )
 
+  const adminRole = getAdminRoleFromStorage()
+  const visibleMain = mainLinks.filter((l) => !l.permission || hasPermission(adminRole, l.permission))
+  const visibleBottom = bottomLinks.filter((l) => !l.permission || hasPermission(adminRole, l.permission))
+
   return (
     <Box>
       <Box p="md" mb="md">
@@ -55,7 +66,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       </Box>
 
       <Stack gap={4} px="xs">
-        {mainLinks.map((link) => (
+        {visibleMain.map((link) => (
           <NavLink
             key={link.path}
             component={RouterNavLink}
@@ -97,7 +108,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           ))}
         </NavLink>
 
-        {bottomLinks.map((link) => (
+        {visibleBottom.map((link) => (
           <NavLink
             key={link.path}
             component={RouterNavLink}

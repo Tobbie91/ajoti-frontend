@@ -19,6 +19,7 @@ import {
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutApi, getUserProfile, updateUserProfile, getKycStatus, type KycStatus } from '@/utils/api'
+import { PhoneInputField } from '@/components'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('admin_user')
@@ -236,7 +237,7 @@ export function MyProfile() {
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Phone Number</Text>
               {editing ? (
-                <TextInput value={phone} onChange={(e) => setPhone(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconPhone size={16} color="#9CA3AF" />} styles={inputStyles} />
+                <PhoneInputField value={phone} onChange={setPhone} size="sm" styles={inputStyles} />
               ) : (
                 <div className="flex items-center gap-2">
                   <IconPhone size={15} color="#9CA3AF" style={{ flexShrink: 0 }} />

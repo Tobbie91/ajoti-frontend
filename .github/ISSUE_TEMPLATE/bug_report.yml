@@ -1,0 +1,84 @@
+name: 🐛 Bug Report
+description: Something is broken or behaving unexpectedly
+title: "fix(<scope>): <short description>"
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill this out as completely as possible.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      options:
+        - User App — Auth / Registration
+        - User App — Wallet / Funding
+        - User App — Withdrawals
+        - User App — ROSCA / Circles
+        - User App — Profile / KYC
+        - User App — Notifications
+        - Admin App — Circle Management
+        - Admin App — Disbursements / Payouts
+        - Admin App — Members
+        - Super Admin — Governance
+        - Super Admin — Transactions
+        - Super Admin — Users
+        - All Apps — UI / Navigation
+        - Infrastructure / Build / Deploy
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What happened? What did you expect to happen?
+      placeholder: "When I do X, Y happens. I expected Z."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Provide clear, numbered steps.
+      placeholder: |
+        1. Go to ...
+        2. Do ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        - App: User / Admin / Super Admin
+        - Platform: Mobile (Android) / Mobile (iOS) / Desktop
+        - Browser & version:
+        - Environment: Local / Staging / Production
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots / Console Errors
+      description: Attach screenshots or paste console errors. **Mask any sensitive data before attaching.**
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact Assessment
+      options:
+        - label: This bug could affect user funds or financial integrity
+        - label: This bug could expose user data or PII
+        - label: This bug could allow unauthorized access

@@ -27,6 +27,7 @@ import {
   deleteMyAccount,
   type KycStatus,
 } from '@/utils/api'
+import { PhoneInputField } from '@/components'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('user')
@@ -176,6 +177,7 @@ export function Profile() {
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
+
     try {
       await updateUserProfile({
         firstName,
@@ -363,12 +365,10 @@ export function Profile() {
               Phone Number
             </Text>
             {editing ? (
-              <TextInput
+              <PhoneInputField
                 value={phone}
-                onChange={(e) => setPhone(e.currentTarget.value)}
-                radius="md"
+                onChange={setPhone}
                 size="sm"
-                leftSection={<IconPhone size={16} color="#9CA3AF" />}
                 styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
               />
             ) : (

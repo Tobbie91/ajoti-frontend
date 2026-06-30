@@ -37,6 +37,7 @@ export function CreateGroup() {
   const [active, setActive] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [stepError, setStepError] = useState<string | null>(null)
 
   const [groupName, setGroupName] = useState('')
   const [tagline, setTagline] = useState('')
@@ -602,6 +603,11 @@ export function CreateGroup() {
         </Stack>
       )}
 
+      {/* Step validation error */}
+      {stepError && (
+        <Text fz="sm" c="red" ta="center">{stepError}</Text>
+      )}
+
       {/* Bottom buttons */}
       <Group justify="space-between">
         {active === 3 ? (
@@ -662,7 +668,14 @@ export function CreateGroup() {
             <Button
               radius="md"
               style={{ background: PRIMARY }}
-              onClick={() => setActive(active + 1)}
+              onClick={() => {
+                if (active === 1 && frequency.length === 0) {
+                  setStepError('Please select at least one payment frequency.')
+                  return
+                }
+                setStepError(null)
+                setActive(active + 1)
+              }}
             >
               Save & Continue
             </Button>

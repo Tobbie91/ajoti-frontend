@@ -23,6 +23,7 @@ import {
   FundWalletCallback,
   SetPin,
   Messages,
+  Maintenance,
 } from '@/pages'
 
 function KycPageGuard({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Auth routes — no layout */}
+        <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />

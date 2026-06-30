@@ -14,6 +14,10 @@ export function Login() {
 
   async function handleLogin() {
     if (!email.trim() || !password) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.')
+      return
+    }
     setError(null)
     setLoading(true)
     try {

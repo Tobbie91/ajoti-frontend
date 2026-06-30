@@ -9,6 +9,11 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
 
   const data = await res.json().catch(() => ({}))
 
+  if (res.status === 503 && (data as { maintenance?: boolean }).maintenance) {
+    window.location.replace('/maintenance')
+    throw new Error('Maintenance')
+  }
+
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
     throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
@@ -1016,4 +1021,80 @@ export async function getChatCircles(): Promise<ChatCircle[]> {
 export async function getChatMessages(circleId: string, before?: string): Promise<ChatMessage[]> {
   const qs = before ? `?before=${encodeURIComponent(before)}` : ''
   return authRequest(`/api/chat/circles/${circleId}/messages${qs}`, { method: 'GET' })
+}
+
+// ── Support ───────────────────────────────────────────────────────────────────
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+export type TicketCategory = 'ACCOUNT' | 'WALLET' | 'TRANSACTION' | 'KYC' | 'ROSCA' | 'LOAN' | 'OTHER'
+export type TicketSenderRole = 'USER' | 'ADMIN' | 'SUPERADMIN'
+
+export interface SupportMessage {
+  id: string
+  body: string
+  senderRole: TicketSenderRole
+  sender: { id: string; firstName: string; lastName: string; role: string }
+  createdAt: string
+}
+
+export interface SupportTicketRow {
+  id: string
+  category: TicketCategory
+  subject: string
+  status: TicketStatus
+  refType: string | null
+  refId: string | null
+  createdAt: string
+  updatedAt: string
+  messages: Pick<SupportMessage, 'body' | 'createdAt' | 'senderRole'>[]
+  _count: { messages: number }
+}
+
+export interface SupportTicketDetail extends SupportTicketRow {
+  messages: SupportMessage[]
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: { total: number; page: number; limit: number; totalPages: number }
+}
+
+export function listMyTickets(params: {
+  page?: number
+  limit?: number
+  status?: TicketStatus | ''
+  category?: TicketCategory | ''
+} = {}): Promise<PaginatedResponse<SupportTicketRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/support/tickets?${q}`, { method: 'GET' })
+}
+
+export function getMyTicket(ticketId: string): Promise<SupportTicketDetail> {
+  return authRequest(`/api/support/tickets/${ticketId}`, { method: 'GET' })
+}
+
+export function createTicket(payload: {
+  category: TicketCategory
+  subject: string
+  body: string
+  refType?: string
+  refId?: string
+}): Promise<SupportTicketDetail> {
+  return authRequest('/api/support/tickets', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function replyToTicket(ticketId: string, body: string): Promise<SupportMessage> {
+  return authRequest(`/api/support/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+}
+
+export function closeMyTicket(ticketId: string): Promise<{ id: string; status: TicketStatus }> {
+  return authRequest(`/api/support/tickets/${ticketId}/close`, { method: 'PATCH' })
 }

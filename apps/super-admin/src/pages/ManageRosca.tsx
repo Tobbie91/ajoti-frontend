@@ -514,7 +514,7 @@ function CirclesTab() {
         <Table.ScrollContainer minWidth={900}>
         <Table highlightOnHover>
           <Table.Thead>
-            <Table.Tr bg="#066F5B">
+            <Table.Tr bg="#0B6B55">
               <Table.Th c="white">Name</Table.Th>
               <Table.Th c="white">Admin</Table.Th>
               <Table.Th c="white">Contribution</Table.Th>
@@ -636,7 +636,7 @@ function DefaultersTab() {
         <Table.ScrollContainer minWidth={700}>
         <Table highlightOnHover>
           <Table.Thead>
-            <Table.Tr bg="#066F5B">
+            <Table.Tr bg="#0B6B55">
               <Table.Th c="white">User</Table.Th>
               <Table.Th c="white">Email</Table.Th>
               <Table.Th c="white">Circle</Table.Th>

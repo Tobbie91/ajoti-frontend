@@ -16,6 +16,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
 import { register } from '@/utils/api'
+import { PhoneInputField } from '@/components'
 
 const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL ?? 'https://admin.ajoti.com'
 
@@ -42,13 +43,18 @@ export function Signup() {
       return
     }
 
+    if (phone.replace(/\D/g, '').length < 9) {
+      setError('Enter a valid phone number')
+      return
+    }
+
     setLoading(true)
     try {
       await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        phone: `+234${phone.trim()}`,
+        phone,
         dob: dob.toISOString().split('T')[0],
         gender: gender as 'MALE' | 'FEMALE',
         password,
@@ -171,13 +177,10 @@ export function Signup() {
                 onChange={(e) => setEmail(e.currentTarget.value)}
                 styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
-              <TextInput
-                label="Phone number"
-                placeholder="800 000 0000"
-                radius="md"
+              <PhoneInputField
                 value={phone}
-                onChange={(e) => setPhone(e.currentTarget.value)}
-                leftSection={<Text size="sm" c="dimmed">+234</Text>}
+                onChange={setPhone}
+                label="Phone number"
                 styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
               />
               <Group grow gap="sm">
@@ -279,7 +282,7 @@ export function Signup() {
                           login(credentialResponse.credential)
                         }
                       }}
-                      onError={() => console.log('Login Failed')}
+                      onError={() => {}}
                       theme="outline"
                       size="large"
                       text="signup_with"
