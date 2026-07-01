@@ -40,8 +40,8 @@ export function Login() {
         throw new Error('Invalid token received')
       }
 
-      if (jwtRole !== 'ADMIN' && jwtRole !== 'SUPERADMIN') {
-        throw new Error('Access denied. This portal is for admins only.')
+      if (jwtRole !== 'CIRCLE_ADMIN') {
+        throw new Error('Access denied. This portal is for circle admins only.')
       }
 
       localStorage.setItem('admin_access_token', token)

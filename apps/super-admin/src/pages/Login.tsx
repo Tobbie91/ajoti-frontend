@@ -23,8 +23,8 @@ export function Login() {
     try {
       const { token, refreshToken, user } = await loginApi(email.trim(), password)
 
-      if (user.role !== 'SUPERADMIN') {
-        throw new Error('Access denied. SUPERADMIN account required.')
+      if (user.role !== 'STAFF') {
+        throw new Error('Access denied. Staff account required.')
       }
 
       localStorage.setItem('superadmin_access_token', token)
