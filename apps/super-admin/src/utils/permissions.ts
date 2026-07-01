@@ -13,7 +13,7 @@ export type Permission =
   | 'DEACTIVATE_USER'
   | 'SYSTEM_CONFIG'
 
-type AdminRole = 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS'
+type StaffRole = 'SUPERADMIN' | 'MANAGER' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS'
 
 const ALL_PERMISSIONS: Permission[] = [
   'READ_PLATFORM_DATA', 'MANAGE_TICKETS', 'SUSPEND_ACCOUNT',
@@ -23,8 +23,8 @@ const ALL_PERMISSIONS: Permission[] = [
   'MANAGE_ADMIN_ACCOUNTS', 'DEACTIVATE_USER', 'SYSTEM_CONFIG',
 ]
 
-const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
-  SUPPORT: ['READ_PLATFORM_DATA', 'MANAGE_TICKETS', 'SUSPEND_ACCOUNT'],
+const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
+  SUPPORT: ['READ_PLATFORM_DATA', 'MANAGE_TICKETS'],
   COMPLIANCE: [
     'READ_PLATFORM_DATA', 'MANAGE_TICKETS', 'SUSPEND_ACCOUNT',
     'MANAGE_KYC', 'VIEW_AUDIT_LOGS',
@@ -35,23 +35,29 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'MANAGE_COLLATERAL', 'MANAGE_CIRCLES', 'REVERSE_TRANSACTIONS',
     'VIEW_LEDGER', 'EXPORT_LEDGER',
   ],
+  MANAGER: [
+    'READ_PLATFORM_DATA', 'MANAGE_TICKETS', 'SUSPEND_ACCOUNT',
+    'MANAGE_KYC', 'VIEW_AUDIT_LOGS', 'MANAGE_ADMIN_ACCOUNTS',
+    'MANAGE_COLLATERAL', 'MANAGE_CIRCLES', 'REVERSE_TRANSACTIONS',
+    'VIEW_LEDGER', 'EXPORT_LEDGER',
+  ],
   SUPERADMIN: ALL_PERMISSIONS,
 }
 
-export function getPermissions(adminRole: string | null | undefined): Permission[] {
-  if (!adminRole) return []
-  return ROLE_PERMISSIONS[adminRole as AdminRole] ?? []
+export function getPermissions(staffRole: string | null | undefined): Permission[] {
+  if (!staffRole) return []
+  return ROLE_PERMISSIONS[staffRole as StaffRole] ?? []
 }
 
-export function hasPermission(adminRole: string | null | undefined, permission: Permission): boolean {
-  return getPermissions(adminRole).includes(permission)
+export function hasPermission(staffRole: string | null | undefined, permission: Permission): boolean {
+  return getPermissions(staffRole).includes(permission)
 }
 
-export function getAdminRoleFromStorage(): string | null {
+export function getStaffRoleFromStorage(): string | null {
   try {
     const stored = localStorage.getItem('superadmin_user')
     if (!stored) return null
-    return (JSON.parse(stored) as { adminRole?: string | null }).adminRole ?? null
+    return (JSON.parse(stored) as { staffRole?: string | null }).staffRole ?? null
   } catch {
     return null
   }
