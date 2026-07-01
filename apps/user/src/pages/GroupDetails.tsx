@@ -109,7 +109,7 @@ export function GroupDetails() {
             amount: formattedAmount,
             frequency: circle.frequency ?? '',
             duration: `${circle.durationCycles ?? ''} cycles`,
-            slotsLeft: `${slotsLeft} Slots left`,
+            slotsLeft: String(slotsLeft),
             contribution: `${formattedAmount} ${(circle.frequency ?? '').toLowerCase()}`,
             payoutOrder: payoutLogicLabel[(circle.payoutLogic as string) ?? ''] ?? String(circle.payoutLogic ?? '—'),
             penalty: '—',
@@ -257,7 +257,7 @@ export function GroupDetails() {
         )}
 
         {/* Three Info Cards Row */}
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
           {/* Group Info Card */}
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <Text fw={700} className="text-[28px] text-[#0F172A]">
@@ -334,7 +334,7 @@ export function GroupDetails() {
         </div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-[1fr_280px_280px] items-start gap-5">
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_280px_280px] md:gap-5">
           {/* Payout Timeline */}
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">

@@ -1,5 +1,19 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly code?: number) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+function parseJsonSafely(res: Response): Promise<unknown> {
+  return res.json().catch((e: unknown) => {
+    if (import.meta.env.DEV) console.error('[api] Failed to parse response JSON:', e)
+    return {}
+  })
+}
+
 async function request<T>(path: string, options: RequestInit): Promise<T> {
   const { headers, ...rest } = options
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -7,16 +21,16 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...headers },
   })
 
-  const data = await res.json().catch(() => ({}))
+  const data = await parseJsonSafely(res)
 
   if (res.status === 503 && (data as { maintenance?: boolean }).maintenance) {
     window.location.replace('/maintenance')
-    throw new Error('Maintenance')
+    throw new ApiError('Maintenance', 503)
   }
 
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
-    throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
+    throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
   }
 
   return data as T
@@ -100,11 +114,11 @@ export async function login(email: string, password: string): Promise<{ token: s
     }),
   })
 
-  const data = await res.json().catch(() => ({}))
+  const data = await parseJsonSafely(res)
 
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
-    throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Invalid email or password')
+    throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Invalid email or password', res.status)
   }
 
   const raw = data as Record<string, unknown>
@@ -163,10 +177,10 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
   })
 
   if (res.status !== 401) {
-    const data = await res.json().catch(() => ({}))
+    const data = await parseJsonSafely(res)
     if (!res.ok) {
       const msg = (data as { message?: string | string[] }).message
-      throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
+      throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
     }
     return data as T
   }
@@ -188,7 +202,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
       refreshQueue = []
       isRefreshing = false
       clearSessionAndRedirect()
-      throw new Error('Session expired. Please log in again.')
+      throw new ApiError('Session expired. Please log in again.')
     }
   }
 
@@ -201,7 +215,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
         }),
       )
     })
-    setTimeout(() => reject(new Error('Session expired')), 30_000)
+    setTimeout(() => reject(new ApiError('Session expired')), 30_000)
   })
 }
 
