@@ -39,8 +39,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
 }
 
 export function getPermissions(adminRole: string | null | undefined): Permission[] {
-  if (!adminRole) return ALL_PERMISSIONS
-  return ROLE_PERMISSIONS[adminRole as AdminRole] ?? ALL_PERMISSIONS
+  if (!adminRole) return []
+  return ROLE_PERMISSIONS[adminRole as AdminRole] ?? []
 }
 
 export function hasPermission(adminRole: string | null | undefined, permission: Permission): boolean {
