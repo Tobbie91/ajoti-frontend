@@ -17,7 +17,7 @@ import {
   IconHeadset,
   IconUsersGroup,
 } from '@tabler/icons-react'
-import { type Permission, getAdminRoleFromStorage, hasPermission } from '@/utils/permissions'
+import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
 type NavLink_ = { label: string; icon: React.FC<{ size?: number; stroke?: number }>; path: string; permission: Permission | null }
 
@@ -53,9 +53,9 @@ export function Sidebar({ onClose }: SidebarProps) {
     location.pathname.startsWith('/savings'),
   )
 
-  const adminRole = getAdminRoleFromStorage()
-  const visibleMain = mainLinks.filter((l) => !l.permission || hasPermission(adminRole, l.permission))
-  const visibleBottom = bottomLinks.filter((l) => !l.permission || hasPermission(adminRole, l.permission))
+  const staffRole = getStaffRoleFromStorage()
+  const visibleMain = mainLinks.filter((l) => !l.permission || hasPermission(staffRole, l.permission))
+  const visibleBottom = bottomLinks.filter((l) => !l.permission || hasPermission(staffRole, l.permission))
 
   return (
     <Box>
