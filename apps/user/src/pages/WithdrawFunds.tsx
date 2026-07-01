@@ -7,46 +7,29 @@ import {
   IconAlertCircle,
   IconPlus,
   IconTrash,
-  IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import {
   getWalletBalance,
-  getBanks,
-  resolveAccount,
   initializeWithdrawal,
   listBankAccounts,
-  addBankAccount,
   removeBankAccount,
   type SavedBankAccount,
-  type BankOption,
 } from '@/utils/api'
+import { AddBankAccountModal } from '@/components'
 
-type Step = 'select-account' | 'add-account' | 'amount' | 'pin' | 'processing' | 'success' | 'error'
-type ResolveState = 'idle' | 'loading' | 'success' | 'error'
+type Step = 'select-account' | 'amount' | 'pin' | 'processing' | 'success' | 'error'
 
 export function WithdrawFunds() {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('select-account')
+  const [addModalOpen, setAddModalOpen] = useState(false)
 
   // Saved accounts
   const [savedAccounts, setSavedAccounts] = useState<SavedBankAccount[]>([])
   const [loadingAccounts, setLoadingAccounts] = useState(true)
   const [selectedAccount, setSelectedAccount] = useState<SavedBankAccount | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
-
-  // Add account form
-  const [banks, setBanks] = useState<{ label: string; value: string }[]>([])
-  const [newBankCode, setNewBankCode] = useState('')
-  const [newAccountNumber, setNewAccountNumber] = useState('')
-  const [bankSearch, setBankSearch] = useState('')
-  const [resolveState, setResolveState] = useState<ResolveState>('idle')
-  const [resolvedName, setResolvedName] = useState<string | null>(null)
-  const [resolveError, setResolveError] = useState<string | null>(null)
-  const [savingAccount, setSavingAccount] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [addAccountPin, setAddAccountPin] = useState('')
-  const [showAddPin, setShowAddPin] = useState(false)
 
   // Amount
   const [amount, setAmount] = useState('')
@@ -62,18 +45,6 @@ export function WithdrawFunds() {
       .catch(() => setAvailableBalance(0))
 
     loadAccounts()
-
-    getBanks()
-      .then((list) => {
-        const seen = new Set<string>()
-        const unique = list.filter((b: BankOption) => {
-          if (seen.has(b.code)) return false
-          seen.add(b.code)
-          return true
-        })
-        setBanks(unique.map((b: BankOption) => ({ label: b.name, value: b.code })))
-      })
-      .catch(() => {})
   }, [])
 
   function loadAccounts() {
@@ -82,63 +53,6 @@ export function WithdrawFunds() {
       .then((res) => setSavedAccounts(res.data ?? []))
       .catch(() => {})
       .finally(() => setLoadingAccounts(false))
-  }
-
-  // Resolve account name when both bank and number (10 digits) are ready
-  useEffect(() => {
-    setResolvedName(null)
-    setResolveError(null)
-
-    if (newAccountNumber.length !== 10 || !newBankCode) {
-      setResolveState('idle')
-      return
-    }
-
-    setResolveState('loading')
-
-    resolveAccount(newAccountNumber, newBankCode)
-      .then((data) => {
-        setResolvedName(data.account_name)
-        setResolveState('success')
-      })
-      .catch((err) => {
-        setResolveError(err instanceof Error ? err.message : 'Could not verify account')
-        setResolveState('error')
-      })
-  }, [newAccountNumber, newBankCode])
-
-  function handleAddPinDigit(digit: string) {
-    if (addAccountPin.length < 4) {
-      const newPin = addAccountPin + digit
-      setAddAccountPin(newPin)
-      if (newPin.length === 4) {
-        setTimeout(() => handleSaveAccount(newPin), 300)
-      }
-    }
-  }
-
-  async function handleSaveAccount(pin: string) {
-    if (resolveState !== 'success' || !resolvedName || !newBankCode) return
-    const bankLabel = banks.find((b) => b.value === newBankCode)?.label ?? newBankCode
-    setSavingAccount(true)
-    setSaveError(null)
-    try {
-      await addBankAccount(newBankCode, bankLabel, newAccountNumber, pin)
-      setNewBankCode('')
-      setNewAccountNumber('')
-      setBankSearch('')
-      setResolveState('idle')
-      setResolvedName(null)
-      setAddAccountPin('')
-      setShowAddPin(false)
-      loadAccounts()
-      setStep('select-account')
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save account')
-      setAddAccountPin('')
-    } finally {
-      setSavingAccount(false)
-    }
   }
 
   async function handleRemoveAccount(id: string, e: React.MouseEvent) {
@@ -164,9 +78,7 @@ export function WithdrawFunds() {
   }
 
   const canProceedToPin =
-    numericAmount >= 100 &&
-    numericAmount <= availableBalance &&
-    selectedAccount !== null
+    numericAmount >= 100 && numericAmount <= availableBalance && selectedAccount !== null
 
   async function submitWithdrawal(enteredPin: string) {
     if (!selectedAccount) return
@@ -199,10 +111,6 @@ export function WithdrawFunds() {
     }
   }
 
-  const filteredBanks = bankSearch
-    ? banks.filter((b) => b.label.toLowerCase().includes(bankSearch.toLowerCase()))
-    : banks
-
   // ==================== PROCESSING ====================
   if (step === 'processing') {
     return (
@@ -229,8 +137,18 @@ export function WithdrawFunds() {
           </Text>
         </div>
         <div className="mt-4 flex w-full max-w-[300px] flex-col gap-3">
-          <button onClick={() => navigate('/home')} className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]">Done</button>
-          <button onClick={() => navigate('/transactions')} className="w-full cursor-pointer rounded-xl border border-[#02A36E] bg-white py-3.5 text-[14px] font-semibold text-[#02A36E] hover:bg-[#F0FDF4]">View Transactions</button>
+          <button
+            onClick={() => navigate('/home')}
+            className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
+          >
+            Done
+          </button>
+          <button
+            onClick={() => navigate('/transactions')}
+            className="w-full cursor-pointer rounded-xl border border-[#02A36E] bg-white py-3.5 text-[14px] font-semibold text-[#02A36E] hover:bg-[#F0FDF4]"
+          >
+            View Transactions
+          </button>
         </div>
       </div>
     )
@@ -247,369 +165,256 @@ export function WithdrawFunds() {
         </div>
         <div className="text-center">
           <Text fw={700} className="text-[22px] text-[#0F172A]">Withdrawal Failed</Text>
-          <Text fw={400} className="mt-2 max-w-[320px] text-[14px] leading-[1.6] text-[#6B7280]">{error}</Text>
+          <Text fw={400} className="mt-2 max-w-[320px] text-[14px] leading-[1.6] text-[#6B7280]">
+            {error}
+          </Text>
         </div>
         <div className="flex w-full max-w-[300px] flex-col gap-3">
-          <button onClick={() => { setPin(''); setStep('pin') }} className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white">Try Again</button>
-          <button onClick={() => { setPin(''); setStep('select-account') }} className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] py-3.5 text-[14px] font-semibold text-[#374151]">Go Back</button>
+          <button
+            onClick={() => { setPin(''); setStep('pin') }}
+            className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => { setPin(''); setStep('select-account') }}
+            className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] py-3.5 text-[14px] font-semibold text-[#374151]"
+          >
+            Go Back
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto w-full max-w-[600px] px-4 py-6 sm:px-6 sm:py-8">
+    <>
+      <AddBankAccountModal
+        opened={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSuccess={(acc) => {
+          setSavedAccounts((prev) => [...prev, acc])
+          setSelectedAccount(acc)
+          setAddModalOpen(false)
+        }}
+      />
 
-      {/* ==================== STEP 1: SELECT ACCOUNT ==================== */}
-      {step === 'select-account' && (
-        <div className="flex flex-col gap-5">
-          <button onClick={() => navigate(-1)} className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]">
-            <IconArrowLeft size={18} /> Back
-          </button>
+      <div className="mx-auto w-full max-w-[600px] px-4 py-6 sm:px-6 sm:py-8">
 
-          <div>
-            <Text fw={700} className="text-[24px] text-[#0F172A]">Withdraw Funds</Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
-              Available: ₦{availableBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-            </Text>
-          </div>
+        {/* ==================== STEP: SELECT ACCOUNT ==================== */}
+        {step === 'select-account' && (
+          <div className="flex flex-col gap-5">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
+            >
+              <IconArrowLeft size={18} /> Back
+            </button>
 
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
-            <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Select Recipient Account</Text>
+            <div>
+              <Text fw={700} className="text-[24px] text-[#0F172A]">Withdraw Funds</Text>
+              <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
+                Available: ₦{availableBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+              </Text>
+            </div>
 
-            {loadingAccounts ? (
-              <div className="flex items-center gap-2 py-4">
-                <Loader size={16} color="#02A36E" />
-                <Text className="text-[13px] text-[#6B7280]">Loading accounts...</Text>
-              </div>
-            ) : savedAccounts.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-6 text-center">
-                <Text fw={400} className="text-[13px] text-[#6B7280]">No saved accounts yet.</Text>
-                <Text fw={400} className="text-[13px] text-[#6B7280]">Add an account to withdraw funds.</Text>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {savedAccounts.map((acc) => (
-                  <button
-                    key={acc.id}
-                    onClick={() => setSelectedAccount(acc)}
-                    className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
-                      selectedAccount?.id === acc.id
-                        ? 'border-[#02A36E] bg-[#F0FDF4]'
-                        : 'border-[#E5E7EB] bg-white hover:bg-[#F9FAFB]'
-                    }`}
-                  >
-                    <div>
-                      <Text fw={600} className="text-[14px] text-[#0F172A]">{acc.accountName}</Text>
-                      <Text fw={400} className="text-[12px] text-[#6B7280]">{acc.accountNumber} · {acc.bankName}</Text>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {acc.isDefault && (
-                        <span className="rounded-full bg-[#F0FDF4] px-2 py-0.5 text-[11px] font-medium text-[#02A36E]">Default</span>
-                      )}
-                      {removing === acc.id ? (
-                        <Loader size={14} color="#9CA3AF" />
-                      ) : (
-                        <button
-                          onClick={(e) => handleRemoveAccount(acc.id, e)}
-                          className="cursor-pointer rounded-lg p-1.5 text-[#9CA3AF] hover:bg-red-50 hover:text-red-500"
-                        >
-                          <IconTrash size={15} />
-                        </button>
-                      )}
-                      {selectedAccount?.id === acc.id && <IconCheck size={16} color="#02A36E" />}
-                    </div>
-                  </button>
-                ))}
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
+              <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Select Recipient Account</Text>
+
+              {loadingAccounts ? (
+                <div className="flex items-center gap-2 py-4">
+                  <Loader size={16} color="#02A36E" />
+                  <Text className="text-[13px] text-[#6B7280]">Loading accounts...</Text>
+                </div>
+              ) : savedAccounts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-6 text-center">
+                  <Text fw={400} className="text-[13px] text-[#6B7280]">No saved accounts yet.</Text>
+                  <Text fw={400} className="text-[13px] text-[#6B7280]">Add an account to withdraw funds.</Text>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {savedAccounts.map((acc) => (
+                    <button
+                      key={acc.id}
+                      onClick={() => setSelectedAccount(acc)}
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
+                        selectedAccount?.id === acc.id
+                          ? 'border-[#02A36E] bg-[#F0FDF4]'
+                          : 'border-[#E5E7EB] bg-white hover:bg-[#F9FAFB]'
+                      }`}
+                    >
+                      <div>
+                        <Text fw={600} className="text-[14px] text-[#0F172A]">{acc.accountName}</Text>
+                        <Text fw={400} className="text-[12px] text-[#6B7280]">
+                          {acc.accountNumber} · {acc.bankName}
+                        </Text>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {acc.isDefault && (
+                          <span className="rounded-full bg-[#F0FDF4] px-2 py-0.5 text-[11px] font-medium text-[#02A36E]">
+                            Default
+                          </span>
+                        )}
+                        {removing === acc.id ? (
+                          <Loader size={14} color="#9CA3AF" />
+                        ) : (
+                          <button
+                            onClick={(e) => handleRemoveAccount(acc.id, e)}
+                            className="cursor-pointer rounded-lg p-1.5 text-[#9CA3AF] hover:bg-red-50 hover:text-red-500"
+                          >
+                            <IconTrash size={15} />
+                          </button>
+                        )}
+                        {selectedAccount?.id === acc.id && <IconCheck size={16} color="#02A36E" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => setAddModalOpen(true)}
+                className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#02A36E] bg-[#F0FDF4] py-3 text-[13px] font-medium text-[#02A36E] hover:bg-[#dcfce7]"
+              >
+                <IconPlus size={15} /> Add New Account
+              </button>
+            </div>
+
+            {/* Amount */}
+            {selectedAccount && (
+              <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
+                <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Enter Amount</Text>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[18px] font-semibold text-[#0F172A]">
+                    ₦
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={amount}
+                    onChange={(e) => setAmount(formatAmount(e.target.value))}
+                    placeholder="0"
+                    className="h-[52px] w-full rounded-xl border border-[#E5E7EB] pl-8 pr-4 text-[20px] font-semibold text-[#0F172A] outline-none focus:border-[#02A36E]"
+                  />
+                </div>
+                {numericAmount > 0 && numericAmount < 100 && (
+                  <Text fw={400} className="mt-2 text-[12px] text-red-500">
+                    Minimum withdrawal is ₦100
+                  </Text>
+                )}
+                {numericAmount > availableBalance && numericAmount > 0 && (
+                  <Text fw={400} className="mt-2 text-[12px] text-red-500">
+                    Amount exceeds available balance
+                  </Text>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['5,000', '10,000', '50,000', '100,000'].map((val) => (
+                    <button
+                      key={val}
+                      onClick={() => setAmount(val)}
+                      className={`cursor-pointer rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                        amount === val
+                          ? 'border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]'
+                          : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'
+                      }`}
+                    >
+                      ₦{val}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
             <button
-              onClick={() => setStep('add-account')}
-              className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#02A36E] bg-[#F0FDF4] py-3 text-[13px] font-medium text-[#02A36E] hover:bg-[#dcfce7]"
+              onClick={() => setStep('pin')}
+              disabled={!canProceedToPin}
+              className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${
+                canProceedToPin
+                  ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
+                  : 'cursor-not-allowed bg-[#9CA3AF]'
+              }`}
             >
-              <IconPlus size={15} /> Add New Account
+              Proceed
             </button>
           </div>
+        )}
 
-          {/* Amount */}
-          {selectedAccount && (
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
-              <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Enter Amount</Text>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[18px] font-semibold text-[#0F172A]">₦</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={amount}
-                  onChange={(e) => setAmount(formatAmount(e.target.value))}
-                  placeholder="0"
-                  className="h-[52px] w-full rounded-xl border border-[#E5E7EB] pl-8 pr-4 text-[20px] font-semibold text-[#0F172A] outline-none focus:border-[#02A36E]"
-                />
-              </div>
-              {numericAmount > 0 && numericAmount < 100 && (
-                <Text fw={400} className="mt-2 text-[12px] text-red-500">Minimum withdrawal is ₦100</Text>
-              )}
-              {numericAmount > availableBalance && numericAmount > 0 && (
-                <Text fw={400} className="mt-2 text-[12px] text-red-500">Amount exceeds available balance</Text>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {['5,000', '10,000', '50,000', '100,000'].map((val) => (
-                  <button
-                    key={val}
-                    onClick={() => setAmount(val)}
-                    className={`cursor-pointer rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors ${
-                      amount === val ? 'border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]' : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'
-                    }`}
-                  >₦{val}</button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={() => setStep('pin')}
-            disabled={!canProceedToPin}
-            className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${
-              canProceedToPin ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]' : 'cursor-not-allowed bg-[#9CA3AF]'
-            }`}
-          >
-            Proceed
-          </button>
-        </div>
-      )}
-
-      {/* ==================== STEP: ADD ACCOUNT ==================== */}
-      {step === 'add-account' && (
-        <div className="flex flex-col gap-5">
-          <button onClick={() => setStep('select-account')} className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]">
-            <IconArrowLeft size={18} /> Back
-          </button>
-
-          <div>
-            <Text fw={700} className="text-[24px] text-[#0F172A]">Add Bank Account</Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">This account will be saved for future withdrawals.</Text>
-          </div>
-
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
-            <div className="flex flex-col gap-3">
-              {/* Bank search */}
-              <div>
-                <Text fw={500} className="mb-1.5 text-[13px] text-[#374151]">Bank</Text>
-                <input
-                  type="text"
-                  placeholder="Search bank..."
-                  value={bankSearch}
-                  onChange={(e) => setBankSearch(e.target.value)}
-                  className="h-[48px] w-full rounded-xl border border-[#E5E7EB] px-4 text-[14px] outline-none focus:border-[#02A36E]"
-                />
-                {bankSearch && (
-                  <div className="mt-1 max-h-[200px] overflow-y-auto rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
-                    {filteredBanks.length === 0 ? (
-                      <div className="px-4 py-3 text-[13px] text-[#9CA3AF]">No bank found</div>
-                    ) : (
-                      filteredBanks.slice(0, 20).map((b) => (
-                        <button
-                          key={b.value}
-                          onClick={() => { setNewBankCode(b.value); setBankSearch(b.label) }}
-                          className={`flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left text-[13px] hover:bg-[#F9FAFB] ${newBankCode === b.value ? 'text-[#02A36E] font-medium' : 'text-[#0F172A]'}`}
-                        >
-                          {b.label}
-                          {newBankCode === b.value && <IconCheck size={14} color="#02A36E" />}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-                {newBankCode && !bankSearch.includes('Search') && (
-                  <Text fw={400} className="mt-1 text-[12px] text-[#02A36E]">
-                    Selected: {banks.find(b => b.value === newBankCode)?.label}
-                  </Text>
-                )}
-              </div>
-
-              {/* Account number */}
-              <div>
-                <Text fw={500} className="mb-1.5 text-[13px] text-[#374151]">Account Number</Text>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="10-digit account number"
-                  value={newAccountNumber}
-                  onChange={(e) => setNewAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  maxLength={10}
-                  className="h-[48px] w-full rounded-xl border border-[#E5E7EB] px-4 text-[14px] outline-none focus:border-[#02A36E]"
-                />
-              </div>
-
-              {/* Resolution state */}
-              {resolveState === 'loading' && (
-                <div className="flex items-center gap-2 rounded-lg bg-[#F9FAFB] px-3 py-2.5">
-                  <Loader size={14} color="#02A36E" />
-                  <Text fw={400} className="text-[13px] text-[#6B7280]">Verifying account...</Text>
-                </div>
-              )}
-              {resolveState === 'success' && resolvedName && (
-                <div className="flex items-center gap-2 rounded-lg bg-[#F0FDF4] px-3 py-2.5">
-                  <IconCheck size={16} color="#02A36E" />
-                  <div>
-                    <Text fw={600} className="text-[13px] text-[#02A36E]">{resolvedName}</Text>
-                    <Text fw={400} className="text-[11px] text-[#6B7280]">Account verified</Text>
-                  </div>
-                </div>
-              )}
-              {resolveState === 'error' && (
-                <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2.5">
-                  <IconAlertCircle size={16} color="#EF4444" />
-                  <Text fw={400} className="text-[13px] text-red-500">{resolveError ?? 'Could not verify account'}</Text>
-                </div>
-              )}
-
-              {saveError && (
-                <Text fw={400} className="text-[13px] text-red-500">{saveError}</Text>
-              )}
-            </div>
-          </div>
-
-          {resolveState === 'success' && !showAddPin && (
+        {/* ==================== STEP: PIN ENTRY ==================== */}
+        {step === 'pin' && (
+          <div className="flex flex-col items-center gap-8 pt-8">
             <button
-              onClick={() => { setShowAddPin(true); setAddAccountPin(''); setSaveError(null) }}
-              className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
+              onClick={() => { setStep('select-account'); setPin('') }}
+              className="mr-auto flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
             >
-              Continue
+              <IconArrowLeft size={18} /> Back
             </button>
-          )}
 
-          {showAddPin && (
-            <div className="flex flex-col items-center gap-6 rounded-2xl border border-[#E5E7EB] bg-white p-5">
-              <div className="text-center">
-                <Text fw={700} className="text-[18px] text-[#0F172A]">Confirm with PIN</Text>
-                <Text fw={400} className="mt-1 text-[13px] text-[#6B7280]">Enter your transaction PIN to save this account</Text>
-              </div>
+            {/* Summary */}
+            <div className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-center">
+              <Text fw={400} className="text-[13px] text-[#6B7280]">Withdrawing</Text>
+              <Text fw={700} className="mt-1 text-[28px] text-[#0F172A]">₦{amount}</Text>
+              <Text fw={600} className="mt-1 text-[14px] text-[#0F172A]">
+                {selectedAccount?.accountName}
+              </Text>
+              <Text fw={400} className="text-[12px] text-[#9CA3AF]">
+                {selectedAccount?.accountNumber} · {selectedAccount?.bankName}
+              </Text>
+            </div>
 
-              <div className="flex gap-4">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className={`flex h-12 w-12 items-center justify-center rounded-xl border-2 ${
-                      i < addAccountPin.length ? 'border-[#02A36E] bg-[#F0FDF4]' : 'border-[#E5E7EB] bg-white'
-                    }`}
-                  >
-                    {i < addAccountPin.length && <div className="h-2.5 w-2.5 rounded-full bg-[#02A36E]" />}
-                  </div>
-                ))}
-              </div>
+            <div className="text-center">
+              <Text fw={700} className="text-[22px] text-[#0F172A]">Enter Your PIN</Text>
+              <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
+                Enter your 4-digit transaction PIN to confirm
+              </Text>
+            </div>
 
-              {savingAccount && (
-                <div className="flex items-center gap-2">
-                  <Loader size={14} color="#02A36E" />
-                  <Text fw={400} className="text-[13px] text-[#6B7280]">Saving...</Text>
+            {/* PIN dots */}
+            <div className="flex gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`flex h-14 w-14 items-center justify-center rounded-xl border-2 ${
+                    i < pin.length ? 'border-[#02A36E] bg-[#F0FDF4]' : 'border-[#E5E7EB] bg-white'
+                  }`}
+                >
+                  {i < pin.length && <div className="h-3 w-3 rounded-full bg-[#02A36E]" />}
                 </div>
-              )}
+              ))}
+            </div>
 
-              <div className="grid w-[240px] grid-cols-3 gap-2.5">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'].map((key) => {
-                  if (key === '') return <div key="empty" />
-                  if (key === 'back') {
-                    return (
-                      <button key="back" onClick={() => setAddAccountPin((p) => p.slice(0, -1))} className="flex h-14 cursor-pointer items-center justify-center rounded-2xl bg-[#F3F4F6] hover:bg-[#E5E7EB]">
-                        <IconBackspace size={20} color="#374151" />
-                      </button>
-                    )
-                  }
+            <button className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline">
+              Forgot PIN?
+            </button>
+
+            {/* Number pad */}
+            <div className="grid w-[280px] grid-cols-3 gap-3">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'].map((key) => {
+                if (key === '') return <div key="empty" />
+                if (key === 'back') {
                   return (
-                    <button key={key} onClick={() => handleAddPinDigit(key)} disabled={savingAccount} className="flex h-14 cursor-pointer items-center justify-center rounded-2xl bg-[#F9FAFB] text-[18px] font-semibold text-[#0F172A] hover:bg-[#E5E7EB] disabled:opacity-50">
-                      {key}
+                    <button
+                      key="back"
+                      onClick={() => setPin((p) => p.slice(0, -1))}
+                      className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F3F4F6] hover:bg-[#E5E7EB]"
+                    >
+                      <IconBackspace size={22} color="#374151" />
                     </button>
                   )
-                })}
-              </div>
-
-              <button onClick={() => { setShowAddPin(false); setAddAccountPin('') }} className="cursor-pointer text-[13px] text-[#9CA3AF] hover:text-[#6B7280]">
-                Cancel
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ==================== STEP: AMOUNT (if separate) ==================== */}
-      {step === 'amount' && (
-        <div className="flex flex-col gap-5">
-          <button onClick={() => setStep('select-account')} className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]">
-            <IconArrowLeft size={18} /> Back
-          </button>
-          <button
-            onClick={() => setStep('pin')}
-            disabled={!canProceedToPin}
-            className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${canProceedToPin ? 'cursor-pointer bg-[#02A36E]' : 'cursor-not-allowed bg-[#9CA3AF]'}`}
-          >
-            Proceed to PIN <IconChevronRight size={16} className="inline" />
-          </button>
-        </div>
-      )}
-
-      {/* ==================== STEP: PIN ENTRY ==================== */}
-      {step === 'pin' && (
-        <div className="flex flex-col items-center gap-8 pt-8">
-          <button
-            onClick={() => { setStep('select-account'); setPin('') }}
-            className="mr-auto flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
-          >
-            <IconArrowLeft size={18} /> Back
-          </button>
-
-          {/* Summary */}
-          <div className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-center">
-            <Text fw={400} className="text-[13px] text-[#6B7280]">Withdrawing</Text>
-            <Text fw={700} className="mt-1 text-[28px] text-[#0F172A]">₦{amount}</Text>
-            <Text fw={600} className="mt-1 text-[14px] text-[#0F172A]">{selectedAccount?.accountName}</Text>
-            <Text fw={400} className="text-[12px] text-[#9CA3AF]">
-              {selectedAccount?.accountNumber} · {selectedAccount?.bankName}
-            </Text>
-          </div>
-
-          <div className="text-center">
-            <Text fw={700} className="text-[22px] text-[#0F172A]">Enter Your PIN</Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">Enter your 4-digit transaction PIN to confirm</Text>
-          </div>
-
-          {/* PIN dots */}
-          <div className="flex gap-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`flex h-14 w-14 items-center justify-center rounded-xl border-2 ${
-                  i < pin.length ? 'border-[#02A36E] bg-[#F0FDF4]' : 'border-[#E5E7EB] bg-white'
-                }`}
-              >
-                {i < pin.length && <div className="h-3 w-3 rounded-full bg-[#02A36E]" />}
-              </div>
-            ))}
-          </div>
-
-          <button className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline">Forgot PIN?</button>
-
-          {/* Number pad */}
-          <div className="grid w-[280px] grid-cols-3 gap-3">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'].map((key) => {
-              if (key === '') return <div key="empty" />
-              if (key === 'back') {
+                }
                 return (
-                  <button key="back" onClick={() => setPin((p) => p.slice(0, -1))} className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F3F4F6] hover:bg-[#E5E7EB]">
-                    <IconBackspace size={22} color="#374151" />
+                  <button
+                    key={key}
+                    onClick={() => handlePinDigit(key)}
+                    className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F9FAFB] text-[20px] font-semibold text-[#0F172A] hover:bg-[#E5E7EB]"
+                  >
+                    {key}
                   </button>
                 )
-              }
-              return (
-                <button key={key} onClick={() => handlePinDigit(key)} className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F9FAFB] text-[20px] font-semibold text-[#0F172A] hover:bg-[#E5E7EB]">
-                  {key}
-                </button>
-              )
-            })}
+              })}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }
