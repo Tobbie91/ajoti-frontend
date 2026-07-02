@@ -33,12 +33,13 @@ import {
   type StaffAuditLogRow,
   type PaginatedResponse,
 } from '@/utils/api'
-import { getAdminRoleFromStorage } from '@/utils/permissions'
+import { getStaffRoleFromStorage } from '@/utils/permissions'
 
 const ROLE_LABELS: Record<StaffAdminRole, string> = {
   SUPPORT: 'Support',
   COMPLIANCE: 'Compliance',
   OPERATIONS: 'Operations',
+  MANAGER: 'Manager',
   SUPERADMIN: 'Super Admin',
 }
 
@@ -46,8 +47,18 @@ const ROLE_COLORS: Record<StaffAdminRole, string> = {
   SUPPORT: 'blue',
   COMPLIANCE: 'violet',
   OPERATIONS: 'orange',
+  MANAGER: 'teal',
   SUPERADMIN: 'red',
 }
+
+// SUPERADMIN can never be assigned through this UI — creation/promotion to
+// SUPERADMIN is rejected unconditionally at the API layer regardless of actor.
+const ASSIGNABLE_ROLES: { value: StaffAdminRole; label: string }[] = [
+  { value: 'SUPPORT', label: 'Support' },
+  { value: 'COMPLIANCE', label: 'Compliance' },
+  { value: 'OPERATIONS', label: 'Operations' },
+  { value: 'MANAGER', label: 'Manager' },
+]
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'green',
@@ -88,7 +99,7 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
     setLoading(true)
     setError('')
     try {
-      await inviteStaff({ email, adminRole: role })
+      await inviteStaff({ email, staffRole: role })
       onSuccess()
       handleClose()
     } catch (e: unknown) {
@@ -112,12 +123,7 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
         <Select
           label="Role"
           placeholder="Select a role"
-          data={[
-            { value: 'SUPPORT', label: 'Support' },
-            { value: 'COMPLIANCE', label: 'Compliance' },
-            { value: 'OPERATIONS', label: 'Operations' },
-            { value: 'SUPERADMIN', label: 'Super Admin' },
-          ]}
+          data={ASSIGNABLE_ROLES}
           value={role}
           onChange={(v) => setRole(v as StaffAdminRole)}
           required
@@ -140,14 +146,14 @@ function ChangeRoleModal({
   opened: boolean
   onClose: () => void
   onSuccess: () => void
-  target: { id: string; email: string; adminRole: StaffAdminRole } | null
+  target: { id: string; email: string; staffRole: StaffAdminRole } | null
 }) {
   const [role, setRole] = useState<StaffAdminRole | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (target) setRole(target.adminRole)
+    if (target) setRole(target.staffRole)
   }, [target])
 
   async function handleSubmit() {
@@ -172,19 +178,14 @@ function ChangeRoleModal({
         <Text size="sm" c="dimmed">Changing role for <strong>{target?.email}</strong></Text>
         <Select
           label="New role"
-          data={[
-            { value: 'SUPPORT', label: 'Support' },
-            { value: 'COMPLIANCE', label: 'Compliance' },
-            { value: 'OPERATIONS', label: 'Operations' },
-            { value: 'SUPERADMIN', label: 'Super Admin' },
-          ]}
+          data={ASSIGNABLE_ROLES}
           value={role}
           onChange={(v) => setRole(v as StaffAdminRole)}
         />
         <Text size="xs" c="dimmed">All active sessions will be revoked. New role takes effect on next login.</Text>
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} loading={loading} disabled={role === target?.adminRole}>Apply</Button>
+          <Button onClick={handleSubmit} loading={loading} disabled={role === target?.staffRole}>Apply</Button>
         </Group>
       </Stack>
     </Modal>
@@ -192,8 +193,8 @@ function ChangeRoleModal({
 }
 
 export function StaffManagement() {
-  const myAdminRole = getAdminRoleFromStorage()
-  const isSuperadmin = myAdminRole === 'SUPERADMIN'
+  const myStaffRole = getStaffRoleFromStorage()
+  const isSuperadmin = myStaffRole === 'SUPERADMIN'
 
   // Staff list state
   const [data, setData] = useState<PaginatedResponse<StaffRow> | null>(null)
@@ -213,7 +214,7 @@ export function StaffManagement() {
   // Modals
   const [inviteOpened, { open: openInvite, close: closeInvite }] = useDisclosure(false)
   const [roleModalOpened, { open: openRoleModal, close: closeRoleModal }] = useDisclosure(false)
-  const [roleTarget, setRoleTarget] = useState<{ id: string; email: string; adminRole: StaffAdminRole } | null>(null)
+  const [roleTarget, setRoleTarget] = useState<{ id: string; email: string; staffRole: StaffAdminRole } | null>(null)
 
   const loadStaff = useCallback(() => {
     setLoading(true)
@@ -221,7 +222,7 @@ export function StaffManagement() {
     listStaff({
       page,
       limit: 20,
-      adminRole: roleFilter ?? undefined,
+      staffRole: roleFilter ?? undefined,
       status: statusFilter ?? undefined,
     })
       .then(setData)
@@ -280,7 +281,7 @@ export function StaffManagement() {
 
   function openChangeRole(row: StaffRow) {
     if (row.type !== 'USER') return
-    setRoleTarget({ id: row.id, email: row.email, adminRole: row.adminRole })
+    setRoleTarget({ id: row.id, email: row.email, staffRole: row.staffRole })
     openRoleModal()
   }
 
@@ -384,8 +385,8 @@ export function StaffManagement() {
                             </Stack>
                           </Table.Td>
                           <Table.Td>
-                            <Badge color={ROLE_COLORS[row.adminRole]} variant="light">
-                              {ROLE_LABELS[row.adminRole]}
+                            <Badge color={ROLE_COLORS[row.staffRole]} variant="light">
+                              {ROLE_LABELS[row.staffRole]}
                             </Badge>
                           </Table.Td>
                           <Table.Td>
@@ -410,6 +411,8 @@ export function StaffManagement() {
                                 >
                                   Cancel invite
                                 </Button>
+                              ) : row.staffRole === 'SUPERADMIN' ? (
+                                <Text size="xs" c="dimmed">Root account</Text>
                               ) : (
                                 <Menu shadow="md" width={180}>
                                   <Menu.Target>

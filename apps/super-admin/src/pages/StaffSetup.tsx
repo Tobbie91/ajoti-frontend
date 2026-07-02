@@ -78,7 +78,7 @@ export function StaffSetup() {
           firstName: form.firstName.trim(),
           lastName: form.lastName.trim(),
           role: payload.role,
-          adminRole: payload.adminRole ?? null,
+          staffRole: payload.staffRole ?? null,
         }))
       } catch { /* non-fatal */ }
 

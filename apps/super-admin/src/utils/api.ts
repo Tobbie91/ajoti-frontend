@@ -133,7 +133,7 @@ export interface SuperadminUser {
   firstName: string
   lastName: string
   role: string
-  adminRole: string | null
+  staffRole: string | null
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
@@ -177,7 +177,7 @@ export async function login(
     firstName: (jwtPayload.firstName ?? '') as string,
     lastName: (jwtPayload.lastName ?? '') as string,
     role: (jwtPayload.role ?? '') as string,
-    adminRole: (jwtPayload.adminRole ?? null) as string | null,
+    staffRole: (jwtPayload.staffRole ?? null) as string | null,
   }
 
   return { token, refreshToken, user }
@@ -322,11 +322,11 @@ export function updateUserStatus(
 
 export function promoteToSuperadmin(
   userId: string,
-  adminRole: 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS',
+  staffRole: 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER',
 ): Promise<{ success: boolean; data: unknown }> {
   return authRequest(`/api/superadmin/users/${userId}/promote`, {
     method: 'PATCH',
-    body: JSON.stringify({ adminRole }),
+    body: JSON.stringify({ staffRole }),
   })
 }
 
@@ -803,13 +803,13 @@ export function updateSupportTicketStatus(
   })
 }
 
-export function setAdminRole(
+export function setStaffRole(
   userId: string,
-  adminRole: 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'SUPERADMIN',
+  staffRole: 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER' | 'SUPERADMIN',
 ): Promise<{ success: boolean; data: unknown }> {
-  return authRequest(`/api/superadmin/users/${userId}/admin-role`, {
+  return authRequest(`/api/superadmin/users/${userId}/staff-role`, {
     method: 'PATCH',
-    body: JSON.stringify({ adminRole }),
+    body: JSON.stringify({ staffRole }),
   })
 }
 
@@ -870,7 +870,7 @@ export function sandboxReset(runId: string): Promise<{ success: boolean; message
 
 // ── Staff IAM ─────────────────────────────────────────────────────────────────
 
-export type StaffAdminRole = 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'SUPERADMIN'
+export type StaffAdminRole = 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER' | 'SUPERADMIN'
 export type StaffStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING'
 
 export interface StaffUserRow {
@@ -879,7 +879,7 @@ export interface StaffUserRow {
   firstName: string
   lastName: string
   email: string
-  adminRole: StaffAdminRole
+  staffRole: StaffAdminRole
   status: 'ACTIVE' | 'SUSPENDED'
   createdAt: string
 }
@@ -890,7 +890,7 @@ export interface StaffInviteRow {
   firstName: null
   lastName: null
   email: string
-  adminRole: StaffAdminRole
+  staffRole: StaffAdminRole
   status: 'PENDING'
   createdAt: string
   expiresAt: string
@@ -914,7 +914,7 @@ export interface StaffAuditLogRow {
 export function listStaff(params: {
   page?: number
   limit?: number
-  adminRole?: StaffAdminRole
+  staffRole?: StaffAdminRole
   status?: 'ACTIVE' | 'SUSPENDED'
 } = {}): Promise<PaginatedResponse<StaffRow>> {
   const q = new URLSearchParams(
@@ -925,7 +925,7 @@ export function listStaff(params: {
 
 export function inviteStaff(dto: {
   email: string
-  adminRole: StaffAdminRole
+  staffRole: StaffAdminRole
 }): Promise<{ message: string }> {
   return authRequest('/api/superadmin/staff/invite', {
     method: 'POST',
@@ -935,11 +935,11 @@ export function inviteStaff(dto: {
 
 export function changeStaffRole(
   staffId: string,
-  adminRole: StaffAdminRole,
+  staffRole: StaffAdminRole,
 ): Promise<{ message: string }> {
   return authRequest(`/api/superadmin/staff/${staffId}/role`, {
     method: 'PATCH',
-    body: JSON.stringify({ adminRole }),
+    body: JSON.stringify({ staffRole }),
   })
 }
 

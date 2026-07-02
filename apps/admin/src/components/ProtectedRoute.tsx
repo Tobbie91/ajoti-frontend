@@ -26,7 +26,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     }
 
     const role = getTokenRole(token)
-    if (role !== 'ADMIN' && role !== 'SUPERADMIN') {
+    if (role !== 'CIRCLE_ADMIN') {
       localStorage.removeItem('admin_access_token')
       localStorage.removeItem('admin_refresh_token')
       setState('no-auth')

@@ -748,7 +748,7 @@ export function ManageUsers() {
                     <Text fz="sm">{user.phone ?? '—'}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Badge variant="light" size="sm" color={user.role === 'SUPERADMIN' ? 'violet' : user.role === 'ADMIN' ? 'blue' : 'gray'}>
+                    <Badge variant="light" size="sm" color={user.role === 'STAFF' ? 'violet' : user.role === 'CIRCLE_ADMIN' ? 'blue' : 'gray'}>
                       {user.role}
                     </Badge>
                   </Table.Td>
