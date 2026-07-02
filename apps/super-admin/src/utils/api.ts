@@ -1007,3 +1007,28 @@ export function changePassword(dto: {
     body: JSON.stringify(dto),
   })
 }
+
+export function forgotPassword(email: string): Promise<{ message: string }> {
+  return request('/api/auth/forget-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resendResetOtp(email: string): Promise<{ message: string }> {
+  return request('/api/auth/resend-reset-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword(dto: {
+  email: string
+  otp: string
+  newPassword: string
+}): Promise<{ message: string }> {
+  return request('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}

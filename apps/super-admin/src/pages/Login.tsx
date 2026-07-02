@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Card, PasswordInput, Text, TextInput, Alert } from '@mantine/core'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { login as loginApi } from '@/utils/api'
 
@@ -134,6 +134,12 @@ export function Login() {
                   onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
                 />
+
+                <Text size="sm" className="text-right">
+                  <Link to="/forgot-password" className="font-semibold text-[#0B6B55]">
+                    Forgot password?
+                  </Link>
+                </Text>
 
                 <Button
                   fullWidth

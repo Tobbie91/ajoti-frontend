@@ -8,6 +8,8 @@ import {
   Transactions,
   SettingsLogs,
   Login,
+  ForgotPassword,
+  ResetPassword,
   KycApprovals,
   TrustScores,
   Simulations,
@@ -29,6 +31,8 @@ function App() {
         {/* Public */}
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/staff/setup" element={<StaffSetup />} />
 
         {/* Protected — require SUPERADMIN token */}
