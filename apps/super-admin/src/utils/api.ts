@@ -887,8 +887,8 @@ export interface StaffUserRow {
 export interface StaffInviteRow {
   type: 'INVITE'
   id: string
-  firstName: null
-  lastName: null
+  firstName: string
+  lastName: string
   email: string
   staffRole: StaffAdminRole
   status: 'PENDING'
@@ -925,9 +925,23 @@ export function listStaff(params: {
 
 export function inviteStaff(dto: {
   email: string
+  firstName: string
+  lastName: string
   staffRole: StaffAdminRole
 }): Promise<{ message: string }> {
   return authRequest('/api/superadmin/staff/invite', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+export function createStaff(dto: {
+  email: string
+  firstName: string
+  lastName: string
+  staffRole: StaffAdminRole
+}): Promise<{ message: string; setupUrl: string }> {
+  return authRequest('/api/superadmin/staff/create', {
     method: 'POST',
     body: JSON.stringify(dto),
   })

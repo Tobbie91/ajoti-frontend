@@ -17,12 +17,13 @@ import {
   Menu,
   Alert,
 } from '@mantine/core'
-import { useDisclosure } from '@mantine/hooks'
-import { IconUserPlus, IconDots, IconAlertCircle } from '@tabler/icons-react'
+import { useDisclosure, useClipboard } from '@mantine/hooks'
+import { IconUserPlus, IconUserCog, IconDots, IconAlertCircle, IconCopy, IconCheck } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
   listStaff,
   inviteStaff,
+  createStaff,
   changeStaffRole,
   suspendStaff,
   reactivateStaff,
@@ -75,12 +76,16 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
 }
 
 function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose: () => void; onSuccess: () => void }) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<StaffAdminRole | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
+    setFirstName('')
+    setLastName('')
     setEmail('')
     setRole(null)
     setError('')
@@ -92,14 +97,14 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
   }
 
   async function handleSubmit() {
-    if (!email || !role) {
-      setError('Email and role are required.')
+    if (!firstName || !lastName || !email || !role) {
+      setError('First name, last name, email, and role are required.')
       return
     }
     setLoading(true)
     setError('')
     try {
-      await inviteStaff({ email, staffRole: role })
+      await inviteStaff({ firstName, lastName, email, staffRole: role })
       onSuccess()
       handleClose()
     } catch (e: unknown) {
@@ -113,6 +118,22 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
     <Modal opened={opened} onClose={handleClose} title="Invite Staff Member" centered>
       <Stack>
         {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
+        <Group grow>
+          <TextInput
+            label="First name"
+            placeholder="Jane"
+            value={firstName}
+            onChange={(e) => setFirstName(e.currentTarget.value)}
+            required
+          />
+          <TextInput
+            label="Last name"
+            placeholder="Smith"
+            value={lastName}
+            onChange={(e) => setLastName(e.currentTarget.value)}
+            required
+          />
+        </Group>
         <TextInput
           label="Email address"
           placeholder="jane.smith@ajoti.com"
@@ -132,6 +153,115 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
           <Button variant="default" onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} loading={loading}>Send Invite</Button>
         </Group>
+      </Stack>
+    </Modal>
+  )
+}
+
+function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onClose: () => void; onSuccess: () => void }) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<StaffAdminRole | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [setupUrl, setSetupUrl] = useState('')
+  const clipboard = useClipboard({ timeout: 1500 })
+
+  function reset() {
+    setFirstName('')
+    setLastName('')
+    setEmail('')
+    setRole(null)
+    setError('')
+    setSetupUrl('')
+  }
+
+  function handleClose() {
+    reset()
+    onClose()
+  }
+
+  async function handleSubmit() {
+    if (!firstName || !lastName || !email || !role) {
+      setError('First name, last name, email, and role are required.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await createStaff({ firstName, lastName, email, staffRole: role })
+      setSetupUrl(res.setupUrl)
+      onSuccess()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to create account.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal opened={opened} onClose={handleClose} title="Create Staff Account" centered>
+      <Stack>
+        {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
+        {setupUrl ? (
+          <>
+            <Alert color="green">
+              Account created. A setup email was sent to {email}, and you can also share this link directly.
+            </Alert>
+            <TextInput
+              label="Setup link"
+              value={setupUrl}
+              readOnly
+              rightSection={
+                <ActionIcon variant="subtle" onClick={() => clipboard.copy(setupUrl)}>
+                  {clipboard.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                </ActionIcon>
+              }
+            />
+            <Group justify="flex-end">
+              <Button onClick={handleClose}>Done</Button>
+            </Group>
+          </>
+        ) : (
+          <>
+            <Group grow>
+              <TextInput
+                label="First name"
+                placeholder="Jane"
+                value={firstName}
+                onChange={(e) => setFirstName(e.currentTarget.value)}
+                required
+              />
+              <TextInput
+                label="Last name"
+                placeholder="Smith"
+                value={lastName}
+                onChange={(e) => setLastName(e.currentTarget.value)}
+                required
+              />
+            </Group>
+            <TextInput
+              label="Email address"
+              placeholder="jane.smith@ajoti.com"
+              value={email}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+              required
+            />
+            <Select
+              label="Role"
+              placeholder="Select a role"
+              data={ASSIGNABLE_ROLES}
+              value={role}
+              onChange={(v) => setRole(v as StaffAdminRole)}
+              required
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleSubmit} loading={loading}>Create Account</Button>
+            </Group>
+          </>
+        )}
       </Stack>
     </Modal>
   )
@@ -213,6 +343,7 @@ export function StaffManagement() {
 
   // Modals
   const [inviteOpened, { open: openInvite, close: closeInvite }] = useDisclosure(false)
+  const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false)
   const [roleModalOpened, { open: openRoleModal, close: closeRoleModal }] = useDisclosure(false)
   const [roleTarget, setRoleTarget] = useState<{ id: string; email: string; staffRole: StaffAdminRole } | null>(null)
 
@@ -293,9 +424,14 @@ export function StaffManagement() {
       <Group justify="space-between" align="center">
         <Title order={2}>Staff Management</Title>
         {isSuperadmin && (
-          <Button leftSection={<IconUserPlus size={16} />} onClick={openInvite}>
-            Invite Staff Member
-          </Button>
+          <Group>
+            <Button variant="default" leftSection={<IconUserCog size={16} />} onClick={openCreate}>
+              Create Staff Account
+            </Button>
+            <Button leftSection={<IconUserPlus size={16} />} onClick={openInvite}>
+              Invite Staff Member
+            </Button>
+          </Group>
         )}
       </Group>
 
@@ -376,10 +512,8 @@ export function StaffManagement() {
                           <Table.Td>
                             <Stack gap={2}>
                               <Text size="sm" fw={500}>
-                                {row.type === 'USER'
-                                  ? `${row.firstName} ${row.lastName}`
-                                  : <Text span c="dimmed" size="sm">Pending invite</Text>
-                                }
+                                {row.firstName} {row.lastName}
+                                {row.type === 'INVITE' && <Text span c="dimmed" size="xs"> (pending)</Text>}
                               </Text>
                               <Text size="xs" c="dimmed">{row.email}</Text>
                             </Stack>
@@ -529,6 +663,7 @@ export function StaffManagement() {
       </Tabs>
 
       <InviteModal opened={inviteOpened} onClose={closeInvite} onSuccess={loadStaff} />
+      <CreateStaffModal opened={createOpened} onClose={closeCreate} onSuccess={loadStaff} />
       <ChangeRoleModal
         opened={roleModalOpened}
         onClose={closeRoleModal}
