@@ -3,10 +3,12 @@ import {
   Alert,
   Badge,
   Box,
+  Button,
   Divider,
   Group,
   NumberInput,
   Pagination,
+  PasswordInput,
   Paper,
   Select,
   Skeleton,
@@ -20,15 +22,94 @@ import {
 } from '@mantine/core'
 import { IconAlertCircle, IconRefresh, IconSearch } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAuditLogs, type AuditLogRow, type PaginatedResponse } from '@/utils/api'
+import { changePassword, getAuditLogs, type AuditLogRow, type PaginatedResponse } from '@/utils/api'
+
+// ── Change Password card (real, self-contained) ─────────────────────────────
+
+function ChangePasswordCard() {
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  async function handleSubmit() {
+    setError('')
+    setSuccess('')
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setError('All fields are required.')
+      return
+    }
+    if (newPassword.length < 8 || newPassword.length > 20) {
+      setError('New password must be between 8 and 20 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await changePassword({ oldPassword, newPassword })
+      setSuccess('Password changed. Your other active sessions have been signed out.')
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to change password.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Paper withBorder radius="md" p="md">
+      <Text fw={600} size="lg" mb="md">Change Password</Text>
+      <Stack gap="md" maw={400}>
+        {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">{error}</Alert>}
+        {success && <Alert color="green" radius="md" variant="light">{success}</Alert>}
+        <PasswordInput
+          label="Current password"
+          value={oldPassword}
+          onChange={(e) => setOldPassword(e.currentTarget.value)}
+          radius="md"
+          required
+        />
+        <PasswordInput
+          label="New password"
+          description="8–20 characters"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.currentTarget.value)}
+          radius="md"
+          required
+        />
+        <PasswordInput
+          label="Confirm new password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.currentTarget.value)}
+          radius="md"
+          required
+        />
+        <Group justify="flex-end">
+          <Button onClick={handleSubmit} loading={loading}>Change Password</Button>
+        </Group>
+      </Stack>
+    </Paper>
+  )
+}
 
 // ── Settings tab (static / coming-soon) ─────────────────────────────────────
 
 function SettingsTab() {
   return (
     <Stack gap="lg" pt="md">
+      <ChangePasswordCard />
+
       <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
-        Platform settings are not yet wired to the backend. These controls are read-only previews — changes will have no effect until backend configuration endpoints are implemented.
+        Everything below is not yet wired to the backend. These controls are read-only previews — changes will have no effect until backend configuration endpoints are implemented.
       </Alert>
 
       <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
@@ -83,15 +164,9 @@ function SettingsTab() {
         <Stack gap="md">
           <div>
             <Text fw={500} mb="xs">Password Policy</Text>
-            <Select
-              data={[
-                { value: 'standard', label: 'Standard (8 characters, 1 number)' },
-                { value: 'strong', label: 'Strong (10+ chars, uppercase, number, special)' },
-              ]}
-              defaultValue="standard"
-              radius="md"
-              disabled
-            />
+            <Text size="sm" c="dimmed">
+              Passwords must be 8–20 characters. Additional configurable policies are not currently supported.
+            </Text>
           </div>
 
           <Group justify="space-between">
