@@ -323,6 +323,13 @@ export function updateUserStatus(
   })
 }
 
+// Distinct from updateUserStatus — only valid on FROZEN accounts, and is the final step
+// after identity verification has already happened outside the app. Not a generic
+// reactivate; the backend rejects lifting a freeze via updateUserStatus entirely.
+export function unfreezeAccount(userId: string): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/unfreeze`, { method: 'PATCH' })
+}
+
 export function promoteToSuperadmin(
   userId: string,
   staffRole: 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER',

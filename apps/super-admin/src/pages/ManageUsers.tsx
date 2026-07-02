@@ -36,6 +36,7 @@ import {
   listUsers,
   getUserDetail,
   updateUserStatus,
+  unfreezeAccount,
   promoteToSuperadmin,
   approveAdminRequest,
   rejectAdminRequest,
@@ -51,6 +52,7 @@ const STATUS_COLOR: Record<string, string> = {
   ACTIVE: 'green',
   SUSPENDED: 'yellow',
   BANNED: 'red',
+  FROZEN: 'orange',
 }
 
 const KYC_COLOR: Record<string, string> = {
@@ -74,6 +76,7 @@ function UserDetailBody({
   currentStatus,
   currentRole,
   onReactivate,
+  onUnfreeze,
   onOpenSuspend,
   onOpenBan,
   onOpenPromote,
@@ -87,6 +90,7 @@ function UserDetailBody({
   currentStatus: string
   currentRole: string
   onReactivate: () => void
+  onUnfreeze: () => void
   onOpenSuspend: () => void
   onOpenBan: () => void
   onOpenPromote: () => void
@@ -209,7 +213,27 @@ function UserDetailBody({
 
       {/* Actions */}
       <Stack gap="xs">
-        {currentStatus !== 'ACTIVE' && (
+        {currentStatus === 'FROZEN' && (
+          <Alert color="orange" radius="md" variant="light" title="Self-Frozen Account">
+            <Text fz="xs">
+              This user froze their own account. Unfreezing requires verifying their identity through
+              the standard process outside this app first — this button is the final step, not a
+              verification step itself. Check the linked support ticket (category Account, ref type
+              ACCOUNT_FREEZE) for context before proceeding.
+            </Text>
+            <Button
+              fullWidth
+              mt="xs"
+              variant="filled"
+              color="orange"
+              onClick={onUnfreeze}
+              loading={actionLoading}
+            >
+              Unfreeze Account (after identity verification)
+            </Button>
+          </Alert>
+        )}
+        {currentStatus !== 'ACTIVE' && currentStatus !== 'FROZEN' && (
           <Button fullWidth variant="light" color="green" onClick={onReactivate} loading={actionLoading}>
             Reactivate Account
           </Button>
@@ -290,6 +314,20 @@ function UserDetailDrawer({
       await updateUserStatus(userId, status, reasonText)
       closeSuspend()
       closeBan()
+      onStatusChange()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Action failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleUnfreeze() {
+    if (!userId) return
+    setActionLoading(true)
+    try {
+      await unfreezeAccount(userId)
       onStatusChange()
       onClose()
     } catch (e) {
@@ -400,6 +438,7 @@ function UserDetailDrawer({
             currentStatus={currentStatus}
             currentRole={currentRole}
             onReactivate={() => handleStatus('ACTIVE')}
+            onUnfreeze={handleUnfreeze}
             onOpenSuspend={openSuspend}
             onOpenBan={openBan}
             onOpenPromote={openPromote}
