@@ -224,15 +224,20 @@ export function Profile() {
         setLastName(u.lastName || '')
         setEmail(u.email || '')
         setPhone((u.phone as string) || '')
-        setAddress((u.address as string) || '')
-        setCity((u.city as string) || '')
-        setState((u.state as string) || null)
         if (u.adminRequestedAt) setAdminRequestState('sent')
         if (u.role) setUserRole(u.role)
         localStorage.setItem('user', JSON.stringify({ ...getUserFromStorage(), ...u }))
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (kycStatus) {
+      setAddress(kycStatus.address || '')
+      setCity(kycStatus.city || '')
+      setState(kycStatus.state || null)
+    }
+  }, [kycStatus])
 
   async function handleSave() {
     setSaving(true)
@@ -244,9 +249,6 @@ export function Profile() {
         firstName,
         lastName,
         phone,
-        address,
-        city,
-        state: state ?? undefined,
       })
       setSaveSuccess(true)
       setEditing(false)
@@ -451,59 +453,26 @@ export function Profile() {
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
               Address
             </Text>
-            {editing ? (
-              <TextInput
-                value={address}
-                onChange={(e) => setAddress(e.currentTarget.value)}
-                radius="md"
-                size="sm"
-                leftSection={<IconMapPin size={16} color="#9CA3AF" />}
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-              />
-            ) : (
-              <Text fw={500} className="text-[14px] text-[#0F172A]">
-                {address}
-              </Text>
-            )}
+            <Text fw={500} className="text-[14px] text-[#0F172A]">
+              {address || '—'}
+            </Text>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 City
               </Text>
-              {editing ? (
-                <TextInput
-                  value={city}
-                  onChange={(e) => setCity(e.currentTarget.value)}
-                  radius="md"
-                  size="sm"
-                  styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-                />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">
-                  {city}
-                </Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">
+                {city || '—'}
+              </Text>
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 State
               </Text>
-              {editing ? (
-                <Select
-                  data={NIGERIAN_STATES}
-                  value={state}
-                  onChange={setState}
-                  radius="md"
-                  size="sm"
-                  searchable
-                  styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-                />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">
-                  {state}
-                </Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">
+                {state || '—'}
+              </Text>
             </div>
           </div>
         </div>

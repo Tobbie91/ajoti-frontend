@@ -81,10 +81,6 @@ export function MyProfile() {
     setLastName(stored.lastName || stored.lastname || '')
     setEmail(stored.email || '')
     setPhone(stored.phone || '')
-    setAddress(stored.address || '')
-    setCity(stored.city || '')
-    setState(stored.state || null)
-    setLga(stored.lga || '')
     setDob(stored.dob || '')
 
     // Fetch fresh from API
@@ -94,10 +90,6 @@ export function MyProfile() {
         setLastName(profile.lastName || '')
         setEmail(profile.email || '')
         setPhone(profile.phone || '')
-        setAddress((profile.address as string) || '')
-        setCity((profile.city as string) || '')
-        setState((profile.state as string) || null)
-        setLga((profile.lga as string) || '')
         setDob((profile.dob as string) || '')
         // Update localStorage with fresh data
         localStorage.setItem('admin_user', JSON.stringify(profile))
@@ -108,12 +100,21 @@ export function MyProfile() {
     getKycStatus().then(setKycStatus).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (kycStatus) {
+      setAddress(kycStatus.address || '')
+      setCity(kycStatus.city || '')
+      setState(kycStatus.state || null)
+      setLga(kycStatus.lga || '')
+    }
+  }, [kycStatus])
+
   async function handleSave() {
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
     try {
-      const res = await updateUserProfile({ firstName, lastName, phone, address, city, state: state ?? undefined, lga })
+      const res = await updateUserProfile({ firstName, lastName, phone })
       if (res.data) localStorage.setItem('admin_user', JSON.stringify(res.data))
       setSaveSuccess(true)
       setEditing(false)
@@ -267,39 +268,23 @@ export function MyProfile() {
         <div className="flex flex-col gap-4">
           <div>
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">House Address</Text>
-            {editing ? (
-              <TextInput value={address} onChange={(e) => setAddress(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconMapPin size={16} color="#9CA3AF" />} styles={inputStyles} />
-            ) : (
-              <div className="flex items-center gap-2">
-                <IconMapPin size={15} color="#9CA3AF" />
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{address || '—'}</Text>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <IconMapPin size={15} color="#9CA3AF" />
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{address || '—'}</Text>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">City</Text>
-              {editing ? (
-                <TextInput value={city} onChange={(e) => setCity(e.currentTarget.value)} radius="md" size="sm" styles={inputStyles} />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{city || '—'}</Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{city || '—'}</Text>
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">State</Text>
-              {editing ? (
-                <Select data={NIGERIAN_STATES} value={state} onChange={setState} radius="md" size="sm" searchable styles={inputStyles} />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{state || '—'}</Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{state || '—'}</Text>
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">LGA</Text>
-              {editing ? (
-                <TextInput value={lga} onChange={(e) => setLga(e.currentTarget.value)} radius="md" size="sm" styles={inputStyles} />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{lga || '—'}</Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{lga || '—'}</Text>
             </div>
           </div>
         </div>
