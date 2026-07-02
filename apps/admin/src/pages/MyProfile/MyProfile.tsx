@@ -61,6 +61,8 @@ export function MyProfile() {
 
   const [kycStatus, setKycStatus] = useState<KycStatus | null>(null)
   const kycApproved = kycStatus?.status === 'APPROVED'
+  // Mirrors the backend name-lock: names are immutable once identity is Mono-verified
+  const nameLocked = Boolean(kycStatus?.ninVerified || kycStatus?.bvnVerified)
 
   const [deleteExpanded, setDeleteExpanded] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
@@ -295,7 +297,7 @@ export function MyProfile() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">First Name</Text>
-              {editing ? (
+              {editing && !nameLocked ? (
                 <TextInput value={firstName} onChange={(e) => setFirstName(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconUser size={16} color="#9CA3AF" />} styles={inputStyles} />
               ) : (
                 <div className="flex items-center gap-2">
@@ -306,7 +308,7 @@ export function MyProfile() {
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Last Name</Text>
-              {editing ? (
+              {editing && !nameLocked ? (
                 <TextInput value={lastName} onChange={(e) => setLastName(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconUser size={16} color="#9CA3AF" />} styles={inputStyles} />
               ) : (
                 <div className="flex items-center gap-2">
@@ -316,6 +318,12 @@ export function MyProfile() {
               )}
             </div>
           </div>
+          {editing && nameLocked && (
+            <Text fw={400} className="-mt-2 text-[11px] text-[#9CA3AF]">
+              Your name is verified with your BVN/NIN and can no longer be changed here. Contact
+              support if it needs correcting.
+            </Text>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
