@@ -339,6 +339,13 @@ export function logout(refreshToken: string): Promise<{ message: string }> {
   })
 }
 
+export function deleteMyAccount(currentPassword: string, reason?: string): Promise<{ message: string }> {
+  return authRequest('/api/users/me', {
+    method: 'DELETE',
+    body: JSON.stringify({ currentPassword, confirm: 'DELETE', reason }),
+  })
+}
+
 // ── Password ────────────────────────────────────────────────────────────────
 
 export function forgotPassword(email: string): Promise<{ message: string }> {
