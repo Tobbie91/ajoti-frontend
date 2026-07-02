@@ -20,6 +20,8 @@ import { AddBankAccountModal } from '@/components'
 
 type Step = 'select-account' | 'amount' | 'pin' | 'processing' | 'success' | 'error'
 
+const MIN_WITHDRAWAL_NAIRA = 100
+
 export function WithdrawFunds() {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('select-account')
@@ -78,7 +80,7 @@ export function WithdrawFunds() {
   }
 
   const canProceedToPin =
-    numericAmount >= 100 && numericAmount <= availableBalance && selectedAccount !== null
+    numericAmount >= MIN_WITHDRAWAL_NAIRA && numericAmount <= availableBalance && selectedAccount !== null
 
   async function submitWithdrawal(enteredPin: string) {
     if (!selectedAccount) return
@@ -297,9 +299,9 @@ export function WithdrawFunds() {
                     className="h-[52px] w-full rounded-xl border border-[#E5E7EB] pl-8 pr-4 text-[20px] font-semibold text-[#0F172A] outline-none focus:border-[#02A36E]"
                   />
                 </div>
-                {numericAmount > 0 && numericAmount < 100 && (
+                {numericAmount > 0 && numericAmount < MIN_WITHDRAWAL_NAIRA && (
                   <Text fw={400} className="mt-2 text-[12px] text-red-500">
-                    Minimum withdrawal is ₦100
+                    Minimum withdrawal is ₦{MIN_WITHDRAWAL_NAIRA}
                   </Text>
                 )}
                 {numericAmount > availableBalance && numericAmount > 0 && (
