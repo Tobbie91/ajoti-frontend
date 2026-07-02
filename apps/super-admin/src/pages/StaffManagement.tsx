@@ -631,7 +631,7 @@ export function StaffManagement() {
                             <Text size="xs" c="dimmed">{log.entityId}</Text>
                           </Table.Td>
                           <Table.Td>
-                            {log.after && (
+                            {Boolean(log.after) && (
                               <Text size="xs" c="dimmed">
                                 {JSON.stringify(log.after)}
                               </Text>

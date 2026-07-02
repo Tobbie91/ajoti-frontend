@@ -1,8 +1,11 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly code?: number) {
+  readonly code?: number
+
+  constructor(message: string, code?: number) {
     super(message)
+    this.code = code
     this.name = 'ApiError'
   }
 }
@@ -228,6 +231,10 @@ export interface KycStatus {
   status: string // "PENDING" | "APPROVED" | "REJECTED"
   step?: string
   kycLevel: number // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
+  address?: string
+  city?: string
+  state?: string
+  lga?: string
 }
 
 export function getKycStatus(): Promise<KycStatus> {

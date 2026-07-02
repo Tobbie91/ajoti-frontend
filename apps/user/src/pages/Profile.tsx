@@ -1082,8 +1082,7 @@ export function Profile() {
 
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
-              <TextInput
-                type="password"
+              <PasswordInput
                 placeholder="Enter your password"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.currentTarget.value)}

@@ -1,8 +1,11 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly code?: number) {
+  readonly code?: number
+
+  constructor(message: string, code?: number) {
     super(message)
+    this.code = code
     this.name = 'ApiError'
   }
 }
@@ -918,7 +921,7 @@ export function listStaff(params: {
   status?: 'ACTIVE' | 'SUSPENDED'
 } = {}): Promise<PaginatedResponse<StaffRow>> {
   const q = new URLSearchParams(
-    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && (v as unknown) !== '')) as Record<string, string>,
   ).toString()
   return authRequest(`/api/superadmin/staff?${q}`, { method: 'GET' })
 }

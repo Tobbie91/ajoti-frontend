@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Text, TextInput, Select, Avatar, Badge, Loader, Modal, Button, PinInput, PasswordInput } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import {
   IconUser,
   IconMail,
@@ -622,8 +623,7 @@ export function MyProfile() {
 
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
-              <TextInput
-                type="password"
+              <PasswordInput
                 placeholder="Enter your password"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.currentTarget.value)}
