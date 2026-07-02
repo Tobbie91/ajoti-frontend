@@ -296,6 +296,13 @@ export function updateUserProfile(payload: Partial<UserProfile>): Promise<{ mess
   })
 }
 
+export function verifyPendingEmailChange(otp: string): Promise<{ message: string; data?: UserProfile }> {
+  return authRequest('/api/users/me/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ otp }),
+  })
+}
+
 // ── KYC Admin ────────────────────────────────────────────────────────────────
 
 export interface PendingKycRecord {

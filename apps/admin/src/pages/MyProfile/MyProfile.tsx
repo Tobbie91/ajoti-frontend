@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Select, Avatar, Badge, Loader } from '@mantine/core'
+import { Text, TextInput, Select, Avatar, Badge, Loader, Modal, Button, PinInput, PasswordInput } from '@mantine/core'
 import {
   IconUser,
   IconMail,
@@ -18,7 +18,7 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi, getUserProfile, updateUserProfile, getKycStatus, type KycStatus } from '@/utils/api'
+import { logout as logoutApi, getUserProfile, updateUserProfile, verifyPendingEmailChange, getKycStatus, type KycStatus } from '@/utils/api'
 import { PhoneInputField } from '@/components'
 
 function getUserFromStorage() {
@@ -64,6 +64,13 @@ export function MyProfile() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
+  const [originalEmail, setOriginalEmail] = useState('')
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailModalStep, setEmailModalStep] = useState<'password' | 'otp'>('password')
+  const [currentPasswordForEmail, setCurrentPasswordForEmail] = useState('')
+  const [emailOtp, setEmailOtp] = useState('')
+  const [emailVerificationError, setEmailVerificationError] = useState<string | null>(null)
+  const [emailVerificationLoading, setEmailVerificationLoading] = useState(false)
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
@@ -80,6 +87,7 @@ export function MyProfile() {
     setFirstName(stored.firstName || stored.firstname || '')
     setLastName(stored.lastName || stored.lastname || '')
     setEmail(stored.email || '')
+    setOriginalEmail(stored.email || '')
     setPhone(stored.phone || '')
     setDob(stored.dob || '')
 
@@ -89,6 +97,7 @@ export function MyProfile() {
         setFirstName(profile.firstName || '')
         setLastName(profile.lastName || '')
         setEmail(profile.email || '')
+        setOriginalEmail(profile.email || '')
         setPhone(profile.phone || '')
         setDob((profile.dob as string) || '')
         // Update localStorage with fresh data
@@ -109,11 +118,71 @@ export function MyProfile() {
     }
   }, [kycStatus])
 
+  async function handleSendEmailOtp() {
+    if (!currentPasswordForEmail) {
+      setEmailVerificationError('Password is required')
+      return
+    }
+    setEmailVerificationError(null)
+    setEmailVerificationLoading(true)
+    try {
+      await updateUserProfile({
+        firstName,
+        lastName,
+        phone,
+        email,
+        currentPassword: currentPasswordForEmail,
+      })
+      setEmailModalStep('otp')
+    } catch (err) {
+      setEmailVerificationError(err instanceof Error ? err.message : 'Failed to send verification code')
+    } finally {
+      setEmailVerificationLoading(false)
+    }
+  }
+
+  async function handleVerifyEmailOtp() {
+    if (emailOtp.length !== 6) {
+      setEmailVerificationError('Please enter a 6-digit code')
+      return
+    }
+    setEmailVerificationError(null)
+    setEmailVerificationLoading(true)
+    try {
+      await verifyPendingEmailChange(emailOtp)
+      const updatedUser = { ...getUserFromStorage(), email }
+      localStorage.setItem('admin_user', JSON.stringify(updatedUser))
+      setOriginalEmail(email)
+      
+      notifications.show({
+        message: 'Email address updated successfully',
+        color: 'green',
+        autoClose: 3000,
+      })
+      setEmailModalOpen(false)
+      setEditing(false)
+    } catch (err) {
+      setEmailVerificationError(err instanceof Error ? err.message : 'Invalid code')
+    } finally {
+      setEmailVerificationLoading(false)
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
     try {
+      if (email !== originalEmail) {
+        setEmailModalOpen(true)
+        setEmailModalStep('password')
+        setCurrentPasswordForEmail('')
+        setEmailOtp('')
+        setEmailVerificationError(null)
+        setSaving(false)
+        return
+      }
+
       const res = await updateUserProfile({ firstName, lastName, phone })
       if (res.data) localStorage.setItem('admin_user', JSON.stringify(res.data))
       setSaveSuccess(true)
@@ -398,6 +467,102 @@ export function MyProfile() {
           <Text fw={500} className="text-[13px] text-[#02A36E]">Profile updated successfully</Text>
         </div>
       )}
+
+      <Modal
+        opened={emailModalOpen}
+        onClose={() => {
+          if (!emailVerificationLoading) setEmailModalOpen(false)
+        }}
+        title={<Text fw={700} className="text-[16px] text-[#0F172A]">Verify Email Change</Text>}
+        centered
+        radius="md"
+        size="sm"
+        withCloseButton={!emailVerificationLoading}
+      >
+        {emailModalStep === 'password' ? (
+          <div className="flex flex-col gap-4">
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              To update your email address to <strong>{email}</strong>, please enter your current account password.
+            </Text>
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+              <PasswordInput
+                placeholder="Enter password"
+                value={currentPasswordForEmail}
+                onChange={(e) => setCurrentPasswordForEmail(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+              />
+            </div>
+            {emailVerificationError && (
+              <Text fw={500} className="text-[12px] text-red-600">
+                {emailVerificationError}
+              </Text>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => setEmailModalOpen(false)}
+                disabled={emailVerificationLoading}
+                size="xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                bg="#02A36E"
+                onClick={handleSendEmailOtp}
+                loading={emailVerificationLoading}
+                size="xs"
+              >
+                Send Code
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              We've sent a 6-digit verification code to <strong>{email}</strong>. Enter it below to complete the change.
+            </Text>
+            <div className="flex justify-center my-2">
+              <PinInput
+                length={6}
+                value={emailOtp}
+                onChange={setEmailOtp}
+                type="number"
+                oneTimeCode
+                autoFocus
+              />
+            </div>
+            {emailVerificationError && (
+              <Text fw={500} className="text-[12px] text-red-600 text-center">
+                {emailVerificationError}
+              </Text>
+            )}
+            <div className="flex flex-col gap-2 mt-2">
+              <Button
+                bg="#02A36E"
+                onClick={handleVerifyEmailOtp}
+                loading={emailVerificationLoading}
+                size="sm"
+                fullWidth
+              >
+                Verify & Update Email
+              </Button>
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => setEmailModalStep('password')}
+                disabled={emailVerificationLoading}
+                size="xs"
+              >
+                Back
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Logout */}
       <button

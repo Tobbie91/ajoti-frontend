@@ -133,6 +133,13 @@ export async function updateUserProfile(payload: Partial<UserProfile>): Promise<
   return ('data' in res && res.data ? res.data : res) as UserProfile
 }
 
+export async function verifyPendingEmailChange(otp: string): Promise<{ message: string; data?: UserProfile }> {
+  return authRequest('/api/users/me/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ otp }),
+  })
+}
+
 export async function login(email: string, password: string): Promise<{ token: string; refreshToken: string; user: UserProfile }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: 'POST',
