@@ -5,20 +5,27 @@ import {
   IconCheck,
   IconBackspace,
   IconAlertCircle,
+  IconClock,
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import {
-  getWalletBalance,
+  ApiError,
+  getWallet,
   initializeWithdrawal,
   listBankAccounts,
   removeBankAccount,
+  type PendingWithdrawal,
   type SavedBankAccount,
 } from '@/utils/api'
 import { AddBankAccountModal } from '@/components'
 
 type Step = 'select-account' | 'amount' | 'pin' | 'processing' | 'success' | 'error'
+
+function fmtKobo(kobo: string) {
+  return (Number(kobo) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+}
 
 const MIN_WITHDRAWAL_NAIRA = 100
 
@@ -37,15 +44,27 @@ export function WithdrawFunds() {
   const [amount, setAmount] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
 
+  // Stage 11: a withdrawal already in flight blocks starting another
+  const [pendingWithdrawal, setPendingWithdrawal] = useState<PendingWithdrawal | null>(null)
+  const [loadingWallet, setLoadingWallet] = useState(true)
+
   // PIN
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    getWalletBalance()
-      .then((data) => setAvailableBalance(Number(data.available ?? data.total ?? 0) / 100))
+  function loadWallet() {
+    setLoadingWallet(true)
+    getWallet()
+      .then((data) => {
+        setAvailableBalance(Number(data.balance?.available ?? 0) / 100)
+        setPendingWithdrawal(data.pendingWithdrawal ?? null)
+      })
       .catch(() => setAvailableBalance(0))
+      .finally(() => setLoadingWallet(false))
+  }
 
+  useEffect(() => {
+    loadWallet()
     loadAccounts()
   }, [])
 
@@ -98,6 +117,13 @@ export function WithdrawFunds() {
       })
       setStep('success')
     } catch (err) {
+      // 409: a withdrawal is already in progress (started elsewhere, e.g. another
+      // tab/device, between this page loading and submitting) — refresh wallet
+      // state so the blocked-state screen shows instead of letting the user retry
+      // into the same error again.
+      if (err instanceof ApiError && err.code === 409) {
+        loadWallet()
+      }
       setError(err instanceof Error ? err.message : 'Withdrawal failed. Please try again.')
       setStep('error')
     }
@@ -172,12 +198,16 @@ export function WithdrawFunds() {
           </Text>
         </div>
         <div className="flex w-full max-w-[300px] flex-col gap-3">
-          <button
-            onClick={() => { setPin(''); setStep('pin') }}
-            className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white"
-          >
-            Try Again
-          </button>
+          {/* A withdrawal already in progress can't be retried immediately —
+              only offer "Try Again" when that's not why this failed. */}
+          {!pendingWithdrawal && (
+            <button
+              onClick={() => { setPin(''); setStep('pin') }}
+              className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white"
+            >
+              Try Again
+            </button>
+          )}
           <button
             onClick={() => { setPin(''); setStep('select-account') }}
             className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] py-3.5 text-[14px] font-semibold text-[#374151]"
@@ -220,7 +250,34 @@ export function WithdrawFunds() {
               </Text>
             </div>
 
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
+            {/* Stage 11: a pending withdrawal blocks starting another (and every
+                other debit on the wallet) until it settles. */}
+            {!loadingWallet && pendingWithdrawal && (
+              <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                  <IconClock size={18} color="#B45309" />
+                </div>
+                <div className="flex-1">
+                  <Text fw={600} className="text-[14px] text-[#92400E]">
+                    A withdrawal is already in progress
+                  </Text>
+                  <Text fw={400} className="mt-1 text-[13px] leading-[1.5] text-[#92400E]">
+                    ₦{fmtKobo(pendingWithdrawal.amountKobo)} initiated {new Date(pendingWithdrawal.initiatedAt).toLocaleString('en-NG')}.
+                    Please wait for it to complete before starting another — your balance is safe and this usually resolves within a few minutes.
+                  </Text>
+                  <button
+                    onClick={loadWallet}
+                    className="mt-2 cursor-pointer text-[13px] font-semibold text-[#B45309] hover:underline"
+                  >
+                    Check again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div
+              className={`rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5 ${pendingWithdrawal ? 'pointer-events-none opacity-50' : ''}`}
+            >
               <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Select Recipient Account</Text>
 
               {loadingAccounts ? (
