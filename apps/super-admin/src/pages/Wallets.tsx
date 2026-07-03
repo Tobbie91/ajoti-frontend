@@ -29,6 +29,13 @@ const STATUS_COLORS: Record<string, string> = {
   FROZEN: 'blue',
 }
 
+// System accounts (Financial Architecture Phase 1) — ownerless wallets, not people.
+const SYSTEM_ACCOUNT_LABELS: Record<string, string> = {
+  PLATFORM_POOL: 'Platform Pool — custody (undistributed pots)',
+  PLATFORM_REVENUE: 'Platform Revenue — earnings',
+  LOAN_FLOAT: 'Loan Float — lending capital',
+}
+
 function fmt(naira: string) {
   return '₦' + Number(naira).toLocaleString('en-NG', { minimumFractionDigits: 2 })
 }
@@ -102,7 +109,10 @@ export function Wallets() {
     setLedger([])
     setLedgerLoading(true)
     try {
-      const res = await getLedger({ userId: row.userId, limit: 20, page: 1 })
+      // System accounts (pool/revenue/float) have no userId — look up by walletId instead.
+      const res = row.userId
+        ? await getLedger({ userId: row.userId, limit: 20, page: 1 })
+        : await getLedger({ walletId: row.walletId, limit: 20, page: 1 })
       setLedger(res.data)
     } catch {
       // silent
@@ -288,8 +298,19 @@ export function Wallets() {
                     onClick={() => openDrawer(row)}
                   >
                     <Table.Td>
-                      <Text fw={500}>{row.user.firstName} {row.user.lastName}</Text>
-                      <Text size="xs" c="dimmed">{row.user.email}</Text>
+                      {row.user ? (
+                        <>
+                          <Text fw={500}>{row.user.firstName} {row.user.lastName}</Text>
+                          <Text size="xs" c="dimmed">{row.user.email}</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Badge variant="light" color="grape" size="sm">System account</Badge>
+                          <Text size="xs" c="dimmed" mt={2}>
+                            {row.systemAccountType ? SYSTEM_ACCOUNT_LABELS[row.systemAccountType] ?? row.systemAccountType : '—'}
+                          </Text>
+                        </>
+                      )}
                     </Table.Td>
                     <Table.Td>
                       <Text size="xs" ff="monospace" c="dimmed">{row.walletId.slice(0, 8)}…</Text>
@@ -311,28 +332,32 @@ export function Wallets() {
                       <Text size="sm">{fmtDate(row.createdAt)}</Text>
                     </Table.Td>
                     <Table.Td onClick={(e) => e.stopPropagation()}>
-                      <Group gap="xs">
-                        <Button
-                          size="xs"
-                          variant="light"
-                          color="red"
-                          onClick={() => setResetConfirmWallet(row)}
-                          loading={resettingWalletId === row.walletId}
-                        >
-                          Reset
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant="light"
-                          color="blue"
-                          leftSection={<IconRotateClockwise2 size={12} />}
-                          disabled={!getLatestResetEntryId(row.walletId)}
-                          onClick={() => void handleUndoWalletReset(row)}
-                          loading={undoingWalletId === row.walletId}
-                        >
-                          Undo
-                        </Button>
-                      </Group>
+                      {row.user ? (
+                        <Group gap="xs">
+                          <Button
+                            size="xs"
+                            variant="light"
+                            color="red"
+                            onClick={() => setResetConfirmWallet(row)}
+                            loading={resettingWalletId === row.walletId}
+                          >
+                            Reset
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="light"
+                            color="blue"
+                            leftSection={<IconRotateClockwise2 size={12} />}
+                            disabled={!getLatestResetEntryId(row.walletId)}
+                            onClick={() => void handleUndoWalletReset(row)}
+                            loading={undoingWalletId === row.walletId}
+                          >
+                            Undo
+                          </Button>
+                        </Group>
+                      ) : (
+                        <Text size="xs" c="dimmed">—</Text>
+                      )}
                     </Table.Td>
                   </Table.Tr>
                 ))
@@ -361,7 +386,9 @@ export function Wallets() {
           <Group gap="xs">
             <IconWallet size={20} />
             <Text fw={600}>
-              {selected?.user.firstName} {selected?.user.lastName}
+              {selected?.user
+                ? `${selected.user.firstName} ${selected.user.lastName}`
+                : (selected?.systemAccountType && SYSTEM_ACCOUNT_LABELS[selected.systemAccountType]) ?? 'System account'}
             </Text>
           </Group>
         }
@@ -379,15 +406,24 @@ export function Wallets() {
               <Text size="sm" c="dimmed">Status</Text>
               <Badge variant="light" color={STATUS_COLORS[selected.status] ?? 'gray'}>{selected.status}</Badge>
             </Group>
-            <Group justify="space-between">
-              <Text size="sm" c="dimmed">Email</Text>
-              <Text size="sm">{selected.user.email}</Text>
-            </Group>
-            {selected.user.phone && (
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">Phone</Text>
-                <Text size="sm">{selected.user.phone}</Text>
-              </Group>
+            {selected.user ? (
+              <>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Email</Text>
+                  <Text size="sm">{selected.user.email}</Text>
+                </Group>
+                {selected.user.phone && (
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">Phone</Text>
+                    <Text size="sm">{selected.user.phone}</Text>
+                  </Group>
+                )}
+              </>
+            ) : (
+              <Alert icon={<IconAlertCircle size={16} />} color="grape" radius="md" variant="light">
+                Internal system account — not tied to a person. Balance changes only via normal
+                platform operations (payouts, early-payout disbursement/repayment, capitalization).
+              </Alert>
             )}
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Wallet ID</Text>
@@ -401,28 +437,30 @@ export function Wallets() {
               <Text size="sm" c="dimmed">Wallet created</Text>
               <Text size="sm">{fmtDate(selected.createdAt)}</Text>
             </Group>
-            <Group justify="flex-end">
-              <Button
-                size="xs"
-                variant="light"
-                color="red"
-                onClick={() => setResetConfirmWallet(selected)}
-                loading={resettingWalletId === selected.walletId}
-              >
-                Reset Wallet
-              </Button>
-              <Button
-                size="xs"
-                variant="light"
-                color="blue"
-                leftSection={<IconRotateClockwise2 size={12} />}
-                disabled={!getLatestResetEntryId(selected.walletId)}
-                onClick={() => void handleUndoWalletReset(selected)}
-                loading={undoingWalletId === selected.walletId}
-              >
-                Undo Reset
-              </Button>
-            </Group>
+            {selected.user && (
+              <Group justify="flex-end">
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="red"
+                  onClick={() => setResetConfirmWallet(selected)}
+                  loading={resettingWalletId === selected.walletId}
+                >
+                  Reset Wallet
+                </Button>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="blue"
+                  leftSection={<IconRotateClockwise2 size={12} />}
+                  disabled={!getLatestResetEntryId(selected.walletId)}
+                  onClick={() => void handleUndoWalletReset(selected)}
+                  loading={undoingWalletId === selected.walletId}
+                >
+                  Undo Reset
+                </Button>
+              </Group>
+            )}
 
             <Divider label="Recent Transactions" labelPosition="left" mt="sm" />
 

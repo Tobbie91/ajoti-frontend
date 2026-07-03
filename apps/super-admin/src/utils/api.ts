@@ -446,6 +446,7 @@ export function getLedger(params: {
   page?: number
   limit?: number
   userId?: string
+  walletId?: string
   reference?: string
   sourceType?: string
   from?: string
@@ -498,16 +499,20 @@ export function exportCsv(params: {
 
 // ── Wallets ───────────────────────────────────────────────────────────────────
 
+// System accounts (Financial Architecture Phase 1) — ownerless wallets, not people.
+export type SystemAccountType = 'PLATFORM_POOL' | 'PLATFORM_REVENUE' | 'LOAN_FLOAT'
+
 export interface WalletRow {
   walletId: string
-  userId: string
+  userId: string | null
   status: string
   currency: string
   createdAt: string
   balanceKobo: string
   balanceNaira: string
   lastActivityAt: string | null
-  user: { id: string; firstName: string; lastName: string; email: string; phone: string | null }
+  user: { id: string; firstName: string; lastName: string; email: string; phone: string | null } | null
+  systemAccountType: SystemAccountType | null
 }
 
 export interface WalletResetResult {
