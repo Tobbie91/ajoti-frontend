@@ -12,6 +12,7 @@ import {
   Tabs,
   Text,
   TextInput,
+  PasswordInput,
   Title,
   ActionIcon,
   Menu,
@@ -118,6 +119,11 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
     <Modal opened={opened} onClose={handleClose} title="Invite Staff Member" centered>
       <Stack>
         {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
+        <Text size="xs" c="dimmed">
+          Emails them a one-time setup link (valid 7 days) — they choose their own password when they
+          accept. Use "Create Staff Account" instead if you want the account active right now with a
+          temporary password you hand over yourself.
+        </Text>
         <Group grow>
           <TextInput
             label="First name"
@@ -163,9 +169,13 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<StaffAdminRole | null>(null)
+  const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState('')
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | null>(null)
+  const [tempPassword, setTempPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [setupUrl, setSetupUrl] = useState('')
+  const [created, setCreated] = useState(false)
   const clipboard = useClipboard({ timeout: 1500 })
 
   function reset() {
@@ -173,8 +183,12 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
     setLastName('')
     setEmail('')
     setRole(null)
+    setPhone('')
+    setDob('')
+    setGender(null)
+    setTempPassword('')
     setError('')
-    setSetupUrl('')
+    setCreated(false)
   }
 
   function handleClose() {
@@ -183,15 +197,19 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
   }
 
   async function handleSubmit() {
-    if (!firstName || !lastName || !email || !role) {
-      setError('First name, last name, email, and role are required.')
+    if (!firstName || !lastName || !email || !role || !phone || !dob || !gender || !tempPassword) {
+      setError('All fields are required.')
+      return
+    }
+    if (tempPassword.length < 8 || tempPassword.length > 20) {
+      setError('Temporary password must be between 8 and 20 characters.')
       return
     }
     setLoading(true)
     setError('')
     try {
-      const res = await createStaff({ firstName, lastName, email, staffRole: role })
-      setSetupUrl(res.setupUrl)
+      await createStaff({ firstName, lastName, email, staffRole: role, phone, dob, gender, tempPassword })
+      setCreated(true)
       onSuccess()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to create account.')
@@ -204,17 +222,19 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
     <Modal opened={opened} onClose={handleClose} title="Create Staff Account" centered>
       <Stack>
         {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
-        {setupUrl ? (
+        {created ? (
           <>
             <Alert color="green">
-              Account created. A setup email was sent to {email}, and you can also share this link directly.
+              Account created and active. Share the email and temporary password with {firstName} directly —
+              no email was sent. They must change the password at their first login before they can do
+              anything else, so you will never know their real password.
             </Alert>
             <TextInput
-              label="Setup link"
-              value={setupUrl}
+              label="Temporary password (share this once, then close)"
+              value={tempPassword}
               readOnly
               rightSection={
-                <ActionIcon variant="subtle" onClick={() => clipboard.copy(setupUrl)}>
+                <ActionIcon variant="subtle" onClick={() => clipboard.copy(tempPassword)}>
                   {clipboard.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
                 </ActionIcon>
               }
@@ -225,6 +245,11 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
           </>
         ) : (
           <>
+            <Text size="xs" c="dimmed">
+              Creates a real, immediately-active account with a temporary password you set and hand over
+              directly — no email involved. They must change it at first login. Use "Invite Staff Member"
+              instead if you'd rather they receive an email link and set their own password from the start.
+            </Text>
             <Group grow>
               <TextInput
                 label="First name"
@@ -248,12 +273,48 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
               onChange={(e) => setEmail(e.currentTarget.value)}
               required
             />
-            <Select
-              label="Role"
-              placeholder="Select a role"
-              data={ASSIGNABLE_ROLES}
-              value={role}
-              onChange={(v) => setRole(v as StaffAdminRole)}
+            <Group grow>
+              <TextInput
+                label="Phone"
+                placeholder="+2348012345678"
+                value={phone}
+                onChange={(e) => setPhone(e.currentTarget.value)}
+                required
+              />
+              <TextInput
+                label="Date of birth"
+                placeholder="1990-01-01"
+                value={dob}
+                onChange={(e) => setDob(e.currentTarget.value)}
+                required
+              />
+            </Group>
+            <Group grow>
+              <Select
+                label="Gender"
+                placeholder="Select"
+                data={[
+                  { value: 'MALE', label: 'Male' },
+                  { value: 'FEMALE', label: 'Female' },
+                ]}
+                value={gender}
+                onChange={(v) => setGender(v as 'MALE' | 'FEMALE')}
+                required
+              />
+              <Select
+                label="Role"
+                placeholder="Select a role"
+                data={ASSIGNABLE_ROLES}
+                value={role}
+                onChange={(v) => setRole(v as StaffAdminRole)}
+                required
+              />
+            </Group>
+            <PasswordInput
+              label="Temporary password"
+              description="8–20 characters — they must change it at first login"
+              value={tempPassword}
+              onChange={(e) => setTempPassword(e.currentTarget.value)}
               required
             />
             <Group justify="flex-end">

@@ -151,7 +151,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 export async function login(
   email: string,
   password: string,
-): Promise<{ token: string; refreshToken: string; user: SuperadminUser }> {
+): Promise<{ token: string; refreshToken: string; user: SuperadminUser; mustChangePassword: boolean }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -183,7 +183,7 @@ export async function login(
     staffRole: (jwtPayload.staffRole ?? null) as string | null,
   }
 
-  return { token, refreshToken, user }
+  return { token, refreshToken, user, mustChangePassword: Boolean(payload.mustChangePassword) }
 }
 
 export function logoutApi(refreshToken: string): Promise<{ message: string }> {
@@ -945,12 +945,19 @@ export function inviteStaff(dto: {
   })
 }
 
+// Creates a real, immediately-active staff account with an admin-supplied TEMPORARY
+// password — the new staff member must change it at first login before they can do
+// anything else. No email is sent; the admin hands over the credentials directly.
 export function createStaff(dto: {
   email: string
   firstName: string
   lastName: string
   staffRole: StaffAdminRole
-}): Promise<{ message: string; setupUrl: string }> {
+  phone: string
+  dob: string
+  gender: 'MALE' | 'FEMALE'
+  tempPassword: string
+}): Promise<{ message: string; userId: string }> {
   return authRequest('/api/superadmin/staff/create', {
     method: 'POST',
     body: JSON.stringify(dto),

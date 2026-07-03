@@ -10,6 +10,7 @@ import {
   Login,
   ForgotPassword,
   ResetPassword,
+  ChangePasswordRequired,
   KycApprovals,
   TrustScores,
   Simulations,
@@ -33,6 +34,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/change-password-required" element={<ChangePasswordRequired />} />
         <Route path="/staff/setup" element={<StaffSetup />} />
 
         {/* Protected — require SUPERADMIN token */}
