@@ -58,10 +58,15 @@ export function QuickActions() {
 
   const actions = [
     {
-      label: 'Messages',
-      icon: IconMessage2,
+      label: 'Notifications',
+      icon: IconBell,
       badge: unreadCount || undefined,
       onClick: openNotifications,
+    },
+    {
+      label: 'Messages',
+      icon: IconMessage2,
+      onClick: () => navigate('/messages'),
     },
     {
       label: 'Create New Group',
