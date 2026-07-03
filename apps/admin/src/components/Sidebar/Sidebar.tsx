@@ -11,6 +11,7 @@ import {
   IconCirclePlus,
   IconUsers,
   IconMessageCircle,
+  IconHeadset,
 } from '@tabler/icons-react'
 
 const roscaChildren = [
@@ -112,6 +113,16 @@ export function Sidebar({ onClose }: SidebarProps) {
           active={isActive('/messages')}
           onClick={onClose}
           styles={{ root: { borderRadius: 8, fontWeight: isActive('/messages') ? 600 : 400 } }}
+        />
+
+        <NavLink
+          component={RouterNavLink}
+          to="/support"
+          label="Support"
+          leftSection={<IconHeadset size={19} stroke={1.5} />}
+          active={isActive('/support')}
+          onClick={onClose}
+          styles={{ root: { borderRadius: 8, fontWeight: isActive('/support') ? 600 : 400 } }}
         />
 
         <Divider my="xs" />

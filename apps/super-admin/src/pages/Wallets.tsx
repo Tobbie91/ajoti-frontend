@@ -18,9 +18,9 @@ import {
   Modal,
   Alert,
 } from '@mantine/core'
-import { IconSearch, IconX, IconWallet, IconRotateClockwise2, IconAlertCircle } from '@tabler/icons-react'
+import { IconSearch, IconX, IconWallet, IconAlertCircle } from '@tabler/icons-react'
 import { useState, useEffect, useCallback } from 'react'
-import { listWallets, resetWalletBalance, undoWalletBalanceReset, getLedger, type WalletRow, type LedgerRow } from '@/utils/api'
+import { listWallets, getLedger, type WalletRow, type LedgerRow } from '@/utils/api'
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'green',
@@ -51,7 +51,6 @@ export function Wallets() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [resetError, setResetError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -60,11 +59,6 @@ export function Wallets() {
   const [selected, setSelected] = useState<WalletRow | null>(null)
   const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [ledgerLoading, setLedgerLoading] = useState(false)
-
-  const [resetConfirmWallet, setResetConfirmWallet] = useState<WalletRow | null>(null)
-  const [resettingWalletId, setResettingWalletId] = useState<string | null>(null)
-  const [undoingWalletId, setUndoingWalletId] = useState<string | null>(null)
-  const [lastResetEntryByWallet, setLastResetEntryByWallet] = useState<Record<string, string>>({})
 
   // Debounce search
   useEffect(() => {
@@ -111,58 +105,6 @@ export function Wallets() {
     }
   }
 
-  const handleResetWallet = async (wallet: WalletRow) => {
-    setResettingWalletId(wallet.walletId)
-    setResetError(null)
-    try {
-      const res = await resetWalletBalance(wallet.walletId)
-      setLastResetEntryByWallet((prev) => ({ ...prev, [wallet.walletId]: res.data.resetEntryId }))
-      setResetConfirmWallet(null)
-      if (selected?.walletId === wallet.walletId) {
-        await openDrawer(wallet)
-      }
-      void load()
-    } catch (e) {
-      setResetError(e instanceof Error ? e.message : 'Failed to reset wallet balance')
-    } finally {
-      setResettingWalletId(null)
-    }
-  }
-
-  const getLatestResetEntryId = (walletId: string) => {
-    const fromState = lastResetEntryByWallet[walletId]
-    if (fromState) return fromState
-    if (selected?.walletId !== walletId) return null
-
-    return (
-      ledger.find(
-        (tx) =>
-          tx.entryType === 'DEBIT' &&
-          tx.movementType === 'TRANSFER' &&
-          tx.sourceType === 'ADMIN_ADJUSTMENT' &&
-          tx.reference.startsWith('ADMIN-WALLET-RESET-'),
-      )?.id ?? null
-    )
-  }
-
-  const handleUndoWalletReset = async (wallet: WalletRow) => {
-    const entryId = getLatestResetEntryId(wallet.walletId)
-    if (!entryId) return
-
-    setUndoingWalletId(wallet.walletId)
-    try {
-      await undoWalletBalanceReset(wallet.walletId, entryId, 'superadmin_wallet_page_undo')
-      if (selected?.walletId === wallet.walletId) {
-        await openDrawer(wallet)
-      }
-      void load()
-    } catch {
-      // silent — could add a notification here
-    } finally {
-      setUndoingWalletId(null)
-    }
-  }
-
   const clearFilters = () => {
     setSearch('')
     setStatusFilter(null)
@@ -192,33 +134,6 @@ export function Wallets() {
           <Text size="sm" c="dimmed">{total} wallets</Text>
         </Group>
       </Group>
-
-      <Modal
-        opened={!!resetConfirmWallet}
-        onClose={() => setResetConfirmWallet(null)}
-        title="Reset this wallet balance?"
-        centered
-        size="sm"
-      >
-        <Text size="sm" c="dimmed" mb="lg">
-          This creates a ledger adjustment that zeros only this wallet's available balance. You can undo it later.
-        </Text>
-        {resetError && (
-          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" mb="md">
-            {resetError}
-          </Alert>
-        )}
-        <Group justify="flex-end">
-          <Button variant="default" onClick={() => setResetConfirmWallet(null)}>Cancel</Button>
-          <Button
-            color="red"
-            loading={!!resetConfirmWallet && resettingWalletId === resetConfirmWallet.walletId}
-            onClick={() => resetConfirmWallet && void handleResetWallet(resetConfirmWallet)}
-          >
-            Yes, reset wallet
-          </Button>
-        </Group>
-      </Modal>
 
       {/* Filters */}
       <Group>
@@ -252,31 +167,30 @@ export function Wallets() {
       </Group>
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={920}>
-          <Table striped highlightOnHover styles={{ th: { padding: '14px 18px' }, td: { padding: '14px 18px' } }}>
+        <Table.ScrollContainer minWidth={950}>
+          <Table striped highlightOnHover layout="fixed" styles={{ th: { padding: '14px 18px' }, td: { padding: '14px 18px' } }}>
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white">User</Table.Th>
-                <Table.Th c="white">Wallet ID</Table.Th>
-                <Table.Th c="white">Balance</Table.Th>
-                <Table.Th c="white">Status</Table.Th>
-                <Table.Th c="white">Last Activity</Table.Th>
-                <Table.Th c="white">Created</Table.Th>
-                <Table.Th c="white">Actions</Table.Th>
+                <Table.Th c="white" w={200}>User</Table.Th>
+                <Table.Th c="white" w={140}>Wallet ID</Table.Th>
+                <Table.Th c="white" w={150}>Balance</Table.Th>
+                <Table.Th c="white" w={120}>Status</Table.Th>
+                <Table.Th c="white" w={170}>Last Activity</Table.Th>
+                <Table.Th c="white" w={170}>Created</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <Table.Tr key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <Table.Td key={j}><Skeleton h={16} radius="sm" /></Table.Td>
                     ))}
                   </Table.Tr>
                 ))
               ) : wallets.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={7}>
+                  <Table.Td colSpan={6}>
                     <Text ta="center" py="xl" c="dimmed">No wallets found</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -309,30 +223,6 @@ export function Wallets() {
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{fmtDate(row.createdAt)}</Text>
-                    </Table.Td>
-                    <Table.Td onClick={(e) => e.stopPropagation()}>
-                      <Group gap="xs">
-                        <Button
-                          size="xs"
-                          variant="light"
-                          color="red"
-                          onClick={() => setResetConfirmWallet(row)}
-                          loading={resettingWalletId === row.walletId}
-                        >
-                          Reset
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant="light"
-                          color="blue"
-                          leftSection={<IconRotateClockwise2 size={12} />}
-                          disabled={!getLatestResetEntryId(row.walletId)}
-                          onClick={() => void handleUndoWalletReset(row)}
-                          loading={undoingWalletId === row.walletId}
-                        >
-                          Undo
-                        </Button>
-                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 ))
@@ -401,29 +291,6 @@ export function Wallets() {
               <Text size="sm" c="dimmed">Wallet created</Text>
               <Text size="sm">{fmtDate(selected.createdAt)}</Text>
             </Group>
-            <Group justify="flex-end">
-              <Button
-                size="xs"
-                variant="light"
-                color="red"
-                onClick={() => setResetConfirmWallet(selected)}
-                loading={resettingWalletId === selected.walletId}
-              >
-                Reset Wallet
-              </Button>
-              <Button
-                size="xs"
-                variant="light"
-                color="blue"
-                leftSection={<IconRotateClockwise2 size={12} />}
-                disabled={!getLatestResetEntryId(selected.walletId)}
-                onClick={() => void handleUndoWalletReset(selected)}
-                loading={undoingWalletId === selected.walletId}
-              >
-                Undo Reset
-              </Button>
-            </Group>
-
             <Divider label="Recent Transactions" labelPosition="left" mt="sm" />
 
             {ledgerLoading ? (

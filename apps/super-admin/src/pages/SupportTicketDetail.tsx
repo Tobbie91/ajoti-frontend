@@ -113,7 +113,7 @@ export function SupportTicketDetail() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [ticket?.messages.length])
+  }, [ticket?.messages?.length])
 
   async function handleReply() {
     if (!reply.trim() || !ticketId) return

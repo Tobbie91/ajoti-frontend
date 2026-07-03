@@ -311,15 +311,15 @@ function AuditLogsTab() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={700}>
-        <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={950}>
+        <Table highlightOnHover layout="fixed">
           <Table.Thead>
             <Table.Tr bg="#0B6B55">
-              <Table.Th c="white">Timestamp</Table.Th>
-              <Table.Th c="white">Actor</Table.Th>
-              <Table.Th c="white">Action</Table.Th>
-              <Table.Th c="white">Entity</Table.Th>
-              <Table.Th c="white">Reason</Table.Th>
+              <Table.Th c="white" w={160}>Timestamp</Table.Th>
+              <Table.Th c="white" w={200}>Actor</Table.Th>
+              <Table.Th c="white" w={180}>Action</Table.Th>
+              <Table.Th c="white" w={180}>Entity</Table.Th>
+              <Table.Th c="white" w={230}>Reason</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

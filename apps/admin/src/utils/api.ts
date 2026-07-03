@@ -231,6 +231,8 @@ export interface KycStatus {
   status: string // "PENDING" | "APPROVED" | "REJECTED"
   step?: string
   kycLevel: number // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
+  rejectionReason?: string | null
+  verificationData?: Record<string, unknown> | null
   address?: string
   city?: string
   state?: string
@@ -288,6 +290,7 @@ export interface UserProfile {
   state?: string
   lga?: string
   role?: string
+  status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'FROZEN'
   [key: string]: unknown
 }
 
@@ -350,6 +353,13 @@ export function deleteMyAccount(currentPassword: string, reason?: string): Promi
   return authRequest('/api/users/me', {
     method: 'DELETE',
     body: JSON.stringify({ currentPassword, confirm: 'DELETE', reason }),
+  })
+}
+
+export function freezeMyAccount(currentPassword: string, reason?: string): Promise<{ message: string; ticketId: string }> {
+  return authRequest('/api/users/me/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, reason }),
   })
 }
 
@@ -811,6 +821,56 @@ export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<
   return ('data' in res && res.data ? res.data : res) as Record<string, unknown>
 }
 
+// ── Saved Bank Accounts ───────────────────────────────────────────────────────
+
+export interface BankOption {
+  id: number
+  code: string
+  name: string
+}
+
+export async function getBanks(): Promise<BankOption[]> {
+  const res = await authRequest<{ data: BankOption[] }>('/api/wallet/withdrawal/banks', { method: 'GET' })
+  return res.data ?? []
+}
+
+export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ account_number: string; account_name: string }> {
+  const res = await authRequest<{ data: { account_number: string; account_name: string } }>(
+    '/api/wallet/withdrawal/resolve-account',
+    { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) },
+  )
+  return res.data
+}
+
+export interface SavedBankAccount {
+  id: string
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  isDefault: boolean
+  createdAt: string
+}
+
+export function listBankAccounts(): Promise<{ data: SavedBankAccount[] }> {
+  return authRequest('/api/users/me/bank-accounts', { method: 'GET' })
+}
+
+export function addBankAccount(bankCode: string, bankName: string, accountNumber: string, transactionPin: string): Promise<{ data: SavedBankAccount }> {
+  return authRequest('/api/users/me/bank-accounts', {
+    method: 'POST',
+    body: JSON.stringify({ bankCode, bankName, accountNumber, transactionPin }),
+  })
+}
+
+export function removeBankAccount(id: string): Promise<{ data: { deleted: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}`, { method: 'DELETE' })
+}
+
+export function setDefaultBankAccount(id: string): Promise<{ data: { updated: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}/set-default`, { method: 'PATCH' })
+}
+
 // ── Transaction PIN ───────────────────────────────────────────────────────────
 
 export function setTransactionPin(pin: string, currentPin?: string): Promise<{ message: string }> {
@@ -1112,4 +1172,80 @@ export async function getChatCircles(): Promise<ChatCircle[]> {
 export async function getChatMessages(circleId: string, before?: string): Promise<ChatMessage[]> {
   const qs = before ? `?before=${encodeURIComponent(before)}` : ''
   return authRequest(`/api/chat/circles/${circleId}/messages${qs}`, { method: 'GET' })
+}
+
+// ── Support Tickets ───────────────────────────────────────────────────────────
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+export type TicketCategory = 'ACCOUNT' | 'WALLET' | 'TRANSACTION' | 'KYC' | 'ROSCA' | 'LOAN' | 'OTHER'
+export type TicketSenderRole = 'USER' | 'ADMIN' | 'SUPERADMIN'
+
+export interface SupportMessage {
+  id: string
+  body: string
+  senderRole: TicketSenderRole
+  sender: { id: string; firstName: string; lastName: string; role: string }
+  createdAt: string
+}
+
+export interface SupportTicketRow {
+  id: string
+  category: TicketCategory
+  subject: string
+  status: TicketStatus
+  refType: string | null
+  refId: string | null
+  createdAt: string
+  updatedAt: string
+  messages: Pick<SupportMessage, 'body' | 'createdAt' | 'senderRole'>[]
+  _count: { messages: number }
+}
+
+export interface SupportTicketDetail extends SupportTicketRow {
+  messages: SupportMessage[]
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: { total: number; page: number; limit: number; totalPages: number }
+}
+
+export function listMyTickets(params: {
+  page?: number
+  limit?: number
+  status?: TicketStatus | ''
+  category?: TicketCategory | ''
+} = {}): Promise<PaginatedResponse<SupportTicketRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/support/tickets?${q}`, { method: 'GET' })
+}
+
+export function getMyTicket(ticketId: string): Promise<SupportTicketDetail> {
+  return authRequest(`/api/support/tickets/${ticketId}`, { method: 'GET' })
+}
+
+export function createTicket(payload: {
+  category: TicketCategory
+  subject: string
+  body: string
+  refType?: string
+  refId?: string
+}): Promise<SupportTicketDetail> {
+  return authRequest('/api/support/tickets', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function replyToTicket(ticketId: string, body: string): Promise<SupportMessage> {
+  return authRequest(`/api/support/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+}
+
+export function closeMyTicket(ticketId: string): Promise<{ id: string; status: TicketStatus }> {
+  return authRequest(`/api/support/tickets/${ticketId}/close`, { method: 'PATCH' })
 }

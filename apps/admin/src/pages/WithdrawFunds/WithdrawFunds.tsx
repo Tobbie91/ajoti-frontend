@@ -1,56 +1,74 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Select } from '@mantine/core'
-import { IconArrowLeft, IconCheck, IconBackspace, IconAlertCircle } from '@tabler/icons-react'
+import { Text, Loader } from '@mantine/core'
+import {
+  IconArrowLeft,
+  IconCheck,
+  IconBackspace,
+  IconAlertCircle,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getWalletBalance, initializeWithdrawal } from '@/utils/api'
+import {
+  ApiError,
+  getWalletBalance,
+  initializeWithdrawal,
+  listBankAccounts,
+  removeBankAccount,
+  type SavedBankAccount,
+} from '@/utils/api'
+import { AddBankAccountModal } from '@/components'
 
-type Step = 'form' | 'pin' | 'processing' | 'success' | 'error'
+type Step = 'select-account' | 'amount' | 'pin' | 'processing' | 'success' | 'error'
 
 const MIN_WITHDRAWAL_NAIRA = 100
 
-const NIGERIAN_BANKS: { label: string; value: string }[] = [
-  { label: 'Access Bank', value: '044' },
-  { label: 'Citibank Nigeria', value: '023' },
-  { label: 'Ecobank Nigeria', value: '050' },
-  { label: 'Fidelity Bank', value: '070' },
-  { label: 'First Bank of Nigeria', value: '011' },
-  { label: 'First City Monument Bank (FCMB)', value: '214' },
-  { label: 'Globus Bank', value: '00103' },
-  { label: 'Guaranty Trust Bank (GTB)', value: '058' },
-  { label: 'Heritage Bank', value: '030' },
-  { label: 'Keystone Bank', value: '082' },
-  { label: 'Kuda Bank', value: '50211' },
-  { label: 'Moniepoint MFB', value: '50515' },
-  { label: 'Opay', value: '999992' },
-  { label: 'Palmpay', value: '999991' },
-  { label: 'Polaris Bank', value: '076' },
-  { label: 'Providus Bank', value: '101' },
-  { label: 'Stanbic IBTC Bank', value: '221' },
-  { label: 'Standard Chartered Bank', value: '068' },
-  { label: 'Sterling Bank', value: '232' },
-  { label: 'Union Bank of Nigeria', value: '032' },
-  { label: 'United Bank for Africa (UBA)', value: '033' },
-  { label: 'Unity Bank', value: '215' },
-  { label: 'Wema Bank', value: '035' },
-  { label: 'Zenith Bank', value: '057' },
-]
-
 export function WithdrawFunds() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>('form')
-  const [accountNumber, setAccountNumber] = useState('')
-  const [accountName, setAccountName] = useState('')
-  const [bankCode, setBankCode] = useState<string | null>(null)
+  const [step, setStep] = useState<Step>('select-account')
+  const [addModalOpen, setAddModalOpen] = useState(false)
+
+  // Saved accounts
+  const [savedAccounts, setSavedAccounts] = useState<SavedBankAccount[]>([])
+  const [loadingAccounts, setLoadingAccounts] = useState(true)
+  const [selectedAccount, setSelectedAccount] = useState<SavedBankAccount | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
+
+  // Amount
   const [amount, setAmount] = useState('')
-  const [pin, setPin] = useState('')
   const [availableBalance, setAvailableBalance] = useState(0)
+
+  const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     getWalletBalance()
       .then((data) => setAvailableBalance(Number(data.available ?? data.total ?? 0) / 100))
       .catch(() => setAvailableBalance(0))
+    loadAccounts()
   }, [])
+
+  function loadAccounts() {
+    setLoadingAccounts(true)
+    listBankAccounts()
+      .then((res) => setSavedAccounts(res.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingAccounts(false))
+  }
+
+  async function handleRemoveAccount(id: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    setRemoving(id)
+    try {
+      await removeBankAccount(id)
+      setSavedAccounts((prev) => prev.filter((a) => a.id !== id))
+      if (selectedAccount?.id === id) setSelectedAccount(null)
+    } catch {
+      // ignore
+    } finally {
+      setRemoving(null)
+    }
+  }
 
   const numericAmount = parseInt(amount.replace(/,/g, ''), 10) || 0
 
@@ -60,29 +78,30 @@ export function WithdrawFunds() {
     return parseInt(digits, 10).toLocaleString()
   }
 
-  const canProceed =
-    numericAmount >= MIN_WITHDRAWAL_NAIRA &&
-    numericAmount <= availableBalance &&
-    accountNumber.length === 10 &&
-    bankCode !== null &&
-    accountName.trim().length > 0
+  const canProceedToPin =
+    numericAmount >= MIN_WITHDRAWAL_NAIRA && numericAmount <= availableBalance && selectedAccount !== null
 
-  async function submitWithdrawal() {
+  async function submitWithdrawal(enteredPin: string) {
+    if (!selectedAccount) return
     setStep('processing')
     setError(null)
-    const selectedBank = NIGERIAN_BANKS.find((b) => b.value === bankCode)
     try {
       await initializeWithdrawal({
-        amount: numericAmount * 100, // convert naira → kobo
-        accountNumber,
-        accountName: accountName.trim(),
-        bankCode: bankCode!,
-        bankName: selectedBank?.label,
+        amount: numericAmount,
+        accountNumber: selectedAccount.accountNumber,
+        accountName: selectedAccount.accountName,
+        bankCode: selectedAccount.bankCode,
+        bankName: selectedAccount.bankName,
         narration: `Withdrawal of NGN ${amount}`,
-        transactionPin: pin,
+        transactionPin: enteredPin,
       })
       setStep('success')
     } catch (err) {
+      if (err instanceof ApiError && err.code === 409) {
+        getWalletBalance()
+          .then((data) => setAvailableBalance(Number(data.available ?? data.total ?? 0) / 100))
+          .catch(() => {})
+      }
       setError(err instanceof Error ? err.message : 'Withdrawal failed. Please try again.')
       setStep('error')
     }
@@ -93,7 +112,7 @@ export function WithdrawFunds() {
       const newPin = pin + digit
       setPin(newPin)
       if (newPin.length === 4) {
-        setTimeout(() => submitWithdrawal(), 300)
+        setTimeout(() => submitWithdrawal(newPin), 300)
       }
     }
   }
@@ -143,126 +162,208 @@ export function WithdrawFunds() {
         </div>
         <div className="flex w-full max-w-[300px] flex-col gap-3">
           <button onClick={() => { setPin(''); setStep('pin') }} className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-3.5 text-[14px] font-semibold text-white">Try Again</button>
-          <button onClick={() => { setPin(''); setStep('form') }} className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] py-3.5 text-[14px] font-semibold text-[#374151]">Go Back</button>
+          <button onClick={() => { setPin(''); setStep('select-account') }} className="w-full cursor-pointer rounded-xl border border-[#E5E7EB] py-3.5 text-[14px] font-semibold text-[#374151]">Go Back</button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto w-full max-w-[600px] px-4 py-6 sm:px-6 sm:py-8">
-      {step === 'form' && (
-        <div className="flex flex-col gap-5">
-          <button onClick={() => navigate(-1)} className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]">
-            <IconArrowLeft size={18} /> Back
-          </button>
-          <div>
-            <Text fw={700} className="text-[24px] text-[#0F172A]">Withdraw Funds</Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
-              Available: ₦{availableBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-            </Text>
-          </div>
+    <>
+      <AddBankAccountModal
+        opened={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSuccess={(acc) => {
+          setSavedAccounts((prev) => [...prev, acc])
+          setSelectedAccount(acc)
+          setAddModalOpen(false)
+        }}
+      />
 
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-            <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Recipient Account</Text>
-            <div className="flex flex-col gap-3">
-              <TextInput
-                placeholder="Account Number (10 digits)"
-                radius="md" size="md"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.currentTarget.value.replace(/\D/g, '').slice(0, 10))}
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
-              />
-              <TextInput
-                placeholder="Account Name"
-                radius="md" size="md"
-                value={accountName}
-                onChange={(e) => setAccountName(e.currentTarget.value)}
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
-              />
-              <Select
-                data={NIGERIAN_BANKS}
-                value={bankCode}
-                onChange={setBankCode}
-                placeholder="Select Bank"
-                radius="md" size="md" searchable
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14, height: 48 } }}
-              />
-              {accountNumber.length === 10 && bankCode && (
-                <div className="flex items-center gap-2 rounded-lg bg-[#F0FDF4] px-3 py-2">
-                  <IconCheck size={16} color="#02A36E" />
-                  <Text fw={500} className="text-[13px] text-[#02A36E]">
-                    Ready to withdraw to {NIGERIAN_BANKS.find((b) => b.value === bankCode)?.label}
-                  </Text>
+      <div className="mx-auto w-full max-w-[600px] px-4 py-6 sm:px-6 sm:py-8">
+        {step === 'select-account' && (
+          <div className="flex flex-col gap-5">
+            <button onClick={() => navigate(-1)} className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]">
+              <IconArrowLeft size={18} /> Back
+            </button>
+
+            <div>
+              <Text fw={700} className="text-[24px] text-[#0F172A]">Withdraw Funds</Text>
+              <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
+                Available: ₦{availableBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+              </Text>
+            </div>
+
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
+              <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Select Recipient Account</Text>
+
+              {loadingAccounts ? (
+                <div className="flex items-center gap-2 py-4">
+                  <Loader size={16} color="#02A36E" />
+                  <Text className="text-[13px] text-[#6B7280]">Loading accounts...</Text>
+                </div>
+              ) : savedAccounts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-6 text-center">
+                  <Text fw={400} className="text-[13px] text-[#6B7280]">No saved accounts yet.</Text>
+                  <Text fw={400} className="text-[13px] text-[#6B7280]">Add an account to withdraw funds.</Text>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {savedAccounts.map((acc) => (
+                    <button
+                      key={acc.id}
+                      onClick={() => setSelectedAccount(acc)}
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
+                        selectedAccount?.id === acc.id
+                          ? 'border-[#02A36E] bg-[#F0FDF4]'
+                          : 'border-[#E5E7EB] bg-white hover:bg-[#F9FAFB]'
+                      }`}
+                    >
+                      <div>
+                        <Text fw={600} className="text-[14px] text-[#0F172A]">{acc.accountName}</Text>
+                        <Text fw={400} className="text-[12px] text-[#6B7280]">
+                          {acc.accountNumber} · {acc.bankName}
+                        </Text>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {acc.isDefault && (
+                          <span className="rounded-full bg-[#F0FDF4] px-2 py-0.5 text-[11px] font-medium text-[#02A36E]">
+                            Default
+                          </span>
+                        )}
+                        {removing === acc.id ? (
+                          <Loader size={14} color="#9CA3AF" />
+                        ) : (
+                          <button
+                            onClick={(e) => handleRemoveAccount(acc.id, e)}
+                            className="cursor-pointer rounded-lg p-1.5 text-[#9CA3AF] hover:bg-red-50 hover:text-red-500"
+                          >
+                            <IconTrash size={15} />
+                          </button>
+                        )}
+                        {selectedAccount?.id === acc.id && <IconCheck size={16} color="#02A36E" />}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
-            </div>
-          </div>
 
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-            <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Enter Amount</Text>
-            <TextInput
-              placeholder="0" radius="md" size="lg"
-              value={amount}
-              onChange={(e) => setAmount(formatAmount(e.currentTarget.value))}
-              leftSection={<Text fw={600} className="text-[16px] text-[#0F172A]">₦</Text>}
-              styles={{ input: { borderColor: '#E5E7EB', fontSize: 20, fontWeight: 600, height: 52 } }}
-            />
-            {numericAmount > 0 && numericAmount < MIN_WITHDRAWAL_NAIRA && (
-              <Text fw={400} className="mt-2 text-[12px] text-red-500">Minimum withdrawal is ₦{MIN_WITHDRAWAL_NAIRA}</Text>
+              <button
+                onClick={() => setAddModalOpen(true)}
+                className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#02A36E] bg-[#F0FDF4] py-3 text-[13px] font-medium text-[#02A36E] hover:bg-[#dcfce7]"
+              >
+                <IconPlus size={15} /> Add New Account
+              </button>
+            </div>
+
+            {selectedAccount && (
+              <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
+                <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Enter Amount</Text>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[18px] font-semibold text-[#0F172A]">
+                    ₦
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={amount}
+                    onChange={(e) => setAmount(formatAmount(e.target.value))}
+                    placeholder="0"
+                    className="h-[52px] w-full rounded-xl border border-[#E5E7EB] pl-8 pr-4 text-[20px] font-semibold text-[#0F172A] outline-none focus:border-[#02A36E]"
+                  />
+                </div>
+                {numericAmount > 0 && numericAmount < MIN_WITHDRAWAL_NAIRA && (
+                  <Text fw={400} className="mt-2 text-[12px] text-red-500">
+                    Minimum withdrawal is ₦{MIN_WITHDRAWAL_NAIRA}
+                  </Text>
+                )}
+                {numericAmount > availableBalance && numericAmount > 0 && (
+                  <Text fw={400} className="mt-2 text-[12px] text-red-500">
+                    Amount exceeds available balance
+                  </Text>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['5,000', '10,000', '50,000', '100,000'].map((val) => (
+                    <button
+                      key={val}
+                      onClick={() => setAmount(val)}
+                      className={`cursor-pointer rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                        amount === val
+                          ? 'border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]'
+                          : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'
+                      }`}
+                    >
+                      ₦{val}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            {numericAmount > availableBalance && numericAmount > 0 && (
-              <Text fw={400} className="mt-2 text-[12px] text-red-500">Amount exceeds available balance</Text>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {['5,000', '10,000', '50,000', '100,000'].map((val) => (
-                <button key={val} onClick={() => setAmount(val)}
-                  className={`cursor-pointer rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors ${amount === val ? 'border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]' : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB]'}`}>
-                  ₦{val}
-                </button>
+
+            <button
+              onClick={() => setStep('pin')}
+              disabled={!canProceedToPin}
+              className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${
+                canProceedToPin
+                  ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]'
+                  : 'cursor-not-allowed bg-[#9CA3AF]'
+              }`}
+            >
+              Proceed
+            </button>
+          </div>
+        )}
+
+        {step === 'pin' && (
+          <div className="flex flex-col items-center gap-8 pt-8">
+            <button onClick={() => { setStep('select-account'); setPin('') }} className="mr-auto flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]">
+              <IconArrowLeft size={18} /> Back
+            </button>
+
+            <div className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-center">
+              <Text fw={400} className="text-[13px] text-[#6B7280]">Withdrawing</Text>
+              <Text fw={700} className="mt-1 text-[28px] text-[#0F172A]">₦{amount}</Text>
+              <Text fw={600} className="mt-1 text-[14px] text-[#0F172A]">
+                {selectedAccount?.accountName}
+              </Text>
+              <Text fw={400} className="text-[12px] text-[#9CA3AF]">
+                {selectedAccount?.accountNumber} · {selectedAccount?.bankName}
+              </Text>
+            </div>
+
+            <div className="text-center">
+              <Text fw={700} className="text-[22px] text-[#0F172A]">Enter Your PIN</Text>
+              <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">Enter your 4-digit transaction PIN to confirm</Text>
+            </div>
+
+            <div className="flex gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className={`flex h-14 w-14 items-center justify-center rounded-xl border-2 ${i < pin.length ? 'border-[#02A36E] bg-[#F0FDF4]' : 'border-[#E5E7EB] bg-white'}`}>
+                  {i < pin.length && <div className="h-3 w-3 rounded-full bg-[#02A36E]" />}
+                </div>
               ))}
             </div>
-          </div>
 
-          <button onClick={() => canProceed && setStep('pin')} disabled={!canProceed}
-            className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${canProceed ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]' : 'cursor-not-allowed bg-[#9CA3AF]'}`}>
-            Proceed
-          </button>
-        </div>
-      )}
-
-      {step === 'pin' && (
-        <div className="flex flex-col items-center gap-8 pt-8">
-          <button onClick={() => { setStep('form'); setPin('') }} className="mr-auto flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]">
-            <IconArrowLeft size={18} /> Back
-          </button>
-          <div className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-center">
-            <Text fw={400} className="text-[13px] text-[#6B7280]">Withdrawing</Text>
-            <Text fw={700} className="mt-1 text-[28px] text-[#0F172A]">₦{amount}</Text>
-            <Text fw={400} className="mt-1 text-[12px] text-[#9CA3AF]">
-              to {accountNumber} · {NIGERIAN_BANKS.find((b) => b.value === bankCode)?.label}
-            </Text>
+            <div className="grid w-[280px] grid-cols-3 gap-3">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'].map((key) => {
+                if (key === '') return <div key="empty" />
+                if (key === 'back') {
+                  return (
+                    <button key="back" onClick={() => setPin((p) => p.slice(0, -1))} className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F3F4F6] hover:bg-[#E5E7EB]">
+                      <IconBackspace size={22} color="#374151" />
+                    </button>
+                  )
+                }
+                return (
+                  <button key={key} onClick={() => handlePinDigit(key)} className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F9FAFB] text-[20px] font-semibold text-[#0F172A] hover:bg-[#E5E7EB]">
+                    {key}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          <div className="text-center">
-            <Text fw={700} className="text-[22px] text-[#0F172A]">Enter Your PIN</Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">Enter your 4-digit transaction PIN to confirm</Text>
-          </div>
-          <div className="flex gap-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className={`flex h-14 w-14 items-center justify-center rounded-xl border-2 ${i < pin.length ? 'border-[#02A36E] bg-[#F0FDF4]' : 'border-[#E5E7EB] bg-white'}`}>
-                {i < pin.length && <div className="h-3 w-3 rounded-full bg-[#02A36E]" />}
-              </div>
-            ))}
-          </div>
-          <div className="grid w-[280px] grid-cols-3 gap-3">
-            {['1','2','3','4','5','6','7','8','9','','0','back'].map((key) => {
-              if (key === '') return <div key="empty" />
-              if (key === 'back') return <button key="back" onClick={() => setPin((p) => p.slice(0, -1))} className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F3F4F6] hover:bg-[#E5E7EB]"><IconBackspace size={22} color="#374151" /></button>
-              return <button key={key} onClick={() => handlePinDigit(key)} className="flex h-16 cursor-pointer items-center justify-center rounded-2xl bg-[#F9FAFB] text-[20px] font-semibold text-[#0F172A] hover:bg-[#E5E7EB]">{key}</button>
-            })}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }

@@ -8,7 +8,6 @@ import {
   Select,
   Table,
   Badge,
-  Menu,
   ActionIcon,
   Pagination,
   Card,
@@ -25,7 +24,7 @@ import {
 import { useDisclosure } from '@mantine/hooks'
 import {
   IconSearch,
-  IconDots,
+  IconEye,
   IconAlertCircle,
   IconUser,
   IconWallet,
@@ -37,14 +36,12 @@ import {
   getUserDetail,
   updateUserStatus,
   unfreezeAccount,
-  promoteToSuperadmin,
   approveAdminRequest,
   rejectAdminRequest,
-  clearUserVirtualAccount,
-  releaseUserReservedFunds,
   type SuperadminUserRow,
   type SuperadminUserDetail,
 } from '@/utils/api'
+import { getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -79,11 +76,8 @@ function UserDetailBody({
   onUnfreeze,
   onOpenSuspend,
   onOpenBan,
-  onOpenPromote,
   onOpenApproveAdmin,
   onOpenRejectAdmin,
-  onOpenClearVa,
-  onOpenReleaseReserved,
 }: {
   detail: SuperadminUserDetail
   actionLoading: boolean
@@ -93,11 +87,8 @@ function UserDetailBody({
   onUnfreeze: () => void
   onOpenSuspend: () => void
   onOpenBan: () => void
-  onOpenPromote: () => void
   onOpenApproveAdmin: () => void
   onOpenRejectAdmin: () => void
-  onOpenClearVa: () => void
-  onOpenReleaseReserved: () => void
 }) {
   const user = detail.user as Record<string, unknown>
   const wallet = detail.wallet
@@ -196,8 +187,8 @@ function UserDetailBody({
 
       <Divider />
 
-      {/* Pending admin request */}
-      {(user.adminRequestedAt as string | null) && (
+      {/* Pending admin request — backend gates approve/reject on MANAGE_ADMIN_ACCOUNTS */}
+      {(user.adminRequestedAt as string | null) && hasPermission(getStaffRoleFromStorage(), 'MANAGE_ADMIN_ACCOUNTS') && (
         <Alert color="orange" radius="md" variant="light" title="Pending Admin Request">
           <Text fz="xs">Requested on {new Date(user.adminRequestedAt as string).toLocaleDateString('en-NG')}</Text>
           <Group mt="xs" gap="xs">
@@ -211,56 +202,66 @@ function UserDetailBody({
         </Alert>
       )}
 
-      {/* Actions */}
-      <Stack gap="xs">
-        {currentStatus === 'FROZEN' && (
-          <Alert color="orange" radius="md" variant="light" title="Self-Frozen Account">
-            <Text fz="xs">
-              This user froze their own account. Unfreezing requires verifying their identity through
-              the standard process outside this app first — this button is the final step, not a
-              verification step itself. Check the linked support ticket (category Account, ref type
-              ACCOUNT_FREEZE) for context before proceeding.
-            </Text>
-            <Button
-              fullWidth
-              mt="xs"
-              variant="filled"
-              color="orange"
-              onClick={onUnfreeze}
-              loading={actionLoading}
-            >
-              Unfreeze Account (after identity verification)
-            </Button>
-          </Alert>
-        )}
-        {currentStatus !== 'ACTIVE' && currentStatus !== 'FROZEN' && (
-          <Button fullWidth variant="light" color="green" onClick={onReactivate} loading={actionLoading}>
-            Reactivate Account
-          </Button>
-        )}
-        {currentStatus === 'ACTIVE' && (
-          <Button fullWidth variant="light" color="yellow" onClick={onOpenSuspend}>
-            Suspend Account
-          </Button>
-        )}
-        {currentStatus !== 'BANNED' && (
-          <Button fullWidth variant="light" color="red" onClick={onOpenBan}>
-            Ban Account
-          </Button>
-        )}
-        {currentRole !== 'SUPERADMIN' && (
-          <Button fullWidth variant="subtle" color="primary" onClick={onOpenPromote}>
-            Promote to Superadmin
-          </Button>
-        )}
-        <Divider />
-        <Button fullWidth variant="subtle" color="orange" onClick={onOpenClearVa}>
-          Reset Virtual Account
-        </Button>
-        <Button fullWidth variant="subtle" color="violet" onClick={onOpenReleaseReserved}>
-          Release Reserved Funds
-        </Button>
-      </Stack>
+      {/* Actions — gated to match the backend's actual permission requirements
+          for each endpoint, not just shown to whoever can open this drawer. */}
+      {(() => {
+        const staffRole = getStaffRoleFromStorage()
+        const canSuspendAccount = hasPermission(staffRole, 'SUSPEND_ACCOUNT')
+        const canManageAdminAccounts = hasPermission(staffRole, 'MANAGE_ADMIN_ACCOUNTS')
+        const hasAnyAction = canSuspendAccount || canManageAdminAccounts
+
+        if (!hasAnyAction) return null
+
+        return (
+          <Stack gap="xs">
+            {canSuspendAccount && (
+              <>
+                {currentStatus === 'FROZEN' && (
+                  <Alert color="orange" radius="md" variant="light" title="Self-Frozen Account">
+                    <Text fz="xs">
+                      This user froze their own account. Unfreezing requires verifying their identity through
+                      the standard process outside this app first — this button is the final step, not a
+                      verification step itself. Check the linked support ticket (category Account, ref type
+                      ACCOUNT_FREEZE) for context before proceeding.
+                    </Text>
+                    <Button
+                      fullWidth
+                      mt="xs"
+                      variant="filled"
+                      color="orange"
+                      onClick={onUnfreeze}
+                      loading={actionLoading}
+                    >
+                      Unfreeze Account (after identity verification)
+                    </Button>
+                  </Alert>
+                )}
+                {currentStatus !== 'ACTIVE' && currentStatus !== 'FROZEN' && (
+                  <Button fullWidth variant="light" color="green" onClick={onReactivate} loading={actionLoading}>
+                    Reactivate Account
+                  </Button>
+                )}
+                {currentStatus === 'ACTIVE' && (
+                  <Button fullWidth variant="light" color="yellow" onClick={onOpenSuspend}>
+                    Suspend Account
+                  </Button>
+                )}
+                {currentStatus !== 'BANNED' && (
+                  <Button fullWidth variant="light" color="red" onClick={onOpenBan}>
+                    Ban Account
+                  </Button>
+                )}
+              </>
+            )}
+            {/* Promoting a member to staff in-place is removed entirely, not
+                just the SUPERADMIN option — staff accounts go through Staff
+                Management's dedicated onboarding (phone/dob/gender, temp
+                password, mustChangePassword lock), which this generic drawer
+                skips. Assigning a staff tier here would create a staff
+                account without any of that. */}
+          </Stack>
+        )
+      })()}
     </Stack>
   )
 }
@@ -285,15 +286,8 @@ function UserDetailDrawer({
 
   const [suspendModal, { open: openSuspend, close: closeSuspend }] = useDisclosure(false)
   const [banModal, { open: openBan, close: closeBan }] = useDisclosure(false)
-  const [promoteModal, { open: openPromote, close: _closePromote }] = useDisclosure(false)
-  const [promoteRole, setPromoteRole] = useState<'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | null>(null)
-  function closePromote() { _closePromote(); setPromoteRole(null) }
   const [approveAdminModal, { open: openApproveAdmin, close: closeApproveAdmin }] = useDisclosure(false)
   const [rejectAdminModal, { open: openRejectAdmin, close: closeRejectAdmin }] = useDisclosure(false)
-  const [clearVaModal, { open: openClearVa, close: closeClearVa }] = useDisclosure(false)
-  const [releaseReservedModal, { open: openReleaseReserved, close: closeReleaseReserved }] = useDisclosure(false)
-  const [releaseReservedLoading, setReleaseReservedLoading] = useState(false)
-  const [releaseReservedResult, setReleaseReservedResult] = useState<string | null>(null)
   const [reason, setReason] = useState('')
 
   useEffect(() => {
@@ -337,21 +331,6 @@ function UserDetailDrawer({
     }
   }
 
-  async function handlePromote() {
-    if (!userId || !promoteRole) return
-    setActionLoading(true)
-    try {
-      await promoteToSuperadmin(userId, promoteRole)
-      closePromote()
-      onStatusChange()
-      onClose()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Promote failed')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   async function handleApproveAdmin() {
     if (!userId) return
     setActionLoading(true)
@@ -379,34 +358,6 @@ function UserDetailDrawer({
       setError(e instanceof Error ? e.message : 'Reject failed')
     } finally {
       setActionLoading(false)
-    }
-  }
-
-  async function handleClearVa() {
-    if (!userId) return
-    setActionLoading(true)
-    try {
-      await clearUserVirtualAccount(userId)
-      closeClearVa()
-      onClose()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Clear VA failed')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  async function handleReleaseReserved() {
-    if (!userId) return
-    setReleaseReservedLoading(true)
-    setReleaseReservedResult(null)
-    try {
-      const res = await releaseUserReservedFunds(userId)
-      setReleaseReservedResult(res.data.message)
-    } catch (e) {
-      setReleaseReservedResult(e instanceof Error ? e.message : 'Release failed')
-    } finally {
-      setReleaseReservedLoading(false)
     }
   }
 
@@ -441,11 +392,8 @@ function UserDetailDrawer({
             onUnfreeze={handleUnfreeze}
             onOpenSuspend={openSuspend}
             onOpenBan={openBan}
-            onOpenPromote={openPromote}
             onOpenApproveAdmin={openApproveAdmin}
             onOpenRejectAdmin={openRejectAdmin}
-            onOpenClearVa={openClearVa}
-            onOpenReleaseReserved={openReleaseReserved}
           />
         ) : null}
       </Drawer>
@@ -488,37 +436,6 @@ function UserDetailDrawer({
         </Stack>
       </Modal>
 
-      {/* Promote modal */}
-      <Modal opened={promoteModal} onClose={closePromote} title="Promote to Superadmin" size="sm">
-        <Stack gap="md">
-          <Text fz="sm" c="dimmed">
-            Promoting <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong> to
-            Superadmin. Choose a role scope — this controls which parts of the platform they can access.
-            This action is logged in the audit trail.
-          </Text>
-          <Select
-            label="Admin role"
-            placeholder="Select a role scope"
-            required
-            value={promoteRole}
-            onChange={(v) => setPromoteRole(v as typeof promoteRole)}
-            data={[
-              { value: 'SUPERADMIN', label: 'Superadmin — Full platform access' },
-              { value: 'SUPPORT', label: 'Support — Customer support operations' },
-              { value: 'COMPLIANCE', label: 'Compliance — Compliance & KYC review' },
-              { value: 'OPERATIONS', label: 'Operations — Day-to-day platform operations' },
-            ]}
-            allowDeselect={false}
-          />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={closePromote}>Cancel</Button>
-            <Button color="primary" loading={actionLoading} disabled={!promoteRole} onClick={handlePromote}>
-              Confirm Promote
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-
       {/* Approve admin request modal */}
       <Modal opened={approveAdminModal} onClose={closeApproveAdmin} title="Approve Admin Request" size="sm">
         <Stack gap="md">
@@ -546,47 +463,6 @@ function UserDetailDrawer({
             <Button variant="default" onClick={closeRejectAdmin}>Cancel</Button>
             <Button color="red" loading={actionLoading} onClick={handleRejectAdmin}>
               Reject
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-
-      {/* Reset virtual account modal */}
-      <Modal opened={clearVaModal} onClose={closeClearVa} title="Reset Virtual Account" size="sm">
-        <Stack gap="md">
-          <Text fz="sm" c="dimmed">
-            This will remove the stale virtual account for{' '}
-            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong> from the database.
-            The next time they visit Fund Wallet, a fresh live account will be provisioned automatically.
-          </Text>
-          <Alert color="orange" variant="light">
-            <Text fz="xs">Use this only for accounts created in sandbox/test mode that are no longer valid.</Text>
-          </Alert>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={closeClearVa}>Cancel</Button>
-            <Button color="orange" loading={actionLoading} onClick={handleClearVa}>
-              Reset VA
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-      {/* Release reserved funds modal */}
-      <Modal opened={releaseReservedModal} onClose={closeReleaseReserved} title="Release Reserved Funds" size="sm">
-        <Stack gap="md">
-          <Text fz="sm" c="dimmed">
-            Releases any unreleased ROSCA collateral across all circle memberships back to{' '}
-            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong>'s wallet.
-            Run this before deleting an account that has reserved funds.
-          </Text>
-          {releaseReservedResult && (
-            <Alert color="teal" variant="light">
-              <Text fz="xs">{releaseReservedResult}</Text>
-            </Alert>
-          )}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={closeReleaseReserved}>Close</Button>
-            <Button color="violet" loading={releaseReservedLoading} onClick={handleReleaseReserved}>
-              Release Funds
             </Button>
           </Group>
         </Stack>
@@ -741,17 +617,17 @@ export function ManageUsers() {
       )}
 
       <Card withBorder p={0} radius="md">
-        <Table.ScrollContainer minWidth={900}>
-        <Table verticalSpacing="sm" horizontalSpacing="md">
+        <Table.ScrollContainer minWidth={1200}>
+        <Table verticalSpacing="sm" horizontalSpacing="md" layout="fixed">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
-              <Table.Th style={{ color: 'white' }}>Name</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Email</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Phone</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Role</Table.Th>
-              <Table.Th style={{ color: 'white' }}>KYC</Table.Th>
-              <Table.Th style={{ color: 'white' }}>ROSCA</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Status</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={200}>Name</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={240}>Email</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={150}>Phone</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={130}>Role</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={150}>KYC</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={90}>ROSCA</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={130}>Status</Table.Th>
               <Table.Th style={{ color: 'white' }} w={50} />
             </Table.Tr>
           </Table.Thead>
@@ -816,19 +692,15 @@ export function ManageUsers() {
                       {user.status}
                     </Badge>
                   </Table.Td>
-                  <Table.Td>
-                    <Menu shadow="md" width={180} position="bottom-end">
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" color="dark">
-                          <IconDots size={18} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item onClick={() => openUserDetail(user.id)}>
-                          View Profile
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="dark"
+                      onClick={() => openUserDetail(user.id)}
+                      title="View profile"
+                    >
+                      <IconEye size={18} />
+                    </ActionIcon>
                   </Table.Td>
                 </Table.Tr>
               ))

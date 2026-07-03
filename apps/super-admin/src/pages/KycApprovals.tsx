@@ -508,17 +508,17 @@ export function KycApprovals() {
       )}
 
       <Card withBorder p={0} radius="md">
-        <Table.ScrollContainer minWidth={900}>
-        <Table verticalSpacing="sm" horizontalSpacing="md">
+        <Table.ScrollContainer minWidth={1150}>
+        <Table verticalSpacing="sm" horizontalSpacing="md" layout="fixed">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
-              <Table.Th style={{ color: 'white' }}>Name</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Email</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Phone</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Submitted</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Level</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Step</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Status</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={180}>Name</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={230}>Email</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={140}>Phone</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={140}>Submitted</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={110}>Level</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={150}>Step</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={140}>Status</Table.Th>
               <Table.Th style={{ color: 'white' }} w={60} />
             </Table.Tr>
           </Table.Thead>

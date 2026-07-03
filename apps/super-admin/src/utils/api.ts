@@ -330,26 +330,12 @@ export function unfreezeAccount(userId: string): Promise<{ success: boolean; dat
   return authRequest(`/api/superadmin/users/${userId}/unfreeze`, { method: 'PATCH' })
 }
 
-export function promoteToSuperadmin(
-  userId: string,
-  staffRole: 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER',
-): Promise<{ success: boolean; data: unknown }> {
-  return authRequest(`/api/superadmin/users/${userId}/promote`, {
-    method: 'PATCH',
-    body: JSON.stringify({ staffRole }),
-  })
-}
-
 export function approveAdminRequest(userId: string): Promise<{ success: boolean; data: unknown }> {
   return authRequest(`/api/superadmin/users/${userId}/approve-admin`, { method: 'PATCH' })
 }
 
 export function rejectAdminRequest(userId: string): Promise<{ success: boolean; data: unknown }> {
   return authRequest(`/api/superadmin/users/${userId}/reject-admin`, { method: 'PATCH' })
-}
-
-export function clearUserVirtualAccount(userId: string): Promise<{ success: boolean; message: string }> {
-  return authRequest(`/api/superadmin/users/${userId}/virtual-account`, { method: 'DELETE' })
 }
 
 // ── KYC ───────────────────────────────────────────────────────────────────────
@@ -542,36 +528,6 @@ export function capitalizeLoanFloat(amountKobo: number, note: string): Promise<{
     '/api/superadmin/finance/loan-float/capitalize',
     { method: 'POST', body: JSON.stringify({ amountKobo, note }) },
   )
-}
-
-export interface WalletResetResult {
-  walletId: string
-  resetEntryId: string
-  debitedAmountKobo: string
-  balanceAfterKobo: string
-}
-
-export interface WalletResetUndoResult {
-  walletId: string
-  resetEntryId: string
-  reversalEntryId: string
-  restoredAmountKobo: string
-  balanceAfterKobo: string
-}
-
-export function resetWalletBalance(walletId: string): Promise<{ success: boolean; message: string; data: WalletResetResult }> {
-  return authRequest(`/api/superadmin/analytics/wallets/${walletId}/reset-balance`, { method: 'POST' })
-}
-
-export function undoWalletBalanceReset(
-  walletId: string,
-  entryId: string,
-  reason?: string,
-): Promise<{ success: boolean; message: string; data: WalletResetUndoResult }> {
-  return authRequest(`/api/superadmin/analytics/wallets/${walletId}/reset-balance/${entryId}/undo`, {
-    method: 'POST',
-    body: JSON.stringify(reason ? { reason } : {}),
-  })
 }
 
 export function listWallets(params: {
