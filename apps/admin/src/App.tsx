@@ -23,6 +23,8 @@ import {
   FundWalletCallback,
   SetPin,
   Messages,
+  Support,
+  SupportTicket,
   Maintenance,
 } from '@/pages'
 
@@ -59,6 +61,8 @@ function App() {
           <Route path="/my-profile" element={<MyProfile />} />
           <Route path="/set-pin" element={<SetPin />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/support/:ticketId" element={<SupportTicket />} />
         </Route>
 
         {/* Flutterwave callback — no layout */}
