@@ -510,15 +510,27 @@ export async function makeContribution(circleId: string, cycleNumber: number): P
 
 // ── Wallet ──────────────────────────────────────────────────────────────────
 
+export interface PendingWithdrawal {
+  reference: string
+  amountKobo: string
+  initiatedAt: string
+}
+
 export interface Wallet {
   id: string
-  balance: number
   currency: string
+  status: string
+  balance: WalletBalance
+  // Stage 11: while a withdrawal is PENDING, every other debit/reserve on the
+  // wallet is blocked (contributions, circle joins, savings, another
+  // withdrawal). Null when nothing is pending.
+  pendingWithdrawal: PendingWithdrawal | null
   [key: string]: unknown
 }
 
-export function getWallet(): Promise<Wallet> {
-  return authRequest('/api/wallet', { method: 'GET' })
+export async function getWallet(): Promise<Wallet> {
+  const res = await authRequest<{ data?: Wallet } | Wallet>('/api/wallet', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as Wallet
 }
 
 export interface WalletBalance {
