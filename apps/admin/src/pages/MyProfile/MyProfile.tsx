@@ -76,7 +76,7 @@ export function MyProfile() {
   const [saveSuccess, setSaveSuccess] = useState(false)
 
   const [kycStatus, setKycStatus] = useState<KycStatus | null>(null)
-  const kycApproved = kycStatus?.status === 'APPROVED'
+  const kycApproved = (kycStatus?.kycLevel ?? 0) >= 1
   // Mirrors the backend name-lock: names are immutable once identity is Mono-verified
   const nameLocked = Boolean(kycStatus?.ninVerified || kycStatus?.bvnVerified)
 
@@ -504,66 +504,140 @@ export function MyProfile() {
         </div>
       </div>
 
-      {/* KYC Verification */}
+      {/* KYC / Verification */}
       <div className="mb-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <Text fw={700} className="text-[15px] text-[#0F172A]">Identity Verification</Text>
-          {kycApproved && (
-            <div className="flex items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
-              <IconShieldCheck size={13} color="#02A36E" />
-              <Text fw={500} className="text-[11px] text-[#02A36E]">All Verified</Text>
-            </div>
-          )}
-        </div>
+        <Text fw={700} className="mb-4 text-[15px] text-[#0F172A]">Verification Status</Text>
 
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EFF6FF]">
-                <IconId size={18} color="#3B82F6" />
+        {(() => {
+          const level = kycStatus?.kycLevel ?? 0
+          const step = kycStatus?.step
+
+          const tierLabel = ['Unverified', 'Level 1', 'Level 2', 'Level 3'][level] ?? `Level ${level}`
+          const tierColor = ['#F59E0B', '#02A36E', '#2563EB', '#7C3AED'][level] ?? '#02A36E'
+          const tierBg = ['#FEF3C7', '#F0FDF4', '#EFF6FF', '#EDE9FE'][level] ?? '#F0FDF4'
+
+          const limits: Record<number, { single: string; daily: string }> = {
+            0: { single: '₦0', daily: '₦0' },
+            1: { single: '₦50,000', daily: '₦300,000' },
+            2: { single: '₦100,000', daily: '₦500,000' },
+            3: { single: '₦5,000,000', daily: '₦25,000,000' },
+          }
+          const nextLimits: Record<number, { single: string; daily: string }> = {
+            1: { single: '₦100,000', daily: '₦500,000' },
+            2: { single: '₦5,000,000', daily: '₦25,000,000' },
+          }
+
+          return (
+            <div className="flex flex-col gap-4">
+              {/* Current tier badge + limits */}
+              <div className="rounded-xl p-4" style={{ background: tierBg }}>
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <IconShieldCheck size={16} color={tierColor} />
+                    <Text fw={700} className="text-[14px]" style={{ color: tierColor }}>{tierLabel}</Text>
+                  </div>
+                  {level > 0 && (
+                    <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white" style={{ background: tierColor }}>
+                      Active
+                    </span>
+                  )}
+                </div>
+                {level > 0 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">Single transaction</Text>
+                      <Text fw={700} className="text-[15px] text-[#0F172A]">{limits[level].single}</Text>
+                    </div>
+                    <div>
+                      <Text fw={400} className="text-[11px] text-[#9CA3AF]">Daily limit</Text>
+                      <Text fw={700} className="text-[15px] text-[#0F172A]">{limits[level].daily}</Text>
+                    </div>
+                  </div>
+                ) : (
+                  <Text fw={400} className="text-[12px] text-[#6B7280]">
+                    Complete identity verification to activate your admin account.
+                  </Text>
+                )}
               </div>
-              <Text fw={600} className="text-[13px] text-[#0F172A]">NIN Verification</Text>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {kycStatus?.ninVerified ? (
+
+              {/* NIN / BVN rows — only shown while at Level 0 */}
+              {level === 0 && (
                 <>
-                  <IconCheck size={14} color="#02A36E" />
-                  <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
+                  <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <IconId size={18} color="#6B7280" />
+                      <Text fw={500} className="text-[13px] text-[#0F172A]">NIN Verification</Text>
+                    </div>
+                    {kycStatus?.ninVerified ? (
+                      <div className="flex items-center gap-1.5">
+                        <IconCheck size={14} color="#02A36E" />
+                        <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
+                      </div>
+                    ) : (
+                      <Text fw={500} className="text-[12px] text-[#F59E0B]">Pending</Text>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <IconBuildingBank size={18} color="#6B7280" />
+                      <Text fw={500} className="text-[13px] text-[#0F172A]">BVN Verification</Text>
+                    </div>
+                    {kycStatus?.bvnVerified ? (
+                      <div className="flex items-center gap-1.5">
+                        <IconCheck size={14} color="#02A36E" />
+                        <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
+                      </div>
+                    ) : (
+                      <Text fw={500} className="text-[12px] text-[#F59E0B]">Pending</Text>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigate('/kyc')}
+                    className="mt-1 w-full cursor-pointer rounded-xl bg-[#0b6b55] py-3 text-[13px] font-semibold text-white hover:bg-[#094f3e]"
+                  >
+                    {kycStatus?.ninVerified || kycStatus?.bvnVerified ? 'Resume Verification' : 'Start Verification'}
+                  </button>
                 </>
-              ) : (
-                <Text fw={500} className="text-[12px] text-[#F59E0B]">Pending</Text>
+              )}
+
+              {/* Pending review */}
+              {(step === 'PHOTO_REQUIRED' || step === 'PROOF_OF_ADDRESS_REQUIRED') && kycStatus?.status === 'PENDING' && (
+                <div className="rounded-xl border border-[#FEF3C7] bg-[#FFFBEB] px-4 py-3">
+                  <Text fw={500} className="text-[13px] text-[#D97706]">
+                    Level {level + 1} upgrade under review — usually approved within 24–48 hours.
+                  </Text>
+                </div>
+              )}
+
+              {/* Upgrade prompt — Level 1 or Level 2 */}
+              {level >= 1 && level < 3 && step !== 'PHOTO_REQUIRED' && step !== 'PROOF_OF_ADDRESS_REQUIRED' && (
+                <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                  <Text fw={600} className="mb-1 text-[13px] text-[#0F172A]">Upgrade to Level {level + 1}</Text>
+                  <Text fw={400} className="mb-3 text-[12px] text-[#6B7280]">
+                    Increase your limits to <strong>{nextLimits[level]?.single}</strong> per transaction
+                    and <strong>{nextLimits[level]?.daily}</strong> daily.
+                  </Text>
+                  <button
+                    onClick={() => navigate('/kyc')}
+                    className="w-full cursor-pointer rounded-xl bg-[#0F172A] py-2.5 text-[13px] font-semibold text-white hover:bg-[#1E293B]"
+                  >
+                    Upgrade Now
+                  </button>
+                </div>
+              )}
+
+              {/* Fully verified */}
+              {level >= 3 && (
+                <div className="flex items-center gap-2 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-4 py-3">
+                  <IconShieldCheck size={16} color="#02A36E" />
+                  <Text fw={500} className="text-[13px] text-[#065F46]">
+                    Your identity is fully verified. Maximum limits unlocked.
+                  </Text>
+                </div>
               )}
             </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F0FDF4]">
-                <IconBuildingBank size={18} color="#02A36E" />
-              </div>
-              <Text fw={600} className="text-[13px] text-[#0F172A]">BVN Verification</Text>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {kycStatus?.bvnVerified ? (
-                <>
-                  <IconCheck size={14} color="#02A36E" />
-                  <Text fw={500} className="text-[12px] text-[#02A36E]">Verified</Text>
-                </>
-              ) : (
-                <Text fw={500} className="text-[12px] text-[#F59E0B]">Pending</Text>
-              )}
-            </div>
-          </div>
-
-          {!kycApproved && (
-            <button
-              onClick={() => navigate('/kyc')}
-              className="mt-1 w-full cursor-pointer rounded-xl bg-[#0b6b55] py-3 text-[13px] font-semibold text-white hover:bg-[#094f3e]"
-            >
-              {kycStatus?.ninVerified || kycStatus?.bvnVerified ? 'Resume Verification' : 'Start Verification'}
-            </button>
-          )}
-        </div>
+          )
+        })()}
       </div>
 
       {/* Security */}

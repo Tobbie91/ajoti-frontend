@@ -231,6 +231,8 @@ export interface KycStatus {
   status: string // "PENDING" | "APPROVED" | "REJECTED"
   step?: string
   kycLevel: number // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
+  rejectionReason?: string | null
+  verificationData?: Record<string, unknown> | null
   address?: string
   city?: string
   state?: string
