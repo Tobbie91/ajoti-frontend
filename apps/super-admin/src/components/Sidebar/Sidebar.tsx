@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom'
-import { NavLink, Stack, Text, Box, Badge } from '@mantine/core'
+import { NavLink, Stack, Text, Box, Badge, ScrollArea } from '@mantine/core'
 import {
   IconLayoutDashboard,
   IconUsers,
@@ -60,14 +60,15 @@ export function Sidebar({ onClose }: SidebarProps) {
   const visibleBottom = bottomLinks.filter((l) => !l.permission || hasPermission(staffRole, l.permission))
 
   return (
-    <Box>
-      <Box p="md" mb="md">
+    <Box style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box p="md" mb="md" style={{ flexShrink: 0 }}>
         <Text fw={800} fz={22} c="primary.5">
           Ajoti
         </Text>
       </Box>
 
-      <Stack gap={4} px="xs">
+      <ScrollArea style={{ flex: 1 }} type="auto" scrollbarSize={6} offsetScrollbars>
+      <Stack gap={4} px="xs" pb="md">
         {visibleMain.map((link) => (
           <NavLink
             key={link.path}
@@ -122,6 +123,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           />
         ))}
       </Stack>
+      </ScrollArea>
     </Box>
   )
 }

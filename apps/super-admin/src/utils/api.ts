@@ -330,16 +330,6 @@ export function unfreezeAccount(userId: string): Promise<{ success: boolean; dat
   return authRequest(`/api/superadmin/users/${userId}/unfreeze`, { method: 'PATCH' })
 }
 
-export function promoteToSuperadmin(
-  userId: string,
-  staffRole: 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER',
-): Promise<{ success: boolean; data: unknown }> {
-  return authRequest(`/api/superadmin/users/${userId}/promote`, {
-    method: 'PATCH',
-    body: JSON.stringify({ staffRole }),
-  })
-}
-
 export function approveAdminRequest(userId: string): Promise<{ success: boolean; data: unknown }> {
   return authRequest(`/api/superadmin/users/${userId}/approve-admin`, { method: 'PATCH' })
 }
