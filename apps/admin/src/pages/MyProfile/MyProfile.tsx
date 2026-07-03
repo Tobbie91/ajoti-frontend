@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Select, Avatar, Badge, Loader, Modal, Button, PinInput, PasswordInput } from '@mantine/core'
+import { Text, TextInput, Select, Avatar, Badge, Loader, Modal, Button, PinInput, PasswordInput, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   IconUser,
@@ -19,7 +19,7 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi, getUserProfile, updateUserProfile, verifyPendingEmailChange, deleteMyAccount, getKycStatus, type KycStatus } from '@/utils/api'
+import { logout as logoutApi, getUserProfile, updateUserProfile, verifyPendingEmailChange, deleteMyAccount, freezeMyAccount, getKycStatus, type KycStatus } from '@/utils/api'
 import { PhoneInputField } from '@/components'
 
 function getUserFromStorage() {
@@ -71,6 +71,14 @@ export function MyProfile() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  const [accountStatus, setAccountStatus] = useState<string>(getUserFromStorage().status || 'ACTIVE')
+  const [freezeExpanded, setFreezeExpanded] = useState(false)
+  const [freezePassword, setFreezePassword] = useState('')
+  const [freezeReason, setFreezeReason] = useState('')
+  const [freezeAcknowledged, setFreezeAcknowledged] = useState(false)
+  const [freezing, setFreezing] = useState(false)
+  const [freezeError, setFreezeError] = useState<string | null>(null)
+
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -110,6 +118,7 @@ export function MyProfile() {
         setOriginalEmail(profile.email || '')
         setPhone(profile.phone || '')
         setDob((profile.dob as string) || '')
+        if (profile.status) setAccountStatus(profile.status)
         // Update localStorage with fresh data
         localStorage.setItem('admin_user', JSON.stringify(profile))
       })
@@ -219,6 +228,29 @@ export function MyProfile() {
     navigate('/login')
   }
 
+  async function handleFreezeAccount() {
+    setFreezing(true)
+    setFreezeError(null)
+    try {
+      await freezeMyAccount(freezePassword, freezeReason || undefined)
+      setAccountStatus('FROZEN')
+      localStorage.setItem('admin_user', JSON.stringify({ ...getUserFromStorage(), status: 'FROZEN' }))
+      setFreezeExpanded(false)
+      setFreezePassword('')
+      setFreezeReason('')
+      setFreezeAcknowledged(false)
+      notifications.show({
+        message: 'Your account has been frozen. Contact support to unlock it once your identity is verified.',
+        color: 'orange',
+        autoClose: 6000,
+      })
+    } catch (err) {
+      setFreezeError(err instanceof Error ? err.message : 'Failed to freeze account')
+    } finally {
+      setFreezing(false)
+    }
+  }
+
   async function handleDeleteAccount() {
     setDeleting(true)
     setDeleteError(null)
@@ -242,6 +274,20 @@ export function MyProfile() {
         <div className="mb-4 flex items-center gap-2 text-[#6B7280]">
           <Loader size="xs" color="#02A36E" />
           <Text fz="xs">Loading profile...</Text>
+        </div>
+      )}
+
+      {accountStatus === 'FROZEN' && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FED7AA] bg-[#FFF7ED] p-4">
+          <IconLock size={18} color="#F97316" className="mt-0.5 flex-shrink-0" />
+          <div>
+            <Text fw={600} className="text-[13px] text-[#9A3412]">Account Frozen</Text>
+            <Text fw={400} className="mt-0.5 text-[12px] text-[#9A3412]">
+              Withdrawals, bank account changes, and security setting changes are blocked. Contact
+              support and verify your identity to unlock your account — this cannot be undone from
+              within the app.
+            </Text>
+          </div>
         </div>
       )}
 
@@ -605,6 +651,104 @@ export function MyProfile() {
         <IconLogout size={18} />
         Log Out
       </button>
+
+      {/* Freeze My Account */}
+      {accountStatus !== 'FROZEN' && (
+        <div className="mb-4 rounded-2xl border border-[#FED7AA] bg-white p-5">
+          <button
+            onClick={() => setFreezeExpanded(!freezeExpanded)}
+            className="flex w-full cursor-pointer items-center justify-between"
+          >
+            <div className="text-left">
+              <Text fw={600} className="text-[14px] text-[#EA580C]">Freeze My Account</Text>
+              <Text fw={400} className="text-[12px] text-[#9CA3AF]">
+                Temporarily lock down sensitive actions if you suspect your account is compromised.
+              </Text>
+            </div>
+            <span className="text-[#EA580C] text-[18px] flex-shrink-0">{freezeExpanded ? '−' : '+'}</span>
+          </button>
+
+          {freezeExpanded && (
+            <div className="mt-4 flex flex-col gap-4">
+              <div className="rounded-xl bg-[#FFF7ED] px-4 py-3">
+                <Text fw={400} className="text-[12px] text-[#9A3412]">
+                  Freezing is a security measure — not the same as deleting your account, and it's
+                  reversible once support verifies your identity.
+                </Text>
+                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you can still:</Text>
+                <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">
+                  <li>Log in and view your account, balances, and transaction history</li>
+                  <li>Receive ROSCA payouts into your wallet</li>
+                  <li>Make contributions to your ROSCA circles</li>
+                </ul>
+                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you cannot:</Text>
+                <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">
+                  <li>Withdraw money to your bank account</li>
+                  <li>Add, remove, or change saved bank accounts</li>
+                  <li>Change your email, phone number, password, or transaction PIN</li>
+                </ul>
+                <Text fw={400} className="mt-3 text-[12px] text-[#9A3412]">
+                  <strong>To unfreeze:</strong> contact support and verify your identity. There's no way
+                  to unfreeze your account yourself in-app — this is intentional, so a compromised
+                  account can't be un-frozen by whoever compromised it either.
+                </Text>
+              </div>
+
+              {freezeError && (
+                <div className="rounded-xl bg-red-50 px-4 py-3">
+                  <Text fw={500} className="text-[12px] text-red-600">{freezeError}</Text>
+                </div>
+              )}
+
+              <div>
+                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text>
+                <TextInput
+                  placeholder="Why are you freezing your account? (helps support verify you faster)"
+                  value={freezeReason}
+                  onChange={(e) => setFreezeReason(e.currentTarget.value)}
+                  radius="md"
+                  size="sm"
+                  styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+                />
+              </div>
+
+              <div>
+                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+                <PasswordInput
+                  placeholder="Enter your password"
+                  value={freezePassword}
+                  onChange={(e) => setFreezePassword(e.currentTarget.value)}
+                  radius="md"
+                  size="sm"
+                  leftSection={<IconLock size={16} color="#9CA3AF" />}
+                  styles={{ input: { borderColor: '#FED7AA', fontSize: 14 } }}
+                />
+              </div>
+
+              <Checkbox
+                checked={freezeAcknowledged}
+                onChange={(e) => setFreezeAcknowledged(e.currentTarget.checked)}
+                label="I understand my account will be locked out of withdrawals, bank account changes, and security settings until support unlocks it"
+                size="sm"
+                color="orange"
+                styles={{ label: { fontSize: 12, color: '#374151' } }}
+              />
+
+              <button
+                onClick={handleFreezeAccount}
+                disabled={freezing || !freezeAcknowledged || freezePassword.length < 8}
+                className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${
+                  freezing || !freezeAcknowledged || freezePassword.length < 8
+                    ? 'cursor-not-allowed bg-[#FDBA74]'
+                    : 'cursor-pointer bg-[#F97316] hover:bg-[#EA580C]'
+                }`}
+              >
+                {freezing ? 'Freezing...' : 'Freeze My Account'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Delete Account */}
       <div className="rounded-2xl border border-[#FCA5A5] bg-white p-5">

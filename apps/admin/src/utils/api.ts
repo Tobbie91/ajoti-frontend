@@ -288,6 +288,7 @@ export interface UserProfile {
   state?: string
   lga?: string
   role?: string
+  status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'FROZEN'
   [key: string]: unknown
 }
 
@@ -350,6 +351,13 @@ export function deleteMyAccount(currentPassword: string, reason?: string): Promi
   return authRequest('/api/users/me', {
     method: 'DELETE',
     body: JSON.stringify({ currentPassword, confirm: 'DELETE', reason }),
+  })
+}
+
+export function freezeMyAccount(currentPassword: string, reason?: string): Promise<{ message: string; ticketId: string }> {
+  return authRequest('/api/users/me/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, reason }),
   })
 }
 
