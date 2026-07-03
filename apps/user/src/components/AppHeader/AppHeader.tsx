@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom'
 import { Popover, Modal, Text, ScrollArea, Loader } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { IconBell, IconMessageCircle } from '@tabler/icons-react'
+import { IconBell, IconMessageCircle, IconHeadset } from '@tabler/icons-react'
 import styles from './AppHeader.module.css'
 import {
   getNotifications,
@@ -315,6 +315,14 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account', initials: in
         >
           <IconMessageCircle size={22} className={styles.navIconWallet} />
           <span className={styles.navLabel}>Messages</span>
+        </RouterNavLink>
+
+        <RouterNavLink
+          to="/support"
+          className={({ isActive }: { isActive: boolean }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+        >
+          <IconHeadset size={22} className={styles.navIconWallet} />
+          <span className={styles.navLabel}>Support</span>
         </RouterNavLink>
       </nav>
 
