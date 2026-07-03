@@ -497,22 +497,51 @@ export function exportCsv(params: {
   }).then((r) => r.blob())
 }
 
-// ── Wallets ───────────────────────────────────────────────────────────────────
-
-// System accounts (Financial Architecture Phase 1) — ownerless wallets, not people.
-export type SystemAccountType = 'PLATFORM_POOL' | 'PLATFORM_REVENUE' | 'LOAN_FLOAT'
+// ── Wallets (customer wallets only — system accounts have their own page) ─────
 
 export interface WalletRow {
   walletId: string
-  userId: string | null
+  userId: string
   status: string
   currency: string
   createdAt: string
   balanceKobo: string
   balanceNaira: string
   lastActivityAt: string | null
-  user: { id: string; firstName: string; lastName: string; email: string; phone: string | null } | null
-  systemAccountType: SystemAccountType | null
+  user: { id: string; firstName: string; lastName: string; email: string; phone: string | null }
+}
+
+// ── System Accounts (Financial Architecture Phase 1) — ownerless platform accounts ─
+
+export type SystemAccountType = 'PLATFORM_POOL' | 'PLATFORM_REVENUE' | 'LOAN_FLOAT'
+
+export interface SystemAccountRow {
+  type: SystemAccountType
+  walletId: string
+  status: string
+  createdAt: string
+  balanceKobo: string
+  balanceNaira: string
+}
+
+export function listSystemAccounts(): Promise<{ success: boolean; data: SystemAccountRow[] }> {
+  return authRequest<{ success: boolean; data: SystemAccountRow[] }>(
+    '/api/superadmin/finance/system-accounts',
+    { method: 'GET' },
+  )
+}
+
+export interface CapitalizeResult {
+  capitalizationId: string
+  amountKobo: string
+  floatBalanceKobo: string
+}
+
+export function capitalizeLoanFloat(amountKobo: number, note: string): Promise<{ success: boolean; data: CapitalizeResult }> {
+  return authRequest<{ success: boolean; data: CapitalizeResult }>(
+    '/api/superadmin/finance/loan-float/capitalize',
+    { method: 'POST', body: JSON.stringify({ amountKobo, note }) },
+  )
 }
 
 export interface WalletResetResult {

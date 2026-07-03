@@ -16,6 +16,7 @@ import {
   IconWallet,
   IconHeadset,
   IconUsersGroup,
+  IconBuildingBank,
 } from '@tabler/icons-react'
 import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
@@ -27,6 +28,7 @@ const mainLinks: NavLink_[] = [
   { label: 'KYC Approvals', icon: IconShieldCheck,      path: '/kyc-approvals',permission: 'MANAGE_KYC' },
   { label: 'Manage ROSCA',  icon: IconTopologyRing,     path: '/manage-rosca', permission: 'MANAGE_CIRCLES' },
   { label: 'Wallets',       icon: IconWallet,            path: '/wallets',      permission: 'VIEW_LEDGER' },
+  { label: 'Platform Accounts', icon: IconBuildingBank,  path: '/system-accounts', permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Trust Scores',  icon: IconAward,             path: '/trust-scores', permission: null },
   { label: 'Simulations',   icon: IconTestPipe,          path: '/simulations',  permission: 'MANAGE_CIRCLES' },
   { label: 'Support',       icon: IconHeadset,           path: '/support',      permission: 'MANAGE_TICKETS' },

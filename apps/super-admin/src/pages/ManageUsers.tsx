@@ -696,7 +696,6 @@ export function ManageUsers() {
           data={[
             { value: 'MEMBER', label: 'Member' },
             { value: 'CIRCLE_ADMIN', label: 'Circle Admin' },
-            { value: 'STAFF', label: 'Staff' },
           ]}
           value={roleFilter}
           onChange={(v) => { setRoleFilter(v); setPage(1) }}

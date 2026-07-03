@@ -15,6 +15,7 @@ import {
   TrustScores,
   Simulations,
   Wallets,
+  SystemAccounts,
   SupportInbox,
   SupportTicketDetail,
   StaffManagement,
@@ -71,6 +72,11 @@ function App() {
             <Route element={<RequirePermission permission="VIEW_LEDGER" />}>
               <Route path="/wallets" element={<Wallets />} />
               <Route path="/transactions" element={<Transactions />} />
+            </Route>
+
+            {/* VIEW_SYSTEM_ACCOUNTS — COMPLIANCE (read-only), OPERATIONS, MANAGER, SUPERADMIN */}
+            <Route element={<RequirePermission permission="VIEW_SYSTEM_ACCOUNTS" />}>
+              <Route path="/system-accounts" element={<SystemAccounts />} />
             </Route>
 
             {/* MANAGE_ADMIN_ACCOUNTS — SUPERADMIN only */}
