@@ -693,7 +693,11 @@ export function ManageUsers() {
         />
         <Select
           placeholder="Role"
-          data={['MEMBER', 'ADMIN', 'SUPERADMIN']}
+          data={[
+            { value: 'MEMBER', label: 'Member' },
+            { value: 'CIRCLE_ADMIN', label: 'Circle Admin' },
+            { value: 'STAFF', label: 'Staff' },
+          ]}
           value={roleFilter}
           onChange={(v) => { setRoleFilter(v); setPage(1) }}
           size="sm"
@@ -702,7 +706,7 @@ export function ManageUsers() {
         />
         <Select
           placeholder="Status"
-          data={['ACTIVE', 'SUSPENDED', 'BANNED']}
+          data={['ACTIVE', 'SUSPENDED', 'BANNED', 'FROZEN']}
           value={statusFilter}
           onChange={(v) => { setStatusFilter(v); setPage(1) }}
           size="sm"
