@@ -17,10 +17,26 @@ import {
   IconUsers,
   IconLock,
   IconChevronRight,
+  IconPlus,
+  IconStar,
+  IconTrash,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi, getUserProfile, updateUserProfile, verifyPendingEmailChange, deleteMyAccount, freezeMyAccount, getKycStatus, type KycStatus } from '@/utils/api'
-import { PhoneInputField } from '@/components'
+import {
+  logout as logoutApi,
+  getUserProfile,
+  updateUserProfile,
+  verifyPendingEmailChange,
+  deleteMyAccount,
+  freezeMyAccount,
+  getKycStatus,
+  listBankAccounts,
+  removeBankAccount,
+  setDefaultBankAccount,
+  type KycStatus,
+  type SavedBankAccount,
+} from '@/utils/api'
+import { PhoneInputField, AddBankAccountModal } from '@/components'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('admin_user')
@@ -79,6 +95,12 @@ export function MyProfile() {
   const [freezing, setFreezing] = useState(false)
   const [freezeError, setFreezeError] = useState<string | null>(null)
 
+  const [bankAccounts, setBankAccounts] = useState<SavedBankAccount[]>([])
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(true)
+  const [addBankModalOpen, setAddBankModalOpen] = useState(false)
+  const [removingBank, setRemovingBank] = useState<string | null>(null)
+  const [settingDefault, setSettingDefault] = useState<string | null>(null)
+
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -136,6 +158,50 @@ export function MyProfile() {
       setLga(kycStatus.lga || '')
     }
   }, [kycStatus])
+
+  useEffect(() => {
+    listBankAccounts()
+      .then((res) => setBankAccounts(res.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingBankAccounts(false))
+  }, [])
+
+  async function handleRemoveBankAccount(id: string) {
+    setRemovingBank(id)
+    try {
+      await removeBankAccount(id)
+      setBankAccounts((prev) => prev.filter((a) => a.id !== id))
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : 'Failed to remove account',
+        color: 'red',
+        autoClose: 4000,
+      })
+    } finally {
+      setRemovingBank(null)
+    }
+  }
+
+  async function handleSetDefaultBankAccount(id: string) {
+    setSettingDefault(id)
+    try {
+      await setDefaultBankAccount(id)
+      setBankAccounts((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })))
+      notifications.show({
+        message: 'Default account updated',
+        color: 'green',
+        autoClose: 3000,
+      })
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : 'Failed to update default',
+        color: 'red',
+        autoClose: 4000,
+      })
+    } finally {
+      setSettingDefault(null)
+    }
+  }
 
   async function handleSendEmailOtp() {
     if (!currentPasswordForEmail) {
@@ -519,6 +585,93 @@ export function MyProfile() {
           <IconChevronRight size={16} color="#9CA3AF" />
         </button>
       </div>
+
+      {/* Bank Accounts */}
+      <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <Text fw={600} className="text-[16px] text-[#0F172A]">Bank Accounts</Text>
+          <button
+            onClick={() => setAddBankModalOpen(true)}
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#F0FDF4] px-3 py-1.5 text-[12px] font-medium text-[#02A36E] hover:bg-[#dcfce7]"
+          >
+            <IconPlus size={13} /> Add
+          </button>
+        </div>
+
+        {loadingBankAccounts ? (
+          <div className="flex items-center gap-2 py-3">
+            <Loader size={14} color="#02A36E" />
+            <Text fw={400} className="text-[13px] text-[#6B7280]">Loading...</Text>
+          </div>
+        ) : bankAccounts.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-6 text-center">
+            <IconBuildingBank size={24} color="#9CA3AF" className="mx-auto mb-2" />
+            <Text fw={400} className="text-[13px] text-[#6B7280]">No bank accounts saved yet.</Text>
+            <Text fw={400} className="text-[12px] text-[#9CA3AF]">
+              Add one to speed up future withdrawals.
+            </Text>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {bankAccounts.map((acc) => (
+              <div
+                key={acc.id}
+                className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Text fw={600} className="text-[14px] text-[#0F172A]">{acc.accountName}</Text>
+                    {acc.isDefault && (
+                      <span className="rounded-full bg-[#F0FDF4] px-2 py-0.5 text-[11px] font-medium text-[#02A36E]">
+                        Default
+                      </span>
+                    )}
+                  </div>
+                  <Text fw={400} className="text-[12px] text-[#6B7280]">
+                    {acc.accountNumber} · {acc.bankName}
+                  </Text>
+                </div>
+                <div className="flex items-center gap-1">
+                  {!acc.isDefault && (
+                    <button
+                      onClick={() => handleSetDefaultBankAccount(acc.id)}
+                      disabled={settingDefault === acc.id}
+                      title="Set as default"
+                      className="cursor-pointer rounded-lg p-1.5 text-[#9CA3AF] hover:bg-[#F0FDF4] hover:text-[#02A36E] disabled:opacity-40"
+                    >
+                      {settingDefault === acc.id ? (
+                        <Loader size={14} color="#02A36E" />
+                      ) : (
+                        <IconStar size={15} />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleRemoveBankAccount(acc.id)}
+                    disabled={removingBank === acc.id}
+                    className="cursor-pointer rounded-lg p-1.5 text-[#9CA3AF] hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
+                  >
+                    {removingBank === acc.id ? (
+                      <Loader size={14} color="#9CA3AF" />
+                    ) : (
+                      <IconTrash size={15} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AddBankAccountModal
+        opened={addBankModalOpen}
+        onClose={() => setAddBankModalOpen(false)}
+        onSuccess={(acc) => {
+          setBankAccounts((prev) => [...prev, acc])
+          setAddBankModalOpen(false)
+        }}
+      />
 
       {/* Save button */}
       {editing && (

@@ -819,6 +819,56 @@ export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<
   return ('data' in res && res.data ? res.data : res) as Record<string, unknown>
 }
 
+// ── Saved Bank Accounts ───────────────────────────────────────────────────────
+
+export interface BankOption {
+  id: number
+  code: string
+  name: string
+}
+
+export async function getBanks(): Promise<BankOption[]> {
+  const res = await authRequest<{ data: BankOption[] }>('/api/wallet/withdrawal/banks', { method: 'GET' })
+  return res.data ?? []
+}
+
+export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ account_number: string; account_name: string }> {
+  const res = await authRequest<{ data: { account_number: string; account_name: string } }>(
+    '/api/wallet/withdrawal/resolve-account',
+    { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) },
+  )
+  return res.data
+}
+
+export interface SavedBankAccount {
+  id: string
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  isDefault: boolean
+  createdAt: string
+}
+
+export function listBankAccounts(): Promise<{ data: SavedBankAccount[] }> {
+  return authRequest('/api/users/me/bank-accounts', { method: 'GET' })
+}
+
+export function addBankAccount(bankCode: string, bankName: string, accountNumber: string, transactionPin: string): Promise<{ data: SavedBankAccount }> {
+  return authRequest('/api/users/me/bank-accounts', {
+    method: 'POST',
+    body: JSON.stringify({ bankCode, bankName, accountNumber, transactionPin }),
+  })
+}
+
+export function removeBankAccount(id: string): Promise<{ data: { deleted: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}`, { method: 'DELETE' })
+}
+
+export function setDefaultBankAccount(id: string): Promise<{ data: { updated: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}/set-default`, { method: 'PATCH' })
+}
+
 // ── Transaction PIN ───────────────────────────────────────────────────────────
 
 export function setTransactionPin(pin: string, currentPin?: string): Promise<{ message: string }> {
