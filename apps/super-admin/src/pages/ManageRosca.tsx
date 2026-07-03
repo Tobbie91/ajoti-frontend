@@ -5,7 +5,6 @@ import {
   Drawer,
   Group,
   Loader,
-  Menu,
   Pagination,
   Paper,
   Select,
@@ -25,7 +24,6 @@ import { useDisclosure } from '@mantine/hooks'
 import {
   IconAlertCircle,
   IconCircleX,
-  IconDots,
   IconEye,
   IconFlag,
   IconRefresh,
@@ -511,18 +509,18 @@ function CirclesTab() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={900}>
-        <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={1000}>
+        <Table highlightOnHover layout="fixed">
           <Table.Thead>
             <Table.Tr bg="#0B6B55">
-              <Table.Th c="white">Name</Table.Th>
-              <Table.Th c="white">Admin</Table.Th>
-              <Table.Th c="white">Contribution</Table.Th>
-              <Table.Th c="white">Frequency</Table.Th>
-              <Table.Th c="white">Cycle</Table.Th>
-              <Table.Th c="white">Members</Table.Th>
-              <Table.Th c="white">Status</Table.Th>
-              <Table.Th c="white" />
+              <Table.Th c="white" w={200}>Name</Table.Th>
+              <Table.Th c="white" w={200}>Admin</Table.Th>
+              <Table.Th c="white" w={140}>Contribution</Table.Th>
+              <Table.Th c="white" w={110}>Frequency</Table.Th>
+              <Table.Th c="white" w={90}>Cycle</Table.Th>
+              <Table.Th c="white" w={100}>Members</Table.Th>
+              <Table.Th c="white" w={130}>Status</Table.Th>
+              <Table.Th c="white" w={50} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -562,21 +560,9 @@ function CirclesTab() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Menu shadow="md" width={180} position="bottom-end">
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" color="gray">
-                          <IconDots size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconEye size={14} />}
-                          onClick={() => openCircleDetail(c.id)}
-                        >
-                          View Detail
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
+                    <ActionIcon variant="subtle" color="dark" onClick={() => openCircleDetail(c.id)} title="View detail">
+                      <IconEye size={18} />
+                    </ActionIcon>
                   </Table.Td>
                 </Table.Tr>
               ))
@@ -633,16 +619,16 @@ function DefaultersTab() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={700}>
-        <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={900}>
+        <Table highlightOnHover layout="fixed">
           <Table.Thead>
             <Table.Tr bg="#0B6B55">
-              <Table.Th c="white">User</Table.Th>
-              <Table.Th c="white">Email</Table.Th>
-              <Table.Th c="white">Circle</Table.Th>
-              <Table.Th c="white">Amount Owed</Table.Th>
-              <Table.Th c="white">Missed Cycles</Table.Th>
-              <Table.Th c="white">Status</Table.Th>
+              <Table.Th c="white" w={180}>User</Table.Th>
+              <Table.Th c="white" w={220}>Email</Table.Th>
+              <Table.Th c="white" w={160}>Circle</Table.Th>
+              <Table.Th c="white" w={140}>Amount Owed</Table.Th>
+              <Table.Th c="white" w={130}>Missed Cycles</Table.Th>
+              <Table.Th c="white" w={100}>Status</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

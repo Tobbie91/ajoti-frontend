@@ -326,16 +326,16 @@ export function Transactions() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={800}>
-          <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={950}>
+          <Table highlightOnHover layout="fixed">
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white">Date</Table.Th>
-                <Table.Th c="white">Type</Table.Th>
-                <Table.Th c="white">Amount</Table.Th>
-                <Table.Th c="white">Balance After</Table.Th>
-                <Table.Th c="white">Reference</Table.Th>
-                <Table.Th c="white">User</Table.Th>
+                <Table.Th c="white" w={140}>Date</Table.Th>
+                <Table.Th c="white" w={130}>Type</Table.Th>
+                <Table.Th c="white" w={140}>Amount</Table.Th>
+                <Table.Th c="white" w={150}>Balance After</Table.Th>
+                <Table.Th c="white" w={190}>Reference</Table.Th>
+                <Table.Th c="white" w={200}>User</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>

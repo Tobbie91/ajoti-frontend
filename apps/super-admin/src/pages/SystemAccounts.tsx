@@ -143,14 +143,14 @@ export function SystemAccounts() {
       </Text>
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={720}>
-          <Table striped highlightOnHover styles={{ th: { padding: '14px 18px' }, td: { padding: '14px 18px' } }}>
+        <Table.ScrollContainer minWidth={820}>
+          <Table striped highlightOnHover layout="fixed" styles={{ th: { padding: '14px 18px' }, td: { padding: '14px 18px' } }}>
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white">Account</Table.Th>
-                <Table.Th c="white">Balance</Table.Th>
-                <Table.Th c="white">Status</Table.Th>
-                <Table.Th c="white">Created</Table.Th>
+                <Table.Th c="white" w={260}>Account</Table.Th>
+                <Table.Th c="white" w={200}>Balance</Table.Th>
+                <Table.Th c="white" w={160}>Status</Table.Th>
+                <Table.Th c="white" w={200}>Created</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
