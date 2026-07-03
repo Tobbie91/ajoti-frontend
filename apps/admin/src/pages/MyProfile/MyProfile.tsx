@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Select, Avatar, Badge, Loader } from '@mantine/core'
+import { Text, TextInput, Select, Avatar, Badge, Loader, Modal, Button, PinInput, PasswordInput } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import {
   IconUser,
   IconMail,
@@ -18,7 +19,7 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { logout as logoutApi, getUserProfile, updateUserProfile, getKycStatus, type KycStatus } from '@/utils/api'
+import { logout as logoutApi, getUserProfile, updateUserProfile, verifyPendingEmailChange, deleteMyAccount, getKycStatus, type KycStatus } from '@/utils/api'
 import { PhoneInputField } from '@/components'
 
 function getUserFromStorage() {
@@ -60,10 +61,26 @@ export function MyProfile() {
 
   const [kycStatus, setKycStatus] = useState<KycStatus | null>(null)
   const kycApproved = kycStatus?.status === 'APPROVED'
+  // Mirrors the backend name-lock: names are immutable once identity is Mono-verified
+  const nameLocked = Boolean(kycStatus?.ninVerified || kycStatus?.bvnVerified)
+
+  const [deleteExpanded, setDeleteExpanded] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
+  const [originalEmail, setOriginalEmail] = useState('')
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailModalStep, setEmailModalStep] = useState<'password' | 'otp'>('password')
+  const [currentPasswordForEmail, setCurrentPasswordForEmail] = useState('')
+  const [emailOtp, setEmailOtp] = useState('')
+  const [emailVerificationError, setEmailVerificationError] = useState<string | null>(null)
+  const [emailVerificationLoading, setEmailVerificationLoading] = useState(false)
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
@@ -80,11 +97,8 @@ export function MyProfile() {
     setFirstName(stored.firstName || stored.firstname || '')
     setLastName(stored.lastName || stored.lastname || '')
     setEmail(stored.email || '')
+    setOriginalEmail(stored.email || '')
     setPhone(stored.phone || '')
-    setAddress(stored.address || '')
-    setCity(stored.city || '')
-    setState(stored.state || null)
-    setLga(stored.lga || '')
     setDob(stored.dob || '')
 
     // Fetch fresh from API
@@ -93,11 +107,8 @@ export function MyProfile() {
         setFirstName(profile.firstName || '')
         setLastName(profile.lastName || '')
         setEmail(profile.email || '')
+        setOriginalEmail(profile.email || '')
         setPhone(profile.phone || '')
-        setAddress((profile.address as string) || '')
-        setCity((profile.city as string) || '')
-        setState((profile.state as string) || null)
-        setLga((profile.lga as string) || '')
         setDob((profile.dob as string) || '')
         // Update localStorage with fresh data
         localStorage.setItem('admin_user', JSON.stringify(profile))
@@ -108,12 +119,81 @@ export function MyProfile() {
     getKycStatus().then(setKycStatus).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (kycStatus) {
+      setAddress(kycStatus.address || '')
+      setCity(kycStatus.city || '')
+      setState(kycStatus.state || null)
+      setLga(kycStatus.lga || '')
+    }
+  }, [kycStatus])
+
+  async function handleSendEmailOtp() {
+    if (!currentPasswordForEmail) {
+      setEmailVerificationError('Password is required')
+      return
+    }
+    setEmailVerificationError(null)
+    setEmailVerificationLoading(true)
+    try {
+      await updateUserProfile({
+        firstName,
+        lastName,
+        phone,
+        email,
+        currentPassword: currentPasswordForEmail,
+      })
+      setEmailModalStep('otp')
+    } catch (err) {
+      setEmailVerificationError(err instanceof Error ? err.message : 'Failed to send verification code')
+    } finally {
+      setEmailVerificationLoading(false)
+    }
+  }
+
+  async function handleVerifyEmailOtp() {
+    if (emailOtp.length !== 6) {
+      setEmailVerificationError('Please enter a 6-digit code')
+      return
+    }
+    setEmailVerificationError(null)
+    setEmailVerificationLoading(true)
+    try {
+      await verifyPendingEmailChange(emailOtp)
+      const updatedUser = { ...getUserFromStorage(), email }
+      localStorage.setItem('admin_user', JSON.stringify(updatedUser))
+      setOriginalEmail(email)
+      
+      notifications.show({
+        message: 'Email address updated successfully',
+        color: 'green',
+        autoClose: 3000,
+      })
+      setEmailModalOpen(false)
+      setEditing(false)
+    } catch (err) {
+      setEmailVerificationError(err instanceof Error ? err.message : 'Invalid code')
+    } finally {
+      setEmailVerificationLoading(false)
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
     try {
-      const res = await updateUserProfile({ firstName, lastName, phone, address, city, state: state ?? undefined, lga })
+      if (email !== originalEmail) {
+        setEmailModalOpen(true)
+        setEmailModalStep('password')
+        setCurrentPasswordForEmail('')
+        setEmailOtp('')
+        setEmailVerificationError(null)
+        setSaving(false)
+        return
+      }
+
+      const res = await updateUserProfile({ firstName, lastName, phone })
       if (res.data) localStorage.setItem('admin_user', JSON.stringify(res.data))
       setSaveSuccess(true)
       setEditing(false)
@@ -137,6 +217,23 @@ export function MyProfile() {
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_kyc_completed')
     navigate('/login')
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteMyAccount(deletePassword, deleteReason || undefined)
+      localStorage.removeItem('admin_access_token')
+      localStorage.removeItem('admin_refresh_token')
+      localStorage.removeItem('admin_user')
+      localStorage.removeItem('admin_kyc_completed')
+      navigate('/login')
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete account')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -200,7 +297,7 @@ export function MyProfile() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">First Name</Text>
-              {editing ? (
+              {editing && !nameLocked ? (
                 <TextInput value={firstName} onChange={(e) => setFirstName(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconUser size={16} color="#9CA3AF" />} styles={inputStyles} />
               ) : (
                 <div className="flex items-center gap-2">
@@ -211,7 +308,7 @@ export function MyProfile() {
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Last Name</Text>
-              {editing ? (
+              {editing && !nameLocked ? (
                 <TextInput value={lastName} onChange={(e) => setLastName(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconUser size={16} color="#9CA3AF" />} styles={inputStyles} />
               ) : (
                 <div className="flex items-center gap-2">
@@ -221,6 +318,12 @@ export function MyProfile() {
               )}
             </div>
           </div>
+          {editing && nameLocked && (
+            <Text fw={400} className="-mt-2 text-[11px] text-[#9CA3AF]">
+              Your name is verified with your BVN/NIN and can no longer be changed here. Contact
+              support if it needs correcting.
+            </Text>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -267,39 +370,23 @@ export function MyProfile() {
         <div className="flex flex-col gap-4">
           <div>
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">House Address</Text>
-            {editing ? (
-              <TextInput value={address} onChange={(e) => setAddress(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconMapPin size={16} color="#9CA3AF" />} styles={inputStyles} />
-            ) : (
-              <div className="flex items-center gap-2">
-                <IconMapPin size={15} color="#9CA3AF" />
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{address || '—'}</Text>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <IconMapPin size={15} color="#9CA3AF" />
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{address || '—'}</Text>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">City</Text>
-              {editing ? (
-                <TextInput value={city} onChange={(e) => setCity(e.currentTarget.value)} radius="md" size="sm" styles={inputStyles} />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{city || '—'}</Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{city || '—'}</Text>
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">State</Text>
-              {editing ? (
-                <Select data={NIGERIAN_STATES} value={state} onChange={setState} radius="md" size="sm" searchable styles={inputStyles} />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{state || '—'}</Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{state || '—'}</Text>
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">LGA</Text>
-              {editing ? (
-                <TextInput value={lga} onChange={(e) => setLga(e.currentTarget.value)} radius="md" size="sm" styles={inputStyles} />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">{lga || '—'}</Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">{lga || '—'}</Text>
             </div>
           </div>
         </div>
@@ -414,14 +501,187 @@ export function MyProfile() {
         </div>
       )}
 
+      <Modal
+        opened={emailModalOpen}
+        onClose={() => {
+          if (!emailVerificationLoading) setEmailModalOpen(false)
+        }}
+        title={<Text fw={700} className="text-[16px] text-[#0F172A]">Verify Email Change</Text>}
+        centered
+        radius="md"
+        size="sm"
+        withCloseButton={!emailVerificationLoading}
+      >
+        {emailModalStep === 'password' ? (
+          <div className="flex flex-col gap-4">
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              To update your email address to <strong>{email}</strong>, please enter your current account password.
+            </Text>
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+              <PasswordInput
+                placeholder="Enter password"
+                value={currentPasswordForEmail}
+                onChange={(e) => setCurrentPasswordForEmail(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+              />
+            </div>
+            {emailVerificationError && (
+              <Text fw={500} className="text-[12px] text-red-600">
+                {emailVerificationError}
+              </Text>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => setEmailModalOpen(false)}
+                disabled={emailVerificationLoading}
+                size="xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                bg="#02A36E"
+                onClick={handleSendEmailOtp}
+                loading={emailVerificationLoading}
+                size="xs"
+              >
+                Send Code
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              We've sent a 6-digit verification code to <strong>{email}</strong>. Enter it below to complete the change.
+            </Text>
+            <div className="flex justify-center my-2">
+              <PinInput
+                length={6}
+                value={emailOtp}
+                onChange={setEmailOtp}
+                type="number"
+                oneTimeCode
+                autoFocus
+              />
+            </div>
+            {emailVerificationError && (
+              <Text fw={500} className="text-[12px] text-red-600 text-center">
+                {emailVerificationError}
+              </Text>
+            )}
+            <div className="flex flex-col gap-2 mt-2">
+              <Button
+                bg="#02A36E"
+                onClick={handleVerifyEmailOtp}
+                loading={emailVerificationLoading}
+                size="sm"
+                fullWidth
+              >
+                Verify & Update Email
+              </Button>
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => setEmailModalStep('password')}
+                disabled={emailVerificationLoading}
+                size="xs"
+              >
+                Back
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Logout */}
       <button
         onClick={handleLogout}
-        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EF4444] bg-white py-3.5 text-[14px] font-semibold text-[#EF4444] hover:bg-[#FEF2F2]"
+        className="mb-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EF4444] bg-white py-3.5 text-[14px] font-semibold text-[#EF4444] hover:bg-[#FEF2F2]"
       >
         <IconLogout size={18} />
         Log Out
       </button>
+
+      {/* Delete Account */}
+      <div className="rounded-2xl border border-[#FCA5A5] bg-white p-5">
+        <button
+          onClick={() => setDeleteExpanded(!deleteExpanded)}
+          className="flex w-full cursor-pointer items-center justify-between"
+        >
+          <Text fw={600} className="text-[14px] text-[#EF4444]">Delete Account</Text>
+          <span className="text-[#EF4444] text-[18px]">{deleteExpanded ? '−' : '+'}</span>
+        </button>
+
+        {deleteExpanded && (
+          <div className="mt-4 flex flex-col gap-4">
+            <Text fw={400} className="text-[12px] text-[#6B7280]">
+              This permanently closes your account, deletes your data, and cannot be undone.
+              Make sure your wallet balance is zero and you have no active circle memberships before proceeding.
+            </Text>
+
+            {deleteError && (
+              <div className="rounded-xl bg-red-50 px-4 py-3">
+                <Text fw={500} className="text-[12px] text-red-600">{deleteError}</Text>
+              </div>
+            )}
+
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+              <PasswordInput
+                placeholder="Enter your password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                leftSection={<IconLock size={16} color="#9CA3AF" />}
+                styles={{ input: { borderColor: '#FCA5A5', fontSize: 14 } }}
+              />
+            </div>
+
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text>
+              <TextInput
+                placeholder="Why are you leaving?"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+              />
+            </div>
+
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
+                Type <strong>DELETE</strong> to confirm
+              </Text>
+              <TextInput
+                placeholder="DELETE"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                styles={{ input: { borderColor: '#FCA5A5', fontSize: 14 } }}
+              />
+            </div>
+
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting || deleteConfirm !== 'DELETE' || deletePassword.length < 8}
+              className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${
+                deleting || deleteConfirm !== 'DELETE' || deletePassword.length < 8
+                  ? 'cursor-not-allowed bg-[#FCA5A5]'
+                  : 'cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]'
+              }`}
+            >
+              {deleting ? 'Deleting...' : 'Permanently Delete Account'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,8 +1,11 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly code?: number) {
+  readonly code?: number
+
+  constructor(message: string, code?: number) {
     super(message)
+    this.code = code
     this.name = 'ApiError'
   }
 }
@@ -116,6 +119,7 @@ export interface UserProfile {
   state?: string
   lga?: string
   role?: string
+  status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'FROZEN'
   adminRequestedAt?: string | null
   [key: string]: unknown
 }
@@ -131,6 +135,13 @@ export async function updateUserProfile(payload: Partial<UserProfile>): Promise<
     body: JSON.stringify(payload),
   })
   return ('data' in res && res.data ? res.data : res) as UserProfile
+}
+
+export async function verifyPendingEmailChange(otp: string): Promise<{ message: string; data?: UserProfile }> {
+  return authRequest('/api/users/me/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ otp }),
+  })
 }
 
 export async function login(email: string, password: string): Promise<{ token: string; refreshToken: string; user: UserProfile }> {
@@ -263,6 +274,10 @@ export interface KycStatus {
   kycLevel: number  // 0 = none, 1 = Prove+NOK, 2 = +GovID via Mono, 3 = +Address via Mono
   rejectionReason?: string | null
   verificationData?: Record<string, unknown> | null
+  address?: string
+  city?: string
+  state?: string
+  lga?: string
 }
 
 export function getKycStatus(): Promise<KycStatus> {
@@ -320,6 +335,13 @@ export function deleteMyAccount(currentPassword: string, reason?: string): Promi
   return authRequest('/api/users/me', {
     method: 'DELETE',
     body: JSON.stringify({ currentPassword, confirm: 'DELETE', reason }),
+  })
+}
+
+export function freezeMyAccount(currentPassword: string, reason?: string): Promise<{ message: string; ticketId: string }> {
+  return authRequest('/api/users/me/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, reason }),
   })
 }
 

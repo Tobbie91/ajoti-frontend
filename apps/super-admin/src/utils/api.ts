@@ -1,8 +1,11 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly code?: number) {
+  readonly code?: number
+
+  constructor(message: string, code?: number) {
     super(message)
+    this.code = code
     this.name = 'ApiError'
   }
 }
@@ -148,7 +151,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 export async function login(
   email: string,
   password: string,
-): Promise<{ token: string; refreshToken: string; user: SuperadminUser }> {
+): Promise<{ token: string; refreshToken: string; user: SuperadminUser; mustChangePassword: boolean }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -180,7 +183,7 @@ export async function login(
     staffRole: (jwtPayload.staffRole ?? null) as string | null,
   }
 
-  return { token, refreshToken, user }
+  return { token, refreshToken, user, mustChangePassword: Boolean(payload.mustChangePassword) }
 }
 
 export function logoutApi(refreshToken: string): Promise<{ message: string }> {
@@ -320,6 +323,13 @@ export function updateUserStatus(
   })
 }
 
+// Distinct from updateUserStatus — only valid on FROZEN accounts, and is the final step
+// after identity verification has already happened outside the app. Not a generic
+// reactivate; the backend rejects lifting a freeze via updateUserStatus entirely.
+export function unfreezeAccount(userId: string): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/unfreeze`, { method: 'PATCH' })
+}
+
 export function promoteToSuperadmin(
   userId: string,
   staffRole: 'SUPERADMIN' | 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER',
@@ -436,6 +446,7 @@ export function getLedger(params: {
   page?: number
   limit?: number
   userId?: string
+  walletId?: string
   reference?: string
   sourceType?: string
   from?: string
@@ -486,7 +497,7 @@ export function exportCsv(params: {
   }).then((r) => r.blob())
 }
 
-// ── Wallets ───────────────────────────────────────────────────────────────────
+// ── Wallets (customer wallets only — system accounts have their own page) ─────
 
 export interface WalletRow {
   walletId: string
@@ -498,6 +509,39 @@ export interface WalletRow {
   balanceNaira: string
   lastActivityAt: string | null
   user: { id: string; firstName: string; lastName: string; email: string; phone: string | null }
+}
+
+// ── System Accounts (Financial Architecture Phase 1) — ownerless platform accounts ─
+
+export type SystemAccountType = 'PLATFORM_POOL' | 'PLATFORM_REVENUE' | 'LOAN_FLOAT'
+
+export interface SystemAccountRow {
+  type: SystemAccountType
+  walletId: string
+  status: string
+  createdAt: string
+  balanceKobo: string
+  balanceNaira: string
+}
+
+export function listSystemAccounts(): Promise<{ success: boolean; data: SystemAccountRow[] }> {
+  return authRequest<{ success: boolean; data: SystemAccountRow[] }>(
+    '/api/superadmin/finance/system-accounts',
+    { method: 'GET' },
+  )
+}
+
+export interface CapitalizeResult {
+  capitalizationId: string
+  amountKobo: string
+  floatBalanceKobo: string
+}
+
+export function capitalizeLoanFloat(amountKobo: number, note: string): Promise<{ success: boolean; data: CapitalizeResult }> {
+  return authRequest<{ success: boolean; data: CapitalizeResult }>(
+    '/api/superadmin/finance/loan-float/capitalize',
+    { method: 'POST', body: JSON.stringify({ amountKobo, note }) },
+  )
 }
 
 export interface WalletResetResult {
@@ -887,8 +931,8 @@ export interface StaffUserRow {
 export interface StaffInviteRow {
   type: 'INVITE'
   id: string
-  firstName: null
-  lastName: null
+  firstName: string
+  lastName: string
   email: string
   staffRole: StaffAdminRole
   status: 'PENDING'
@@ -918,16 +962,37 @@ export function listStaff(params: {
   status?: 'ACTIVE' | 'SUSPENDED'
 } = {}): Promise<PaginatedResponse<StaffRow>> {
   const q = new URLSearchParams(
-    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && (v as unknown) !== '')) as Record<string, string>,
   ).toString()
   return authRequest(`/api/superadmin/staff?${q}`, { method: 'GET' })
 }
 
 export function inviteStaff(dto: {
   email: string
+  firstName: string
+  lastName: string
   staffRole: StaffAdminRole
 }): Promise<{ message: string }> {
   return authRequest('/api/superadmin/staff/invite', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+// Creates a real, immediately-active staff account with an admin-supplied TEMPORARY
+// password — the new staff member must change it at first login before they can do
+// anything else. No email is sent; the admin hands over the credentials directly.
+export function createStaff(dto: {
+  email: string
+  firstName: string
+  lastName: string
+  staffRole: StaffAdminRole
+  phone: string
+  dob: string
+  gender: 'MALE' | 'FEMALE'
+  tempPassword: string
+}): Promise<{ message: string; userId: string }> {
+  return authRequest('/api/superadmin/staff/create', {
     method: 'POST',
     body: JSON.stringify(dto),
   })
@@ -977,6 +1042,43 @@ export function staffSetup(dto: {
   password: string
 }): Promise<{ accessToken: string; refreshToken: string; expiresIn: string; message: string }> {
   return request('/api/auth/staff/setup', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+// ── Account ──────────────────────────────────────────────────────────────────
+
+export function changePassword(dto: {
+  oldPassword: string
+  newPassword: string
+}): Promise<{ message: string }> {
+  return authRequest('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+export function forgotPassword(email: string): Promise<{ message: string }> {
+  return request('/api/auth/forget-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resendResetOtp(email: string): Promise<{ message: string }> {
+  return request('/api/auth/resend-reset-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword(dto: {
+  email: string
+  otp: string
+  newPassword: string
+}): Promise<{ message: string }> {
+  return request('/api/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify(dto),
   })

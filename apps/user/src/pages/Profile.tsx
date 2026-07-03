@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Select, Avatar, Loader } from '@mantine/core'
+import { Text, TextInput, Select, Avatar, Loader, Modal, Button, PinInput, PasswordInput, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   IconArrowLeft,
@@ -26,9 +26,11 @@ import {
   logout as logoutApi,
   getUserProfile,
   updateUserProfile,
+  verifyPendingEmailChange,
   getKycStatus,
   requestAdminAccess,
   deleteMyAccount,
+  freezeMyAccount,
   listBankAccounts,
   removeBankAccount,
   setDefaultBankAccount,
@@ -123,15 +125,25 @@ export function Profile() {
   const [firstName, setFirstName] = useState(user.firstName || user.firstname || '')
   const [lastName, setLastName] = useState(user.lastName || user.lastname || '')
   const [email, setEmail] = useState(user.email || '')
+  const [originalEmail, setOriginalEmail] = useState(user.email || '')
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailModalStep, setEmailModalStep] = useState<'password' | 'otp'>('password')
+  const [currentPasswordForEmail, setCurrentPasswordForEmail] = useState('')
+  const [emailOtp, setEmailOtp] = useState('')
+  const [emailVerificationError, setEmailVerificationError] = useState<string | null>(null)
+  const [emailVerificationLoading, setEmailVerificationLoading] = useState(false)
   const [phone, setPhone] = useState(user.phone || '')
   const [address, setAddress] = useState(user.address || '')
   const [city, setCity] = useState(user.city || '')
   const [state, setState] = useState<string | null>(user.state || null)
   const [kycStatus, setKycStatus] = useState<KycStatus | null>(null)
   const kycApproved = (kycStatus?.kycLevel ?? 0) >= 1
+  // Mirrors the backend name-lock: names are immutable once identity is Mono-verified
+  const nameLocked = Boolean(kycStatus?.ninVerified || kycStatus?.bvnVerified)
   const [adminRequestState, setAdminRequestState] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [adminRequestError, setAdminRequestError] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>(user.role || '')
+  const [accountStatus, setAccountStatus] = useState<string>(user.status || 'ACTIVE')
 
   const [deleteExpanded, setDeleteExpanded] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
@@ -139,6 +151,13 @@ export function Profile() {
   const [deleteReason, setDeleteReason] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const [freezeExpanded, setFreezeExpanded] = useState(false)
+  const [freezePassword, setFreezePassword] = useState('')
+  const [freezeReason, setFreezeReason] = useState('')
+  const [freezeAcknowledged, setFreezeAcknowledged] = useState(false)
+  const [freezing, setFreezing] = useState(false)
+  const [freezeError, setFreezeError] = useState<string | null>(null)
 
   // Bank accounts
   const [bankAccounts, setBankAccounts] = useState<SavedBankAccount[]>([])
@@ -223,16 +242,73 @@ export function Profile() {
         setFirstName(u.firstName || '')
         setLastName(u.lastName || '')
         setEmail(u.email || '')
+        setOriginalEmail(u.email || '')
         setPhone((u.phone as string) || '')
-        setAddress((u.address as string) || '')
-        setCity((u.city as string) || '')
-        setState((u.state as string) || null)
         if (u.adminRequestedAt) setAdminRequestState('sent')
         if (u.role) setUserRole(u.role)
+        if (u.status) setAccountStatus(u.status)
         localStorage.setItem('user', JSON.stringify({ ...getUserFromStorage(), ...u }))
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (kycStatus) {
+      setAddress(kycStatus.address || '')
+      setCity(kycStatus.city || '')
+      setState(kycStatus.state || null)
+    }
+  }, [kycStatus])
+
+  async function handleSendEmailOtp() {
+    if (!currentPasswordForEmail) {
+      setEmailVerificationError('Password is required')
+      return
+    }
+    setEmailVerificationError(null)
+    setEmailVerificationLoading(true)
+    try {
+      await updateUserProfile({
+        firstName,
+        lastName,
+        phone,
+        email,
+        currentPassword: currentPasswordForEmail,
+      })
+      setEmailModalStep('otp')
+    } catch (err) {
+      setEmailVerificationError(err instanceof Error ? err.message : 'Failed to send verification code')
+    } finally {
+      setEmailVerificationLoading(false)
+    }
+  }
+
+  async function handleVerifyEmailOtp() {
+    if (emailOtp.length !== 6) {
+      setEmailVerificationError('Please enter a 6-digit code')
+      return
+    }
+    setEmailVerificationError(null)
+    setEmailVerificationLoading(true)
+    try {
+      await verifyPendingEmailChange(emailOtp)
+      const updatedUser = { ...getUserFromStorage(), email }
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      setOriginalEmail(email)
+      
+      notifications.show({
+        message: 'Email address updated successfully',
+        color: 'green',
+        autoClose: 3000,
+      })
+      setEmailModalOpen(false)
+      setEditing(false)
+    } catch (err) {
+      setEmailVerificationError(err instanceof Error ? err.message : 'Invalid code')
+    } finally {
+      setEmailVerificationLoading(false)
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -240,13 +316,20 @@ export function Profile() {
     setSaveSuccess(false)
 
     try {
+      if (email !== originalEmail) {
+        setEmailModalOpen(true)
+        setEmailModalStep('password')
+        setCurrentPasswordForEmail('')
+        setEmailOtp('')
+        setEmailVerificationError(null)
+        setSaving(false)
+        return
+      }
+
       await updateUserProfile({
         firstName,
         lastName,
         phone,
-        address,
-        city,
-        state: state ?? undefined,
       })
       setSaveSuccess(true)
       setEditing(false)
@@ -287,6 +370,29 @@ export function Profile() {
     }
   }
 
+  async function handleFreezeAccount() {
+    setFreezing(true)
+    setFreezeError(null)
+    try {
+      await freezeMyAccount(freezePassword, freezeReason || undefined)
+      setAccountStatus('FROZEN')
+      localStorage.setItem('user', JSON.stringify({ ...getUserFromStorage(), status: 'FROZEN' }))
+      setFreezeExpanded(false)
+      setFreezePassword('')
+      setFreezeReason('')
+      setFreezeAcknowledged(false)
+      notifications.show({
+        message: 'Your account has been frozen. Contact support to unlock it once your identity is verified.',
+        color: 'orange',
+        autoClose: 6000,
+      })
+    } catch (err) {
+      setFreezeError(err instanceof Error ? err.message : 'Failed to freeze account')
+    } finally {
+      setFreezing(false)
+    }
+  }
+
   async function handleLogout() {
     try {
       const refreshToken = localStorage.getItem('refresh_token')
@@ -310,6 +416,20 @@ export function Profile() {
         <IconArrowLeft size={18} />
         Back
       </button>
+
+      {accountStatus === 'FROZEN' && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FED7AA] bg-[#FFF7ED] p-4">
+          <IconLock size={18} color="#F97316" className="mt-0.5 flex-shrink-0" />
+          <div>
+            <Text fw={600} className="text-[13px] text-[#9A3412]">Account Frozen</Text>
+            <Text fw={400} className="mt-0.5 text-[12px] text-[#9A3412]">
+              Withdrawals, bank account changes, and security setting changes are blocked. Contact
+              support and verify your identity to unlock your account — this cannot be undone from
+              within the app.
+            </Text>
+          </div>
+        </div>
+      )}
 
       {/* Profile header */}
       <div className="mb-8 flex flex-col gap-4">
@@ -365,7 +485,7 @@ export function Profile() {
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 First Name
               </Text>
-              {editing ? (
+              {editing && !nameLocked ? (
                 <TextInput
                   value={firstName}
                   onChange={(e) => setFirstName(e.currentTarget.value)}
@@ -384,7 +504,7 @@ export function Profile() {
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 Last Name
               </Text>
-              {editing ? (
+              {editing && !nameLocked ? (
                 <TextInput
                   value={lastName}
                   onChange={(e) => setLastName(e.currentTarget.value)}
@@ -400,6 +520,12 @@ export function Profile() {
               )}
             </div>
           </div>
+          {editing && nameLocked && (
+            <Text fw={400} className="-mt-2 text-[11px] text-[#9CA3AF]">
+              Your name is verified with your BVN/NIN and can no longer be changed here. Contact
+              support if it needs correcting.
+            </Text>
+          )}
 
           <div>
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
@@ -451,59 +577,26 @@ export function Profile() {
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
               Address
             </Text>
-            {editing ? (
-              <TextInput
-                value={address}
-                onChange={(e) => setAddress(e.currentTarget.value)}
-                radius="md"
-                size="sm"
-                leftSection={<IconMapPin size={16} color="#9CA3AF" />}
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-              />
-            ) : (
-              <Text fw={500} className="text-[14px] text-[#0F172A]">
-                {address}
-              </Text>
-            )}
+            <Text fw={500} className="text-[14px] text-[#0F172A]">
+              {address || '—'}
+            </Text>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 City
               </Text>
-              {editing ? (
-                <TextInput
-                  value={city}
-                  onChange={(e) => setCity(e.currentTarget.value)}
-                  radius="md"
-                  size="sm"
-                  styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-                />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">
-                  {city}
-                </Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">
+                {city || '—'}
+              </Text>
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 State
               </Text>
-              {editing ? (
-                <Select
-                  data={NIGERIAN_STATES}
-                  value={state}
-                  onChange={setState}
-                  radius="md"
-                  size="sm"
-                  searchable
-                  styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-                />
-              ) : (
-                <Text fw={500} className="text-[14px] text-[#0F172A]">
-                  {state}
-                </Text>
-              )}
+              <Text fw={500} className="text-[14px] text-[#0F172A]">
+                {state || '—'}
+              </Text>
             </div>
           </div>
         </div>
@@ -795,6 +888,102 @@ export function Profile() {
         }}
       />
 
+      <Modal
+        opened={emailModalOpen}
+        onClose={() => {
+          if (!emailVerificationLoading) setEmailModalOpen(false)
+        }}
+        title={<Text fw={700} className="text-[16px] text-[#0F172A]">Verify Email Change</Text>}
+        centered
+        radius="md"
+        size="sm"
+        withCloseButton={!emailVerificationLoading}
+      >
+        {emailModalStep === 'password' ? (
+          <div className="flex flex-col gap-4">
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              To update your email address to <strong>{email}</strong>, please enter your current account password.
+            </Text>
+            <div>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+              <PasswordInput
+                placeholder="Enter password"
+                value={currentPasswordForEmail}
+                onChange={(e) => setCurrentPasswordForEmail(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+              />
+            </div>
+            {emailVerificationError && (
+              <Text fw={500} className="text-[12px] text-red-600">
+                {emailVerificationError}
+              </Text>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => setEmailModalOpen(false)}
+                disabled={emailVerificationLoading}
+                size="xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                bg="#02A36E"
+                onClick={handleSendEmailOtp}
+                loading={emailVerificationLoading}
+                size="xs"
+              >
+                Send Code
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              We've sent a 6-digit verification code to <strong>{email}</strong>. Enter it below to complete the change.
+            </Text>
+            <div className="flex justify-center my-2">
+              <PinInput
+                length={6}
+                value={emailOtp}
+                onChange={setEmailOtp}
+                type="number"
+                oneTimeCode
+                autoFocus
+              />
+            </div>
+            {emailVerificationError && (
+              <Text fw={500} className="text-[12px] text-red-600 text-center">
+                {emailVerificationError}
+              </Text>
+            )}
+            <div className="flex flex-col gap-2 mt-2">
+              <Button
+                bg="#02A36E"
+                onClick={handleVerifyEmailOtp}
+                loading={emailVerificationLoading}
+                size="sm"
+                fullWidth
+              >
+                Verify & Update Email
+              </Button>
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => setEmailModalStep('password')}
+                disabled={emailVerificationLoading}
+                size="xs"
+              >
+                Back
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Admin Access */}
       <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
         <Text fw={600} className="mb-1 text-[16px] text-[#0F172A]">
@@ -923,6 +1112,104 @@ export function Profile() {
         Log Out
       </button>
 
+      {/* Freeze My Account */}
+      {accountStatus !== 'FROZEN' && (
+        <div className="mb-4 rounded-2xl border border-[#FED7AA] bg-white p-5">
+          <button
+            onClick={() => setFreezeExpanded(!freezeExpanded)}
+            className="flex w-full cursor-pointer items-center justify-between"
+          >
+            <div className="text-left">
+              <Text fw={600} className="text-[14px] text-[#EA580C]">Freeze My Account</Text>
+              <Text fw={400} className="text-[12px] text-[#9CA3AF]">
+                Temporarily lock down sensitive actions if you suspect your account is compromised.
+              </Text>
+            </div>
+            <span className="text-[#EA580C] text-[18px] flex-shrink-0">{freezeExpanded ? '−' : '+'}</span>
+          </button>
+
+          {freezeExpanded && (
+            <div className="mt-4 flex flex-col gap-4">
+              <div className="rounded-xl bg-[#FFF7ED] px-4 py-3">
+                <Text fw={400} className="text-[12px] text-[#9A3412]">
+                  Freezing is a security measure — not the same as deleting your account, and it's
+                  reversible once support verifies your identity.
+                </Text>
+                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you can still:</Text>
+                <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">
+                  <li>Log in and view your account, balances, and transaction history</li>
+                  <li>Receive ROSCA payouts into your wallet</li>
+                  <li>Make contributions to your ROSCA circles</li>
+                </ul>
+                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you cannot:</Text>
+                <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">
+                  <li>Withdraw money to your bank account</li>
+                  <li>Add, remove, or change saved bank accounts</li>
+                  <li>Change your email, phone number, password, or transaction PIN</li>
+                </ul>
+                <Text fw={400} className="mt-3 text-[12px] text-[#9A3412]">
+                  <strong>To unfreeze:</strong> contact support and verify your identity. There's no way
+                  to unfreeze your account yourself in-app — this is intentional, so a compromised
+                  account can't be un-frozen by whoever compromised it either.
+                </Text>
+              </div>
+
+              {freezeError && (
+                <div className="rounded-xl bg-red-50 px-4 py-3">
+                  <Text fw={500} className="text-[12px] text-red-600">{freezeError}</Text>
+                </div>
+              )}
+
+              <div>
+                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text>
+                <TextInput
+                  placeholder="Why are you freezing your account? (helps support verify you faster)"
+                  value={freezeReason}
+                  onChange={(e) => setFreezeReason(e.currentTarget.value)}
+                  radius="md"
+                  size="sm"
+                  styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+                />
+              </div>
+
+              <div>
+                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+                <PasswordInput
+                  placeholder="Enter your password"
+                  value={freezePassword}
+                  onChange={(e) => setFreezePassword(e.currentTarget.value)}
+                  radius="md"
+                  size="sm"
+                  leftSection={<IconLock size={16} color="#9CA3AF" />}
+                  styles={{ input: { borderColor: '#FED7AA', fontSize: 14 } }}
+                />
+              </div>
+
+              <Checkbox
+                checked={freezeAcknowledged}
+                onChange={(e) => setFreezeAcknowledged(e.currentTarget.checked)}
+                label="I understand my account will be locked out of withdrawals, bank account changes, and security settings until support unlocks it"
+                size="sm"
+                color="orange"
+                styles={{ label: { fontSize: 12, color: '#374151' } }}
+              />
+
+              <button
+                onClick={handleFreezeAccount}
+                disabled={freezing || !freezeAcknowledged || freezePassword.length < 8}
+                className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${
+                  freezing || !freezeAcknowledged || freezePassword.length < 8
+                    ? 'cursor-not-allowed bg-[#FDBA74]'
+                    : 'cursor-pointer bg-[#F97316] hover:bg-[#EA580C]'
+                }`}
+              >
+                {freezing ? 'Freezing...' : 'Freeze My Account'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Delete Account */}
       <div className="rounded-2xl border border-[#FCA5A5] bg-white p-5">
         <button
@@ -948,8 +1235,7 @@ export function Profile() {
 
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
-              <TextInput
-                type="password"
+              <PasswordInput
                 placeholder="Enter your password"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.currentTarget.value)}

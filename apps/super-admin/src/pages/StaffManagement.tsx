@@ -12,17 +12,19 @@ import {
   Tabs,
   Text,
   TextInput,
+  PasswordInput,
   Title,
   ActionIcon,
   Menu,
   Alert,
 } from '@mantine/core'
-import { useDisclosure } from '@mantine/hooks'
-import { IconUserPlus, IconDots, IconAlertCircle } from '@tabler/icons-react'
+import { useDisclosure, useClipboard } from '@mantine/hooks'
+import { IconUserPlus, IconUserCog, IconDots, IconAlertCircle, IconCopy, IconCheck } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
   listStaff,
   inviteStaff,
+  createStaff,
   changeStaffRole,
   suspendStaff,
   reactivateStaff,
@@ -75,12 +77,16 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
 }
 
 function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose: () => void; onSuccess: () => void }) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<StaffAdminRole | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
+    setFirstName('')
+    setLastName('')
     setEmail('')
     setRole(null)
     setError('')
@@ -92,14 +98,14 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
   }
 
   async function handleSubmit() {
-    if (!email || !role) {
-      setError('Email and role are required.')
+    if (!firstName || !lastName || !email || !role) {
+      setError('First name, last name, email, and role are required.')
       return
     }
     setLoading(true)
     setError('')
     try {
-      await inviteStaff({ email, staffRole: role })
+      await inviteStaff({ firstName, lastName, email, staffRole: role })
       onSuccess()
       handleClose()
     } catch (e: unknown) {
@@ -113,6 +119,27 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
     <Modal opened={opened} onClose={handleClose} title="Invite Staff Member" centered>
       <Stack>
         {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
+        <Text size="xs" c="dimmed">
+          Emails them a one-time setup link (valid 7 days) — they choose their own password when they
+          accept. Use "Create Staff Account" instead if you want the account active right now with a
+          temporary password you hand over yourself.
+        </Text>
+        <Group grow>
+          <TextInput
+            label="First name"
+            placeholder="Jane"
+            value={firstName}
+            onChange={(e) => setFirstName(e.currentTarget.value)}
+            required
+          />
+          <TextInput
+            label="Last name"
+            placeholder="Smith"
+            value={lastName}
+            onChange={(e) => setLastName(e.currentTarget.value)}
+            required
+          />
+        </Group>
         <TextInput
           label="Email address"
           placeholder="jane.smith@ajoti.com"
@@ -132,6 +159,170 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
           <Button variant="default" onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} loading={loading}>Send Invite</Button>
         </Group>
+      </Stack>
+    </Modal>
+  )
+}
+
+function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onClose: () => void; onSuccess: () => void }) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<StaffAdminRole | null>(null)
+  const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState('')
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | null>(null)
+  const [tempPassword, setTempPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [created, setCreated] = useState(false)
+  const clipboard = useClipboard({ timeout: 1500 })
+
+  function reset() {
+    setFirstName('')
+    setLastName('')
+    setEmail('')
+    setRole(null)
+    setPhone('')
+    setDob('')
+    setGender(null)
+    setTempPassword('')
+    setError('')
+    setCreated(false)
+  }
+
+  function handleClose() {
+    reset()
+    onClose()
+  }
+
+  async function handleSubmit() {
+    if (!firstName || !lastName || !email || !role || !phone || !dob || !gender || !tempPassword) {
+      setError('All fields are required.')
+      return
+    }
+    if (tempPassword.length < 8 || tempPassword.length > 20) {
+      setError('Temporary password must be between 8 and 20 characters.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      await createStaff({ firstName, lastName, email, staffRole: role, phone, dob, gender, tempPassword })
+      setCreated(true)
+      onSuccess()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to create account.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal opened={opened} onClose={handleClose} title="Create Staff Account" centered>
+      <Stack>
+        {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
+        {created ? (
+          <>
+            <Alert color="green">
+              Account created and active. Share the email and temporary password with {firstName} directly —
+              no email was sent. They must change the password at their first login before they can do
+              anything else, so you will never know their real password.
+            </Alert>
+            <TextInput
+              label="Temporary password (share this once, then close)"
+              value={tempPassword}
+              readOnly
+              rightSection={
+                <ActionIcon variant="subtle" onClick={() => clipboard.copy(tempPassword)}>
+                  {clipboard.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                </ActionIcon>
+              }
+            />
+            <Group justify="flex-end">
+              <Button onClick={handleClose}>Done</Button>
+            </Group>
+          </>
+        ) : (
+          <>
+            <Text size="xs" c="dimmed">
+              Creates a real, immediately-active account with a temporary password you set and hand over
+              directly — no email involved. They must change it at first login. Use "Invite Staff Member"
+              instead if you'd rather they receive an email link and set their own password from the start.
+            </Text>
+            <Group grow>
+              <TextInput
+                label="First name"
+                placeholder="Jane"
+                value={firstName}
+                onChange={(e) => setFirstName(e.currentTarget.value)}
+                required
+              />
+              <TextInput
+                label="Last name"
+                placeholder="Smith"
+                value={lastName}
+                onChange={(e) => setLastName(e.currentTarget.value)}
+                required
+              />
+            </Group>
+            <TextInput
+              label="Email address"
+              placeholder="jane.smith@ajoti.com"
+              value={email}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+              required
+            />
+            <Group grow>
+              <TextInput
+                label="Phone"
+                placeholder="+2348012345678"
+                value={phone}
+                onChange={(e) => setPhone(e.currentTarget.value)}
+                required
+              />
+              <TextInput
+                label="Date of birth"
+                placeholder="1990-01-01"
+                value={dob}
+                onChange={(e) => setDob(e.currentTarget.value)}
+                required
+              />
+            </Group>
+            <Group grow>
+              <Select
+                label="Gender"
+                placeholder="Select"
+                data={[
+                  { value: 'MALE', label: 'Male' },
+                  { value: 'FEMALE', label: 'Female' },
+                ]}
+                value={gender}
+                onChange={(v) => setGender(v as 'MALE' | 'FEMALE')}
+                required
+              />
+              <Select
+                label="Role"
+                placeholder="Select a role"
+                data={ASSIGNABLE_ROLES}
+                value={role}
+                onChange={(v) => setRole(v as StaffAdminRole)}
+                required
+              />
+            </Group>
+            <PasswordInput
+              label="Temporary password"
+              description="8–20 characters — they must change it at first login"
+              value={tempPassword}
+              onChange={(e) => setTempPassword(e.currentTarget.value)}
+              required
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleSubmit} loading={loading}>Create Account</Button>
+            </Group>
+          </>
+        )}
       </Stack>
     </Modal>
   )
@@ -213,6 +404,7 @@ export function StaffManagement() {
 
   // Modals
   const [inviteOpened, { open: openInvite, close: closeInvite }] = useDisclosure(false)
+  const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false)
   const [roleModalOpened, { open: openRoleModal, close: closeRoleModal }] = useDisclosure(false)
   const [roleTarget, setRoleTarget] = useState<{ id: string; email: string; staffRole: StaffAdminRole } | null>(null)
 
@@ -293,9 +485,14 @@ export function StaffManagement() {
       <Group justify="space-between" align="center">
         <Title order={2}>Staff Management</Title>
         {isSuperadmin && (
-          <Button leftSection={<IconUserPlus size={16} />} onClick={openInvite}>
-            Invite Staff Member
-          </Button>
+          <Group>
+            <Button variant="default" leftSection={<IconUserCog size={16} />} onClick={openCreate}>
+              Create Staff Account
+            </Button>
+            <Button leftSection={<IconUserPlus size={16} />} onClick={openInvite}>
+              Invite Staff Member
+            </Button>
+          </Group>
         )}
       </Group>
 
@@ -376,10 +573,8 @@ export function StaffManagement() {
                           <Table.Td>
                             <Stack gap={2}>
                               <Text size="sm" fw={500}>
-                                {row.type === 'USER'
-                                  ? `${row.firstName} ${row.lastName}`
-                                  : <Text span c="dimmed" size="sm">Pending invite</Text>
-                                }
+                                {row.firstName} {row.lastName}
+                                {row.type === 'INVITE' && <Text span c="dimmed" size="xs"> (pending)</Text>}
                               </Text>
                               <Text size="xs" c="dimmed">{row.email}</Text>
                             </Stack>
@@ -497,7 +692,7 @@ export function StaffManagement() {
                             <Text size="xs" c="dimmed">{log.entityId}</Text>
                           </Table.Td>
                           <Table.Td>
-                            {log.after && (
+                            {Boolean(log.after) && (
                               <Text size="xs" c="dimmed">
                                 {JSON.stringify(log.after)}
                               </Text>
@@ -529,6 +724,7 @@ export function StaffManagement() {
       </Tabs>
 
       <InviteModal opened={inviteOpened} onClose={closeInvite} onSuccess={loadStaff} />
+      <CreateStaffModal opened={createOpened} onClose={closeCreate} onSuccess={loadStaff} />
       <ChangeRoleModal
         opened={roleModalOpened}
         onClose={closeRoleModal}

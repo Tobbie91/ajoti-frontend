@@ -181,7 +181,7 @@ export function Wallets() {
 
       <Group justify="space-between">
         <Group>
-          <Title order={3}>User Wallets</Title>
+          <Title order={3}>Customer Wallets</Title>
           {hasFilters && (
             <ActionIcon variant="subtle" color="gray" onClick={clearFilters} title="Clear filters" size="sm">
               <IconX size={16} />

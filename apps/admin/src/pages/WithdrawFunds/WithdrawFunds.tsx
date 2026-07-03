@@ -6,6 +6,8 @@ import { getWalletBalance, initializeWithdrawal } from '@/utils/api'
 
 type Step = 'form' | 'pin' | 'processing' | 'success' | 'error'
 
+const MIN_WITHDRAWAL_NAIRA = 100
+
 const NIGERIAN_BANKS: { label: string; value: string }[] = [
   { label: 'Access Bank', value: '044' },
   { label: 'Citibank Nigeria', value: '023' },
@@ -59,7 +61,7 @@ export function WithdrawFunds() {
   }
 
   const canProceed =
-    numericAmount > 0 &&
+    numericAmount >= MIN_WITHDRAWAL_NAIRA &&
     numericAmount <= availableBalance &&
     accountNumber.length === 10 &&
     bankCode !== null &&
@@ -206,6 +208,9 @@ export function WithdrawFunds() {
               leftSection={<Text fw={600} className="text-[16px] text-[#0F172A]">₦</Text>}
               styles={{ input: { borderColor: '#E5E7EB', fontSize: 20, fontWeight: 600, height: 52 } }}
             />
+            {numericAmount > 0 && numericAmount < MIN_WITHDRAWAL_NAIRA && (
+              <Text fw={400} className="mt-2 text-[12px] text-red-500">Minimum withdrawal is ₦{MIN_WITHDRAWAL_NAIRA}</Text>
+            )}
             {numericAmount > availableBalance && numericAmount > 0 && (
               <Text fw={400} className="mt-2 text-[12px] text-red-500">Amount exceeds available balance</Text>
             )}
