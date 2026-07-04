@@ -23,6 +23,9 @@ import {
   FundWalletCallback,
   SetPin,
   Messages,
+  Support,
+  SupportTicket,
+  Maintenance,
 } from '@/pages'
 
 function KycPageGuard({ children }: { children: React.ReactNode }) {
@@ -36,6 +39,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Auth routes — no layout */}
+        <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
@@ -57,6 +61,8 @@ function App() {
           <Route path="/my-profile" element={<MyProfile />} />
           <Route path="/set-pin" element={<SetPin />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/support/:ticketId" element={<SupportTicket />} />
         </Route>
 
         {/* Flutterwave callback — no layout */}

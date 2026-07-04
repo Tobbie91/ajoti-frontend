@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom'
-import { NavLink, Stack, Text, Box, Badge } from '@mantine/core'
+import { NavLink, Stack, Text, Box, Badge, ScrollArea } from '@mantine/core'
 import {
   IconLayoutDashboard,
   IconUsers,
@@ -14,26 +14,35 @@ import {
   IconAward,
   IconTestPipe,
   IconWallet,
+  IconHeadset,
+  IconUsersGroup,
+  IconBuildingBank,
 } from '@tabler/icons-react'
+import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
-const mainLinks = [
-  { label: 'Dashboard', icon: IconLayoutDashboard, path: '/' },
-  { label: 'Manage Users', icon: IconUsers, path: '/manage-users' },
-  { label: 'KYC Approvals', icon: IconShieldCheck, path: '/kyc-approvals' },
-  { label: 'Manage ROSCA', icon: IconTopologyRing, path: '/manage-rosca' },
-  { label: 'Wallets', icon: IconWallet, path: '/wallets' },
-  { label: 'Trust Scores', icon: IconAward, path: '/trust-scores' },
-  { label: 'Simulations', icon: IconTestPipe, path: '/simulations' },
+type NavLink_ = { label: string; icon: React.FC<{ size?: number; stroke?: number }>; path: string; permission: Permission | null }
+
+const mainLinks: NavLink_[] = [
+  { label: 'Dashboard',     icon: IconLayoutDashboard, path: '/',              permission: null },
+  { label: 'Manage Users',  icon: IconUsers,            path: '/manage-users', permission: null },
+  { label: 'KYC Approvals', icon: IconShieldCheck,      path: '/kyc-approvals',permission: 'MANAGE_KYC' },
+  { label: 'Manage ROSCA',  icon: IconTopologyRing,     path: '/manage-rosca', permission: 'MANAGE_CIRCLES' },
+  { label: 'Wallets',       icon: IconWallet,            path: '/wallets',      permission: 'VIEW_LEDGER' },
+  { label: 'Platform Accounts', icon: IconBuildingBank,  path: '/system-accounts', permission: 'VIEW_SYSTEM_ACCOUNTS' },
+  { label: 'Trust Scores',  icon: IconAward,             path: '/trust-scores', permission: null },
+  { label: 'Simulations',   icon: IconTestPipe,          path: '/simulations',  permission: 'MANAGE_CIRCLES' },
+  { label: 'Support',       icon: IconHeadset,           path: '/support',      permission: 'MANAGE_TICKETS' },
 ]
 
 const savingsChildren = [
-  { label: 'Fixed Savings', icon: IconChartLine, path: '/savings/FixedSavings', comingSoon: true },
-  { label: 'Target Savings', icon: IconTarget, path: '/savings/TargetSavings', comingSoon: true },
+  { label: 'Fixed Savings',  icon: IconChartLine, path: '/savings/FixedSavings',  comingSoon: true },
+  { label: 'Target Savings', icon: IconTarget,    path: '/savings/TargetSavings', comingSoon: true },
 ]
 
-const bottomLinks = [
-  { label: 'Transactions', icon: IconReceipt, path: '/transactions' },
-  { label: 'Settings & Logs', icon: IconSettings, path: '/settings-logs' },
+const bottomLinks: NavLink_[] = [
+  { label: 'Transactions',    icon: IconReceipt,     path: '/transactions',  permission: 'VIEW_LEDGER' },
+  { label: 'Staff Management',icon: IconUsersGroup,  path: '/staff',         permission: 'MANAGE_ADMIN_ACCOUNTS' },
+  { label: 'Settings & Logs', icon: IconSettings,    path: '/settings-logs', permission: 'VIEW_AUDIT_LOGS' },
 ]
 
 interface SidebarProps {
@@ -46,16 +55,22 @@ export function Sidebar({ onClose }: SidebarProps) {
     location.pathname.startsWith('/savings'),
   )
 
+  const staffRole = getStaffRoleFromStorage()
+  const visibleMain = mainLinks.filter((l) => !l.permission || hasPermission(staffRole, l.permission))
+  const visibleBottom = bottomLinks.filter((l) => !l.permission || hasPermission(staffRole, l.permission))
+
   return (
-    <Box>
-      <Box p="md" mb="md">
+    <Box style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box p="md" mb="md" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
         <Text fw={800} fz={22} c="primary.5">
           Ajoti
         </Text>
+        <Badge size="xs" variant="light" color="green" radius="sm">BETA</Badge>
       </Box>
 
-      <Stack gap={4} px="xs">
-        {mainLinks.map((link) => (
+      <ScrollArea style={{ flex: 1 }} type="auto" scrollbarSize={6} offsetScrollbars>
+      <Stack gap={4} px="xs" pb="md">
+        {visibleMain.map((link) => (
           <NavLink
             key={link.path}
             component={RouterNavLink}
@@ -97,7 +112,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           ))}
         </NavLink>
 
-        {bottomLinks.map((link) => (
+        {visibleBottom.map((link) => (
           <NavLink
             key={link.path}
             component={RouterNavLink}
@@ -109,6 +124,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           />
         ))}
       </Stack>
+      </ScrollArea>
     </Box>
   )
 }

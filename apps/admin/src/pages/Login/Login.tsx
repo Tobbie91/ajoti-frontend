@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Button, Card, Group, PasswordInput, Text, TextInput, Alert } from '@mantine/core'
+import { Button, Card, Group, PasswordInput, Text, TextInput, Alert, Modal, Stack, PinInput } from '@mantine/core'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { IconAlertCircle } from '@tabler/icons-react'
-import { login as loginApi } from '@/utils/api'
+import { login as loginApi, forgotPassword, resetPassword } from '@/utils/api'
 
 export function Login() {
   const navigate = useNavigate()
@@ -13,6 +13,17 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Forgot password state
+  const [forgotOpen, setForgotOpen] = useState(false)
+  const [forgotStep, setForgotStep] = useState<'email' | 'reset'>('email')
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotOtp, setForgotOtp] = useState('')
+  const [forgotNewPassword, setForgotNewPassword] = useState('')
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError, setForgotError] = useState<string | null>(null)
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null)
 
   async function handleLogin() {
     if (!email.trim() || !password) return
@@ -29,8 +40,8 @@ export function Login() {
         throw new Error('Invalid token received')
       }
 
-      if (jwtRole !== 'ADMIN' && jwtRole !== 'SUPERADMIN') {
-        throw new Error('Access denied. This portal is for admins only.')
+      if (jwtRole !== 'CIRCLE_ADMIN') {
+        throw new Error('Access denied. This portal is for circle admins only.')
       }
 
       localStorage.setItem('admin_access_token', token)
@@ -46,6 +57,50 @@ export function Login() {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  function openForgot() {
+    setForgotOpen(true)
+    setForgotStep('email')
+    setForgotEmail('')
+    setForgotOtp('')
+    setForgotNewPassword('')
+    setForgotConfirmPassword('')
+    setForgotError(null)
+    setForgotSuccess(null)
+  }
+
+  async function handleForgotRequest() {
+    if (!forgotEmail.trim()) return
+    setForgotLoading(true)
+    setForgotError(null)
+    try {
+      await forgotPassword(forgotEmail.trim())
+      setForgotStep('reset')
+    } catch (err) {
+      setForgotError(err instanceof Error ? err.message : 'Failed to send reset email')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  async function handleForgotReset() {
+    if (!forgotOtp || !forgotNewPassword) return
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError('Passwords do not match')
+      return
+    }
+    setForgotLoading(true)
+    setForgotError(null)
+    try {
+      await resetPassword({ email: forgotEmail.trim(), otp: forgotOtp, newPassword: forgotNewPassword })
+      setForgotSuccess('Password reset successfully. You can now log in.')
+      setTimeout(() => setForgotOpen(false), 2000)
+    } catch (err) {
+      setForgotError(err instanceof Error ? err.message : 'Failed to reset password')
+    } finally {
+      setForgotLoading(false)
     }
   }
 
@@ -159,7 +214,13 @@ export function Login() {
               />
 
               <Group justify="space-between" className="text-xs text-[#6B7280]">
-                <Text component="span">Forgot password?</Text>
+                <Text
+                  component="span"
+                  style={{ cursor: 'pointer', color: '#0B6B55' }}
+                  onClick={openForgot}
+                >
+                  Forgot password?
+                </Text>
                 <Link to="/signup" className="text-[#0B6B55]">
                   Create account
                 </Link>
@@ -183,6 +244,100 @@ export function Login() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        opened={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        centered
+        radius="md"
+        size="sm"
+        title={<Text fw={700} fz="md">{forgotStep === 'email' ? 'Reset Password' : 'Enter OTP'}</Text>}
+      >
+        <Stack gap="md">
+          {forgotSuccess ? (
+            <Alert color="green" radius="md" variant="light">
+              {forgotSuccess}
+            </Alert>
+          ) : forgotStep === 'email' ? (
+            <>
+              <Text fz="sm" c="dimmed">
+                Enter your email address and we'll send you a reset code.
+              </Text>
+              <TextInput
+                label="Email"
+                placeholder="you@example.com"
+                radius="md"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.currentTarget.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleForgotRequest()}
+              />
+              {forgotError && <Text fz="sm" c="red">{forgotError}</Text>}
+              <Button
+                fullWidth
+                radius="md"
+                style={{ background: '#0B6B55' }}
+                loading={forgotLoading}
+                disabled={!forgotEmail.trim()}
+                onClick={handleForgotRequest}
+              >
+                Send Reset Code
+              </Button>
+            </>
+          ) : (
+            <>
+              <Text fz="sm" c="dimmed">
+                Enter the OTP sent to <b>{forgotEmail}</b> and your new password.
+              </Text>
+              <Stack gap={4}>
+                <Text fz="sm" fw={500}>OTP Code</Text>
+                <PinInput
+                  length={6}
+                  value={forgotOtp}
+                  onChange={setForgotOtp}
+                  type="number"
+                  radius="md"
+                />
+              </Stack>
+              <PasswordInput
+                label="New Password"
+                placeholder="••••••••"
+                radius="md"
+                value={forgotNewPassword}
+                onChange={(e) => setForgotNewPassword(e.currentTarget.value)}
+              />
+              <PasswordInput
+                label="Confirm Password"
+                placeholder="••••••••"
+                radius="md"
+                value={forgotConfirmPassword}
+                onChange={(e) => setForgotConfirmPassword(e.currentTarget.value)}
+              />
+              {forgotError && <Text fz="sm" c="red">{forgotError}</Text>}
+              <Group gap="sm">
+                <Button
+                  variant="default"
+                  radius="md"
+                  flex={1}
+                  onClick={() => { setForgotStep('email'); setForgotError(null) }}
+                >
+                  Back
+                </Button>
+                <Button
+                  radius="md"
+                  flex={1}
+                  style={{ background: '#0B6B55' }}
+                  loading={forgotLoading}
+                  disabled={!forgotOtp || !forgotNewPassword || !forgotConfirmPassword}
+                  onClick={handleForgotReset}
+                >
+                  Reset Password
+                </Button>
+              </Group>
+            </>
+          )}
+        </Stack>
+      </Modal>
     </div>
   )
 }

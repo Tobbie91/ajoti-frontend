@@ -56,7 +56,7 @@ import {
           {/* Stepper */}
           <Stepper
             active={activeStep}
-            color="#066F5B"
+            color="#0B6B55"
             size="sm"
             styles={{
               stepLabel: { fontSize: 14 },
@@ -134,7 +134,7 @@ import {
                 </Stack>
   
                 <Group justify="flex-end" mt="xl">
-                  <Button color="#066F5B" onClick={nextStep}>
+                  <Button color="#0B6B55" onClick={nextStep}>
                     Next
                   </Button>
                 </Group>
@@ -207,7 +207,7 @@ import {
                   <Button variant="default" onClick={prevStep}>
                     Back
                   </Button>
-                  <Button color="#066F5B" onClick={nextStep}>
+                  <Button color="#0B6B55" onClick={nextStep}>
                     Next
                   </Button>
                 </Group>
@@ -247,7 +247,7 @@ import {
                   <Button variant="default" onClick={prevStep}>
                     Back
                   </Button>
-                  <Button color="#066F5B" size="md" onClick={handleCreatePlan}>
+                  <Button color="#0B6B55" size="md" onClick={handleCreatePlan}>
                     Create Plan
                   </Button>
                 </Group>
@@ -305,7 +305,7 @@ import {
               
               <Group>
                 <Button variant="default" onClick={() => setRulesOpened(false)}>Back</Button>
-                <Button color="#066F5B" onClick={() => setRulesOpened(false)}>Next</Button>
+                <Button color="#0B6B55" onClick={() => setRulesOpened(false)}>Next</Button>
               </Group>
             </Group>
           </Stack>
@@ -346,7 +346,7 @@ import {
           padding="xl"
         >
           <Stack align="center" gap="lg" py="md">
-            <ThemeIcon size={80} radius={100} color="#066F5B" variant="light">
+            <ThemeIcon size={80} radius={100} color="#0B6B55" variant="light">
               <IconCircleCheck size={48} />
             </ThemeIcon>
             
@@ -358,7 +358,7 @@ import {
   
             <Button 
               fullWidth 
-              color="#066F5B" 
+              color="#0B6B55" 
               size="md" 
               mt="md"
               onClick={() => {

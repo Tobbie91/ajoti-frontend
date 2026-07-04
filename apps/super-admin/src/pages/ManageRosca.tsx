@@ -5,7 +5,6 @@ import {
   Drawer,
   Group,
   Loader,
-  Menu,
   Pagination,
   Paper,
   Select,
@@ -25,20 +24,23 @@ import { useDisclosure } from '@mantine/hooks'
 import {
   IconAlertCircle,
   IconCircleX,
-  IconDots,
   IconEye,
   IconFlag,
   IconRefresh,
   IconSearch,
+  IconTrash,
+  IconLock,
 } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   cancelCircle,
+  deleteCircle,
   flagMember,
   getCircleDetail,
   getDefaulters,
   getAllRoscaCircles,
   listCircles,
+  releaseCircleCollateral,
   type CircleRow,
   type PaginatedResponse,
 } from '@/utils/api'
@@ -87,6 +89,15 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
   const [flagging, setFlagging] = useState(false)
   const [flagError, setFlagError] = useState<string | null>(null)
 
+  // Release collateral
+  const [releasing, setReleasing] = useState(false)
+  const [releaseResult, setReleaseResult] = useState<string | null>(null)
+
+  // Delete circle
+  const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!circleId || !opened) return
     setLoading(true)
@@ -112,6 +123,36 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
       setCancelError(e instanceof Error ? e.message : 'Failed to cancel circle')
     } finally {
       setCancelling(false)
+    }
+  }
+
+  async function handleReleaseCollateral() {
+    if (!circleId) return
+    setReleasing(true)
+    setReleaseResult(null)
+    try {
+      const res = await releaseCircleCollateral(circleId)
+      setReleaseResult(res.data.message)
+    } catch (e) {
+      setReleaseResult(e instanceof Error ? e.message : 'Failed to release collateral')
+    } finally {
+      setReleasing(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!circleId) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteCircle(circleId)
+      closeDelete()
+      onCancelled()
+      onClose()
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Failed to delete circle')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -230,6 +271,36 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
                 Cancel Circle
               </Button>
             )}
+
+            {/* Release collateral — only for cancelled circles */}
+            {String(circle.status ?? '').toUpperCase() === 'CANCELLED' && (
+              <Stack gap="xs">
+                <Button
+                  color="orange"
+                  variant="light"
+                  leftSection={<IconLock size={16} />}
+                  loading={releasing}
+                  onClick={handleReleaseCollateral}
+                >
+                  Release Reserved Funds
+                </Button>
+                {releaseResult && (
+                  <Text size="xs" c="dimmed">{releaseResult}</Text>
+                )}
+              </Stack>
+            )}
+
+            {/* Delete — only for cancelled circles */}
+            {String(circle.status ?? '').toUpperCase() === 'CANCELLED' && (
+              <Button
+                color="red"
+                variant="outline"
+                leftSection={<IconTrash size={16} />}
+                onClick={openDelete}
+              >
+                Delete Circle
+              </Button>
+            )}
           </Stack>
         )}
       </Drawer>
@@ -262,6 +333,26 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
               onClick={handleCancel}
             >
               Confirm Cancel
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Delete circle modal */}
+      <Modal opened={deleteOpened} onClose={closeDelete} title="Delete Circle" centered size="sm">
+        <Stack gap="md">
+          <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+            This permanently deletes the circle and all its records. This cannot be undone. Release all reserved funds first.
+          </Alert>
+          {deleteError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+              {deleteError}
+            </Alert>
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeDelete}>Cancel</Button>
+            <Button color="red" loading={deleting} onClick={handleDelete} leftSection={<IconTrash size={14} />}>
+              Delete Permanently
             </Button>
           </Group>
         </Stack>
@@ -418,18 +509,18 @@ function CirclesTab() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={900}>
-        <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={1000}>
+        <Table highlightOnHover layout="fixed">
           <Table.Thead>
-            <Table.Tr bg="#066F5B">
-              <Table.Th c="white">Name</Table.Th>
-              <Table.Th c="white">Admin</Table.Th>
-              <Table.Th c="white">Contribution</Table.Th>
-              <Table.Th c="white">Frequency</Table.Th>
-              <Table.Th c="white">Cycle</Table.Th>
-              <Table.Th c="white">Members</Table.Th>
-              <Table.Th c="white">Status</Table.Th>
-              <Table.Th c="white" />
+            <Table.Tr bg="#0B6B55">
+              <Table.Th c="white" w={200}>Name</Table.Th>
+              <Table.Th c="white" w={200}>Admin</Table.Th>
+              <Table.Th c="white" w={140}>Contribution</Table.Th>
+              <Table.Th c="white" w={110}>Frequency</Table.Th>
+              <Table.Th c="white" w={90}>Cycle</Table.Th>
+              <Table.Th c="white" w={100}>Members</Table.Th>
+              <Table.Th c="white" w={130}>Status</Table.Th>
+              <Table.Th c="white" w={50} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -469,21 +560,9 @@ function CirclesTab() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Menu shadow="md" width={180} position="bottom-end">
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" color="gray">
-                          <IconDots size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconEye size={14} />}
-                          onClick={() => openCircleDetail(c.id)}
-                        >
-                          View Detail
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
+                    <ActionIcon variant="subtle" color="dark" onClick={() => openCircleDetail(c.id)} title="View detail">
+                      <IconEye size={18} />
+                    </ActionIcon>
                   </Table.Td>
                 </Table.Tr>
               ))
@@ -540,16 +619,16 @@ function DefaultersTab() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={700}>
-        <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={900}>
+        <Table highlightOnHover layout="fixed">
           <Table.Thead>
-            <Table.Tr bg="#066F5B">
-              <Table.Th c="white">User</Table.Th>
-              <Table.Th c="white">Email</Table.Th>
-              <Table.Th c="white">Circle</Table.Th>
-              <Table.Th c="white">Amount Owed</Table.Th>
-              <Table.Th c="white">Missed Cycles</Table.Th>
-              <Table.Th c="white">Status</Table.Th>
+            <Table.Tr bg="#0B6B55">
+              <Table.Th c="white" w={180}>User</Table.Th>
+              <Table.Th c="white" w={220}>Email</Table.Th>
+              <Table.Th c="white" w={160}>Circle</Table.Th>
+              <Table.Th c="white" w={140}>Amount Owed</Table.Th>
+              <Table.Th c="white" w={130}>Missed Cycles</Table.Th>
+              <Table.Th c="white" w={100}>Status</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

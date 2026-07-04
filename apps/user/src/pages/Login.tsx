@@ -29,6 +29,23 @@ export function Login() {
     setLoading(true)
     try {
       const { token, refreshToken, user } = await loginApi(email.trim(), password)
+
+      // This is the member/circle-admin portal — STAFF and SYSTEM accounts
+      // must never authenticate here (same pattern as admin.ajoti.com's
+      // CIRCLE_ADMIN-only gate). The backend user object doesn't carry role,
+      // so decode it from the JWT claim directly.
+      let jwtRole: string | undefined
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        jwtRole = payload.role
+      } catch {
+        throw new Error('Invalid token received')
+      }
+
+      if (jwtRole !== 'MEMBER' && jwtRole !== 'CIRCLE_ADMIN') {
+        throw new Error('Access denied. This app is for members and circle admins only.')
+      }
+
       localStorage.setItem('access_token', token)
       localStorage.setItem('refresh_token', refreshToken)
       // Preserve registration data (firstName, lastName, dob) — only overwrite with non-empty values from login
@@ -180,7 +197,7 @@ export function Login() {
                           login(credentialResponse.credential)
                         }
                       }}
-                      onError={() => console.log('Login Failed')}
+                      onError={() => {}}
                       theme="outline"
                       size="large"
                       text="signin_with"

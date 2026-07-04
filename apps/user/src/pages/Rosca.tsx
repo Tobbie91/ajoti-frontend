@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Text, TextInput, Badge, Avatar, Tabs, Progress, Textarea, Loader } from '@mantine/core'
 import { IconSearch, IconMessageCircle, IconCalendar, IconCheck, IconFilter, IconAlertTriangle, IconX, IconCircleCheck } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { listRoscaCircles, getMyJoinRequests, getMyParticipations, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
+import { listRoscaCircles, getMyJoinRequests, getMyParticipations, leaveRoscaCircle, messageAdmin as sendMessageToAdmin, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
 
 // Shape returned by getMyParticipations — a circle object with the user already a member
 type Participation = RoscaCircle
@@ -41,7 +41,10 @@ export function Rosca() {
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [leaveGroupId, setLeaveGroupId] = useState<string | null>(null)
-  const [messageAdmin, setMessageAdmin] = useState<string | null>(null)
+  const [leaveLoading, setLeaveLoading] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [messageAdmin, setMessageAdmin] = useState<{ circleId: string; adminName: string } | null>(null)
+  const [messageSendError, setMessageSendError] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [messageStep, setMessageStep] = useState<'compose' | 'sending' | 'sent'>('compose')
 
@@ -360,8 +363,9 @@ export function Rosca() {
                     <>
                       <button
                         onClick={() => {
-                          setMessageAdmin(group.admin)
+                          setMessageAdmin({ circleId: group.id, adminName: group.admin })
                           setMessage('')
+                          setMessageSendError(null)
                           setMessageStep('compose')
                         }}
                         className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#02A36E] py-3 text-[13px] font-semibold text-white"
@@ -548,21 +552,36 @@ export function Rosca() {
             </div>
 
             {/* Buttons */}
+            {leaveError && (
+              <Text className="mt-3 text-center text-[12px] text-[#EF4444]">{leaveError}</Text>
+            )}
             <div className="mt-7 flex gap-3">
               <button
-                onClick={() => setLeaveGroupId(null)}
+                onClick={() => { setLeaveGroupId(null); setLeaveError(null) }}
                 className="flex-1 cursor-pointer rounded-lg border border-[#E5E7EB] py-3 text-[13px] font-semibold text-[#374151]"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // Handle leave group logic here
-                  setLeaveGroupId(null)
+                disabled={leaveLoading}
+                onClick={async () => {
+                  if (!leaveGroupId) return
+                  setLeaveLoading(true)
+                  setLeaveError(null)
+                  try {
+                    await leaveRoscaCircle(leaveGroupId)
+                    setLeaveGroupId(null)
+                    setJoinedGroups((prev) => prev.filter((g) => g.id !== leaveGroupId))
+                    setJoinedIds((prev) => { const s = new Set(prev); s.delete(leaveGroupId); return s })
+                  } catch (e) {
+                    setLeaveError(e instanceof Error ? e.message : 'Failed to leave group')
+                  } finally {
+                    setLeaveLoading(false)
+                  }
                 }}
-                className="flex-1 cursor-pointer rounded-lg bg-[#EF4444] py-3 text-[13px] font-semibold text-white"
+                className={`flex-1 cursor-pointer rounded-lg py-3 text-[13px] font-semibold text-white ${leaveLoading ? 'bg-[#9CA3AF]' : 'bg-[#EF4444]'}`}
               >
-                Confirm
+                {leaveLoading ? 'Leaving…' : 'Confirm'}
               </button>
             </div>
           </div>
@@ -581,7 +600,7 @@ export function Rosca() {
                     Message admin
                   </Text>
                   <button
-                    onClick={() => setMessageAdmin(null)}
+                    onClick={() => { setMessageAdmin(null); setMessageSendError(null) }}
                     className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full hover:bg-[#F3F4F6]"
                   >
                     <IconX size={18} color="#6B7280" />
@@ -590,11 +609,12 @@ export function Rosca() {
 
                 {/* Admin Name */}
                 <Text fw={500} className="mt-1 text-[13px] text-[#6B7280]">
-                  {messageAdmin}
+                  {messageAdmin?.adminName}
                 </Text>
 
                 {/* Message Input */}
                 <Textarea
+                  label="Your message"
                   placeholder="Type message"
                   value={message}
                   onChange={(e) => setMessage(e.currentTarget.value)}
@@ -609,21 +629,32 @@ export function Rosca() {
                   }}
                 />
 
+                {/* Error */}
+                {messageSendError && (
+                  <Text className="mt-3 text-[12px] text-[#EF4444]">{messageSendError}</Text>
+                )}
+
                 {/* Buttons */}
                 <div className="mt-5 flex gap-3">
                   <button
-                    onClick={() => setMessageAdmin(null)}
+                    onClick={() => { setMessageAdmin(null); setMessageSendError(null) }}
                     className="flex-1 cursor-pointer rounded-lg border border-[#E5E7EB] py-3 text-[13px] font-semibold text-[#374151]"
                   >
                     Cancel
                   </button>
                   <button
                     disabled={!message.trim()}
-                    onClick={() => {
+                    onClick={async () => {
+                      if (!messageAdmin?.circleId) return
+                      setMessageSendError(null)
                       setMessageStep('sending')
-                      setTimeout(() => {
+                      try {
+                        await sendMessageToAdmin(messageAdmin.circleId, message)
                         setMessageStep('sent')
-                      }, 2000)
+                      } catch (e) {
+                        setMessageSendError(e instanceof Error ? e.message : 'Failed to send message')
+                        setMessageStep('compose')
+                      }
                     }}
                     className={`flex-1 cursor-pointer rounded-lg py-3 text-[13px] font-semibold text-white ${
                       message.trim() ? 'bg-[#02A36E]' : 'cursor-not-allowed bg-[#9CA3AF]'

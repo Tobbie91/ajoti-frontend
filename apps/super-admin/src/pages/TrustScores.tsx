@@ -359,22 +359,22 @@ export function TrustScores() {
       {/* Filters */}
       <Group gap="sm">
         <NumberInput
-          placeholder="Min ATI (e.g. 0)"
+          placeholder="Min ATI (e.g. 300)"
           value={minScore}
           onChange={(v) => { setMinScore(v); setPage(1) }}
           min={0}
-          max={95}
+          max={850}
           style={{ width: 180 }}
           radius="md"
           size="sm"
           leftSection={<IconShield size={14} />}
         />
         <NumberInput
-          placeholder="Max ATI (e.g. 95)"
+          placeholder="Max ATI (e.g. 850)"
           value={maxScore}
           onChange={(v) => { setMaxScore(v); setPage(1) }}
           min={0}
-          max={95}
+          max={850}
           style={{ width: 180 }}
           radius="md"
           size="sm"
@@ -397,17 +397,17 @@ export function TrustScores() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={700}>
-          <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={950}>
+          <Table highlightOnHover layout="fixed">
             <Table.Thead>
-              <Table.Tr bg="#066F5B">
-                <Table.Th c="white">User</Table.Th>
-                <Table.Th c="white">ATI Score</Table.Th>
-                <Table.Th c="white">Contributions</Table.Th>
-                <Table.Th c="white">On Time / Late / Missed</Table.Th>
-                <Table.Th c="white">Peer Rating</Table.Th>
-                <Table.Th c="white">Payout</Table.Th>
-                <Table.Th c="white"></Table.Th>
+              <Table.Tr bg="#0B6B55">
+                <Table.Th c="white" w={200}>User</Table.Th>
+                <Table.Th c="white" w={110}>ATI Score</Table.Th>
+                <Table.Th c="white" w={130}>Contributions</Table.Th>
+                <Table.Th c="white" w={220} style={{ whiteSpace: 'nowrap' }}>On Time / Late / Missed</Table.Th>
+                <Table.Th c="white" w={110}>Peer Rating</Table.Th>
+                <Table.Th c="white" w={110}>Payout</Table.Th>
+                <Table.Th c="white" w={50}></Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>

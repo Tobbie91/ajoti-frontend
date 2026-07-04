@@ -20,6 +20,7 @@ import {
   submitPeerReview,
   getTrustScore,
   messageAdmin,
+  leaveRoscaCircle,
   type RoscaCircle,
   type RoscaSchedule,
   type CircleContribution,
@@ -205,6 +206,8 @@ export function GrowthActivities() {
         {activeTab === 'Overview' && (
           <OverviewTab
             circleName={circle.name}
+            circleId={id!}
+            circleStatus={(circle as any).status ?? ''}
             statusBadge={statusBadge}
             nextPaymentDate={nextPaymentDate}
             contributionAmountKobo={circle.contributionAmount}
@@ -265,6 +268,8 @@ export function GrowthActivities() {
 
 function OverviewTab({
   circleName,
+  circleId,
+  circleStatus,
   statusBadge,
   nextPaymentDate,
   contributionAmountKobo,
@@ -277,6 +282,8 @@ function OverviewTab({
   cycles,
 }: {
   circleName: string
+  circleId: string
+  circleStatus: string
   statusBadge: { bg: string; color: string; label: string }
   nextPaymentDate: string
   contributionAmountKobo: string | number
@@ -288,6 +295,25 @@ function OverviewTab({
   progressPercent: number
   cycles: CycleRow[]
 }) {
+  const navigate = useNavigate()
+  const [leaveConfirm, setLeaveConfirm] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
+
+  const canLeave = circleStatus === 'DRAFT'
+
+  async function handleLeave() {
+    setLeaving(true)
+    setLeaveError(null)
+    try {
+      await leaveRoscaCircle(circleId)
+      navigate('/rosca')
+    } catch (err) {
+      setLeaveError(err instanceof Error ? err.message : 'Failed to leave circle')
+      setLeaving(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Group Header */}
@@ -398,6 +424,43 @@ function OverviewTab({
           )}
         </div>
       </div>
+
+      {canLeave && !leaveConfirm && (
+        <button
+          onClick={() => setLeaveConfirm(true)}
+          className="w-full cursor-pointer rounded-xl border-2 border-[#EF4444] py-4 text-[15px] font-semibold text-[#EF4444] hover:bg-red-50"
+        >
+          Leave Circle
+        </button>
+      )}
+
+      {canLeave && leaveConfirm && (
+        <div className="rounded-2xl border-2 border-[#EF4444] bg-red-50 p-5">
+          <Text fw={600} className="text-[15px] text-[#EF4444]">Leave this circle?</Text>
+          <Text fw={400} className="mt-1 text-[13px] text-[#6B7280]">
+            Your collateral will be returned to your wallet immediately. This cannot be undone.
+          </Text>
+          {leaveError && (
+            <Text fw={400} className="mt-2 text-[12px] text-red-600">{leaveError}</Text>
+          )}
+          <div className="mt-4 flex gap-3">
+            <button
+              onClick={handleLeave}
+              disabled={leaving}
+              className="flex-1 cursor-pointer rounded-xl bg-[#EF4444] py-3 text-[14px] font-semibold text-white disabled:opacity-60"
+            >
+              {leaving ? 'Leaving...' : 'Yes, Leave'}
+            </button>
+            <button
+              onClick={() => { setLeaveConfirm(false); setLeaveError(null) }}
+              disabled={leaving}
+              className="flex-1 cursor-pointer rounded-xl border border-[#E5E7EB] bg-white py-3 text-[14px] font-semibold text-[#374151]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

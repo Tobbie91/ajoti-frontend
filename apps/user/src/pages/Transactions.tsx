@@ -46,7 +46,7 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
     type: entryType,
     time: d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', hour12: true }),
     amount: `₦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
-    direction: entryType === 'CREDIT' ? 'credit' : 'debit',
+    direction: (entryType === 'CREDIT' || entryType === 'RELEASE') ? 'credit' : 'debit',
     date: dateLabel,
     raw: tx,
   }

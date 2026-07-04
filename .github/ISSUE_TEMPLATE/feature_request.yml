@@ -1,0 +1,56 @@
+name: ✨ Feature Request
+description: Propose a new feature or enhancement
+title: "feat(<scope>): <short description>"
+labels: ["feature-request", "needs-triage"]
+assignees: []
+
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Product Area
+      options:
+        - User App
+        - Admin App
+        - Super Admin App
+        - All Apps (shared)
+        - Infrastructure / Build
+        - Cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: What problem does this solve? Why is it needed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature and how it should work.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you thought of other ways to solve this?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Suggested Priority
+      options:
+        - P0 — Blocker (cannot launch / operate without this)
+        - P1 — High (core user journey affected)
+        - P2 — Medium (improvement to existing flow)
+        - P3 — Low (nice to have)
+    validations:
+      required: true

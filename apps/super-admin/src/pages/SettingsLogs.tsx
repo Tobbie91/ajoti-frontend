@@ -3,10 +3,12 @@ import {
   Alert,
   Badge,
   Box,
+  Button,
   Divider,
   Group,
   NumberInput,
   Pagination,
+  PasswordInput,
   Paper,
   Select,
   Skeleton,
@@ -20,31 +22,103 @@ import {
 } from '@mantine/core'
 import { IconAlertCircle, IconRefresh, IconSearch } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getAuditLogs, type AuditLogRow, type PaginatedResponse } from '@/utils/api'
+import { changePassword, getAuditLogs, type AuditLogRow, type PaginatedResponse } from '@/utils/api'
+
+// ── Change Password card (real, self-contained) ─────────────────────────────
+
+function ChangePasswordCard() {
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  async function handleSubmit() {
+    setError('')
+    setSuccess('')
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setError('All fields are required.')
+      return
+    }
+    if (newPassword.length < 8 || newPassword.length > 20) {
+      setError('New password must be between 8 and 20 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await changePassword({ oldPassword, newPassword })
+      setSuccess('Password changed. Your other active sessions have been signed out.')
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to change password.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Paper withBorder radius="md" p="md">
+      <Text fw={600} size="lg" mb="md">Change Password</Text>
+      <Stack gap="md" maw={400}>
+        {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">{error}</Alert>}
+        {success && <Alert color="green" radius="md" variant="light">{success}</Alert>}
+        <PasswordInput
+          label="Current password"
+          value={oldPassword}
+          onChange={(e) => setOldPassword(e.currentTarget.value)}
+          radius="md"
+          required
+        />
+        <PasswordInput
+          label="New password"
+          description="8–20 characters"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.currentTarget.value)}
+          radius="md"
+          required
+        />
+        <PasswordInput
+          label="Confirm new password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.currentTarget.value)}
+          radius="md"
+          required
+        />
+        <Group justify="flex-end">
+          <Button onClick={handleSubmit} loading={loading}>Change Password</Button>
+        </Group>
+      </Stack>
+    </Paper>
+  )
+}
 
 // ── Settings tab (static / coming-soon) ─────────────────────────────────────
 
 function SettingsTab() {
-  const [enableRegistration, setEnableRegistration] = useState(true)
-  const [maintenanceMode, setMaintenanceMode] = useState(false)
-  const [enable2FA, setEnable2FA] = useState(false)
-  const [autoLogout, setAutoLogout] = useState<string | null>('30 mins')
-  const [failedLogins, setFailedLogins] = useState<string | number>(5)
-
   return (
     <Stack gap="lg" pt="md">
-      <Paper withBorder radius="md" p="md">
+      <ChangePasswordCard />
+
+      <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
+        Everything below is not yet wired to the backend. These controls are read-only previews — changes will have no effect until backend configuration endpoints are implemented.
+      </Alert>
+
+      <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
         <Text fw={600} size="lg" mb="md">General</Text>
 
         <Stack gap="md">
           <Group justify="space-between">
             <Text fw={500}>Enable Registration</Text>
-            <Switch
-              checked={enableRegistration}
-              onChange={(e) => setEnableRegistration(e.currentTarget.checked)}
-              size="md"
-              color="#066F5B"
-            />
+            <Switch checked size="md" color="#0B6B55" readOnly />
           </Group>
 
           <div>
@@ -57,6 +131,7 @@ function SettingsTab() {
               ]}
               defaultValue="WAT"
               radius="md"
+              disabled
             />
           </div>
 
@@ -71,51 +146,32 @@ function SettingsTab() {
               ]}
               defaultValue="en"
               radius="md"
+              disabled
             />
           </div>
         </Stack>
       </Paper>
 
-      <Paper withBorder radius="md" p="md">
+      <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
         <Group justify="space-between" align="center" mb="md">
           <Text fw={600} size="lg">Maintenance Mode</Text>
-          <Switch
-            checked={maintenanceMode}
-            onChange={(e) => setMaintenanceMode(e.currentTarget.checked)}
-            size="md"
-            color="#066F5B"
-          />
+          <Switch size="md" color="#0B6B55" readOnly />
         </Group>
-        {maintenanceMode && (
-          <Alert color="orange" radius="md" variant="light">
-            Maintenance mode is ON. The app will show a maintenance page to all users.
-          </Alert>
-        )}
       </Paper>
 
-      <Paper withBorder radius="md" p="md">
+      <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
         <Text fw={600} size="lg" mb="md">Security</Text>
         <Stack gap="md">
           <div>
             <Text fw={500} mb="xs">Password Policy</Text>
-            <Select
-              data={[
-                { value: 'standard', label: 'Standard (8 characters, 1 number)' },
-                { value: 'strong', label: 'Strong (10+ chars, uppercase, number, special)' },
-              ]}
-              defaultValue="standard"
-              radius="md"
-            />
+            <Text size="sm" c="dimmed">
+              Passwords must be 8–20 characters. Additional configurable policies are not currently supported.
+            </Text>
           </div>
 
           <Group justify="space-between">
             <Text fw={500}>Require 2FA for Superadmins</Text>
-            <Switch
-              checked={enable2FA}
-              onChange={(e) => setEnable2FA(e.currentTarget.checked)}
-              size="md"
-              color="#066F5B"
-            />
+            <Switch size="md" color="#0B6B55" readOnly />
           </Group>
 
           <Divider />
@@ -124,26 +180,23 @@ function SettingsTab() {
             <Text fw={500} mb="xs">Auto logout after inactivity</Text>
             <Select
               data={[
-                { value: '15 mins', label: '15 minutes' },
                 { value: '30 mins', label: '30 minutes' },
-                { value: '1 hour', label: '1 hour' },
-                { value: '2 hours', label: '2 hours' },
               ]}
-              value={autoLogout}
-              onChange={setAutoLogout}
+              defaultValue="30 mins"
               radius="md"
+              disabled
             />
           </div>
 
           <div>
             <Text fw={500} mb="xs">Lock account after failed logins</Text>
             <NumberInput
-              value={failedLogins}
-              onChange={setFailedLogins}
+              value={5}
               min={1}
               max={10}
               rightSection={<Text size="sm" c="dimmed" pr="xs">times</Text>}
               radius="md"
+              disabled
             />
           </div>
         </Stack>
@@ -258,15 +311,15 @@ function AuditLogsTab() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={700}>
-        <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={950}>
+        <Table highlightOnHover layout="fixed">
           <Table.Thead>
-            <Table.Tr bg="#066F5B">
-              <Table.Th c="white">Timestamp</Table.Th>
-              <Table.Th c="white">Actor</Table.Th>
-              <Table.Th c="white">Action</Table.Th>
-              <Table.Th c="white">Entity</Table.Th>
-              <Table.Th c="white">Reason</Table.Th>
+            <Table.Tr bg="#0B6B55">
+              <Table.Th c="white" w={160}>Timestamp</Table.Th>
+              <Table.Th c="white" w={200}>Actor</Table.Th>
+              <Table.Th c="white" w={180}>Action</Table.Th>
+              <Table.Th c="white" w={180}>Entity</Table.Th>
+              <Table.Th c="white" w={230}>Reason</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

@@ -22,6 +22,7 @@ import {
   ThemeIcon,
   ScrollArea,
   Code,
+  SegmentedControl,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
@@ -32,8 +33,9 @@ import {
   IconCheck,
   IconX,
   IconShieldCheck,
+  IconRefresh,
 } from '@tabler/icons-react'
-import { listKycQueue, approveKyc, rejectKyc, type KycQueueRow } from '@/utils/api'
+import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, getMonoIdentity, type KycQueueRow } from '@/utils/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +55,60 @@ function fmt(iso: string | null) {
   })
 }
 
+// ── Mono Verification Card ────────────────────────────────────────────────────
+
+function MonoVerificationCard({ data }: { data: Record<string, unknown> }) {
+  const inner = (data?.data ?? data) as Record<string, unknown>
+  const customer = inner?.customer as Record<string, string> | undefined
+  const event = (data?.event ?? inner?.event) as string | undefined
+  const status = inner?.status as string | undefined
+  const kycLevel = inner?.kyc_level as string | undefined
+  const reference = inner?.reference as string | undefined
+  const createdAt = inner?.created_at as string | undefined
+  const liveMode = inner?.live_mode as boolean | undefined
+
+  if (!status && !kycLevel && !customer) {
+    return (
+      <ScrollArea h={220} type="auto">
+        <Code block fz="xs" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+          {JSON.stringify(data, null, 2)}
+        </Code>
+      </ScrollArea>
+    )
+  }
+
+  return (
+    <Stack gap="xs">
+      <Group gap="xs" wrap="nowrap">
+        {status && (
+          <Badge color={status === 'successful' ? 'green' : 'red'} variant="filled" size="sm">
+            {status}
+          </Badge>
+        )}
+        {kycLevel && (
+          <Badge color="blue" variant="light" size="sm">
+            {kycLevel.replace('_', ' ').toUpperCase()}
+          </Badge>
+        )}
+        {liveMode === false && (
+          <Badge color="gray" variant="outline" size="sm">Sandbox</Badge>
+        )}
+        {liveMode === true && (
+          <Badge color="teal" variant="outline" size="sm">Live</Badge>
+        )}
+      </Group>
+      {event && <Text fz="xs" c="dimmed">{event}</Text>}
+      <SimpleGrid cols={2} spacing="xs">
+        {customer?.name && <InfoRow label="Verified Name" value={customer.name} />}
+        {customer?.email && <InfoRow label="Verified Email" value={customer.email} />}
+        {customer?.phone && <InfoRow label="Verified Phone" value={customer.phone} />}
+        {reference && <InfoRow label="Reference" value={reference} />}
+        {createdAt && <InfoRow label="Verified At" value={fmt(createdAt)} />}
+      </SimpleGrid>
+    </Stack>
+  )
+}
+
 // ── KYC Detail Drawer ────────────────────────────────────────────────────────
 
 function KycDetailDrawer({
@@ -70,6 +126,40 @@ function KycDetailDrawer({
   const [actionError, setActionError] = useState<string | null>(null)
   const [rejectModal, { open: openReject, close: closeReject }] = useDisclosure(false)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [overrideLevel, setOverrideLevel] = useState<string>('')
+  const [overrideLoading, setOverrideLoading] = useState(false)
+  const [monoFetchLoading, setMonoFetchLoading] = useState(false)
+  const [monoFetchError, setMonoFetchError] = useState<string | null>(null)
+  const [monoLiveData, setMonoLiveData] = useState<Record<string, unknown> | null>(null)
+
+  async function handleOverride() {
+    if (!record || overrideLevel === '') return
+    setOverrideLoading(true)
+    setActionError(null)
+    try {
+      await overrideKycLevel(record.userId, Number(overrideLevel))
+      onAction()
+      onClose()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Override failed')
+    } finally {
+      setOverrideLoading(false)
+    }
+  }
+
+  async function handleMonoRefetch() {
+    if (!record) return
+    setMonoFetchLoading(true)
+    setMonoFetchError(null)
+    try {
+      const data = await getMonoIdentity(record.userId)
+      setMonoLiveData(data)
+    } catch (err) {
+      setMonoFetchError(err instanceof Error ? err.message : 'Failed to fetch from Mono')
+    } finally {
+      setMonoFetchLoading(false)
+    }
+  }
 
   async function handleApprove() {
     if (!record) return
@@ -187,12 +277,28 @@ function KycDetailDrawer({
               }
               labelPosition="left"
             />
-            {record.verificationData ? (
-              <ScrollArea h={220} type="auto">
-                <Code block fz="xs" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                  {JSON.stringify(record.verificationData, null, 2)}
-                </Code>
-              </ScrollArea>
+            <Group justify="space-between" align="center" mb={4}>
+              <Text fz="xs" c="dimmed">Stored snapshot</Text>
+              <Button
+                size="xs"
+                variant="subtle"
+                color="blue"
+                leftSection={<IconRefresh size={12} />}
+                loading={monoFetchLoading}
+                onClick={handleMonoRefetch}
+              >
+                Re-fetch from Mono
+              </Button>
+            </Group>
+            {monoFetchError && (
+              <Alert color="red" radius="md" variant="light" mb={4}>
+                <Text fz="xs">{monoFetchError}</Text>
+              </Alert>
+            )}
+            {monoLiveData ? (
+              <MonoVerificationCard data={monoLiveData} />
+            ) : record.verificationData ? (
+              <MonoVerificationCard data={record.verificationData as Record<string, unknown>} />
             ) : (
               <Text fz="sm" c="dimmed">No Mono verification data yet.</Text>
             )}
@@ -230,6 +336,35 @@ function KycDetailDrawer({
                 </Group>
               </>
             )}
+
+            {/* Manual override */}
+            <Divider label="Manual Override" labelPosition="left" />
+            <Stack gap="xs">
+              <Text fz="xs" c="dimmed">Force-set KYC level regardless of current state.</Text>
+              <Group gap="sm" align="flex-end">
+                <SegmentedControl
+                  value={overrideLevel}
+                  onChange={setOverrideLevel}
+                  data={[
+                    { label: 'Level 0', value: '0' },
+                    { label: 'Level 1', value: '1' },
+                    { label: 'Level 2', value: '2' },
+                    { label: 'Level 3', value: '3' },
+                  ]}
+                  disabled={overrideLoading}
+                  size="xs"
+                />
+                <Button
+                  size="xs"
+                  color="orange"
+                  loading={overrideLoading}
+                  disabled={overrideLevel === '' || overrideLevel === String(record.kycLevel)}
+                  onClick={handleOverride}
+                >
+                  Set Level
+                </Button>
+              </Group>
+            </Stack>
           </Stack>
         )}
       </Drawer>
@@ -373,17 +508,17 @@ export function KycApprovals() {
       )}
 
       <Card withBorder p={0} radius="md">
-        <Table.ScrollContainer minWidth={900}>
-        <Table verticalSpacing="sm" horizontalSpacing="md">
+        <Table.ScrollContainer minWidth={1150}>
+        <Table verticalSpacing="sm" horizontalSpacing="md" layout="fixed">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
-              <Table.Th style={{ color: 'white' }}>Name</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Email</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Phone</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Submitted</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Level</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Step</Table.Th>
-              <Table.Th style={{ color: 'white' }}>Status</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={180}>Name</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={230}>Email</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={140}>Phone</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={140}>Submitted</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={110}>Level</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={150}>Step</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={140}>Status</Table.Th>
               <Table.Th style={{ color: 'white' }} w={60} />
             </Table.Tr>
           </Table.Thead>
@@ -448,7 +583,7 @@ export function KycApprovals() {
       <Group justify="space-between">
         <Text fz="sm" c="dimmed">
           {total > 0
-            ? `Showing ${Math.min((page - 1) * PAGE_SIZE + 1, total)}–${Math.min(page * PAGE_SIZE, total)} of ${total}`
+            ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}`
             : 'No records'}
         </Text>
         {totalPages > 1 && (

@@ -1,5 +1,22 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
+export class ApiError extends Error {
+  readonly code?: number
+
+  constructor(message: string, code?: number) {
+    super(message)
+    this.code = code
+    this.name = 'ApiError'
+  }
+}
+
+function parseJsonSafely(res: Response): Promise<unknown> {
+  return res.json().catch((e: unknown) => {
+    if (import.meta.env.DEV) console.error('[api] Failed to parse response JSON:', e)
+    return {}
+  })
+}
+
 async function request<T>(path: string, options: RequestInit): Promise<T> {
   const { headers, ...rest } = options
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -7,11 +24,16 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...headers },
   })
 
-  const data = await res.json().catch(() => ({}))
+  const data = await parseJsonSafely(res)
+
+  if (res.status === 503 && (data as { maintenance?: boolean }).maintenance) {
+    window.location.replace('/maintenance')
+    throw new ApiError('Maintenance', 503)
+  }
 
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
-    throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
+    throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
   }
 
   return data as T
@@ -97,6 +119,7 @@ export interface UserProfile {
   state?: string
   lga?: string
   role?: string
+  status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'FROZEN'
   adminRequestedAt?: string | null
   [key: string]: unknown
 }
@@ -114,6 +137,13 @@ export async function updateUserProfile(payload: Partial<UserProfile>): Promise<
   return ('data' in res && res.data ? res.data : res) as UserProfile
 }
 
+export async function verifyPendingEmailChange(otp: string): Promise<{ message: string; data?: UserProfile }> {
+  return authRequest('/api/users/me/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ otp }),
+  })
+}
+
 export async function login(email: string, password: string): Promise<{ token: string; refreshToken: string; user: UserProfile }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: 'POST',
@@ -121,11 +151,11 @@ export async function login(email: string, password: string): Promise<{ token: s
     body: new URLSearchParams({ grant_type: 'password', email, password }),
   })
 
-  const data = await res.json().catch(() => ({}))
+  const data = await parseJsonSafely(res)
 
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
-    throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Invalid email or password')
+    throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Invalid email or password', res.status)
   }
 
   // Handle both wrapped { data: {...} } and flat response shapes
@@ -187,10 +217,10 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
   })
 
   if (res.status !== 401) {
-    const data = await res.json().catch(() => ({}))
+    const data = await parseJsonSafely(res)
     if (!res.ok) {
       const msg = (data as { message?: string | string[] }).message
-      throw new Error(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong')
+      throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
     }
     return data as T
   }
@@ -213,7 +243,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
       refreshQueue = []
       isRefreshing = false
       clearSessionAndRedirect()
-      throw new Error('Session expired. Please log in again.')
+      throw new ApiError('Session expired. Please log in again.')
     }
   }
 
@@ -229,7 +259,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
     })
     // If refresh ultimately fails the queue gets cleared and this will never resolve,
     // but clearSessionAndRedirect() will navigate away anyway.
-    setTimeout(() => reject(new Error('Session expired')), 30_000)
+    setTimeout(() => reject(new ApiError('Session expired')), 30_000)
   })
 }
 
@@ -244,6 +274,10 @@ export interface KycStatus {
   kycLevel: number  // 0 = none, 1 = Prove+NOK, 2 = +GovID via Mono, 3 = +Address via Mono
   rejectionReason?: string | null
   verificationData?: Record<string, unknown> | null
+  address?: string
+  city?: string
+  state?: string
+  lga?: string
 }
 
 export function getKycStatus(): Promise<KycStatus> {
@@ -294,6 +328,20 @@ export function logout(refreshToken: string): Promise<{ message: string }> {
   return authRequest('/api/auth/logout', {
     method: 'POST',
     body: JSON.stringify({ refreshToken }),
+  })
+}
+
+export function deleteMyAccount(currentPassword: string, reason?: string): Promise<{ message: string }> {
+  return authRequest('/api/users/me', {
+    method: 'DELETE',
+    body: JSON.stringify({ currentPassword, confirm: 'DELETE', reason }),
+  })
+}
+
+export function freezeMyAccount(currentPassword: string, reason?: string): Promise<{ message: string; ticketId: string }> {
+  return authRequest('/api/users/me/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, reason }),
   })
 }
 
@@ -360,6 +408,10 @@ export interface RoscaCircle {
 export async function listRoscaCircles(): Promise<RoscaCircle[]> {
   const res = await authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>('/api/rosca', { method: 'GET' })
   return Array.isArray(res) ? res : (res as { data?: RoscaCircle[] }).data ?? []
+}
+
+export function leaveRoscaCircle(circleId: string): Promise<{ success: boolean; message: string }> {
+  return authRequest(`/api/rosca/${circleId}/leave`, { method: 'DELETE' })
 }
 
 export function joinRoscaCircle(circleId: string): Promise<{ message: string }> {
@@ -458,15 +510,27 @@ export async function makeContribution(circleId: string, cycleNumber: number): P
 
 // ── Wallet ──────────────────────────────────────────────────────────────────
 
+export interface PendingWithdrawal {
+  reference: string
+  amountKobo: string
+  initiatedAt: string
+}
+
 export interface Wallet {
   id: string
-  balance: number
   currency: string
+  status: string
+  balance: WalletBalance
+  // Stage 11: while a withdrawal is PENDING, every other debit/reserve on the
+  // wallet is blocked (contributions, circle joins, savings, another
+  // withdrawal). Null when nothing is pending.
+  pendingWithdrawal: PendingWithdrawal | null
   [key: string]: unknown
 }
 
-export function getWallet(): Promise<Wallet> {
-  return authRequest('/api/wallet', { method: 'GET' })
+export async function getWallet(): Promise<Wallet> {
+  const res = await authRequest<{ data?: Wallet } | Wallet>('/api/wallet', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as Wallet
 }
 
 export interface WalletBalance {
@@ -644,6 +708,37 @@ export async function initializeWithdrawal(payload: WithdrawalPayload): Promise<
     },
   )
   return ('data' in res && res.data ? res.data : res) as WithdrawalResponse
+}
+
+// ── Saved Bank Accounts ───────────────────────────────────────────────────────
+
+export interface SavedBankAccount {
+  id: string
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  isDefault: boolean
+  createdAt: string
+}
+
+export function listBankAccounts(): Promise<{ data: SavedBankAccount[] }> {
+  return authRequest('/api/users/me/bank-accounts', { method: 'GET' })
+}
+
+export function addBankAccount(bankCode: string, bankName: string, accountNumber: string, transactionPin: string): Promise<{ data: SavedBankAccount }> {
+  return authRequest('/api/users/me/bank-accounts', {
+    method: 'POST',
+    body: JSON.stringify({ bankCode, bankName, accountNumber, transactionPin }),
+  })
+}
+
+export function removeBankAccount(id: string): Promise<{ data: { deleted: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}`, { method: 'DELETE' })
+}
+
+export function setDefaultBankAccount(id: string): Promise<{ data: { updated: boolean } }> {
+  return authRequest(`/api/users/me/bank-accounts/${id}/set-default`, { method: 'PATCH' })
 }
 
 // ── Transaction PIN ───────────────────────────────────────────────────────────
@@ -974,4 +1069,80 @@ export async function getChatCircles(): Promise<ChatCircle[]> {
 export async function getChatMessages(circleId: string, before?: string): Promise<ChatMessage[]> {
   const qs = before ? `?before=${encodeURIComponent(before)}` : ''
   return authRequest(`/api/chat/circles/${circleId}/messages${qs}`, { method: 'GET' })
+}
+
+// ── Support ───────────────────────────────────────────────────────────────────
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+export type TicketCategory = 'ACCOUNT' | 'WALLET' | 'TRANSACTION' | 'KYC' | 'ROSCA' | 'LOAN' | 'OTHER'
+export type TicketSenderRole = 'USER' | 'ADMIN' | 'SUPERADMIN'
+
+export interface SupportMessage {
+  id: string
+  body: string
+  senderRole: TicketSenderRole
+  sender: { id: string; firstName: string; lastName: string; role: string }
+  createdAt: string
+}
+
+export interface SupportTicketRow {
+  id: string
+  category: TicketCategory
+  subject: string
+  status: TicketStatus
+  refType: string | null
+  refId: string | null
+  createdAt: string
+  updatedAt: string
+  messages: Pick<SupportMessage, 'body' | 'createdAt' | 'senderRole'>[]
+  _count: { messages: number }
+}
+
+export interface SupportTicketDetail extends SupportTicketRow {
+  messages: SupportMessage[]
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: { total: number; page: number; limit: number; totalPages: number }
+}
+
+export function listMyTickets(params: {
+  page?: number
+  limit?: number
+  status?: TicketStatus | ''
+  category?: TicketCategory | ''
+} = {}): Promise<PaginatedResponse<SupportTicketRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/support/tickets?${q}`, { method: 'GET' })
+}
+
+export function getMyTicket(ticketId: string): Promise<SupportTicketDetail> {
+  return authRequest(`/api/support/tickets/${ticketId}`, { method: 'GET' })
+}
+
+export function createTicket(payload: {
+  category: TicketCategory
+  subject: string
+  body: string
+  refType?: string
+  refId?: string
+}): Promise<SupportTicketDetail> {
+  return authRequest('/api/support/tickets', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function replyToTicket(ticketId: string, body: string): Promise<SupportMessage> {
+  return authRequest(`/api/support/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+}
+
+export function closeMyTicket(ticketId: string): Promise<{ id: string; status: TicketStatus }> {
+  return authRequest(`/api/support/tickets/${ticketId}/close`, { method: 'PATCH' })
 }

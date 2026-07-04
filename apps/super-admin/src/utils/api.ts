@@ -1,5 +1,22 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
+export class ApiError extends Error {
+  readonly code?: number
+
+  constructor(message: string, code?: number) {
+    super(message)
+    this.code = code
+    this.name = 'ApiError'
+  }
+}
+
+function parseJsonSafely(res: Response): Promise<unknown> {
+  return res.json().catch((e: unknown) => {
+    if (import.meta.env.DEV) console.error('[api] Failed to parse response JSON:', e)
+    return {}
+  })
+}
+
 // ── Core request ─────────────────────────────────────────────────────────────
 
 async function request<T>(path: string, options: RequestInit): Promise<T> {
@@ -8,10 +25,16 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
     ...rest,
     headers: { 'Content-Type': 'application/json', ...headers },
   })
-  const data = await res.json().catch(() => ({}))
+  const data = await parseJsonSafely(res)
+
+  if (res.status === 503 && (data as { maintenance?: boolean }).maintenance) {
+    window.location.replace('/maintenance')
+    throw new ApiError('Maintenance', 503)
+  }
+
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
-    throw new Error(Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong'))
+    throw new ApiError(Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong'), res.status)
   }
   return data as T
 }
@@ -64,10 +87,10 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
   })
 
   if (res.status !== 401) {
-    const data = await res.json().catch(() => ({}))
+    const data = await parseJsonSafely(res)
     if (!res.ok) {
       const msg = (data as { message?: string | string[] }).message
-      throw new Error(Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong'))
+      throw new ApiError(Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong'), res.status)
     }
     return data as T
   }
@@ -88,7 +111,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
       refreshQueue = []
       isRefreshing = false
       clearSessionAndRedirect()
-      throw new Error('Session expired. Please log in again.')
+      throw new ApiError('Session expired. Please log in again.')
     }
   }
 
@@ -101,7 +124,7 @@ async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
         }),
       )
     })
-    setTimeout(() => reject(new Error('Session expired')), 30_000)
+    setTimeout(() => reject(new ApiError('Session expired')), 30_000)
   })
 }
 
@@ -113,6 +136,7 @@ export interface SuperadminUser {
   firstName: string
   lastName: string
   role: string
+  staffRole: string | null
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
@@ -127,18 +151,18 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 export async function login(
   email: string,
   password: string,
-): Promise<{ token: string; refreshToken: string; user: SuperadminUser }> {
+): Promise<{ token: string; refreshToken: string; user: SuperadminUser; mustChangePassword: boolean }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'password', email, password }),
   })
 
-  const data = await res.json().catch(() => ({}))
+  const data = await parseJsonSafely(res)
 
   if (!res.ok) {
     const msg = (data as { message?: string | string[] }).message
-    throw new Error(Array.isArray(msg) ? msg[0] : (msg ?? 'Invalid email or password'))
+    throw new ApiError(Array.isArray(msg) ? msg[0] : (msg ?? 'Invalid email or password'), res.status)
   }
 
   const raw = data as Record<string, unknown>
@@ -156,9 +180,10 @@ export async function login(
     firstName: (jwtPayload.firstName ?? '') as string,
     lastName: (jwtPayload.lastName ?? '') as string,
     role: (jwtPayload.role ?? '') as string,
+    staffRole: (jwtPayload.staffRole ?? null) as string | null,
   }
 
-  return { token, refreshToken, user }
+  return { token, refreshToken, user, mustChangePassword: Boolean(payload.mustChangePassword) }
 }
 
 export function logoutApi(refreshToken: string): Promise<{ message: string }> {
@@ -298,8 +323,11 @@ export function updateUserStatus(
   })
 }
 
-export function promoteToSuperadmin(userId: string): Promise<{ success: boolean; data: unknown }> {
-  return authRequest(`/api/superadmin/users/${userId}/promote`, { method: 'PATCH' })
+// Distinct from updateUserStatus — only valid on FROZEN accounts, and is the final step
+// after identity verification has already happened outside the app. Not a generic
+// reactivate; the backend rejects lifting a freeze via updateUserStatus entirely.
+export function unfreezeAccount(userId: string): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/unfreeze`, { method: 'PATCH' })
 }
 
 export function approveAdminRequest(userId: string): Promise<{ success: boolean; data: unknown }> {
@@ -364,14 +392,25 @@ export function getKycDetail(userId: string): Promise<Record<string, unknown>> {
 }
 
 export function approveKyc(userId: string): Promise<unknown> {
-  return authRequest(`/api/kyc/approve/${userId}`, { method: 'PATCH' })
+  return authRequest(`/api/superadmin/kyc/approve/${userId}`, { method: 'PATCH' })
 }
 
 export function rejectKyc(userId: string, rejectionReason: string): Promise<unknown> {
-  return authRequest(`/api/kyc/reject/${userId}`, {
+  return authRequest(`/api/superadmin/kyc/reject/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify({ rejectionReason }),
   })
+}
+
+export function overrideKycLevel(userId: string, kycLevel: number): Promise<unknown> {
+  return authRequest(`/api/superadmin/kyc/override/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ kycLevel }),
+  })
+}
+
+export function getMonoIdentity(userId: string): Promise<Record<string, unknown>> {
+  return authRequest(`/api/superadmin/kyc/mono-identity/${userId}`, {})
 }
 
 // ── Ledger & Audit ────────────────────────────────────────────────────────────
@@ -393,6 +432,7 @@ export function getLedger(params: {
   page?: number
   limit?: number
   userId?: string
+  walletId?: string
   reference?: string
   sourceType?: string
   from?: string
@@ -443,7 +483,7 @@ export function exportCsv(params: {
   }).then((r) => r.blob())
 }
 
-// ── Wallets ───────────────────────────────────────────────────────────────────
+// ── Wallets (customer wallets only — system accounts have their own page) ─────
 
 export interface WalletRow {
   walletId: string
@@ -457,34 +497,37 @@ export interface WalletRow {
   user: { id: string; firstName: string; lastName: string; email: string; phone: string | null }
 }
 
-export interface WalletResetResult {
+// ── System Accounts (Financial Architecture Phase 1) — ownerless platform accounts ─
+
+export type SystemAccountType = 'PLATFORM_POOL' | 'PLATFORM_REVENUE' | 'LOAN_FLOAT'
+
+export interface SystemAccountRow {
+  type: SystemAccountType
   walletId: string
-  resetEntryId: string
-  debitedAmountKobo: string
-  balanceAfterKobo: string
+  status: string
+  createdAt: string
+  balanceKobo: string
+  balanceNaira: string
 }
 
-export interface WalletResetUndoResult {
-  walletId: string
-  resetEntryId: string
-  reversalEntryId: string
-  restoredAmountKobo: string
-  balanceAfterKobo: string
+export function listSystemAccounts(): Promise<{ success: boolean; data: SystemAccountRow[] }> {
+  return authRequest<{ success: boolean; data: SystemAccountRow[] }>(
+    '/api/superadmin/finance/system-accounts',
+    { method: 'GET' },
+  )
 }
 
-export function resetWalletBalance(walletId: string): Promise<{ success: boolean; message: string; data: WalletResetResult }> {
-  return authRequest(`/api/superadmin/analytics/wallets/${walletId}/reset-balance`, { method: 'POST' })
+export interface CapitalizeResult {
+  capitalizationId: string
+  amountKobo: string
+  floatBalanceKobo: string
 }
 
-export function undoWalletBalanceReset(
-  walletId: string,
-  entryId: string,
-  reason?: string,
-): Promise<{ success: boolean; message: string; data: WalletResetUndoResult }> {
-  return authRequest(`/api/superadmin/analytics/wallets/${walletId}/reset-balance/${entryId}/undo`, {
-    method: 'POST',
-    body: JSON.stringify(reason ? { reason } : {}),
-  })
+export function capitalizeLoanFloat(amountKobo: number, note: string): Promise<{ success: boolean; data: CapitalizeResult }> {
+  return authRequest<{ success: boolean; data: CapitalizeResult }>(
+    '/api/superadmin/finance/loan-float/capitalize',
+    { method: 'POST', body: JSON.stringify({ amountKobo, note }) },
+  )
 }
 
 export function listWallets(params: {
@@ -561,6 +604,18 @@ export function flagMember(
     method: 'PATCH',
     body: JSON.stringify({ reason }),
   })
+}
+
+export function releaseCircleCollateral(circleId: string): Promise<{ success: boolean; data: { released: number; message: string } }> {
+  return authRequest(`/api/superadmin/circles/${circleId}/release-collateral`, { method: 'POST' })
+}
+
+export function deleteCircle(circleId: string): Promise<{ success: boolean; data: { deleted: boolean } }> {
+  return authRequest(`/api/superadmin/circles/${circleId}`, { method: 'DELETE' })
+}
+
+export function releaseUserReservedFunds(userId: string): Promise<{ success: boolean; data: { released: number; message: string } }> {
+  return authRequest(`/api/superadmin/users/${userId}/release-reserved-funds`, { method: 'POST' })
 }
 
 export interface ReconcileResult {
@@ -668,6 +723,96 @@ export function runAutoSimulation(): Promise<{ success: boolean; data: AutoSimRe
   return authRequest('/api/superadmin/simulate/auto', { method: 'POST' })
 }
 
+// ── Support ───────────────────────────────────────────────────────────────────
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+export type TicketCategory = 'ACCOUNT' | 'WALLET' | 'TRANSACTION' | 'KYC' | 'ROSCA' | 'LOAN' | 'OTHER'
+export type TicketSenderRole = 'USER' | 'ADMIN' | 'SUPERADMIN'
+
+export interface SupportMessage {
+  id: string
+  body: string
+  senderRole: TicketSenderRole
+  sender: { id: string; firstName: string; lastName: string; role: string }
+  createdAt: string
+}
+
+export interface SupportTicketRow {
+  id: string
+  category: TicketCategory
+  subject: string
+  status: TicketStatus
+  refType: string | null
+  refId: string | null
+  createdAt: string
+  updatedAt: string
+  user: { id: string; firstName: string; lastName: string; email: string; role: string }
+  assignedTo: { id: string; firstName: string; lastName: string } | null
+  messages: Pick<SupportMessage, 'body' | 'createdAt' | 'senderRole'>[]
+  _count: { messages: number }
+}
+
+export interface SupportTicketDetail extends SupportTicketRow {
+  messages: SupportMessage[]
+}
+
+export function listSupportTickets(params: {
+  page?: number
+  limit?: number
+  status?: TicketStatus | ''
+  category?: TicketCategory | ''
+  search?: string
+}): Promise<PaginatedResponse<SupportTicketRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/support?${q}`, { method: 'GET' })
+}
+
+export function getSupportTicketDetail(ticketId: string): Promise<SupportTicketDetail> {
+  return authRequest(`/api/superadmin/support/${ticketId}`, { method: 'GET' })
+}
+
+export function replySupportTicket(
+  ticketId: string,
+  body: string,
+): Promise<SupportMessage> {
+  return authRequest(`/api/superadmin/support/${ticketId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+}
+
+export function assignSupportTicket(
+  ticketId: string,
+  assignedToId?: string,
+): Promise<{ id: string; assignedToId: string; status: TicketStatus }> {
+  return authRequest(`/api/superadmin/support/${ticketId}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify(assignedToId ? { assignedToId } : {}),
+  })
+}
+
+export function updateSupportTicketStatus(
+  ticketId: string,
+  status: 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED',
+): Promise<SupportTicketDetail> {
+  return authRequest(`/api/superadmin/support/${ticketId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export function setStaffRole(
+  userId: string,
+  staffRole: 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER' | 'SUPERADMIN',
+): Promise<{ success: boolean; data: unknown }> {
+  return authRequest(`/api/superadmin/users/${userId}/staff-role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ staffRole }),
+  })
+}
+
 export function runManualSimulation(dto: ManualSimConfig): Promise<{ success: boolean; data: SimResult }> {
   return authRequest('/api/superadmin/simulate/manual', { method: 'POST', body: JSON.stringify(dto) })
 }
@@ -721,4 +866,176 @@ export function sandboxReconcile(runId: string): Promise<{ success: boolean; dat
 
 export function sandboxReset(runId: string): Promise<{ success: boolean; message: string; data: { deleted: number } }> {
   return authRequest(`/api/superadmin/simulate/sandbox/reset/${runId}`, { method: 'DELETE' })
+}
+
+// ── Staff IAM ─────────────────────────────────────────────────────────────────
+
+export type StaffAdminRole = 'SUPPORT' | 'COMPLIANCE' | 'OPERATIONS' | 'MANAGER' | 'SUPERADMIN'
+export type StaffStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING'
+
+export interface StaffUserRow {
+  type: 'USER'
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  staffRole: StaffAdminRole
+  status: 'ACTIVE' | 'SUSPENDED'
+  createdAt: string
+}
+
+export interface StaffInviteRow {
+  type: 'INVITE'
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  staffRole: StaffAdminRole
+  status: 'PENDING'
+  createdAt: string
+  expiresAt: string
+  invitedBy: { firstName: string; lastName: string } | null
+}
+
+export type StaffRow = StaffUserRow | StaffInviteRow
+
+export interface StaffAuditLogRow {
+  id: string
+  actorId: string
+  actorType: string
+  action: string
+  entityType: string
+  entityId: string
+  before: unknown
+  after: unknown
+  createdAt: string
+}
+
+export function listStaff(params: {
+  page?: number
+  limit?: number
+  staffRole?: StaffAdminRole
+  status?: 'ACTIVE' | 'SUSPENDED'
+} = {}): Promise<PaginatedResponse<StaffRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && (v as unknown) !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/staff?${q}`, { method: 'GET' })
+}
+
+export function inviteStaff(dto: {
+  email: string
+  firstName: string
+  lastName: string
+  staffRole: StaffAdminRole
+}): Promise<{ message: string }> {
+  return authRequest('/api/superadmin/staff/invite', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+// Creates a real, immediately-active staff account with an admin-supplied TEMPORARY
+// password — the new staff member must change it at first login before they can do
+// anything else. No email is sent; the admin hands over the credentials directly.
+export function createStaff(dto: {
+  email: string
+  firstName: string
+  lastName: string
+  staffRole: StaffAdminRole
+  phone: string
+  dob: string
+  gender: 'MALE' | 'FEMALE'
+  tempPassword: string
+}): Promise<{ message: string; userId: string }> {
+  return authRequest('/api/superadmin/staff/create', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+export function changeStaffRole(
+  staffId: string,
+  staffRole: StaffAdminRole,
+): Promise<{ message: string }> {
+  return authRequest(`/api/superadmin/staff/${staffId}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ staffRole }),
+  })
+}
+
+export function suspendStaff(staffId: string): Promise<{ message: string }> {
+  return authRequest(`/api/superadmin/staff/${staffId}/suspend`, { method: 'PATCH' })
+}
+
+export function reactivateStaff(staffId: string): Promise<{ message: string }> {
+  return authRequest(`/api/superadmin/staff/${staffId}/reactivate`, { method: 'PATCH' })
+}
+
+export function cancelStaffInvite(inviteId: string): Promise<{ message: string }> {
+  return authRequest(`/api/superadmin/staff/invites/${inviteId}`, { method: 'DELETE' })
+}
+
+export function getStaffAuditLog(params: {
+  page?: number
+  limit?: number
+  startDate?: string
+  endDate?: string
+} = {}): Promise<PaginatedResponse<StaffAuditLogRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/staff/audit-log?${q}`, { method: 'GET' })
+}
+
+export function staffSetup(dto: {
+  token: string
+  firstName: string
+  lastName: string
+  dob: string
+  gender: 'MALE' | 'FEMALE'
+  phone: string
+  password: string
+}): Promise<{ accessToken: string; refreshToken: string; expiresIn: string; message: string }> {
+  return request('/api/auth/staff/setup', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+// ── Account ──────────────────────────────────────────────────────────────────
+
+export function changePassword(dto: {
+  oldPassword: string
+  newPassword: string
+}): Promise<{ message: string }> {
+  return authRequest('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
+}
+
+export function forgotPassword(email: string): Promise<{ message: string }> {
+  return request('/api/auth/forget-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resendResetOtp(email: string): Promise<{ message: string }> {
+  return request('/api/auth/resend-reset-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword(dto: {
+  email: string
+  otp: string
+  newPassword: string
+}): Promise<{ message: string }> {
+  return request('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  })
 }

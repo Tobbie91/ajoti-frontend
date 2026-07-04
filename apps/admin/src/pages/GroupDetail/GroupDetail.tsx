@@ -59,6 +59,7 @@ import {
   getFinancialHealth,
   getCircleJoinRequests,
   closeRoscaCircle,
+  extendCycleDeadline,
   type Payout,
   type Contribution as ApiContribution,
   type RoscaCircle,
@@ -780,10 +781,23 @@ export function GroupDetail() {
   const [paymentContribsLoading, setPaymentContribsLoading] = useState(false)
   const [disbursements, setDisbursements] = useState<ApiDisbursement[]>([])
   const [disbursementsLoading, setDisbursementsLoading] = useState(false)
+  const [extendModal, setExtendModal] = useState<{ cycleNumber: number } | null>(null)
+  const [extendDate, setExtendDate] = useState<string | null>(null)
+  const [extendLoading, setExtendLoading] = useState(false)
+  const [extendError, setExtendError] = useState<string | null>(null)
+
+  // Load payouts eagerly so Member Management tab can check who's been paid
+  useEffect(() => {
+    if (id && !payoutsFetched.current) {
+      payoutsFetched.current = true
+      getPayoutHistory(id)
+        .then(setPayouts)
+        .catch(() => setPayouts([]))
+    }
+  }, [id])
 
   useEffect(() => {
-    if (activeTab === 'payouts' && id && !payoutsFetched.current) {
-      payoutsFetched.current = true
+    if (activeTab === 'payouts' && id) {
       setPayoutsLoading(true)
       getPayoutHistory(id)
         .then(setPayouts)
@@ -827,6 +841,27 @@ export function GroupDetail() {
       .catch(() => setPaymentContribs(null))
       .finally(() => setPaymentContribsLoading(false))
   }, [activeTab, selectedRound, id])
+
+  async function handleExtendDeadline() {
+    if (!id || !extendModal || !extendDate) return
+    setExtendLoading(true)
+    setExtendError(null)
+    try {
+      await extendCycleDeadline(id, extendModal.cycleNumber, new Date(extendDate).toISOString())
+      setExtendModal(null)
+      setExtendDate(null)
+      const [updated, updatedHealth] = await Promise.all([
+        getAdminDisbursements(id),
+        getFinancialHealth(id),
+      ])
+      setDisbursements(updated)
+      setFinancialHealth(updatedHealth)
+    } catch (err) {
+      setExtendError(err instanceof Error ? err.message : 'Failed to extend deadline')
+    } finally {
+      setExtendLoading(false)
+    }
+  }
 
   async function handleProcessPayout() {
     const cycleNum = parseInt(processCycleInput)
@@ -1289,7 +1324,12 @@ export function GroupDetail() {
                       </Table.Td>
                     </Table.Tr>
                   )}
-                  {filteredMembers.map((member) => (
+                  {filteredMembers.map((member) => {
+                    const hasPayout = payouts.some(
+                      (p) => p.recipientId === member.userId &&
+                        ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase())
+                    )
+                    return (
                     <Table.Tr key={member.userId}>
                       <Table.Td>
                         <Group gap="sm" align="center">
@@ -1328,14 +1368,17 @@ export function GroupDetail() {
                           variant="outline"
                           size="xs"
                           radius="md"
-                          style={{ borderColor: PRIMARY, color: PRIMARY }}
-                          onClick={() => openAssignModal({ userId: member.userId, name: member.name })}
+                          disabled={hasPayout}
+                          title={hasPayout ? 'Position cannot be changed after payout' : undefined}
+                          style={hasPayout ? { borderColor: '#dee2e6', color: '#adb5bd' } : { borderColor: PRIMARY, color: PRIMARY }}
+                          onClick={() => !hasPayout && openAssignModal({ userId: member.userId, name: member.name })}
                         >
-                          Assign Position
+                          {hasPayout ? 'Paid Out' : 'Assign Position'}
                         </Button>
                       </Table.Td>
                     </Table.Tr>
-                  ))}
+                    )
+                  })}
                 </Table.Tbody>
               </Table></div>
             </Paper>
@@ -1656,30 +1699,32 @@ export function GroupDetail() {
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Payment Method</Table.Th>
                     <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date Disbursed</Table.Th>
+                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }} w={140} />
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {disbursementsLoading ? (
                     <Table.Tr>
-                      <Table.Td colSpan={5} style={{ textAlign: 'center', padding: '24px 0' }}>
+                      <Table.Td colSpan={6} style={{ textAlign: 'center', padding: '24px 0' }}>
                         <Loader size="sm" color={PRIMARY} />
                       </Table.Td>
                     </Table.Tr>
                   ) : disbursements.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={5}>
+                      <Table.Td colSpan={6}>
                         <Text c="dimmed" ta="center" py="xl" fz="sm">No disbursements found</Text>
                       </Table.Td>
                     </Table.Tr>
                   ) : disbursements.map((d) => {
                     const isSuccess = d.payoutStatus != null && ['SUCCESS', 'COMPLETED', 'PAID'].includes(d.payoutStatus.toUpperCase())
                     const isUpcoming = d.payoutStatus == null || ['UPCOMING', 'PENDING'].includes((d.scheduleStatus ?? '').toUpperCase())
+                    const isStuck = isUpcoming && d.payoutDate != null && new Date(d.payoutDate) < new Date()
                     const amountNaira = d.amountPaidOut != null ? (Number(d.amountPaidOut) / 100).toLocaleString('en-NG') : null
                     const dateStr = (d.processedAt ?? (isUpcoming ? d.payoutDate : null))
                       ? new Date((d.processedAt ?? d.payoutDate) as string).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
                       : '—'
                     return (
-                      <Table.Tr key={d.cycleNumber} style={isUpcoming ? { background: '#f0faf7' } : undefined}>
+                      <Table.Tr key={d.cycleNumber} style={isStuck ? { background: '#fff5f5' } : isUpcoming ? { background: '#f0faf7' } : undefined}>
                         <Table.Td>
                           <Group gap="sm" align="center">
                             <Avatar size={28} radius="xl" color="gray">{(d.recipientName || '?').charAt(0)}</Avatar>
@@ -1699,17 +1744,29 @@ export function GroupDetail() {
                             size="sm"
                             radius="sm"
                             style={{
-                              background: isSuccess ? '#e6f5f1' : isUpcoming ? '#fdf3e7' : '#f1f3f5',
-                              color: isSuccess ? PRIMARY : isUpcoming ? '#e67e22' : '#868e96',
+                              background: isSuccess ? '#e6f5f1' : isStuck ? '#ffe3e3' : isUpcoming ? '#fdf3e7' : '#f1f3f5',
+                              color: isSuccess ? PRIMARY : isStuck ? '#c92a2a' : isUpcoming ? '#e67e22' : '#868e96',
                               border: 'none',
                               fontWeight: 600,
                             }}
                           >
-                            {isSuccess ? 'Disbursed' : isUpcoming ? 'Upcoming' : d.payoutStatus}
+                            {isSuccess ? 'Disbursed' : isStuck ? 'Overdue' : isUpcoming ? 'Upcoming' : d.payoutStatus}
                           </Badge>
                         </Table.Td>
                         <Table.Td><Text fz="sm">Wallet</Text></Table.Td>
                         <Table.Td><Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>{dateStr}</Text></Table.Td>
+                        <Table.Td>
+                          {isStuck && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              color="orange"
+                              onClick={() => { setExtendModal({ cycleNumber: d.cycleNumber }); setExtendDate(null); setExtendError(null) }}
+                            >
+                              Extend Deadline
+                            </Button>
+                          )}
+                        </Table.Td>
                       </Table.Tr>
                     )
                   })}
@@ -2023,6 +2080,52 @@ export function GroupDetail() {
               onClick={handleReversePayout}
             >
               Confirm Reverse
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Extend Deadline Modal */}
+      <Modal
+        opened={extendModal !== null}
+        onClose={() => { setExtendModal(null); setExtendDate(null); setExtendError(null) }}
+        centered
+        radius="md"
+        size="sm"
+        title={<Text fw={700} fz="md">Extend Cycle Deadline</Text>}
+      >
+        <Stack gap="md">
+          <Text fz="sm" c="dimmed">
+            Set a new payout date for cycle <b>{extendModal?.cycleNumber}</b>. All subsequent cycles will also shift forward by the same amount.
+          </Text>
+          <DateInput
+            label="New Payout Date"
+            placeholder="Pick a date"
+            value={extendDate}
+            onChange={setExtendDate}
+            minDate={new Date(Date.now() + 86400000)}
+            radius="md"
+            size="sm"
+          />
+          {extendError && <Text fz="sm" c="red">{extendError}</Text>}
+          <Group justify="flex-end" gap="sm" mt="xs">
+            <Button
+              variant="default"
+              radius="md"
+              size="sm"
+              onClick={() => { setExtendModal(null); setExtendDate(null); setExtendError(null) }}
+            >
+              Cancel
+            </Button>
+            <Button
+              radius="md"
+              size="sm"
+              color="orange"
+              loading={extendLoading}
+              disabled={!extendDate}
+              onClick={handleExtendDeadline}
+            >
+              Confirm Extension
             </Button>
           </Group>
         </Stack>
@@ -2465,26 +2568,71 @@ export function GroupDetail() {
               <Paper p="sm" radius="md" style={{ background: '#f8f9fa', border: '1px solid #e9ecef' }}>
                 <Text fz="xs" fw={600} c="dimmed" mb={6}>Current Assignments</Text>
                 <Stack gap={4}>
-                  {existingAssignments.map((a) => (
-                    <Group key={a.userId} justify="space-between">
-                      <Text fz="xs" fw={500}>{a.name}</Text>
-                      <Text fz="xs" c={a.position ? PRIMARY : '#868e96'}>
-                        {a.position ? `Position ${a.position}` : 'Unassigned'}
-                      </Text>
-                    </Group>
-                  ))}
+                  {existingAssignments.map((a) => {
+                    const isPaidOut = payouts.some(
+                      (p) => p.recipientId === a.userId &&
+                        ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase())
+                    )
+                    return (
+                      <Group key={a.userId} justify="space-between">
+                        <Text fz="xs" fw={500}>{a.name}</Text>
+                        <Group gap={4}>
+                          <Text fz="xs" c={a.position ? PRIMARY : '#868e96'}>
+                            {a.position ? `Position ${a.position}` : 'Unassigned'}
+                          </Text>
+                          {isPaidOut && (
+                            <Badge size="xs" radius="sm" style={{ background: '#e6f5f1', color: PRIMARY, border: 'none' }}>
+                              Paid
+                            </Badge>
+                          )}
+                        </Group>
+                      </Group>
+                    )
+                  })}
                 </Stack>
               </Paper>
             )}
-            <TextInput
-              label="Position Number"
-              placeholder="e.g. 1, 2, 3..."
-              radius="md"
-              size="sm"
-              value={assignPosition}
-              onChange={(e) => setAssignPosition(e.currentTarget.value.replace(/\D/g, ''))}
-              styles={{ input: { border: '1px solid #dee2e6' } }}
-            />
+            {(() => {
+              const totalSlots = existingAssignments.length || apiMembers.length
+              const paidPositions = new Set(
+                payouts
+                  .filter(p => ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase()))
+                  .map(p => existingAssignments.find(a => a.userId === p.recipientId)?.position)
+                  .filter(Boolean)
+              )
+              const takenPositions = new Set(
+                existingAssignments
+                  .filter(a => a.userId !== assignMember?.userId && a.position != null)
+                  .map(a => a.position)
+              )
+              const availablePositions = Array.from({ length: totalSlots }, (_, i) => i + 1)
+                .filter(pos => !paidPositions.has(pos) && !takenPositions.has(pos))
+              return (
+                <Stack gap={8}>
+                  <Text fz="sm" fw={500}>Select Position</Text>
+                  {availablePositions.length === 0 ? (
+                    <Text fz="sm" c="dimmed">No positions available — all slots are taken or paid out.</Text>
+                  ) : (
+                    <Group gap="sm">
+                      {availablePositions.map(pos => (
+                        <Button
+                          key={pos}
+                          size="sm"
+                          radius="md"
+                          variant={assignPosition === String(pos) ? 'filled' : 'outline'}
+                          style={assignPosition === String(pos)
+                            ? { background: PRIMARY, color: 'white', border: 'none' }
+                            : { borderColor: PRIMARY, color: PRIMARY }}
+                          onClick={() => setAssignPosition(String(pos))}
+                        >
+                          Position {pos}
+                        </Button>
+                      ))}
+                    </Group>
+                  )}
+                </Stack>
+              )
+            })()}
             {assignError && <Text fz="sm" c="red">{assignError}</Text>}
             <Group gap="sm">
               <Button

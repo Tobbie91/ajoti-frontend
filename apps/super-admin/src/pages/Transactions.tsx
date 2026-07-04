@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  CopyButton,
   Group,
   Pagination,
   Paper,
@@ -15,11 +16,14 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core'
 import {
   IconAlertCircle,
   IconArrowDownRight,
   IconArrowUpRight,
+  IconCheck,
+  IconCopy,
   IconCurrencyNaira,
   IconDownload,
   IconRefresh,
@@ -137,6 +141,7 @@ export function Transactions() {
   const [sourceType, setSourceType] = useState<string | null>(null)
 
   const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [reconcileRef, setReconcileRef] = useState('')
@@ -197,6 +202,7 @@ export function Transactions() {
   async function handleExport() {
     if (!analytics) return
     setExporting(true)
+    setExportError(null)
     try {
       const blob = await exportCsv({
         type: 'transactions',
@@ -209,8 +215,8 @@ export function Transactions() {
       a.download = `transactions-${period}.csv`
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
-      // silent — export errors are non-critical
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Failed to export CSV')
     } finally {
       setExporting(false)
     }
@@ -249,6 +255,11 @@ export function Transactions() {
       {analyticsError && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
           {analyticsError}
+        </Alert>
+      )}
+      {exportError && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" withCloseButton onClose={() => setExportError(null)}>
+          Export failed: {exportError}
         </Alert>
       )}
 
@@ -315,16 +326,16 @@ export function Transactions() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={800}>
-          <Table highlightOnHover>
+        <Table.ScrollContainer minWidth={950}>
+          <Table highlightOnHover layout="fixed">
             <Table.Thead>
-              <Table.Tr bg="#066F5B">
-                <Table.Th c="white">Date</Table.Th>
-                <Table.Th c="white">Type</Table.Th>
-                <Table.Th c="white">Amount</Table.Th>
-                <Table.Th c="white">Balance After</Table.Th>
-                <Table.Th c="white">Reference</Table.Th>
-                <Table.Th c="white">User</Table.Th>
+              <Table.Tr bg="#0B6B55">
+                <Table.Th c="white" w={140}>Date</Table.Th>
+                <Table.Th c="white" w={130}>Type</Table.Th>
+                <Table.Th c="white" w={140}>Amount</Table.Th>
+                <Table.Th c="white" w={150}>Balance After</Table.Th>
+                <Table.Th c="white" w={190}>Reference</Table.Th>
+                <Table.Th c="white" w={200}>User</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -367,9 +378,20 @@ export function Transactions() {
                         <Text size="sm">{formatNaira(balKobo)}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="xs" c="dimmed" style={{ fontFamily: 'monospace', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {row.reference}
-                        </Text>
+                        <Group gap={4} wrap="nowrap">
+                          <Text size="xs" c="dimmed" style={{ fontFamily: 'monospace', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {row.reference}
+                          </Text>
+                          <CopyButton value={row.reference} timeout={1500}>
+                            {({ copied, copy }) => (
+                              <Tooltip label={copied ? 'Copied!' : 'Copy'} withArrow position="top">
+                                <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                                  {copied ? <IconCheck size={11} /> : <IconCopy size={11} />}
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
+                          </CopyButton>
+                        </Group>
                       </Table.Td>
                       <Table.Td>
                         {user ? (
