@@ -61,10 +61,11 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box p="md" mb="md" style={{ flexShrink: 0 }}>
+      <Box p="md" mb="md" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
         <Text fw={800} fz={22} c="primary.5">
           Ajoti
         </Text>
+        <Badge size="xs" variant="light" color="green" radius="sm">BETA</Badge>
       </Box>
 
       <ScrollArea style={{ flex: 1 }} type="auto" scrollbarSize={6} offsetScrollbars>
