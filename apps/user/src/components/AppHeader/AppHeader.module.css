@@ -9,6 +9,14 @@
   gap: 16px;
 }
 
+.logoWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 24px;
+  flex-shrink: 0;
+}
+
 .logo {
   font-family: "Bodoni MT", serif;
   font-style: normal;
@@ -18,7 +26,22 @@
   color: #066f5b;
   white-space: nowrap;
   flex-shrink: 0;
-  margin-left: 24px;
+}
+
+.betaBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: "Poppins", system-ui, -apple-system, sans-serif;
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #E7F4EE;
+  color: #056148;
+  white-space: nowrap;
 }
 
 /* Nav row */

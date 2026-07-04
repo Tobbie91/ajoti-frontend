@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Group, Burger, Text, Avatar, Box, Popover, Modal, ScrollArea, Loader } from '@mantine/core'
+import { Group, Burger, Text, Avatar, Box, Popover, Modal, ScrollArea, Loader, Badge } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { IconBell } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -163,6 +163,7 @@ export function Header({ opened, onToggle }: HeaderProps) {
         <Text fw={900} fz={20} style={{ color: PRIMARY, letterSpacing: 1 }} visibleFrom="sm">
           AJOTI
         </Text>
+        <Badge size="xs" variant="light" color="green" radius="sm" visibleFrom="sm">BETA</Badge>
       </Group>
 
       <Group gap="sm">

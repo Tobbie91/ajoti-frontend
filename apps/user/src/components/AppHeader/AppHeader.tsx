@@ -280,7 +280,10 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account', initials: in
   return (
     <header className={styles.header}>
       {/* Logo */}
-      <div className={styles.logo}>AJOTI</div>
+      <div className={styles.logoWrap}>
+        <div className={styles.logo}>AJOTI</div>
+        <span className={styles.betaBadge}>BETA</span>
+      </div>
 
       {/* Nav */}
       <nav className={styles.nav}>
