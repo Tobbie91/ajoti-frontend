@@ -87,9 +87,9 @@ export interface RegisterResponse {
 }
 
 export function register(payload: RegisterPayload): Promise<RegisterResponse> {
-  return request('/api/auth/register-admin', {
+  return request('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, role: 'CIRCLE_ADMIN' }),
   })
 }
 
