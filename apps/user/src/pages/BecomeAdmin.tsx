@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Text, Textarea, Checkbox } from '@mantine/core'
+import { Text, Textarea, Checkbox, Loader } from '@mantine/core'
 import { IconArrowLeft, IconCircleCheck } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { requestAdminAccess, ApiError } from '@/utils/api'
 
 const VERIFICATION_ITEMS = [
   'Verified Phone Number',
@@ -14,6 +15,23 @@ export function BecomeAdmin() {
   const navigate = useNavigate()
   const [reason, setReason] = useState('')
   const [agreed, setAgreed] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit() {
+    if (!reason.trim() || !agreed || submitting) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await requestAdminAccess()
+      setSubmitted(true)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to submit request. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-[680px] px-6 py-6">
@@ -100,17 +118,43 @@ export function BecomeAdmin() {
           </div>
         </div>
 
-        {/* Submit Button */}
-        <button
-          disabled={!reason.trim() || !agreed}
-          className={`w-full cursor-pointer rounded-lg py-3.5 text-[14px] font-semibold text-white ${
-            reason.trim() && agreed
-              ? 'bg-[#02A36E]'
-              : 'cursor-not-allowed bg-[#9CA3AF]'
-          }`}
-        >
-          Submit Request
-        </button>
+        {submitted ? (
+          <div className="flex flex-col items-center rounded-2xl border border-[#D1FAE5] bg-[#F0FDF4] p-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
+              <IconCircleCheck size={36} color="#02A36E" />
+            </div>
+            <Text fw={700} className="mt-4 text-[18px] text-[#0F172A]">
+              Request submitted
+            </Text>
+            <Text fw={500} className="mt-1 text-[13px] text-[#6B7280]">
+              We'll review your application and get back to you.
+            </Text>
+            <button
+              onClick={() => navigate('/rosca')}
+              className="mt-5 cursor-pointer rounded-lg bg-[#02A36E] px-6 py-3 text-[13px] font-semibold text-white"
+            >
+              Back to ROSCA
+            </button>
+          </div>
+        ) : (
+          <>
+            {error && (
+              <Text className="text-[13px] text-[#EF4444]">{error}</Text>
+            )}
+            <button
+              disabled={!reason.trim() || !agreed || submitting}
+              onClick={handleSubmit}
+              className={`flex w-full items-center justify-center gap-2 rounded-lg py-3.5 text-[14px] font-semibold text-white ${
+                reason.trim() && agreed && !submitting
+                  ? 'cursor-pointer bg-[#02A36E]'
+                  : 'cursor-not-allowed bg-[#9CA3AF]'
+              }`}
+            >
+              {submitting && <Loader size="xs" color="white" />}
+              {submitting ? 'Submitting…' : 'Submit Request'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
