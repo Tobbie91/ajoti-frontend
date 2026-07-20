@@ -1,73 +1,17 @@
+import { ApiError, createApiClient, parseJsonSafely } from '@ajoti/shared'
+
+export { ApiError }
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
-export class ApiError extends Error {
-  readonly code?: number
+const client = createApiClient({
+  baseUrl: BASE_URL,
+  storagePrefix: 'admin_',
+  sessionExpiredRedirect: '/login',
+  extraSessionKeys: ['admin_kyc_completed', 'admin_verify_email'],
+})
 
-  constructor(message: string, code?: number) {
-    super(message)
-    this.code = code
-    this.name = 'ApiError'
-  }
-}
-
-function parseJsonSafely(res: Response): Promise<unknown> {
-  return res.json().catch((e: unknown) => {
-    if (import.meta.env.DEV) console.error('[api] Failed to parse response JSON:', e)
-    return {}
-  })
-}
-
-async function request<T>(path: string, options: RequestInit): Promise<T> {
-  const { headers, ...rest } = options
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...rest,
-    headers: { 'Content-Type': 'application/json', ...headers },
-  })
-
-  const data = await parseJsonSafely(res)
-
-  if (res.status === 503 && (data as { maintenance?: boolean }).maintenance) {
-    window.location.replace('/maintenance')
-    throw new ApiError('Maintenance', 503)
-  }
-
-  if (!res.ok) {
-    const msg = (data as { message?: string | string[] }).message
-    throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
-  }
-
-  return data as T
-}
-
-// ── Token refresh ────────────────────────────────────────────────────────────
-
-let isRefreshing = false
-let refreshQueue: Array<(token: string) => void> = []
-
-async function tryRefresh(): Promise<string> {
-  const refreshToken = localStorage.getItem('admin_refresh_token')
-  if (!refreshToken) throw new Error('No refresh token')
-
-  const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  })
-
-  if (!res.ok) throw new Error('Refresh failed')
-
-  const data = await res.json() as { accessToken: string; refreshToken: string }
-  localStorage.setItem('admin_access_token', data.accessToken)
-  localStorage.setItem('admin_refresh_token', data.refreshToken)
-  return data.accessToken
-}
-
-function clearSessionAndRedirect() {
-  ;['admin_access_token', 'admin_refresh_token', 'admin_user', 'admin_kyc_completed', 'admin_verify_email'].forEach(
-    (k) => localStorage.removeItem(k),
-  )
-  window.location.href = '/login'
-}
+const { request, authRequest } = client
 
 // ── Auth ────────────────────────────────────────────────────────────────────
 
@@ -161,64 +105,6 @@ export function resendOtp(email: string): Promise<{ message: string }> {
   return request('/api/auth/resend-verify-otp', {
     method: 'POST',
     body: JSON.stringify({ email }),
-  })
-}
-
-// ── Authenticated requests ──────────────────────────────────────────────────
-
-function authHeaders(token?: string): Record<string, string> {
-  const t = token ?? localStorage.getItem('admin_access_token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
-
-async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
-  const { headers, ...rest } = options
-
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...rest,
-    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...headers },
-  })
-
-  if (res.status !== 401) {
-    const data = await parseJsonSafely(res)
-    if (!res.ok) {
-      const msg = (data as { message?: string | string[] }).message
-      throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
-    }
-    return data as T
-  }
-
-  // 401 — attempt token refresh
-  if (!isRefreshing) {
-    isRefreshing = true
-    try {
-      const newToken = await tryRefresh()
-      refreshQueue.forEach((resolve) => resolve(newToken))
-      refreshQueue = []
-      isRefreshing = false
-
-      return request<T>(path, {
-        ...options,
-        headers: { ...authHeaders(newToken), ...headers },
-      })
-    } catch {
-      refreshQueue = []
-      isRefreshing = false
-      clearSessionAndRedirect()
-      throw new ApiError('Session expired. Please log in again.')
-    }
-  }
-
-  return new Promise<T>((resolve, reject) => {
-    refreshQueue.push((newToken) => {
-      resolve(
-        request<T>(path, {
-          ...options,
-          headers: { ...authHeaders(newToken), ...headers },
-        }),
-      )
-    })
-    setTimeout(() => reject(new ApiError('Session expired')), 30_000)
   })
 }
 
@@ -1158,11 +1044,11 @@ export interface ChatCircle {
 }
 
 export function getChatBaseUrl(): string {
-  return BASE_URL
+  return client.getBaseUrl()
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem('admin_access_token')
+  return client.getAccessToken()
 }
 
 export async function getChatCircles(): Promise<ChatCircle[]> {

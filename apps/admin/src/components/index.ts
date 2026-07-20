@@ -1,5 +1,5 @@
 export { Sidebar } from './Sidebar'
-export { PhoneInputField } from './PhoneInputField'
+export { PhoneInputField } from '@ajoti/shared'
 export { Header } from './Header'
 export { StatsCard } from './StatsCard'
 export { GroupTable } from './GroupTable'
