@@ -16,6 +16,7 @@ import {
   Simulations,
   Wallets,
   SystemAccounts,
+  PayoutFeeSettings,
   SupportInbox,
   SupportTicketDetail,
   StaffManagement,
@@ -82,6 +83,11 @@ function App() {
             {/* MANAGE_ADMIN_ACCOUNTS — SUPERADMIN only */}
             <Route element={<RequirePermission permission="MANAGE_ADMIN_ACCOUNTS" />}>
               <Route path="/staff" element={<StaffManagement />} />
+            </Route>
+
+            {/* SYSTEM_CONFIG — SUPERADMIN only */}
+            <Route element={<RequirePermission permission="SYSTEM_CONFIG" />}>
+              <Route path="/settings/payout-fee" element={<PayoutFeeSettings />} />
             </Route>
 
             {/* Savings (coming soon) — no permission gate yet */}

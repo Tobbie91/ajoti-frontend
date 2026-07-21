@@ -419,6 +419,49 @@ export function capitalizeLoanFloat(amountKobo: number, note: string): Promise<{
   )
 }
 
+// ── Payout Fee Settings — SYSTEM_CONFIG (SUPERADMIN only) ──────────────────────
+
+export interface PayoutFeeSettingMeta {
+  updatedBy: string | null
+  updatedAt: string
+}
+
+export interface PayoutFeeSettings {
+  flatFeeKobo: number
+  adminShareKobo: number
+  platformShareKobo: number
+  minimumFloorKobo: number
+  meta: {
+    flatFeeKobo: PayoutFeeSettingMeta
+    adminShareKobo: PayoutFeeSettingMeta
+    platformShareKobo: PayoutFeeSettingMeta
+    minimumFloorKobo: PayoutFeeSettingMeta
+  }
+}
+
+export interface PayoutFeeSettingsInput {
+  flatFeeKobo: number
+  adminShareKobo: number
+  platformShareKobo: number
+  minimumFloorKobo: number
+}
+
+export function getPayoutFeeSettings(): Promise<{ success: boolean; data: PayoutFeeSettings }> {
+  return authRequest<{ success: boolean; data: PayoutFeeSettings }>(
+    '/api/superadmin/settings/payout-fee',
+    { method: 'GET' },
+  )
+}
+
+export function updatePayoutFeeSettings(
+  input: PayoutFeeSettingsInput,
+): Promise<{ success: boolean; data: PayoutFeeSettings }> {
+  return authRequest<{ success: boolean; data: PayoutFeeSettings }>(
+    '/api/superadmin/settings/payout-fee',
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
 export function listWallets(params: {
   page?: number
   limit?: number

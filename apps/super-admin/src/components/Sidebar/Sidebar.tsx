@@ -42,6 +42,7 @@ const savingsChildren = [
 const bottomLinks: NavLink_[] = [
   { label: 'Transactions',    icon: IconReceipt,     path: '/transactions',  permission: 'VIEW_LEDGER' },
   { label: 'Staff Management',icon: IconUsersGroup,  path: '/staff',         permission: 'MANAGE_ADMIN_ACCOUNTS' },
+  { label: 'Payout Fee Settings', icon: IconSettings, path: '/settings/payout-fee', permission: 'SYSTEM_CONFIG' },
   { label: 'Settings & Logs', icon: IconSettings,    path: '/settings-logs', permission: 'VIEW_AUDIT_LOGS' },
 ]
 
