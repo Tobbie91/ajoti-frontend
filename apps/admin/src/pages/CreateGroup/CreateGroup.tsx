@@ -412,6 +412,7 @@ export function CreateGroup() {
               'Payout order is final and cannot be changed.',
               'Members must acknowledge their assigned payout slot before the group starts.',
               'The group admin has final say in resolving any disputes and managing participation.',
+              'A flat fee applies to each payout.',
             ].map((rule) => (
               <Checkbox
                 key={rule}
@@ -552,6 +553,9 @@ export function CreateGroup() {
                 <Text fz="sm" fw={500}>{payoutStructure || '—'}</Text>
               </Box>
             </Group>
+            <Text fz="xs" c="dimmed" mt="sm">
+              A flat fee applies to each payout. As group admin, you'll automatically receive a share of it.
+            </Text>
           </Paper>
 
           {/* Settings & Controls */}

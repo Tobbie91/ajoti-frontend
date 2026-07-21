@@ -297,6 +297,10 @@ export function GroupDetails() {
                 <Text fw={500} className="text-[12px] text-[#6B7280]">Penalty</Text>
                 <Text fw={600} className="text-[13px] text-[#0F172A]">{group.penalty}</Text>
               </div>
+              <div>
+                <Text fw={500} className="text-[12px] text-[#6B7280]">Payout Fee</Text>
+                <Text fw={600} className="text-[13px] text-[#0F172A]">A flat fee applies to each payout</Text>
+              </div>
             </div>
           </div>
 

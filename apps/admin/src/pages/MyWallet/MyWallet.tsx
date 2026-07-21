@@ -5,12 +5,32 @@ import { useNavigate } from 'react-router-dom'
 import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 
+// Friendly overrides for sourceTypes whose humanized enum name reads awkwardly
+// or should be phrased for this audience specifically.
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  ROSCA_ADMIN_FEE: 'Group admin payout fee share',
+}
+
 function formatTxLabel(raw: string): string {
   if (!raw) return 'Transaction'
+  if (SOURCE_TYPE_LABELS[raw]) return SOURCE_TYPE_LABELS[raw]
   return raw
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// A sourceType with a friendly override always wins — otherwise generic
+// movementTypes like TRANSFER would mask it (a fee credit and a plain
+// wallet-to-wallet transfer both have movementType=TRANSFER).
+function resolveTxLabel(tx: WalletTransaction, entryType: string): string {
+  const sourceType = (tx as Record<string, unknown>).sourceType as string | undefined
+  if (sourceType && SOURCE_TYPE_LABELS[sourceType]) return SOURCE_TYPE_LABELS[sourceType]
+
+  const movementType = (tx as Record<string, unknown>).movementType as string ?? ''
+  if (movementType) return movementType.charAt(0) + movementType.slice(1).toLowerCase()
+
+  return tx.description || formatTxLabel(sourceType || entryType)
 }
 
 function formatKobo(val: string | number | undefined): string {
@@ -32,10 +52,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
   const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
   const isCredit = entryType === 'CREDIT'
   const color = isCredit ? '#02A36E' : '#EF4444'
-  const movementType = (tx as Record<string, unknown>).movementType as string ?? ''
-  const label = movementType
-    ? movementType.charAt(0) + movementType.slice(1).toLowerCase()
-    : tx.description || formatTxLabel((tx as Record<string, unknown>).sourceType as string || entryType)
+  const label = resolveTxLabel(tx, entryType)
   const d = new Date(tx.createdAt)
   const amtNaira = `₦${(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 
@@ -165,10 +182,7 @@ export function MyWallet() {
         {transactions.map((tx) => {
           const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
           const isCredit = entryType === 'CREDIT'
-          const movementType = (tx as Record<string, unknown>).movementType as string ?? ''
-          const label = movementType
-            ? movementType.charAt(0) + movementType.slice(1).toLowerCase()
-            : tx.description || formatTxLabel((tx as Record<string, unknown>).sourceType as string || entryType)
+          const label = resolveTxLabel(tx, entryType)
           return (
             <div
               key={tx.id}

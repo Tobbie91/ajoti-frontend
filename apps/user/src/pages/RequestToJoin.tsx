@@ -88,6 +88,10 @@ export function RequestToJoin() {
             }}
           />
 
+          <Text fw={400} className="text-[13px] text-[#6B7280]">
+            A flat fee applies to each payout you receive from this group.
+          </Text>
+
           <Checkbox
             label="I agree to the group rules and payout structure."
             styles={{
