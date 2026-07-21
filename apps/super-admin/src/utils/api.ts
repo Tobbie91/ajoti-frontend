@@ -250,6 +250,7 @@ export interface KycQueueRow {
   country: string | null
   verificationData: Record<string, unknown> | null
   monoProveStatus: string | null
+  approvalSource: 'SYSTEM_AUTO' | 'SUPERADMIN' | 'LEGACY_MANUAL' | null
   user: {
     id: string
     firstName: string

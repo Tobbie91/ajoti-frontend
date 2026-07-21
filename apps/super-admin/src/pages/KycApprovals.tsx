@@ -48,6 +48,12 @@ const STATUS_COLOR: Record<string, string> = {
   REJECTED: 'red',
 }
 
+const APPROVAL_SOURCE_LABEL: Record<string, string> = {
+  SYSTEM_AUTO: 'Auto-approved (Mono webhook)',
+  SUPERADMIN: 'Manually approved (staff)',
+  LEGACY_MANUAL: 'Manually approved (legacy)',
+}
+
 function fmt(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-NG', {
@@ -241,6 +247,10 @@ function KycDetailDrawer({
               <InfoRow label="Step" value={record.step ?? '—'} />
               <InfoRow label="Mono Status" value={record.monoProveStatus ?? '—'} />
               <InfoRow label="Reviewed" value={record.reviewedAt ? fmt(record.reviewedAt) : '—'} />
+              <InfoRow
+                label="Approval Source"
+                value={record.approvalSource ? APPROVAL_SOURCE_LABEL[record.approvalSource] ?? record.approvalSource : '—'}
+              />
             </SimpleGrid>
 
             {/* Next of kin */}
@@ -493,6 +503,14 @@ export function KycApprovals() {
           ))}
         </Tabs.List>
       </Tabs>
+
+      {activeTab === 'PENDING' && (
+        <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light" radius="md">
+          Most KYC levels now auto-approve on Mono verification. This queue only shows records
+          auto-approval couldn't resolve — ambiguous verification results and legacy submissions
+          from before auto-approval — for manual review.
+        </Alert>
+      )}
 
       <TextInput
         placeholder="Filter by name or email..."
