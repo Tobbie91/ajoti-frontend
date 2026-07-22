@@ -462,6 +462,49 @@ export function updatePayoutFeeSettings(
   )
 }
 
+// ── Loan Settings — SYSTEM_CONFIG (SUPERADMIN only) ─────────────────────────────
+
+export interface LoanSettingMeta {
+  updatedBy: string | null
+  updatedAt: string
+}
+
+export interface LoanSettings {
+  maxPayoutRatioBps: number
+  minCompletedCycles: number
+  maxLatePayments: number
+  reworkEnabled: boolean
+  meta: {
+    maxPayoutRatioBps: LoanSettingMeta
+    minCompletedCycles: LoanSettingMeta
+    maxLatePayments: LoanSettingMeta
+    reworkEnabled: LoanSettingMeta
+  }
+}
+
+export interface LoanSettingsInput {
+  maxPayoutRatioBps: number
+  minCompletedCycles: number
+  maxLatePayments: number
+  reworkEnabled: boolean
+}
+
+export function getLoanSettings(): Promise<{ success: boolean; data: LoanSettings }> {
+  return authRequest<{ success: boolean; data: LoanSettings }>(
+    '/api/superadmin/settings/loan',
+    { method: 'GET' },
+  )
+}
+
+export function updateLoanSettings(
+  input: LoanSettingsInput,
+): Promise<{ success: boolean; data: LoanSettings }> {
+  return authRequest<{ success: boolean; data: LoanSettings }>(
+    '/api/superadmin/settings/loan',
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
 export function listWallets(params: {
   page?: number
   limit?: number
