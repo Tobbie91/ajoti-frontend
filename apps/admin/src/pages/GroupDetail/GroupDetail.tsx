@@ -988,15 +988,10 @@ export function GroupDetail() {
                       </Text>
                     )}
                     <Group gap="sm">
-                      <Button
-                        size="xs"
-                        radius="md"
-                        variant="outline"
-                        style={{ borderColor: PRIMARY, color: PRIMARY }}
-                        onClick={() => navigate(`/rosca/groups/${id}/edit`)}
-                      >
-                        Edit Group
-                      </Button>
+                      {/* TODO: Edit Group is unbuilt (EditGroup.tsx has no fetch, no
+                          update endpoint, hardcoded placeholder data) — entry point
+                          hidden until the real feature (fetch + PATCH endpoint +
+                          live-circle edit rules) is built. See QA audit. */}
                       <Button
                         size="xs"
                         radius="md"
