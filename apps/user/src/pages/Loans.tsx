@@ -280,10 +280,10 @@ export function Loans() {
             <div className="flex flex-col gap-3">
               {[
                 'Choose one of your active ROSCA groups',
-                'Receive your payout amount now instead of waiting for your turn',
+                'Receive up to 75% of your expected payout now instead of waiting for your turn',
                 'Continue making your regular contributions as scheduled',
-                'A service fee applies, capped as a share of your expected payout',
-                'Eligibility depends on your credit score and your track record in the group',
+                'A 10% fee is deducted from the advance — you receive the rest upfront',
+                'Requires at least 2 completed on-time cycles in that group, plus a qualifying credit score',
               ].map((tip, i) => (
                 <div key={tip} className="flex items-start gap-3">
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#02A36E] text-[11px] font-bold text-white">{i + 1}</div>
