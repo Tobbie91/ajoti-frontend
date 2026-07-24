@@ -35,7 +35,7 @@ const ACCOUNT_LABELS: Record<SystemAccountType, { title: string; description: st
   },
   PLATFORM_REVENUE: {
     title: 'Platform Revenue',
-    description: 'Money Ajoti has earned — the 2% payout fee and early-payout company fee.',
+    description: "Money Ajoti has earned — Ajoti's ₦600 share of the flat ₦1,000 payout fee, and the early-payout company fee.",
   },
   LOAN_FLOAT: {
     title: 'Loan Float',
