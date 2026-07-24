@@ -1,14 +1,12 @@
 import {
   Alert,
   Button,
-  Divider,
   Group,
   Modal,
   NumberInput,
   Paper,
   Skeleton,
   Stack,
-  Switch,
   Text,
   Title,
 } from '@mantine/core'
@@ -55,7 +53,6 @@ export function LoanSettings() {
   const [maxPayoutRatioPercent, setMaxPayoutRatioPercent] = useState<number | ''>('')
   const [minCompletedCycles, setMinCompletedCycles] = useState<number | ''>('')
   const [maxLatePayments, setMaxLatePayments] = useState<number | ''>('')
-  const [reworkEnabled, setReworkEnabled] = useState(false)
 
   const [validationError, setValidationError] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -72,7 +69,6 @@ export function LoanSettings() {
         setMaxPayoutRatioPercent(res.data.maxPayoutRatioBps / 100)
         setMinCompletedCycles(res.data.minCompletedCycles)
         setMaxLatePayments(res.data.maxLatePayments)
-        setReworkEnabled(res.data.reworkEnabled)
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : 'Failed to load loan settings'))
       .finally(() => setLoading(false))
@@ -96,7 +92,6 @@ export function LoanSettings() {
         maxPayoutRatioBps: Math.round(Number(maxPayoutRatioPercent) * 100),
         minCompletedCycles: Number(minCompletedCycles),
         maxLatePayments: Number(maxLatePayments),
-        reworkEnabled,
       })
       setCurrent(res.data)
       setConfirmOpened(false)
@@ -112,8 +107,7 @@ export function LoanSettings() {
   const dirty = current !== null && (
     Math.round(Number(maxPayoutRatioPercent) * 100) !== current.maxPayoutRatioBps ||
     Number(minCompletedCycles) !== current.minCompletedCycles ||
-    Number(maxLatePayments) !== current.maxLatePayments ||
-    reworkEnabled !== current.reworkEnabled
+    Number(maxLatePayments) !== current.maxLatePayments
   )
 
   if (loading) {
@@ -200,19 +194,6 @@ export function LoanSettings() {
               {current.meta.maxLatePayments.updatedBy ? ` by ${current.meta.maxLatePayments.updatedBy}` : ' (seeded default)'}
             </Text>
 
-            <Divider />
-
-            <Switch
-              label="Enable flat-rate rework"
-              description="While off, loans use the existing credit-score-tiered behavior unchanged"
-              checked={reworkEnabled}
-              onChange={(e) => setReworkEnabled(e.currentTarget.checked)}
-            />
-            <Text size="xs" c="dimmed" mt={-8}>
-              Last updated {fmtDate(current.meta.reworkEnabled.updatedAt)}
-              {current.meta.reworkEnabled.updatedBy ? ` by ${current.meta.reworkEnabled.updatedBy}` : ' (seeded default)'}
-            </Text>
-
             <Group justify="flex-end" mt="sm">
               <Button variant="default" disabled={!dirty || saving} onClick={load}>
                 Reset
@@ -241,7 +222,6 @@ export function LoanSettings() {
             <Group justify="space-between"><Text size="sm" c="dimmed">Max payout ratio</Text><Text size="sm" fw={600}>{Number(maxPayoutRatioPercent)}%</Text></Group>
             <Group justify="space-between"><Text size="sm" c="dimmed">Minimum completed cycles</Text><Text size="sm" fw={600}>{Number(minCompletedCycles)}</Text></Group>
             <Group justify="space-between"><Text size="sm" c="dimmed">Maximum late payments</Text><Text size="sm" fw={600}>{Number(maxLatePayments)}</Text></Group>
-            <Group justify="space-between"><Text size="sm" c="dimmed">Flat-rate rework</Text><Text size="sm" fw={600}>{reworkEnabled ? 'Enabled' : 'Disabled'}</Text></Group>
           </Stack>
           {serverError && (
             <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">

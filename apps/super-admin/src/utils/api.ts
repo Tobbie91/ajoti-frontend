@@ -473,12 +473,10 @@ export interface LoanSettings {
   maxPayoutRatioBps: number
   minCompletedCycles: number
   maxLatePayments: number
-  reworkEnabled: boolean
   meta: {
     maxPayoutRatioBps: LoanSettingMeta
     minCompletedCycles: LoanSettingMeta
     maxLatePayments: LoanSettingMeta
-    reworkEnabled: LoanSettingMeta
   }
 }
 
@@ -486,7 +484,6 @@ export interface LoanSettingsInput {
   maxPayoutRatioBps: number
   minCompletedCycles: number
   maxLatePayments: number
-  reworkEnabled: boolean
 }
 
 export function getLoanSettings(): Promise<{ success: boolean; data: LoanSettings }> {
