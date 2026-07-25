@@ -18,6 +18,7 @@ import {
   IconUsersGroup,
   IconBuildingBank,
   IconCoin,
+  IconFileInvoice,
 } from '@tabler/icons-react'
 import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
@@ -31,6 +32,7 @@ const mainLinks: NavLink_[] = [
   { label: 'Wallets',       icon: IconWallet,            path: '/wallets',      permission: 'VIEW_LEDGER' },
   { label: 'Platform Accounts', icon: IconBuildingBank,  path: '/system-accounts', permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Loans',         icon: IconCoin,              path: '/loans',        permission: 'VIEW_SYSTEM_ACCOUNTS' },
+  { label: 'Debts',         icon: IconFileInvoice,       path: '/debts',        permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Trust Scores',  icon: IconAward,             path: '/trust-scores', permission: null },
   { label: 'Simulations',   icon: IconTestPipe,          path: '/simulations',  permission: 'MANAGE_CIRCLES' },
   { label: 'Support',       icon: IconHeadset,           path: '/support',      permission: 'MANAGE_TICKETS' },

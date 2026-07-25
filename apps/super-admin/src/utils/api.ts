@@ -595,6 +595,61 @@ export async function getLoanDetail(loanId: string): Promise<LoanDetail> {
   return res.data
 }
 
+// ── Debts — Super Admin ─────────────────────────────────────────────────────────
+// Read-only oversight: list + detail, no write actions (repayment is member-only).
+
+export type DebtStatus = 'OUTSTANDING' | 'PARTIALLY_REPAID' | 'SETTLED'
+export type DebtCategory = 'MISSED_CONTRIBUTION' | 'LATE_PENALTY' | 'MIXED'
+
+export interface DebtRow {
+  id: string
+  circleId: string
+  circleName?: string
+  cycleNumber: number
+  status: DebtStatus
+  category: DebtCategory
+  categoryLabel: string
+  outstandingTotal: string
+  outstandingBreakdown: {
+    contribution: string
+    interest: string
+    bridge: string
+    collateral: string
+    penalty: string
+  }
+  blocksLoanEligibility: boolean
+  createdAt: string
+  settledAt: string | null
+  user: { firstName: string; lastName: string; email: string }
+}
+
+export interface DebtDetail extends DebtRow {
+  circleStatus?: string
+}
+
+export function getDebts(params: {
+  page?: number
+  limit?: number
+  status?: DebtStatus
+  userId?: string
+  circleId?: string
+  startDate?: string
+  endDate?: string
+} = {}): Promise<PaginatedResponse<DebtRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/debts${q ? `?${q}` : ''}`, { method: 'GET' })
+}
+
+export async function getDebtDetail(debtId: string): Promise<DebtDetail> {
+  const res = await authRequest<{ success: boolean; data: DebtDetail }>(
+    `/api/superadmin/debts/${debtId}`,
+    { method: 'GET' },
+  )
+  return res.data
+}
+
 export function listWallets(params: {
   page?: number
   limit?: number
