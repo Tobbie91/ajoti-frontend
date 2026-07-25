@@ -168,12 +168,20 @@ export function MyWallet() {
       {/* Recent Transactions */}
       <div className="mb-4 flex items-center justify-between">
         <Text fw={700} className="text-[18px] text-[#0F172A]">Recent Transactions</Text>
-        <button
-          onClick={() => navigate('/transactions')}
-          className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline"
-        >
-          View all
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/debts')}
+            className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline"
+          >
+            My Debts
+          </button>
+          <button
+            onClick={() => navigate('/transactions')}
+            className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline"
+          >
+            View all
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

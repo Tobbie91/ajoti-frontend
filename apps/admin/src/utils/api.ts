@@ -309,6 +309,44 @@ export function getCircleRules(): Promise<{ success: boolean; data: CircleRules 
   return authRequest('/api/rosca/circle-rules', { method: 'GET' })
 }
 
+// ── Debts ─────────────────────────────────────────────────────────────────────
+
+export type DebtCategory = 'MISSED_CONTRIBUTION' | 'LATE_PENALTY' | 'MIXED'
+
+export interface Debt {
+  id: string
+  circleId: string
+  circleName?: string
+  cycleNumber: number
+  status: string
+  category: DebtCategory
+  categoryLabel: string
+  outstandingTotal: string
+  outstandingBreakdown: {
+    contribution: string
+    interest: string
+    bridge: string
+    collateral: string
+    penalty: string
+  }
+  blocksLoanEligibility: boolean
+  createdAt: string
+  settledAt: string | null
+}
+
+export async function getMyDebts(): Promise<Debt[]> {
+  const res = await authRequest<{ success: boolean; data: Debt[] }>('/api/debts/mine', { method: 'GET' })
+  return res.data
+}
+
+export async function repayDebt(debtId: string, amountKobo?: number): Promise<Debt> {
+  const res = await authRequest<{ success: boolean; message: string; data: Debt }>(
+    `/api/debts/${debtId}/repay`,
+    { method: 'POST', body: JSON.stringify(amountKobo !== undefined ? { amountKobo } : {}) },
+  )
+  return res.data
+}
+
 // GET /api/admin/rosca/my-circles — view admin's own circles
 export function listAllRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest('/api/admin/rosca/my-circles', { method: 'GET' })
