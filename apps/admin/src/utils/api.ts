@@ -326,6 +326,26 @@ export function createRoscaCircle(payload: CreateRoscaPayload): Promise<RoscaCir
   })
 }
 
+// PATCH /api/admin/rosca/{circleId} — update a DRAFT circle's configuration.
+// payoutLogic is deliberately NOT here — use updatePayoutConfig instead, the
+// dedicated endpoint (backend rejects payoutLogic on this DTO entirely).
+export interface UpdateRoscaPayload {
+  name?: string
+  description?: string
+  contributionAmount?: string
+  maxSlots?: number
+  frequency?: 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY'
+  visibility?: string
+  initialContributionDeadline?: string
+}
+
+export function updateRoscaCircle(circleId: string, payload: UpdateRoscaPayload): Promise<RoscaCircle> {
+  return authRequest(`/api/admin/rosca/${circleId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
 // PATCH /api/admin/rosca/{circleId}/activate — activate a circle
 export function activateRoscaCircle(circleId: string, startDate: string): Promise<{ message: string }> {
   return authRequest(`/api/admin/rosca/${circleId}/activate`, {
