@@ -2045,7 +2045,7 @@ export function GroupDetail() {
               </Group>
               <Group justify="space-between">
                 <Text fz="sm" c="dimmed">Amount</Text>
-                <Text fz="sm" fw={600} c="red">₦{Number(reversePayout_.amount).toLocaleString('en-NG')}</Text>
+                <Text fz="sm" fw={600} c="red">₦{(Number(reversePayout_.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text>
               </Group>
             </Paper>
           )}
