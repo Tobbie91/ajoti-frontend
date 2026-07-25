@@ -292,6 +292,20 @@ export function leaveRoscaCircle(circleId: string): Promise<{ success: boolean; 
   return authRequest(`/api/rosca/${circleId}/leave`, { method: 'DELETE' })
 }
 
+export interface CircleRules {
+  collateralRatioPercent: number
+  latePenaltyRatioPercent: number
+  minTrustScore: number
+  postStartExitPenaltyPercent: number
+}
+
+// GET /api/rosca/circle-rules — current platform-wide circle rules (member-facing).
+// Always fetch this live for disclosure copy — never hardcode the rate, so the UI
+// can't drift from whatever the superadmin has actually configured.
+export function getCircleRules(): Promise<{ success: boolean; data: CircleRules }> {
+  return authRequest('/api/rosca/circle-rules', { method: 'GET' })
+}
+
 export function joinRoscaCircle(circleId: string): Promise<{ message: string }> {
   return authRequest(`/api/rosca/${circleId}/join`, { method: 'POST' })
 }

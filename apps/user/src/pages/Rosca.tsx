@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Text, TextInput, Badge, Avatar, Tabs, Progress, Textarea, Loader } from '@mantine/core'
 import { IconSearch, IconMessageCircle, IconCalendar, IconCheck, IconFilter, IconAlertTriangle, IconX, IconCircleCheck } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { listRoscaCircles, getMyJoinRequests, getMyParticipations, leaveRoscaCircle, messageAdmin as sendMessageToAdmin, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
+import { listRoscaCircles, getMyJoinRequests, getMyParticipations, leaveRoscaCircle, getCircleRules, messageAdmin as sendMessageToAdmin, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
 
 // Shape returned by getMyParticipations — a circle object with the user already a member
 type Participation = RoscaCircle
@@ -28,6 +28,7 @@ interface JoinedGroup {
   totalCycles: number
   nextContribution: string
   admin: string
+  circleStatus: string
 }
 
 const statusBadge: Record<GroupStatus, { bg: string }> = {
@@ -43,6 +44,7 @@ export function Rosca() {
   const [leaveGroupId, setLeaveGroupId] = useState<string | null>(null)
   const [leaveLoading, setLeaveLoading] = useState(false)
   const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [postStartExitPenaltyPercent, setPostStartExitPenaltyPercent] = useState<number | null>(null)
   const [messageAdmin, setMessageAdmin] = useState<{ circleId: string; adminName: string } | null>(null)
   const [messageSendError, setMessageSendError] = useState<string | null>(null)
   const [message, setMessage] = useState('')
@@ -92,6 +94,10 @@ export function Rosca() {
         }
         setJoinedIds(ids)
       })
+    // Live rate for the post-start exit warning — never hardcode it.
+    getCircleRules()
+      .then((res) => setPostStartExitPenaltyPercent(res.data.postStartExitPenaltyPercent))
+      .catch(() => setPostStartExitPenaltyPercent(null))
   }, [])
 
   useEffect(() => {
@@ -117,6 +123,7 @@ export function Rosca() {
         totalCycles: total,
         nextContribution: nextPayout,
         admin: adminName,
+        circleStatus: (circle as { status?: string }).status ?? '',
       }
     }
 
@@ -138,6 +145,7 @@ export function Rosca() {
         totalCycles: total,
         nextContribution: nextPayout,
         admin: adminName,
+        circleStatus: c.status ?? '',
       }
     }
 
@@ -508,7 +516,10 @@ export function Rosca() {
       </div>
 
       {/* Leave Group Modal */}
-      {leaveGroupId && (
+      {leaveGroupId && (() => {
+        const leavingGroup = joinedGroups.find((g) => g.id === leaveGroupId)
+        const isPostStart = leavingGroup?.circleStatus === 'ACTIVE'
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-[420px] rounded-2xl bg-white p-8">
             {/* Warning Icon */}
@@ -549,6 +560,20 @@ export function Rosca() {
                   Leaving the group may affect your <Text component="span" fw={700}>Trust Score</Text>.
                 </Text>
               </div>
+              {isPostStart && (
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#FEF3C7] text-[12px] font-bold text-[#92400E]">
+                    4
+                  </div>
+                  <Text fw={500} className="text-[13px] leading-relaxed text-[#374151]">
+                    This group has already started —{' '}
+                    <Text component="span" fw={700}>
+                      {postStartExitPenaltyPercent !== null ? `${postStartExitPenaltyPercent}% of` : 'a share of'} your collateral will be forfeited
+                    </Text>{' '}
+                    to the remaining members.
+                  </Text>
+                </div>
+              )}
             </div>
 
             {/* Buttons */}
@@ -586,7 +611,8 @@ export function Rosca() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Message Admin Modal */}
       {messageAdmin && (
