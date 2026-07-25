@@ -16,6 +16,7 @@ import {
   Simulations,
   Wallets,
   SystemAccounts,
+  LoansList,
   PayoutFeeSettings,
   LoanSettings,
   SupportInbox,
@@ -79,6 +80,7 @@ function App() {
             {/* VIEW_SYSTEM_ACCOUNTS — COMPLIANCE (read-only), OPERATIONS, MANAGER, SUPERADMIN */}
             <Route element={<RequirePermission permission="VIEW_SYSTEM_ACCOUNTS" />}>
               <Route path="/system-accounts" element={<SystemAccounts />} />
+              <Route path="/loans" element={<LoansList />} />
             </Route>
 
             {/* MANAGE_ADMIN_ACCOUNTS — SUPERADMIN only */}

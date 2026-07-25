@@ -502,6 +502,57 @@ export function updateLoanSettings(
   )
 }
 
+// ── Loans (early payouts) — VIEW_SYSTEM_ACCOUNTS (COMPLIANCE+) ──────────────────
+// Read-only oversight: list + detail, no write-off/cancel/force-repay actions.
+
+export type LoanStatus = 'ACTIVE' | 'REPAID' | 'DEFAULTED' | 'CANCELLED'
+
+export interface LoanRow {
+  id: string
+  userId: string
+  circleId: string
+  payoutAmount: string
+  loanAmount: string
+  companyFee: string
+  finalPayout: string
+  grossAmount: string
+  creditScoreUsed: number
+  allowedPercent: number
+  status: LoanStatus
+  createdAt: string
+  repaidAt: string | null
+  stranded: boolean
+  user: { firstName: string; lastName: string; email: string }
+  circle: { name: string }
+}
+
+export interface LoanDetail extends LoanRow {
+  circle: { name: string; status: string }
+}
+
+export function getLoans(params: {
+  page?: number
+  limit?: number
+  status?: LoanStatus
+  circleId?: string
+  startDate?: string
+  endDate?: string
+  stranded?: boolean
+} = {}): Promise<PaginatedResponse<LoanRow>> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string>,
+  ).toString()
+  return authRequest(`/api/superadmin/loans${q ? `?${q}` : ''}`, { method: 'GET' })
+}
+
+export async function getLoanDetail(loanId: string): Promise<LoanDetail> {
+  const res = await authRequest<{ success: boolean; data: LoanDetail }>(
+    `/api/superadmin/loans/${loanId}`,
+    { method: 'GET' },
+  )
+  return res.data
+}
+
 export function listWallets(params: {
   page?: number
   limit?: number
