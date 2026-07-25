@@ -1907,7 +1907,11 @@ export function GroupDetail() {
                                   Retry
                                 </Button>
                               )}
-                              {(p.status === 'SUCCESS' || p.status === 'COMPLETED') && (
+                              {/* Reversal is an admin recovery tool for a payout still
+                                  stuck mid-flight (PENDING/PROCESSING). A COMPLETED/settled
+                                  payout is not reversible — the backend rejects it too, this
+                                  isn't just a hidden-but-callable button. */}
+                                {(p.status === 'PENDING' || p.status === 'PROCESSING') && (
                                 <Button
                                   variant="subtle"
                                   size="xs"
