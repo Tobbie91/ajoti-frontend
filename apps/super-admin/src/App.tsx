@@ -19,6 +19,7 @@ import {
   LoansList,
   PayoutFeeSettings,
   LoanSettings,
+  CircleRulesSettings,
   SupportInbox,
   SupportTicketDetail,
   StaffManagement,
@@ -92,6 +93,7 @@ function App() {
             <Route element={<RequirePermission permission="SYSTEM_CONFIG" />}>
               <Route path="/settings/payout-fee" element={<PayoutFeeSettings />} />
               <Route path="/settings/loan" element={<LoanSettings />} />
+              <Route path="/settings/circle-rules" element={<CircleRulesSettings />} />
             </Route>
 
             {/* Savings (coming soon) — no permission gate yet */}

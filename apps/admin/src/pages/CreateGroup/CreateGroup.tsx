@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Stack,
@@ -28,7 +28,7 @@ import {
   IconEdit,
   IconCheck,
 } from '@tabler/icons-react'
-import { createRoscaCircle } from '@/utils/api'
+import { createRoscaCircle, getCircleRules } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -57,6 +57,15 @@ export function CreateGroup() {
   const [rulesOpened, { open: openRules, close: closeRules }] = useDisclosure(false)
   const isMobile = useMediaQuery('(max-width: 639px)')
   const [selectedRules, setSelectedRules] = useState<string[]>([])
+
+  // The late-penalty rate is platform-set and can change — fetch it live so the
+  // rules checklist never shows a stale or vague figure for what a member actually pays.
+  const [latePenaltyRatioPercent, setLatePenaltyRatioPercent] = useState<number | null>(null)
+  useEffect(() => {
+    getCircleRules()
+      .then((res) => setLatePenaltyRatioPercent(res.data.latePenaltyRatioPercent))
+      .catch(() => setLatePenaltyRatioPercent(null))
+  }, [])
 
   return (
     <Stack gap="lg">
@@ -407,7 +416,12 @@ export function CreateGroup() {
 
           <Stack gap="xs">
             {[
-              'Late payment incurs a 2% penalty.',
+              // Omitted until the live rate loads (rather than shown as a placeholder) —
+              // the rule text doubles as the checkbox's identity in selectedRules below,
+              // so it must never change under a user who has already checked it.
+              ...(latePenaltyRatioPercent !== null
+                ? [`Late payment incurs a ${latePenaltyRatioPercent}% penalty.`]
+                : []),
               'All contributions must be available before the due date of every circle.',
               'Payout order is final and cannot be changed.',
               'Members must acknowledge their assigned payout slot before the group starts.',

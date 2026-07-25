@@ -295,6 +295,20 @@ export function listRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest('/api/rosca', { method: 'GET' })
 }
 
+export interface CircleRules {
+  collateralRatioPercent: number
+  latePenaltyRatioPercent: number
+  minTrustScore: number
+  postStartExitPenaltyPercent: number
+}
+
+// GET /api/rosca/circle-rules — current platform-wide circle rules (member-facing).
+// Always fetch this live for disclosure copy — never hardcode the rate, so the UI
+// can't drift from whatever the superadmin has actually configured.
+export function getCircleRules(): Promise<{ success: boolean; data: CircleRules }> {
+  return authRequest('/api/rosca/circle-rules', { method: 'GET' })
+}
+
 // GET /api/admin/rosca/my-circles — view admin's own circles
 export function listAllRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest('/api/admin/rosca/my-circles', { method: 'GET' })

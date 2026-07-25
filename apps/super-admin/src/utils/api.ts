@@ -502,6 +502,48 @@ export function updateLoanSettings(
   )
 }
 
+// ── Circle rules settings — SYSTEM_CONFIG (superadmin) ──────────────────────────
+export interface CircleRuleSettingMeta {
+  updatedBy: string | null
+  updatedAt: string
+}
+
+export interface CircleRulesSettings {
+  collateralRatioBps: number
+  latePenaltyRatioBps: number
+  minTrustScore: number
+  postStartExitPenaltyBps: number
+  meta: {
+    collateralRatioBps: CircleRuleSettingMeta
+    latePenaltyRatioBps: CircleRuleSettingMeta
+    minTrustScore: CircleRuleSettingMeta
+    postStartExitPenaltyBps: CircleRuleSettingMeta
+  }
+}
+
+export interface CircleRulesSettingsInput {
+  collateralRatioBps: number
+  latePenaltyRatioBps: number
+  minTrustScore: number
+  postStartExitPenaltyBps: number
+}
+
+export function getCircleRulesSettings(): Promise<{ success: boolean; data: CircleRulesSettings }> {
+  return authRequest<{ success: boolean; data: CircleRulesSettings }>(
+    '/api/superadmin/settings/circle-rules',
+    { method: 'GET' },
+  )
+}
+
+export function updateCircleRulesSettings(
+  input: CircleRulesSettingsInput,
+): Promise<{ success: boolean; data: CircleRulesSettings }> {
+  return authRequest<{ success: boolean; data: CircleRulesSettings }>(
+    '/api/superadmin/settings/circle-rules',
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
 // ── Loans (early payouts) — VIEW_SYSTEM_ACCOUNTS (COMPLIANCE+) ──────────────────
 // Read-only oversight: list + detail, no write-off/cancel/force-repay actions.
 
