@@ -9,6 +9,7 @@ import type { WalletTransaction } from '@/utils/api'
 // or should be phrased for this audience specifically.
 const SOURCE_TYPE_LABELS: Record<string, string> = {
   ROSCA_ADMIN_FEE: 'Group admin payout fee share',
+  LATE_PENALTY_ADMIN_FEE: 'Late-penalty proceeds from a member',
 }
 
 function formatTxLabel(raw: string): string {

@@ -112,7 +112,7 @@ export function GroupDetails() {
             slotsLeft: String(slotsLeft),
             contribution: `${formattedAmount} ${(circle.frequency ?? '').toLowerCase()}`,
             payoutOrder: payoutLogicLabel[(circle.payoutLogic as string) ?? ''] ?? String(circle.payoutLogic ?? '—'),
-            penalty: '—',
+            penalty: 'Late fee applies — paid to your circle admin',
             admin: adminName,
             adminBio: String((circle as Record<string, unknown>).adminBio ?? ''),
             completionRate: `${(circle as Record<string, unknown>).completionRate ?? 0}%`,

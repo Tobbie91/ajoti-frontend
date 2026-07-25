@@ -937,7 +937,7 @@ function GrowthTab({
         <IconInfoCircle size={20} color="#0284C7" className="mt-0.5 flex-shrink-0" />
         <Text fw={500} className="text-[13px] leading-relaxed text-[#0C4A6E]">
           Your trust score is based on your payment history. Consistent on-time payments increase your score.
-          Late or missed payments reduce it.
+          Late or missed payments reduce it. Late-payment fees are paid to your circle admin.
         </Text>
       </div>
 
