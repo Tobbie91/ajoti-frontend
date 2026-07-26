@@ -165,7 +165,7 @@ export function LoanSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.maxPayoutRatioBps.updatedAt)}
-              {current.meta.maxPayoutRatioBps.updatedBy ? ` by ${current.meta.maxPayoutRatioBps.updatedBy}` : ' (seeded default)'}
+              {current.meta.maxPayoutRatioBps.updatedByLabel ? ` by ${current.meta.maxPayoutRatioBps.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <NumberInput
@@ -178,7 +178,7 @@ export function LoanSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.minCompletedCycles.updatedAt)}
-              {current.meta.minCompletedCycles.updatedBy ? ` by ${current.meta.minCompletedCycles.updatedBy}` : ' (seeded default)'}
+              {current.meta.minCompletedCycles.updatedByLabel ? ` by ${current.meta.minCompletedCycles.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <NumberInput
@@ -191,7 +191,7 @@ export function LoanSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.maxLatePayments.updatedAt)}
-              {current.meta.maxLatePayments.updatedBy ? ` by ${current.meta.maxLatePayments.updatedBy}` : ' (seeded default)'}
+              {current.meta.maxLatePayments.updatedByLabel ? ` by ${current.meta.maxLatePayments.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <Group justify="flex-end" mt="sm">

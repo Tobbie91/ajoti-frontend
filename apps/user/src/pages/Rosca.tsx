@@ -106,12 +106,12 @@ export function Rosca() {
 
     function mapJoinRequest(r: MyJoinRequest): JoinedGroup {
       const circle = r.circle ?? {}
-      const filled = Number(circle.filledSlots ?? 0)
-      const total = Number(circle.durationCycles ?? circle.maxSlots ?? 1)
+      const completed = Number(circle.currentCycle ?? 0)
+      const total = Number(circle.durationCycles ?? 1)
       const adminName = circle.admin
         ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
         : 'Admin'
-      const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
       const nextPayout = (circle as { nextPayoutDate?: string }).nextPayoutDate
         ? new Date((circle as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'TBD'
@@ -119,7 +119,7 @@ export function Rosca() {
         id: r.circleId,
         name: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
         completionRate,
-        completedCycles: filled,
+        completedCycles: completed,
         totalCycles: total,
         nextContribution: nextPayout,
         admin: adminName,
@@ -128,12 +128,12 @@ export function Rosca() {
     }
 
     function mapParticipation(c: Participation): JoinedGroup {
-      const filled = Number(c.filledSlots ?? 0)
-      const total = Number(c.durationCycles ?? c.maxSlots ?? 1)
+      const completed = Number(c.currentCycle ?? 0)
+      const total = Number(c.durationCycles ?? 1)
       const adminName = c.admin
         ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
         : 'Admin'
-      const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
       const nextPayout = (c as { nextPayoutDate?: string }).nextPayoutDate
         ? new Date((c as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'TBD'
@@ -141,7 +141,7 @@ export function Rosca() {
         id: c.id,
         name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
         completionRate,
-        completedCycles: filled,
+        completedCycles: completed,
         totalCycles: total,
         nextContribution: nextPayout,
         admin: adminName,
@@ -324,7 +324,7 @@ export function Rosca() {
                     <div className="flex items-center gap-1.5">
                       <div className="h-2 w-2 rounded-full bg-[#02A36E]" />
                       <Text fw={500} className="text-[12px] text-[#6B7280]">
-                        {group.completionRate}% complete rate
+                        {group.completionRate}% of cycles complete
                       </Text>
                     </div>
                   </div>
@@ -343,7 +343,7 @@ export function Rosca() {
                     }}
                   />
                   <Text fw={500} className="flex-shrink-0 text-[11px] text-[#6B7280]">
-                    ({group.completedCycles} of {group.totalCycles} complete)
+                    ({group.completedCycles} of {group.totalCycles} cycles complete)
                   </Text>
                 </div>
 
@@ -474,7 +474,7 @@ export function Rosca() {
                           <Text fw={600} className="text-[13px] leading-tight text-[#0F172A]">
                             {group.admin}
                           </Text>
-                          <Text fw={500} className="text-[11px] text-[#166534]">
+                          <Text fw={400} className="text-[11px]" style={{ color: '#6B7280' }}>
                             Admin
                           </Text>
                         </div>

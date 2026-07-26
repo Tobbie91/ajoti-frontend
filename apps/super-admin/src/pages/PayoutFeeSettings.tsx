@@ -182,7 +182,7 @@ export function PayoutFeeSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.flatFeeKobo.updatedAt)}
-              {current.meta.flatFeeKobo.updatedBy ? ` by ${current.meta.flatFeeKobo.updatedBy}` : ' (seeded default)'}
+              {current.meta.flatFeeKobo.updatedByLabel ? ` by ${current.meta.flatFeeKobo.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <NumberInput
@@ -196,7 +196,7 @@ export function PayoutFeeSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.adminShareKobo.updatedAt)}
-              {current.meta.adminShareKobo.updatedBy ? ` by ${current.meta.adminShareKobo.updatedBy}` : ' (seeded default)'}
+              {current.meta.adminShareKobo.updatedByLabel ? ` by ${current.meta.adminShareKobo.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <NumberInput
@@ -210,7 +210,7 @@ export function PayoutFeeSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.platformShareKobo.updatedAt)}
-              {current.meta.platformShareKobo.updatedBy ? ` by ${current.meta.platformShareKobo.updatedBy}` : ' (seeded default)'}
+              {current.meta.platformShareKobo.updatedByLabel ? ` by ${current.meta.platformShareKobo.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <Divider />
@@ -226,7 +226,7 @@ export function PayoutFeeSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.minimumFloorKobo.updatedAt)}
-              {current.meta.minimumFloorKobo.updatedBy ? ` by ${current.meta.minimumFloorKobo.updatedBy}` : ' (seeded default)'}
+              {current.meta.minimumFloorKobo.updatedByLabel ? ` by ${current.meta.minimumFloorKobo.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <Group justify="flex-end" mt="sm">

@@ -336,6 +336,7 @@ export function getLedger(params: {
 export interface AuditLogRow {
   id: string
   actorId: string
+  actorLabel: string | null
   actorType: string
   action: string
   entityType: string
@@ -423,6 +424,7 @@ export function capitalizeLoanFloat(amountKobo: number, note: string): Promise<{
 
 export interface PayoutFeeSettingMeta {
   updatedBy: string | null
+  updatedByLabel: string | null
   updatedAt: string
 }
 
@@ -466,6 +468,7 @@ export function updatePayoutFeeSettings(
 
 export interface LoanSettingMeta {
   updatedBy: string | null
+  updatedByLabel: string | null
   updatedAt: string
 }
 
@@ -505,6 +508,7 @@ export function updateLoanSettings(
 // ── Circle rules settings — SYSTEM_CONFIG (superadmin) ──────────────────────────
 export interface CircleRuleSettingMeta {
   updatedBy: string | null
+  updatedByLabel: string | null
   updatedAt: string
 }
 

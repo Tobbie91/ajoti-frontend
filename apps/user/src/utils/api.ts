@@ -272,6 +272,7 @@ export interface RoscaCircle {
   contributionAmount: string | number
   frequency: string
   durationCycles: number
+  currentCycle?: number
   maxSlots: number
   filledSlots: number
   status: string
@@ -280,6 +281,7 @@ export interface RoscaCircle {
     firstName: string
     lastName: string
   }
+  members?: CircleMember[]
   [key: string]: unknown
 }
 
@@ -358,6 +360,7 @@ export interface MyJoinRequest {
     id?: string
     name?: string
     durationCycles?: number
+    currentCycle?: number
     filledSlots?: number
     maxSlots?: number
     frequency?: string
@@ -664,8 +667,8 @@ export async function getBanks(): Promise<BankOption[]> {
   return res.data ?? []
 }
 
-export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ account_number: string; account_name: string }> {
-  const res = await authRequest<{ data: { account_number: string; account_name: string } }>(
+export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ accountNumber: string; accountName: string }> {
+  const res = await authRequest<{ data: { accountNumber: string; accountName: string } }>(
     '/api/wallet/withdrawal/resolve-account',
     { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) },
   )
@@ -795,13 +798,13 @@ export interface Loan {
   id: string
   circleId: string
   circleName?: string
-  amount: number | string
-  feeAmount?: number | string
-  disbursedAmount?: number | string
+  payoutAmount: number | string
+  loanAmount: number | string
+  companyFee: number | string
+  finalPayout: number | string
   status: string
   createdAt: string
-  dueDate?: string
-  disbursedAt?: string
+  repaidAt?: string | null
   [key: string]: unknown
 }
 
@@ -967,12 +970,8 @@ export interface CircleMember {
 }
 
 export async function getCircleMembers(circleId: string): Promise<CircleMember[]> {
-  const res = await authRequest<{ data?: CircleMember[] } | CircleMember[]>(
-    `/api/rosca/${circleId}/members`,
-    { method: 'GET' },
-  )
-  const list = Array.isArray(res) ? res : (res as { data?: CircleMember[] }).data ?? []
-  return list
+  const circle = await getRoscaCircle(circleId)
+  return circle.members ?? []
 }
 
 export interface PeerReview {
@@ -1001,7 +1000,7 @@ export async function submitPeerReview(circleId: string, payload: {
 
 export async function getCirclePeerReviews(circleId: string): Promise<PeerReview[]> {
   const res = await authRequest<{ data?: PeerReview[] } | PeerReview[]>(
-    `/api/rosca/${circleId}/peer-reviews`,
+    `/api/rosca/${circleId}/reviews/mine`,
     { method: 'GET' },
   )
   return Array.isArray(res) ? res : (res as { data?: PeerReview[] }).data ?? []

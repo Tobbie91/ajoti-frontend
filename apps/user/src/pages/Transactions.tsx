@@ -179,10 +179,10 @@ export function Transactions() {
       {/* Wallet balance banner */}
       <div className="mb-6 flex items-center justify-between rounded-2xl bg-[#02A36E] px-6 py-4">
         <div>
-          <Text fw={400} className="text-[12px] text-white/60">
+          <Text fw={400} className="text-[12px]" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
             Wallet Balance
           </Text>
-          <Text fw={600} className="text-[24px] text-white/90">
+          <Text fw={600} className="text-[24px]" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
             {walletBalance}
           </Text>
         </div>

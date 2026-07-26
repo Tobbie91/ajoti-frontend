@@ -186,7 +186,7 @@ export function Loans() {
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
             <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
               <Text fz="xs" c="dimmed">Active Loan</Text>
-              <Text fz={20} fw={700} mt={4}>{activeLoan ? `₦${fmt(Number(activeLoan.disbursedAmount ?? activeLoan.amount))}` : '—'}</Text>
+              <Text fz={20} fw={700} mt={4}>{activeLoan ? `₦${fmt(Number(activeLoan.loanAmount) / 100)}` : '—'}</Text>
               {activeLoan && <Badge size="xs" mt={4} style={{ background: `${loanStatusColor(activeLoan.status)}15`, color: loanStatusColor(activeLoan.status), border: 'none' }}>{activeLoan.status}</Badge>}
             </Paper>
             <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
@@ -208,10 +208,8 @@ export function Loans() {
               </Group>
               <Stack gap="sm">
                 {[
-                  { label: 'Amount', value: `₦${fmt(Number(activeLoan.disbursedAmount ?? activeLoan.amount))}` },
+                  { label: 'Amount', value: `₦${fmt(Number(activeLoan.loanAmount) / 100)}` },
                   { label: 'Status', value: activeLoan.status },
-                  ...(activeLoan.dueDate ? [{ label: 'Due Date', value: new Date(activeLoan.dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) }] : []),
-                  ...(activeLoan.disbursedAt ? [{ label: 'Disbursed', value: new Date(activeLoan.disbursedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) }] : []),
                 ].map(({ label, value }) => (
                   <Group key={label} justify="space-between" style={{ borderBottom: '1px solid #F3F4F6', paddingBottom: 8 }}>
                     <Text fz="sm" c="dimmed">{label}</Text>
@@ -255,7 +253,7 @@ export function Loans() {
                       <Text fz="xs" c="dimmed">{new Date(loan.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
                     </Box>
                     <Box style={{ textAlign: 'right' }}>
-                      <Text fz="sm" fw={600} style={{ color: PRIMARY }}>₦{fmt(Number(loan.disbursedAmount ?? loan.amount))}</Text>
+                      <Text fz="sm" fw={600} style={{ color: PRIMARY }}>₦{fmt(Number(loan.loanAmount) / 100)}</Text>
                       <Badge size="xs" style={{ background: `${loanStatusColor(loan.status)}15`, color: loanStatusColor(loan.status), border: 'none' }}>{loan.status}</Badge>
                     </Box>
                   </Box>

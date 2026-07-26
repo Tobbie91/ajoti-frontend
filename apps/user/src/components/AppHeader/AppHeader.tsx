@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom'
 import { Popover, Modal, Text, ScrollArea, Loader } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { IconBell, IconMessageCircle, IconHeadset } from '@tabler/icons-react'
+import { IconBell, IconMessageCircle, IconHeadset, IconCash, IconAlertTriangle } from '@tabler/icons-react'
 import styles from './AppHeader.module.css'
 import {
   getNotifications,
@@ -307,6 +307,22 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account', initials: in
         >
           <WalletIcon className={styles.navIconWallet} />
           <span className={styles.navLabel}>Wallet</span>
+        </RouterNavLink>
+
+        <RouterNavLink
+          to="/loans"
+          className={({ isActive }: { isActive: boolean }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+        >
+          <IconCash size={22} className={styles.navIconWallet} />
+          <span className={styles.navLabel}>Loans</span>
+        </RouterNavLink>
+
+        <RouterNavLink
+          to="/debts"
+          className={({ isActive }: { isActive: boolean }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
+        >
+          <IconAlertTriangle size={22} className={styles.navIconWallet} />
+          <span className={styles.navLabel}>Debts</span>
         </RouterNavLink>
 
         <RouterNavLink

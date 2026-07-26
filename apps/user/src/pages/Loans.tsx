@@ -209,7 +209,7 @@ export function Loans() {
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between">
                   <Text fw={400} className="text-[13px] text-[#6B7280]">Amount</Text>
-                  <Text fw={600} className="text-[13px] text-[#0F172A]">₦{fmt(Number(activeLoan.disbursedAmount ?? activeLoan.amount))}</Text>
+                  <Text fw={600} className="text-[13px] text-[#0F172A]">₦{fmt(Number(activeLoan.loanAmount) / 100)}</Text>
                 </div>
                 <div className="flex justify-between">
                   <Text fw={400} className="text-[13px] text-[#6B7280]">Status</Text>
@@ -217,12 +217,6 @@ export function Loans() {
                     {activeLoan.status}
                   </span>
                 </div>
-                {activeLoan.dueDate && (
-                  <div className="flex justify-between">
-                    <Text fw={400} className="text-[13px] text-[#6B7280]">Due Date</Text>
-                    <Text fw={500} className="text-[13px] text-[#0F172A]">{new Date(activeLoan.dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -263,7 +257,7 @@ export function Loans() {
                       <Text fw={400} className="text-[11px] text-[#9CA3AF]">{new Date(loan.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <Text fw={600} className="text-[13px] text-[#02A36E]">₦{fmt(Number(loan.disbursedAmount ?? loan.amount))}</Text>
+                      <Text fw={600} className="text-[13px] text-[#02A36E]">₦{fmt(Number(loan.loanAmount) / 100)}</Text>
                       <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: `${loanStatusColor(loan.status)}15`, color: loanStatusColor(loan.status) }}>
                         {loan.status}
                       </span>

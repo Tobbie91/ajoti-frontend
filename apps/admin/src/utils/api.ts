@@ -880,8 +880,8 @@ export async function getBanks(): Promise<BankOption[]> {
   return res.data ?? []
 }
 
-export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ account_number: string; account_name: string }> {
-  const res = await authRequest<{ data: { account_number: string; account_name: string } }>(
+export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ accountNumber: string; accountName: string }> {
+  const res = await authRequest<{ data: { accountNumber: string; accountName: string } }>(
     '/api/wallet/withdrawal/resolve-account',
     { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) },
   )
@@ -986,13 +986,13 @@ export interface Loan {
   id: string
   circleId: string
   circleName?: string
-  amount: number | string
-  feeAmount?: number | string
-  disbursedAmount?: number | string
+  payoutAmount: number | string
+  loanAmount: number | string
+  companyFee: number | string
+  finalPayout: number | string
   status: string
   createdAt: string
-  dueDate?: string
-  disbursedAt?: string
+  repaidAt?: string | null
   [key: string]: unknown
 }
 
@@ -1099,6 +1099,38 @@ export async function getCircleInvites(circleId: string): Promise<CircleInvite[]
     { method: 'GET' },
   )
   return Array.isArray(res) ? res : (res as { data?: CircleInvite[] }).data ?? []
+}
+
+export interface PeerReview {
+  id: string
+  reviewerId: string
+  reviewerName: string
+  revieweeId: string
+  revieweeName: string
+  rating: number
+  comment?: string | null
+  createdAt: string
+}
+
+// GET /api/rosca/:circleId/reviews — CIRCLE_ADMIN (own circle) or STAFF only
+export async function getCircleReviews(circleId: string): Promise<PeerReview[]> {
+  const res = await authRequest<{ data?: PeerReview[] } | PeerReview[]>(
+    `/api/rosca/${circleId}/reviews`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: PeerReview[] }).data ?? []
+}
+
+// POST /api/rosca/:circleId/reviews — circle must be COMPLETED, one review per reviewer/reviewee/circle
+export async function submitPeerReview(
+  circleId: string,
+  payload: { revieweeId: string; rating: number; comment?: string },
+): Promise<PeerReview> {
+  const res = await authRequest<{ data?: PeerReview } | PeerReview>(
+    `/api/rosca/${circleId}/reviews`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+  return ('data' in res && res.data ? res.data : res) as PeerReview
 }
 
 export function revokeCircleInvite(circleId: string, inviteId: string): Promise<{ message: string }> {

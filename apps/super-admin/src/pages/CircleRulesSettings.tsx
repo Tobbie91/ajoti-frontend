@@ -179,7 +179,7 @@ export function CircleRulesSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.collateralRatioBps.updatedAt)}
-              {current.meta.collateralRatioBps.updatedBy ? ` by ${current.meta.collateralRatioBps.updatedBy}` : ' (seeded default)'}
+              {current.meta.collateralRatioBps.updatedByLabel ? ` by ${current.meta.collateralRatioBps.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <NumberInput
@@ -193,7 +193,7 @@ export function CircleRulesSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.latePenaltyRatioBps.updatedAt)}
-              {current.meta.latePenaltyRatioBps.updatedBy ? ` by ${current.meta.latePenaltyRatioBps.updatedBy}` : ' (seeded default)'}
+              {current.meta.latePenaltyRatioBps.updatedByLabel ? ` by ${current.meta.latePenaltyRatioBps.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <NumberInput
@@ -207,7 +207,7 @@ export function CircleRulesSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.minTrustScore.updatedAt)}
-              {current.meta.minTrustScore.updatedBy ? ` by ${current.meta.minTrustScore.updatedBy}` : ' (seeded default)'}
+              {current.meta.minTrustScore.updatedByLabel ? ` by ${current.meta.minTrustScore.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <NumberInput
@@ -221,7 +221,7 @@ export function CircleRulesSettings() {
             />
             <Text size="xs" c="dimmed" mt={-8}>
               Last updated {fmtDate(current.meta.postStartExitPenaltyBps.updatedAt)}
-              {current.meta.postStartExitPenaltyBps.updatedBy ? ` by ${current.meta.postStartExitPenaltyBps.updatedBy}` : ' (seeded default)'}
+              {current.meta.postStartExitPenaltyBps.updatedByLabel ? ` by ${current.meta.postStartExitPenaltyBps.updatedByLabel}` : ' (seeded default)'}
             </Text>
 
             <Group justify="flex-end" mt="sm">

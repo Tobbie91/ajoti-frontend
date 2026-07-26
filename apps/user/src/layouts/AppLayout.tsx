@@ -12,6 +12,7 @@ import {
   IconLogout,
   IconHeadset,
   IconCash,
+  IconAlertTriangle,
 } from '@tabler/icons-react'
 
 interface AppLayoutProps {
@@ -81,6 +82,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <NavLink component={RouterNavLink} to="/create-wallet" onClick={close} label="Wallet" leftSection={<IconWallet size={20} stroke={1.5} />} active={location.pathname.startsWith('/create-wallet') || location.pathname.startsWith('/fund') || location.pathname.startsWith('/withdraw')} />
             <NavLink component={RouterNavLink} to="/transactions" onClick={close} label="Transactions" leftSection={<IconReceipt2 size={20} stroke={1.5} />} active={location.pathname === '/transactions'} />
             <NavLink component={RouterNavLink} to="/loans" onClick={close} label="Loans" leftSection={<IconCash size={20} stroke={1.5} />} active={location.pathname.startsWith('/loans')} />
+            <NavLink component={RouterNavLink} to="/debts" onClick={close} label="Debts" leftSection={<IconAlertTriangle size={20} stroke={1.5} />} active={location.pathname.startsWith('/debts')} />
             <NavLink component={RouterNavLink} to="/support" onClick={close} label="Support" leftSection={<IconHeadset size={20} stroke={1.5} />} active={location.pathname.startsWith('/support')} />
             <Divider my={4} />
             <NavLink component={RouterNavLink} to="/profile" onClick={close} label="Profile" leftSection={<IconUser size={20} stroke={1.5} />} active={location.pathname === '/profile'} />
