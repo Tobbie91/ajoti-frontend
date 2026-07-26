@@ -18,8 +18,9 @@ import {
   Loader,
   ThemeIcon,
   SimpleGrid,
+  Alert,
 } from '@mantine/core'
-import { IconSearch, IconChevronDown, IconCheck, IconAlertTriangle, IconTrash } from '@tabler/icons-react'
+import { IconSearch, IconChevronDown, IconAlertTriangle, IconTrash, IconAlertCircle } from '@tabler/icons-react'
 import { listAllRoscaCircles, type RoscaCircle } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
@@ -104,7 +105,6 @@ export function RoscaGroups() {
 
   // Notification modal state
   const [notifModal, setNotifModal] = useState(false)
-  const [notifStep, setNotifStep] = useState<'form' | 'loading' | 'success'>('form')
   const [notifSearch, setNotifSearch] = useState('')
   const [notifSelected, setNotifSelected] = useState<string[]>([])
   const [notifMessage, setNotifMessage] = useState('')
@@ -116,19 +116,11 @@ export function RoscaGroups() {
     setNotifSearch('')
     setNotifMessage('')
     setNotifPush(false)
-    setNotifStep('form')
     setNotifModal(true)
   }
 
   function closeNotifModal() {
     setNotifModal(false)
-  }
-
-  function handleSendNotification() {
-    setNotifStep('loading')
-    setTimeout(() => {
-      setNotifStep('success')
-    }, 2000)
   }
 
   const notifFilteredGroups = allGroups.filter((g) =>
@@ -153,13 +145,8 @@ export function RoscaGroups() {
     )
   }
 
-  const notifSelectedNames = allGroups
-    .filter((g) => notifSelected.includes(g.id))
-    .map((g) => g.name)
-
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState(false)
-  const [deleteStep, setDeleteStep] = useState<'confirm' | 'success'>('confirm')
   const [deleteTargets, setDeleteTargets] = useState<RoscaGroup[]>([])
   const [deleteSkipped, setDeleteSkipped] = useState<RoscaGroup[]>([])
 
@@ -169,16 +156,11 @@ export function RoscaGroups() {
     const skipped = selectedGroups.filter((g) => g.status === 'Active')
     setDeleteTargets(deletable)
     setDeleteSkipped(skipped)
-    setDeleteStep('confirm')
     setDeleteModal(true)
   }
 
   function closeDeleteModal() {
     setDeleteModal(false)
-  }
-
-  function handleConfirmDelete() {
-    setDeleteStep('success')
   }
 
   const filtered = allGroups.filter((g) => {
@@ -399,13 +381,8 @@ export function RoscaGroups() {
         centered
         radius="md"
         size="lg"
-        withCloseButton={notifStep === 'form'}
-        closeOnClickOutside={notifStep === 'form'}
-        title={notifStep === 'form' ? (
-          <Text fw={700} fz="lg">Send Notification</Text>
-        ) : undefined}
+        title={<Text fw={700} fz="lg">Send Notification</Text>}
       >
-        {notifStep === 'form' && (
           <Stack gap="md">
             <Text fz="sm" c="dimmed">Select groups to send a notification.</Text>
 
@@ -469,6 +446,10 @@ export function RoscaGroups() {
               color={PRIMARY}
             />
 
+            <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
+              Bulk notifications across groups aren't wired up yet — this form is a preview only. Sending has no effect until a backend endpoint exists.
+            </Alert>
+
             <Group justify="flex-end" gap="sm" mt="xs">
               <Button
                 variant="outline"
@@ -483,78 +464,12 @@ export function RoscaGroups() {
                 radius="md"
                 size="sm"
                 style={{ background: PRIMARY }}
-                disabled={notifSelected.length === 0 || !notifMessage.trim()}
-                onClick={handleSendNotification}
+                disabled
               >
-                Send
+                Send (Coming Soon)
               </Button>
             </Group>
           </Stack>
-        )}
-
-        {notifStep === 'loading' && (
-          <Stack align="center" justify="center" gap="md" py={60}>
-            <Loader size={48} color={PRIMARY} />
-            <Text fw={700} fz="lg">Sending Notification</Text>
-            <Text fz="sm" c="dimmed">Please wait...</Text>
-            <Text fz="xs" c="dimmed">Do not close this window.</Text>
-          </Stack>
-        )}
-
-        {notifStep === 'success' && (
-          <Stack align="center" gap="md" py={40}>
-            <ThemeIcon size={64} radius="xl" style={{ background: '#e6f5f1' }}>
-              <IconCheck size={32} stroke={2} color={PRIMARY} />
-            </ThemeIcon>
-            <Text fw={700} fz="lg">Notification Sent Successfully</Text>
-            <Text fz="sm" c="dimmed" ta="center">
-              Your message was delivered to {notifSelected.length} selected group{notifSelected.length !== 1 ? 's' : ''}.
-            </Text>
-
-            <Paper
-              p="md"
-              radius="md"
-              style={{ border: '1px solid #e9ecef', width: '100%' }}
-            >
-              <Stack gap={6}>
-                {notifSelectedNames.slice(0, 3).map((name) => (
-                  <Text key={name} fz="sm" fw={500}>{name}</Text>
-                ))}
-                {notifSelectedNames.length > 3 && (
-                  <Text fz="sm" c={PRIMARY} fw={500} style={{ cursor: 'pointer' }}>
-                    +{notifSelectedNames.length - 3} more
-                  </Text>
-                )}
-              </Stack>
-            </Paper>
-
-            <Group gap="sm" mt="xs">
-              <Button
-                variant="outline"
-                radius="md"
-                size="sm"
-                style={{ borderColor: PRIMARY, color: PRIMARY }}
-                onClick={() => {
-                  setNotifSelected([])
-                  setNotifMessage('')
-                  setNotifPush(false)
-                  setNotifSearch('')
-                  setNotifStep('form')
-                }}
-              >
-                Send Another Notification
-              </Button>
-              <Button
-                radius="md"
-                size="sm"
-                style={{ background: PRIMARY }}
-                onClick={closeNotifModal}
-              >
-                Close
-              </Button>
-            </Group>
-          </Stack>
-        )}
       </Modal>
 
       {/* Delete Groups Modal */}
@@ -564,113 +479,81 @@ export function RoscaGroups() {
         centered
         radius="md"
         size="md"
-        withCloseButton={deleteStep === 'confirm'}
-        closeOnClickOutside={deleteStep === 'confirm'}
-        title={deleteStep === 'confirm' ? (
-          <Text fw={700} fz="lg">Delete Groups</Text>
-        ) : undefined}
+        title={<Text fw={700} fz="lg">Delete Groups</Text>}
       >
-        {deleteStep === 'confirm' && (
-          <Stack gap="md">
-            <Stack align="center" gap="sm" py="md">
-              <ThemeIcon size={56} radius="xl" style={{ background: '#fef2f2' }}>
-                <IconTrash size={28} stroke={1.5} color="#e74c3c" />
-              </ThemeIcon>
-              <Text fz="sm" c="dimmed" ta="center">
-                Are you sure you want to delete the selected groups? This action cannot be undone.
-              </Text>
-            </Stack>
-
-            {deleteSkipped.length > 0 && (
-              <Paper p="sm" radius="md" style={{ background: '#fff8e1', border: '1px solid #ffe082' }}>
-                <Group gap="xs" align="flex-start" wrap="nowrap">
-                  <IconAlertTriangle size={18} color="#e67e22" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <Text fz="xs" c="#e67e22">
-                    {deleteSkipped.length} active group{deleteSkipped.length !== 1 ? 's' : ''} cannot be deleted:{' '}
-                    <Text span fw={600} fz="xs">{deleteSkipped.map((g) => g.name).join(', ')}</Text>
-                  </Text>
-                </Group>
-              </Paper>
-            )}
-
-            {deleteTargets.length > 0 && (
-              <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
-                <Text fz="xs" fw={600} c="dimmed" mb="xs">
-                  The following {deleteTargets.length} group{deleteTargets.length !== 1 ? 's' : ''} will be deleted:
-                </Text>
-                <Stack gap={4}>
-                  {deleteTargets.map((g) => (
-                    <Group key={g.id} gap="xs" align="center">
-                      <Text fz="sm" fw={500}>{g.name}</Text>
-                      <Badge
-                        size="xs"
-                        radius="sm"
-                        style={{
-                          background: getStatusBg(g.status),
-                          color: getStatusColor(g.status),
-                          border: 'none',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {g.status}
-                      </Badge>
-                    </Group>
-                  ))}
-                </Stack>
-              </Paper>
-            )}
-
-            <Group justify="flex-end" gap="sm" mt="xs">
-              <Button
-                variant="outline"
-                radius="md"
-                size="sm"
-                onClick={closeDeleteModal}
-                style={{ borderColor: '#dee2e6', color: '#495057' }}
-              >
-                Cancel
-              </Button>
-              <Button
-                radius="md"
-                size="sm"
-                color="red"
-                disabled={deleteTargets.length === 0}
-                onClick={handleConfirmDelete}
-              >
-                Delete ({deleteTargets.length})
-              </Button>
-            </Group>
-          </Stack>
-        )}
-
-        {deleteStep === 'success' && (
-          <Stack align="center" gap="md" py={40}>
-            <ThemeIcon size={64} radius="xl" style={{ background: '#e6f5f1' }}>
-              <IconCheck size={32} stroke={2} color={PRIMARY} />
+        <Stack gap="md">
+          <Stack align="center" gap="sm" py="md">
+            <ThemeIcon size={56} radius="xl" style={{ background: '#fef2f2' }}>
+              <IconTrash size={28} stroke={1.5} color="#e74c3c" />
             </ThemeIcon>
-            <Text fw={700} fz="lg">Groups Deleted Successfully</Text>
             <Text fz="sm" c="dimmed" ta="center">
-              {deleteTargets.length} group{deleteTargets.length !== 1 ? 's have' : ' has'} been permanently deleted.
+              Are you sure you want to delete the selected groups? This action cannot be undone.
             </Text>
+          </Stack>
 
-            <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef', width: '100%' }}>
+          {deleteSkipped.length > 0 && (
+            <Paper p="sm" radius="md" style={{ background: '#fff8e1', border: '1px solid #ffe082' }}>
+              <Group gap="xs" align="flex-start" wrap="nowrap">
+                <IconAlertTriangle size={18} color="#e67e22" style={{ flexShrink: 0, marginTop: 2 }} />
+                <Text fz="xs" c="#e67e22">
+                  {deleteSkipped.length} active group{deleteSkipped.length !== 1 ? 's' : ''} cannot be deleted:{' '}
+                  <Text span fw={600} fz="xs">{deleteSkipped.map((g) => g.name).join(', ')}</Text>
+                </Text>
+              </Group>
+            </Paper>
+          )}
+
+          {deleteTargets.length > 0 && (
+            <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
+              <Text fz="xs" fw={600} c="dimmed" mb="xs">
+                The following {deleteTargets.length} group{deleteTargets.length !== 1 ? 's' : ''} will be deleted:
+              </Text>
               <Stack gap={4}>
                 {deleteTargets.map((g) => (
-                  <Text key={g.id} fz="sm" fw={500}>{g.name}</Text>
+                  <Group key={g.id} gap="xs" align="center">
+                    <Text fz="sm" fw={500}>{g.name}</Text>
+                    <Badge
+                      size="xs"
+                      radius="sm"
+                      style={{
+                        background: getStatusBg(g.status),
+                        color: getStatusColor(g.status),
+                        border: 'none',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {g.status}
+                    </Badge>
+                  </Group>
                 ))}
               </Stack>
             </Paper>
+          )}
 
+          <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
+            Deleting groups isn't wired up yet here — real circle deletion is a superadmin-only action (cancel, release collateral, then delete). This form doesn't do anything yet.
+          </Alert>
+
+          <Group justify="flex-end" gap="sm" mt="xs">
+            <Button
+              variant="outline"
+              radius="md"
+              size="sm"
+              onClick={closeDeleteModal}
+              style={{ borderColor: '#dee2e6', color: '#495057' }}
+            >
+              Cancel
+            </Button>
             <Button
               radius="md"
               size="sm"
-              style={{ background: PRIMARY }}
-              onClick={closeDeleteModal}
+              color="red"
+              disabled
             >
-              Close
+              Delete ({deleteTargets.length}) — Coming Soon
             </Button>
-          </Stack>
-        )}
+          </Group>
+        </Stack>
       </Modal>
     </Stack>
   )
