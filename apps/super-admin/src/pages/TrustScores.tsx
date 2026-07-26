@@ -397,12 +397,12 @@ export function TrustScores() {
       )}
 
       <Paper withBorder radius="md">
-        <Table.ScrollContainer minWidth={950}>
+        <Table.ScrollContainer minWidth={1010}>
           <Table highlightOnHover layout="fixed">
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
                 <Table.Th c="white" w={200}>User</Table.Th>
-                <Table.Th c="white" w={110}>ATI Score</Table.Th>
+                <Table.Th c="white" w={170}>ATI Score</Table.Th>
                 <Table.Th c="white" w={130}>Contributions</Table.Th>
                 <Table.Th c="white" w={220} style={{ whiteSpace: 'nowrap' }}>On Time / Late / Missed</Table.Th>
                 <Table.Th c="white" w={110}>Peer Rating</Table.Th>
@@ -432,7 +432,7 @@ export function TrustScores() {
                       <Text size="sm" fw={500}>{row.user?.firstName} {row.user?.lastName}</Text>
                       <Text size="xs" c="dimmed">{row.user?.email}</Text>
                     </Table.Td>
-                    <Table.Td style={{ minWidth: 160 }}>
+                    <Table.Td>
                       <ScoreBar display={row.displayScore} />
                     </Table.Td>
                     <Table.Td>
