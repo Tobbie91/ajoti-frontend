@@ -456,7 +456,6 @@ export interface CreateRoscaPayload {
   durationCycles: number
   maxSlots: number
   payoutLogic: string
-  autoStartOnFull: boolean
   visibility: string
 }
 

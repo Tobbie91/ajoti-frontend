@@ -658,7 +658,6 @@ export function CreateGroup() {
                     durationCycles: Number(participants) || 10,
                     maxSlots: Number(participants) || 10,
                     payoutLogic: payoutStructure,
-                    autoStartOnFull: true,
                     visibility,
                   })
                   navigate('/rosca/groups')
