@@ -49,7 +49,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   return (
     <Group justify="space-between">
       <Text size="sm" c="dimmed">{label}</Text>
-      <Text size="sm" fw={600}>{value}</Text>
+      <Text size="sm" fw={600} component="span">{value}</Text>
     </Group>
   )
 }
