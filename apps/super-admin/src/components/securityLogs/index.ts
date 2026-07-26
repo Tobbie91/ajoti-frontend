@@ -1,1 +1,0 @@
-export { SecurityLogs } from './SecurityLogs';
