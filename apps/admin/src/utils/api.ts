@@ -309,6 +309,95 @@ export function getCircleRules(): Promise<{ success: boolean; data: CircleRules 
   return authRequest('/api/rosca/circle-rules', { method: 'GET' })
 }
 
+export interface MyJoinRequest {
+  membershipId: string
+  circleId: string
+  status: string
+  requestedAt?: string
+  collateralReserved?: string
+  circle?: {
+    id?: string
+    name?: string
+    durationCycles?: number
+    filledSlots?: number
+    maxSlots?: number
+    frequency?: string
+    contributionAmount?: number | string
+    admin?: { firstName?: string; lastName?: string }
+  }
+  [key: string]: unknown
+}
+
+// GET /api/rosca/my-join-requests — generic authenticated-user endpoint; admins
+// are members too, so this reads the admin's own join requests (not the circles
+// they administer — that's listAllRoscaCircles).
+export async function getMyJoinRequests(): Promise<MyJoinRequest[]> {
+  const res = await authRequest<{ data?: MyJoinRequest[] } | MyJoinRequest[]>(
+    '/api/rosca/my-join-requests',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: MyJoinRequest[] }).data ?? []
+}
+
+// GET /api/rosca/my-participations — circles the admin (as a member) is actively
+// participating in.
+export async function getMyParticipations(): Promise<RoscaCircle[]> {
+  const res = await authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>(
+    '/api/rosca/my-participations',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: RoscaCircle[] }).data ?? []
+}
+
+// The circles the admin is actually a MEMBER of (participations + approved join
+// requests), merged and deduped by circleId — distinct from listAllRoscaCircles,
+// which is circles the admin ADMINISTERS. Anywhere that needs "my memberships"
+// (e.g. the loan application's group selector) should use this.
+export async function getMyActiveCircles(): Promise<RoscaCircle[]> {
+  const [participations, joinRequests] = await Promise.all([
+    getMyParticipations().catch(() => []),
+    getMyJoinRequests().catch(() => []),
+  ])
+
+  const approvedRequests = joinRequests.filter((r) =>
+    ['ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
+  )
+
+  const seenIds = new Set<string>()
+  const merged: RoscaCircle[] = []
+  for (const c of participations) {
+    if (!seenIds.has(c.id)) {
+      seenIds.add(c.id)
+      merged.push(c)
+    }
+  }
+  for (const r of approvedRequests) {
+    const c = r.circle
+    if (c?.id && !seenIds.has(c.id)) {
+      seenIds.add(c.id)
+      merged.push({
+        id: c.id,
+        name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
+        description: '',
+        contributionAmount: Number(c.contributionAmount ?? 0),
+        frequency: c.frequency ?? '',
+        durationCycles: c.durationCycles ?? 0,
+        maxSlots: c.maxSlots ?? 0,
+        totalSlots: c.maxSlots ?? 0,
+        filledSlots: c.filledSlots ?? 0,
+        status: r.status,
+        visibility: '',
+        collateralPercentage: 0,
+        payoutLogic: '',
+        autoStartOnFull: false,
+        latePenaltyPercent: 0,
+        admin: { firstName: c.admin?.firstName ?? '', lastName: c.admin?.lastName ?? '' },
+      })
+    }
+  }
+  return merged
+}
+
 // ── Debts ─────────────────────────────────────────────────────────────────────
 
 export type DebtCategory = 'MISSED_CONTRIBUTION' | 'LATE_PENALTY' | 'MIXED'
@@ -876,9 +965,13 @@ export async function getTrustScore(): Promise<TrustScore> {
 export interface LoanEligibility {
   eligible: boolean
   reason?: string
-  maxLoanAmount?: number
-  expectedPayout?: number
-  feeRate?: number
+  ineligibilityReason?: string
+  finalCreditScore?: number
+  allowedPercent?: number
+  expectedPayoutAmount?: string
+  grossLoanAmount?: string
+  companyFee?: string
+  maxLoanAmount?: string
   [key: string]: unknown
 }
 

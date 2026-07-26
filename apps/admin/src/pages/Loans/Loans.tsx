@@ -14,7 +14,7 @@ import {
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import {
-  listAllRoscaCircles,
+  getMyActiveCircles,
   getLoanEligibility,
   getLoanStatus,
   getLoanHistory,
@@ -27,7 +27,6 @@ import {
 type Step = 'overview' | 'form' | 'confirm' | 'pin' | 'processing' | 'success' | 'error'
 
 const PRIMARY = '#0b6b55'
-const SERVICE_FEE_RATE = 0.02
 
 function fmt(n: number) {
   return n.toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -58,11 +57,8 @@ export function Loans() {
 
   useEffect(() => {
     Promise.all([
-      listAllRoscaCircles()
-        .then((res) => {
-          const arr = Array.isArray(res) ? res : ((res as Record<string, unknown>)?.data ?? []) as RoscaCircle[]
-          setCircles(arr.filter((c) => ['ACTIVE', 'STARTED'].includes((c.status ?? '').toUpperCase())))
-        })
+      getMyActiveCircles()
+        .then((res) => setCircles(res.filter((c) => ['ACTIVE', 'STARTED'].includes((c.status ?? '').toUpperCase()))))
         .catch(() => {}),
       getLoanStatus().then(setActiveLoan).catch(() => {}),
       getLoanHistory().then(setLoanHistory).catch(() => {}),
@@ -70,10 +66,14 @@ export function Loans() {
   }, [])
 
   const selectedCircle = circles.find((c) => c.id === selectedCircleId)
-  const payoutAmount = eligibility?.expectedPayout ?? (selectedCircle ? Number(selectedCircle.contributionAmount) * (selectedCircle.maxSlots ?? 1) : 0)
-  const feeRate = eligibility?.feeRate ?? SERVICE_FEE_RATE
-  const serviceFee = Math.round(payoutAmount * feeRate)
-  const disbursementAmount = payoutAmount - serviceFee
+  // Every figure here comes straight from the eligibility response — never
+  // recomputed locally — so the displayed breakdown can't drift from what
+  // applyLoan actually disburses.
+  const expectedPayoutAmount = eligibility?.expectedPayoutAmount != null ? Number(eligibility.expectedPayoutAmount) / 100 : 0
+  const allowedPercent = eligibility?.allowedPercent ?? 0
+  const grossLoanAmount = eligibility?.grossLoanAmount != null ? Number(eligibility.grossLoanAmount) / 100 : 0
+  const serviceFee = eligibility?.companyFee != null ? Number(eligibility.companyFee) / 100 : 0
+  const disbursementAmount = eligibility?.maxLoanAmount != null ? Number(eligibility.maxLoanAmount) / 100 : 0
 
   async function handleCircleSelect(id: string | null) {
     setSelectedCircleId(id)
@@ -314,7 +314,7 @@ export function Loans() {
                         {[
                           { icon: IconUsers, label: 'Members', value: `${selectedCircle.filledSlots}/${selectedCircle.maxSlots}` },
                           { icon: IconCalendar, label: 'Frequency', value: selectedCircle.frequency ?? '—' },
-                          { icon: IconCash, label: 'Contribution', value: `₦${Number(selectedCircle.contributionAmount).toLocaleString()}` },
+                          { icon: IconCash, label: 'Contribution', value: `₦${(Number(selectedCircle.contributionAmount) / 100).toLocaleString()}` },
                           { icon: IconShieldCheck, label: 'Eligible', value: 'Yes', green: true },
                         ].map(({ icon: Icon, label, value, green }) => (
                           <Paper key={label} p="sm" radius="md" style={{ background: '#F9FAFB' }}>
@@ -334,8 +334,9 @@ export function Loans() {
                   <Paper p="lg" radius="md" style={{ background: '#F0FDF4', border: '1px solid #D1FAE5' }}>
                     <Text fw={600} fz="sm" mb="sm">Early Payout Breakdown</Text>
                     <Stack gap="sm">
-                      <Group justify="space-between"><Text fz="sm" c="dimmed">Payout Amount</Text><Text fz="sm" fw={600}>₦{fmt(payoutAmount)}</Text></Group>
-                      <Group justify="space-between"><Text fz="sm" c="dimmed">Service Fee ({(feeRate * 100).toFixed(0)}%)</Text><Text fz="sm" fw={600} style={{ color: '#EF4444' }}>-₦{fmt(serviceFee)}</Text></Group>
+                      <Group justify="space-between"><Text fz="sm" c="dimmed">Expected Payout (100%)</Text><Text fz="sm" fw={600}>₦{fmt(expectedPayoutAmount)}</Text></Group>
+                      <Group justify="space-between"><Text fz="sm" c="dimmed">Early Payout Amount ({allowedPercent}%)</Text><Text fz="sm" fw={600}>₦{fmt(grossLoanAmount)}</Text></Group>
+                      <Group justify="space-between"><Text fz="sm" c="dimmed">Service Fee (10%)</Text><Text fz="sm" fw={600} style={{ color: '#EF4444' }}>-₦{fmt(serviceFee)}</Text></Group>
                       <Box style={{ borderTop: '1px solid #D1FAE5', paddingTop: 12 }}>
                         <Group justify="space-between">
                           <Text fz="sm" fw={600}>You'll Receive</Text>
@@ -375,9 +376,10 @@ export function Loans() {
             <Stack gap="md">
               {[
                 { label: 'ROSCA Group', value: selectedCircle.name },
-                { label: 'Payout Amount', value: `₦${fmt(payoutAmount)}` },
-                { label: `Service Fee (${(feeRate * 100).toFixed(0)}%)`, value: `-₦${fmt(serviceFee)}`, red: true },
-                { label: 'Contribution', value: `₦${Number(selectedCircle.contributionAmount).toLocaleString()} / ${(selectedCircle.frequency ?? '').toLowerCase()}` },
+                { label: 'Expected Payout (100%)', value: `₦${fmt(expectedPayoutAmount)}` },
+                { label: `Early Payout Amount (${allowedPercent}%)`, value: `₦${fmt(grossLoanAmount)}` },
+                { label: 'Service Fee (10%)', value: `-₦${fmt(serviceFee)}`, red: true },
+                { label: 'Contribution', value: `₦${(Number(selectedCircle.contributionAmount) / 100).toLocaleString()} / ${(selectedCircle.frequency ?? '').toLowerCase()}` },
               ].map(({ label, value, red }) => (
                 <Group key={label} justify="space-between" style={{ borderBottom: '1px solid #F3F4F6', paddingBottom: 12 }}>
                   <Text fz="sm" c="dimmed">{label}</Text>
