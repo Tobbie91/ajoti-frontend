@@ -385,6 +385,50 @@ export async function getMyParticipations(): Promise<RoscaCircle[]> {
   return Array.isArray(res) ? res : (res as { data?: RoscaCircle[] }).data ?? []
 }
 
+// The circles the user is actually a member of (participations + approved join
+// requests), merged and deduped by circleId — participations take priority.
+// Anywhere that needs "my circles" rather than "all circles on the platform"
+// (e.g. the loan application's group selector) should use this instead of
+// listRoscaCircles(), which is the platform-wide browse endpoint.
+export async function getMyActiveCircles(): Promise<RoscaCircle[]> {
+  const [participations, joinRequests] = await Promise.all([
+    getMyParticipations().catch(() => []),
+    getMyJoinRequests().catch(() => []),
+  ])
+
+  const approvedRequests = joinRequests.filter((r) =>
+    ['ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
+  )
+
+  const seenIds = new Set<string>()
+  const merged: RoscaCircle[] = []
+  for (const c of participations) {
+    if (!seenIds.has(c.id)) {
+      seenIds.add(c.id)
+      merged.push(c)
+    }
+  }
+  for (const r of approvedRequests) {
+    const c = r.circle
+    if (c?.id && !seenIds.has(c.id)) {
+      seenIds.add(c.id)
+      merged.push({
+        id: c.id,
+        name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
+        contributionAmount: c.contributionAmount ?? 0,
+        frequency: c.frequency ?? '',
+        durationCycles: c.durationCycles ?? 0,
+        maxSlots: c.maxSlots ?? 0,
+        filledSlots: c.filledSlots ?? 0,
+        status: r.status,
+        visibility: '',
+        admin: c.admin?.firstName ? { firstName: c.admin.firstName, lastName: c.admin.lastName ?? '' } : undefined,
+      })
+    }
+  }
+  return merged
+}
+
 export interface RoscaSchedule {
   id?: string
   cycleNumber?: number
@@ -726,9 +770,12 @@ export interface LoanEligibility {
   eligible: boolean
   reason?: string
   ineligibilityReason?: string
-  maxLoanAmount?: string
+  finalCreditScore?: number
+  allowedPercent?: number
   expectedPayoutAmount?: string
-  feeRate?: number
+  grossLoanAmount?: string
+  companyFee?: string
+  maxLoanAmount?: string
   [key: string]: unknown
 }
 
