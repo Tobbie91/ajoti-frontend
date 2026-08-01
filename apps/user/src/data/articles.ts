@@ -210,12 +210,12 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'paragraph',
-        text: 'If a member misses a payment, penalties apply. The specific penalty depends on the group\'s rules set by the admin. Common penalties include late fees, Trust Score deductions, and in severe cases, removal from the group.',
+        text: 'If a member misses a payment, penalties apply. Common penalties include late fees, Trust Score deductions, and in severe cases, removal from the group.',
       },
       {
         type: 'list',
         items: [
-          'Late payment: Small fee deducted, Trust Score reduced by 5 points',
+          'Late payment: Small fee deducted (paid to your circle admin), Trust Score reduced by 5 points',
           'Missed payment: Larger penalty, Trust Score reduced by 15 points',
           'Repeated defaults: Risk of removal and forfeiture of future payouts',
         ],

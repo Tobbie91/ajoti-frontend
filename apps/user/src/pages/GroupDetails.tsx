@@ -16,6 +16,7 @@ import {
   submitPeerReview,
   getCirclePeerReviews,
   leaveRoscaCircle,
+  getCircleRules,
   type RoscaCircle,
   type RoscaSchedule,
   type CircleMember,
@@ -57,6 +58,7 @@ export function GroupDetails() {
   const [leaveConfirm, setLeaveConfirm] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [postStartExitPenaltyPercent, setPostStartExitPenaltyPercent] = useState<number | null>(null)
 
   // Peer review state
   const [members, setMembers] = useState<CircleMember[]>([])
@@ -86,6 +88,10 @@ export function GroupDetails() {
         // Fetch members and existing reviews in background
         getCircleMembers(id!).then((m) => { setMembers(m); setMembersLoaded(true) }).catch(() => setMembersLoaded(true))
         getCirclePeerReviews(id!).then(setExistingReviews).catch(() => {})
+        // Live rate for the post-start exit warning — never hardcode it.
+        getCircleRules()
+          .then((res) => setPostStartExitPenaltyPercent(res.data.postStartExitPenaltyPercent))
+          .catch(() => setPostStartExitPenaltyPercent(null))
         const circle = (Array.isArray(circles) ? circles : []).find((c: RoscaCircle) => c.id === id)
         if (circle) {
           setCircleStatus(circle.status ?? '')
@@ -112,7 +118,7 @@ export function GroupDetails() {
             slotsLeft: String(slotsLeft),
             contribution: `${formattedAmount} ${(circle.frequency ?? '').toLowerCase()}`,
             payoutOrder: payoutLogicLabel[(circle.payoutLogic as string) ?? ''] ?? String(circle.payoutLogic ?? '—'),
-            penalty: '—',
+            penalty: 'Late fee applies — paid to your circle admin',
             admin: adminName,
             adminBio: String((circle as Record<string, unknown>).adminBio ?? ''),
             completionRate: `${(circle as Record<string, unknown>).completionRate ?? 0}%`,
@@ -155,7 +161,8 @@ export function GroupDetails() {
 
   const isInviteOnly = group.status === 'Invite Only'
   const isMember = membersLoaded && members.some((m) => m.userId === currentUserId)
-  const canLeave = isMember && circleStatus === 'DRAFT'
+  const canLeave = isMember && (circleStatus === 'DRAFT' || circleStatus === 'ACTIVE')
+  const isPostStart = circleStatus === 'ACTIVE'
 
   async function handleLeave() {
     setLeaving(true)
@@ -297,6 +304,10 @@ export function GroupDetails() {
                 <Text fw={500} className="text-[12px] text-[#6B7280]">Penalty</Text>
                 <Text fw={600} className="text-[13px] text-[#0F172A]">{group.penalty}</Text>
               </div>
+              <div>
+                <Text fw={500} className="text-[12px] text-[#6B7280]">Payout Fee</Text>
+                <Text fw={600} className="text-[13px] text-[#0F172A]">A flat fee applies to each payout</Text>
+              </div>
             </div>
           </div>
 
@@ -411,7 +422,9 @@ export function GroupDetails() {
               <div className="rounded-2xl border-2 border-[#EF4444] bg-red-50 p-5">
                 <Text fw={600} className="text-[15px] text-[#EF4444]">Leave this circle?</Text>
                 <Text fw={400} className="mt-1 text-[13px] text-[#6B7280]">
-                  Your collateral will be returned to your wallet immediately. This cannot be undone.
+                  {isPostStart
+                    ? `This circle has already started. ${postStartExitPenaltyPercent !== null ? `${postStartExitPenaltyPercent}% of` : 'A share of'} your collateral will be forfeited to the remaining members, and you will give up your future payout slot. This cannot be undone.`
+                    : 'Your collateral will be returned to your wallet immediately. This cannot be undone.'}
                 </Text>
                 {leaveError && (
                   <Text fw={400} className="mt-2 text-[12px] text-red-600">{leaveError}</Text>

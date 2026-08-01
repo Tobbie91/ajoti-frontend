@@ -347,10 +347,15 @@ function AuditLogsTab() {
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text size="sm" fw={500} style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                      {row.actorId.slice(0, 8)}…
+                    <Text size="sm" fw={500}>{row.actorLabel ?? row.actorType}</Text>
+                    <Text
+                      size="xs"
+                      c="dimmed"
+                      title={row.actorId}
+                      style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {row.actorId}
                     </Text>
-                    <Text size="xs" c="dimmed">{row.actorType}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Badge color={actionBadgeColor(row.action)} variant="light" size="sm">
@@ -359,8 +364,13 @@ function AuditLogsTab() {
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm" fw={500}>{row.entityType}</Text>
-                    <Text size="xs" c="dimmed" style={{ fontFamily: 'monospace', fontSize: 11 }}>
-                      {row.entityId.slice(0, 8)}…
+                    <Text
+                      size="xs"
+                      c="dimmed"
+                      title={row.entityId}
+                      style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {row.entityId}
                     </Text>
                   </Table.Td>
                   <Table.Td>

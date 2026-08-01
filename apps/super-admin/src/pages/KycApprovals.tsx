@@ -23,6 +23,7 @@ import {
   ScrollArea,
   Code,
   SegmentedControl,
+  Collapse,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
@@ -34,8 +35,10 @@ import {
   IconX,
   IconShieldCheck,
   IconRefresh,
+  IconChevronDown,
+  IconChevronUp,
 } from '@tabler/icons-react'
-import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, getMonoIdentity, type KycQueueRow } from '@/utils/api'
+import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, getProviderIdentity, type KycQueueRow } from '@/utils/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,6 +51,12 @@ const STATUS_COLOR: Record<string, string> = {
   REJECTED: 'red',
 }
 
+const APPROVAL_SOURCE_LABEL: Record<string, string> = {
+  SYSTEM_AUTO: 'Auto-approved (Mono webhook)',
+  SUPERADMIN: 'Manually approved (staff)',
+  LEGACY_MANUAL: 'Manually approved (legacy)',
+}
+
 function fmt(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-NG', {
@@ -57,7 +66,32 @@ function fmt(iso: string | null) {
 
 // ── Mono Verification Card ────────────────────────────────────────────────────
 
-function MonoVerificationCard({ data }: { data: Record<string, unknown> }) {
+function RawDataToggle({ data }: { data: Record<string, unknown> }) {
+  const [opened, { toggle }] = useDisclosure(false)
+  return (
+    <Stack gap={4}>
+      <Button
+        variant="subtle"
+        color="gray"
+        size="compact-xs"
+        onClick={toggle}
+        rightSection={opened ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
+        style={{ alignSelf: 'flex-start' }}
+      >
+        {opened ? 'Hide raw data' : 'View raw data'}
+      </Button>
+      <Collapse in={opened}>
+        <ScrollArea h={220} type="auto">
+          <Code block fz="xs" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {JSON.stringify(data, null, 2)}
+          </Code>
+        </ScrollArea>
+      </Collapse>
+    </Stack>
+  )
+}
+
+function VerificationDataCard({ data }: { data: Record<string, unknown> }) {
   const inner = (data?.data ?? data) as Record<string, unknown>
   const customer = inner?.customer as Record<string, string> | undefined
   const event = (data?.event ?? inner?.event) as string | undefined
@@ -67,6 +101,7 @@ function MonoVerificationCard({ data }: { data: Record<string, unknown> }) {
   const createdAt = inner?.created_at as string | undefined
   const liveMode = inner?.live_mode as boolean | undefined
 
+  // Unrecognised shape — nothing sensible to summarise, so raw data is the primary view.
   if (!status && !kycLevel && !customer) {
     return (
       <ScrollArea h={220} type="auto">
@@ -105,6 +140,7 @@ function MonoVerificationCard({ data }: { data: Record<string, unknown> }) {
         {reference && <InfoRow label="Reference" value={reference} />}
         {createdAt && <InfoRow label="Verified At" value={fmt(createdAt)} />}
       </SimpleGrid>
+      <RawDataToggle data={data} />
     </Stack>
   )
 }
@@ -152,7 +188,7 @@ function KycDetailDrawer({
     setMonoFetchLoading(true)
     setMonoFetchError(null)
     try {
-      const data = await getMonoIdentity(record.userId)
+      const data = await getProviderIdentity(record.userId)
       setMonoLiveData(data)
     } catch (err) {
       setMonoFetchError(err instanceof Error ? err.message : 'Failed to fetch from Mono')
@@ -239,8 +275,12 @@ function KycDetailDrawer({
               <InfoRow label="Submitted" value={fmt(record.submittedAt)} />
               <InfoRow label="KYC Level" value={`Level ${record.kycLevel}`} />
               <InfoRow label="Step" value={record.step ?? '—'} />
-              <InfoRow label="Mono Status" value={record.monoProveStatus ?? '—'} />
+              <InfoRow label="Mono Status" value={record.providerStatus ?? '—'} />
               <InfoRow label="Reviewed" value={record.reviewedAt ? fmt(record.reviewedAt) : '—'} />
+              <InfoRow
+                label="Approval Source"
+                value={record.approvalSource ? APPROVAL_SOURCE_LABEL[record.approvalSource] ?? record.approvalSource : '—'}
+              />
             </SimpleGrid>
 
             {/* Next of kin */}
@@ -296,9 +336,9 @@ function KycDetailDrawer({
               </Alert>
             )}
             {monoLiveData ? (
-              <MonoVerificationCard data={monoLiveData} />
+              <VerificationDataCard data={monoLiveData} />
             ) : record.verificationData ? (
-              <MonoVerificationCard data={record.verificationData as Record<string, unknown>} />
+              <VerificationDataCard data={record.verificationData as Record<string, unknown>} />
             ) : (
               <Text fz="sm" c="dimmed">No Mono verification data yet.</Text>
             )}
@@ -493,6 +533,14 @@ export function KycApprovals() {
           ))}
         </Tabs.List>
       </Tabs>
+
+      {activeTab === 'PENDING' && (
+        <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light" radius="md">
+          Most KYC levels now auto-approve on Mono verification. This queue only shows records
+          auto-approval couldn't resolve — ambiguous verification results and legacy submissions
+          from before auto-approval — for manual review.
+        </Alert>
+      )}
 
       <TextInput
         placeholder="Filter by name or email..."

@@ -11,6 +11,7 @@ import {
   GroupDetail,
   EditGroup,
   Loans,
+  MyDebts,
   MyWallet,
   FundWallet,
   WithdrawFunds,
@@ -54,6 +55,7 @@ function App() {
           <Route path="/rosca/groups/:id" element={<GroupDetail />} />
           <Route path="/rosca/groups/:id/edit" element={<EditGroup />} />
           <Route path="/loans" element={<Loans />} />
+          <Route path="/debts" element={<MyDebts />} />
           <Route path="/my-wallet" element={<MyWallet />} />
           <Route path="/fund-wallet" element={<KycGate action="fund your wallet"><FundWallet /></KycGate>} />
           <Route path="/withdraw" element={<KycGate action="withdraw funds"><WithdrawFunds /></KycGate>} />

@@ -6,6 +6,7 @@ import {
   IconTopologyRing,
   IconWallet,
   IconCash,
+  IconAlertTriangle,
   IconUserCircle,
   IconUserCheck,
   IconCirclePlus,
@@ -101,6 +102,21 @@ export function Sidebar({ onClose }: SidebarProps) {
             root: {
               borderRadius: 8,
               fontWeight: isActive('/loans') ? 600 : 400,
+            },
+          }}
+        />
+
+        <NavLink
+          component={RouterNavLink}
+          to="/debts"
+          label="Debts"
+          leftSection={<IconAlertTriangle size={19} stroke={1.5} />}
+          active={isActive('/debts')}
+          onClick={onClose}
+          styles={{
+            root: {
+              borderRadius: 8,
+              fontWeight: isActive('/debts') ? 600 : 400,
             },
           }}
         />

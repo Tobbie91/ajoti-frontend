@@ -71,7 +71,7 @@ export function AddBankAccountModal({ opened, onClose, onSuccess }: AddBankAccou
     setResolveState('loading')
     resolveAccount(newAccountNumber, newBankCode)
       .then((data) => {
-        setResolvedName(data.account_name)
+        setResolvedName(data.accountName)
         setResolveState('success')
       })
       .catch((err: unknown) => {

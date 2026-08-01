@@ -47,10 +47,10 @@ export function CreateNewWallet() {
       {/* Heading */}
       <div className="mb-8">
         <Text fw={700} className="text-[26px] text-[#0F172A]">
-          Create New Wallet
+          Wallet
         </Text>
         <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
-          Select a currency to set up your wallet
+          Manage your Naira wallet
         </Text>
       </div>
 
@@ -133,10 +133,6 @@ export function CreateNewWallet() {
           Withdraw
         </button>
       </div>
-
-      <Text fw={400} className="mt-3 text-center text-[12px] text-[#9CA3AF]">
-        Your wallet will be created automatically when you fund it
-      </Text>
     </div>
   )
 }

@@ -14,7 +14,7 @@ import {
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import {
-  listRoscaCircles,
+  getMyActiveCircles,
   getLoanEligibility,
   getLoanStatus,
   getLoanHistory,
@@ -25,8 +25,6 @@ import {
 } from '@/utils/api'
 
 type Step = 'overview' | 'form' | 'confirm' | 'pin' | 'processing' | 'success' | 'error'
-
-const SERVICE_FEE_RATE = 0.10
 
 function fmt(n: number) {
   return n.toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -59,7 +57,7 @@ export function Loans() {
 
   useEffect(() => {
     Promise.all([
-      listRoscaCircles()
+      getMyActiveCircles()
         .then((res) => setCircles(res.filter((c) => (c.status ?? '').toUpperCase() === 'ACTIVE' || (c.status ?? '').toUpperCase() === 'STARTED')))
         .catch(() => {}),
       getLoanStatus().then(setActiveLoan).catch(() => {}),
@@ -68,12 +66,14 @@ export function Loans() {
   }, [])
 
   const selectedCircle = circles.find((c) => c.id === selectedCircleId)
-  const payoutAmount = eligibility?.expectedPayoutAmount != null
-    ? Number(eligibility.expectedPayoutAmount) / 100
-    : (selectedCircle ? Number(selectedCircle.contributionAmount) / 100 * (selectedCircle.maxSlots ?? 1) : 0)
-  const feeRate = eligibility?.feeRate ?? SERVICE_FEE_RATE
-  const serviceFee = Math.round(payoutAmount * feeRate)
-  const disbursementAmount = payoutAmount - serviceFee
+  // Every figure here comes straight from the eligibility response — never
+  // recomputed locally — so the displayed breakdown can't drift from what
+  // applyLoan actually disburses.
+  const expectedPayoutAmount = eligibility?.expectedPayoutAmount != null ? Number(eligibility.expectedPayoutAmount) / 100 : 0
+  const allowedPercent = eligibility?.allowedPercent ?? 0
+  const grossLoanAmount = eligibility?.grossLoanAmount != null ? Number(eligibility.grossLoanAmount) / 100 : 0
+  const serviceFee = eligibility?.companyFee != null ? Number(eligibility.companyFee) / 100 : 0
+  const disbursementAmount = eligibility?.maxLoanAmount != null ? Number(eligibility.maxLoanAmount) / 100 : 0
 
   async function handleCircleSelect(id: string | null) {
     setSelectedCircleId(id)
@@ -209,7 +209,7 @@ export function Loans() {
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between">
                   <Text fw={400} className="text-[13px] text-[#6B7280]">Amount</Text>
-                  <Text fw={600} className="text-[13px] text-[#0F172A]">₦{fmt(Number(activeLoan.disbursedAmount ?? activeLoan.amount))}</Text>
+                  <Text fw={600} className="text-[13px] text-[#0F172A]">₦{fmt(Number(activeLoan.loanAmount) / 100)}</Text>
                 </div>
                 <div className="flex justify-between">
                   <Text fw={400} className="text-[13px] text-[#6B7280]">Status</Text>
@@ -217,12 +217,6 @@ export function Loans() {
                     {activeLoan.status}
                   </span>
                 </div>
-                {activeLoan.dueDate && (
-                  <div className="flex justify-between">
-                    <Text fw={400} className="text-[13px] text-[#6B7280]">Due Date</Text>
-                    <Text fw={500} className="text-[13px] text-[#0F172A]">{new Date(activeLoan.dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -263,7 +257,7 @@ export function Loans() {
                       <Text fw={400} className="text-[11px] text-[#9CA3AF]">{new Date(loan.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <Text fw={600} className="text-[13px] text-[#02A36E]">₦{fmt(Number(loan.disbursedAmount ?? loan.amount))}</Text>
+                      <Text fw={600} className="text-[13px] text-[#02A36E]">₦{fmt(Number(loan.loanAmount) / 100)}</Text>
                       <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: `${loanStatusColor(loan.status)}15`, color: loanStatusColor(loan.status) }}>
                         {loan.status}
                       </span>
@@ -280,9 +274,10 @@ export function Loans() {
             <div className="flex flex-col gap-3">
               {[
                 'Choose one of your active ROSCA groups',
-                'Receive your payout amount now instead of waiting for your turn',
+                'Receive up to 75% of your expected payout now instead of waiting for your turn',
                 'Continue making your regular contributions as scheduled',
-                'A small service fee applies on the payout amount',
+                'A 10% fee is deducted from the advance — you receive the rest upfront',
+                'Requires at least 2 completed on-time cycles in that group, plus a qualifying credit score',
               ].map((tip, i) => (
                 <div key={tip} className="flex items-start gap-3">
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#02A36E] text-[11px] font-bold text-white">{i + 1}</div>
@@ -374,11 +369,15 @@ export function Loans() {
                     <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Early Payout Breakdown</Text>
                     <div className="flex flex-col gap-3">
                       <div className="flex justify-between">
-                        <Text fw={400} className="text-[13px] text-[#6B7280]">Payout Amount</Text>
-                        <Text fw={600} className="text-[13px] text-[#0F172A]">₦{fmt(payoutAmount)}</Text>
+                        <Text fw={400} className="text-[13px] text-[#6B7280]">Expected Payout (100%)</Text>
+                        <Text fw={600} className="text-[13px] text-[#0F172A]">₦{fmt(expectedPayoutAmount)}</Text>
                       </div>
                       <div className="flex justify-between">
-                        <Text fw={400} className="text-[13px] text-[#6B7280]">Service Fee ({(feeRate * 100).toFixed(0)}%)</Text>
+                        <Text fw={400} className="text-[13px] text-[#6B7280]">Early Payout Amount ({allowedPercent}%)</Text>
+                        <Text fw={600} className="text-[13px] text-[#0F172A]">₦{fmt(grossLoanAmount)}</Text>
+                      </div>
+                      <div className="flex justify-between">
+                        <Text fw={400} className="text-[13px] text-[#6B7280]">Service Fee (10%)</Text>
                         <Text fw={600} className="text-[13px] text-[#EF4444]">-₦{fmt(serviceFee)}</Text>
                       </div>
                       <div className="flex justify-between border-t border-[#D1FAE5] pt-3">
@@ -428,8 +427,9 @@ export function Loans() {
             <div className="flex flex-col gap-4">
               {[
                 { label: 'ROSCA Group', value: selectedCircle.name },
-                { label: 'Payout Amount', value: `₦${fmt(payoutAmount)}`, bold: true },
-                { label: `Service Fee (${(feeRate * 100).toFixed(0)}%)`, value: `-₦${fmt(serviceFee)}`, red: true },
+                { label: 'Expected Payout (100%)', value: `₦${fmt(expectedPayoutAmount)}` },
+                { label: `Early Payout Amount (${allowedPercent}%)`, value: `₦${fmt(grossLoanAmount)}`, bold: true },
+                { label: 'Service Fee (10%)', value: `-₦${fmt(serviceFee)}`, red: true },
                 { label: 'Ongoing Contribution', value: `₦${(Number(selectedCircle.contributionAmount) / 100).toLocaleString()} / ${(selectedCircle.frequency ?? '').toLowerCase()}` },
               ].map(({ label, value, bold, red }, i, arr) => (
                 <div key={label} className={`flex items-center justify-between ${i < arr.length - 1 ? 'border-b border-[#F3F4F6] pb-4' : ''}`}>

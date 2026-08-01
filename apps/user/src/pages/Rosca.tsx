@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Text, TextInput, Badge, Avatar, Tabs, Progress, Textarea, Loader } from '@mantine/core'
 import { IconSearch, IconMessageCircle, IconCalendar, IconCheck, IconFilter, IconAlertTriangle, IconX, IconCircleCheck } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { listRoscaCircles, getMyJoinRequests, getMyParticipations, leaveRoscaCircle, messageAdmin as sendMessageToAdmin, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
+import { listRoscaCircles, getMyJoinRequests, getMyParticipations, leaveRoscaCircle, getCircleRules, messageAdmin as sendMessageToAdmin, type RoscaCircle, type MyJoinRequest } from '@/utils/api'
 
 // Shape returned by getMyParticipations — a circle object with the user already a member
 type Participation = RoscaCircle
@@ -28,6 +28,7 @@ interface JoinedGroup {
   totalCycles: number
   nextContribution: string
   admin: string
+  circleStatus: string
 }
 
 const statusBadge: Record<GroupStatus, { bg: string }> = {
@@ -43,6 +44,7 @@ export function Rosca() {
   const [leaveGroupId, setLeaveGroupId] = useState<string | null>(null)
   const [leaveLoading, setLeaveLoading] = useState(false)
   const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [postStartExitPenaltyPercent, setPostStartExitPenaltyPercent] = useState<number | null>(null)
   const [messageAdmin, setMessageAdmin] = useState<{ circleId: string; adminName: string } | null>(null)
   const [messageSendError, setMessageSendError] = useState<string | null>(null)
   const [message, setMessage] = useState('')
@@ -92,6 +94,10 @@ export function Rosca() {
         }
         setJoinedIds(ids)
       })
+    // Live rate for the post-start exit warning — never hardcode it.
+    getCircleRules()
+      .then((res) => setPostStartExitPenaltyPercent(res.data.postStartExitPenaltyPercent))
+      .catch(() => setPostStartExitPenaltyPercent(null))
   }, [])
 
   useEffect(() => {
@@ -100,12 +106,12 @@ export function Rosca() {
 
     function mapJoinRequest(r: MyJoinRequest): JoinedGroup {
       const circle = r.circle ?? {}
-      const filled = Number(circle.filledSlots ?? 0)
-      const total = Number(circle.durationCycles ?? circle.maxSlots ?? 1)
+      const completed = Number(circle.currentCycle ?? 0)
+      const total = Number(circle.durationCycles ?? 1)
       const adminName = circle.admin
         ? `${circle.admin.firstName ?? ''} ${circle.admin.lastName ?? ''}`.trim()
         : 'Admin'
-      const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
       const nextPayout = (circle as { nextPayoutDate?: string }).nextPayoutDate
         ? new Date((circle as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'TBD'
@@ -113,20 +119,21 @@ export function Rosca() {
         id: r.circleId,
         name: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
         completionRate,
-        completedCycles: filled,
+        completedCycles: completed,
         totalCycles: total,
         nextContribution: nextPayout,
         admin: adminName,
+        circleStatus: (circle as { status?: string }).status ?? '',
       }
     }
 
     function mapParticipation(c: Participation): JoinedGroup {
-      const filled = Number(c.filledSlots ?? 0)
-      const total = Number(c.durationCycles ?? c.maxSlots ?? 1)
+      const completed = Number(c.currentCycle ?? 0)
+      const total = Number(c.durationCycles ?? 1)
       const adminName = c.admin
         ? `${c.admin.firstName ?? ''} ${c.admin.lastName ?? ''}`.trim()
         : 'Admin'
-      const completionRate = total > 0 ? Math.round((filled / total) * 100) : 0
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
       const nextPayout = (c as { nextPayoutDate?: string }).nextPayoutDate
         ? new Date((c as { nextPayoutDate?: string }).nextPayoutDate!).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'TBD'
@@ -134,10 +141,11 @@ export function Rosca() {
         id: c.id,
         name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
         completionRate,
-        completedCycles: filled,
+        completedCycles: completed,
         totalCycles: total,
         nextContribution: nextPayout,
         admin: adminName,
+        circleStatus: c.status ?? '',
       }
     }
 
@@ -316,7 +324,7 @@ export function Rosca() {
                     <div className="flex items-center gap-1.5">
                       <div className="h-2 w-2 rounded-full bg-[#02A36E]" />
                       <Text fw={500} className="text-[12px] text-[#6B7280]">
-                        {group.completionRate}% complete rate
+                        {group.completionRate}% of cycles complete
                       </Text>
                     </div>
                   </div>
@@ -335,7 +343,7 @@ export function Rosca() {
                     }}
                   />
                   <Text fw={500} className="flex-shrink-0 text-[11px] text-[#6B7280]">
-                    ({group.completedCycles} of {group.totalCycles} complete)
+                    ({group.completedCycles} of {group.totalCycles} cycles complete)
                   </Text>
                 </div>
 
@@ -466,7 +474,7 @@ export function Rosca() {
                           <Text fw={600} className="text-[13px] leading-tight text-[#0F172A]">
                             {group.admin}
                           </Text>
-                          <Text fw={500} className="text-[11px] text-[#166534]">
+                          <Text fw={400} className="text-[11px]" style={{ color: '#6B7280' }}>
                             Admin
                           </Text>
                         </div>
@@ -508,7 +516,10 @@ export function Rosca() {
       </div>
 
       {/* Leave Group Modal */}
-      {leaveGroupId && (
+      {leaveGroupId && (() => {
+        const leavingGroup = joinedGroups.find((g) => g.id === leaveGroupId)
+        const isPostStart = leavingGroup?.circleStatus === 'ACTIVE'
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-[420px] rounded-2xl bg-white p-8">
             {/* Warning Icon */}
@@ -549,6 +560,20 @@ export function Rosca() {
                   Leaving the group may affect your <Text component="span" fw={700}>Trust Score</Text>.
                 </Text>
               </div>
+              {isPostStart && (
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#FEF3C7] text-[12px] font-bold text-[#92400E]">
+                    4
+                  </div>
+                  <Text fw={500} className="text-[13px] leading-relaxed text-[#374151]">
+                    This group has already started —{' '}
+                    <Text component="span" fw={700}>
+                      {postStartExitPenaltyPercent !== null ? `${postStartExitPenaltyPercent}% of` : 'a share of'} your collateral will be forfeited
+                    </Text>{' '}
+                    to the remaining members.
+                  </Text>
+                </div>
+              )}
             </div>
 
             {/* Buttons */}
@@ -586,7 +611,8 @@ export function Rosca() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Message Admin Modal */}
       {messageAdmin && (

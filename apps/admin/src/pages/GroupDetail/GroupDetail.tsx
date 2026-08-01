@@ -22,31 +22,26 @@ import {
   Loader,
   SimpleGrid,
   Switch,
+  Alert,
 } from '@mantine/core'
 import {
   IconTopologyRing,
   IconSearch,
   IconChevronDown,
-  IconDownload,
   IconFilter,
   IconX,
   IconCheck,
   IconBell,
   IconTrash,
   IconRefresh,
-  IconArrowBackUp,
   IconPlayerPlay,
+  IconAlertCircle,
 } from '@tabler/icons-react'
 import {
   getPayoutHistory,
   processPayout,
   retryPayout,
   reversePayout,
-  getCircleContributions,
-  getAdminCircleContributions,
-  getAdminDisbursements,
-  type AdminContributionsResponse,
-  type Disbursement as ApiDisbursement,
   getAdminCircleDetail,
   activateRoscaCircle,
   updatePayoutConfig,
@@ -54,20 +49,22 @@ import {
   sendCircleInvite,
   getCircleInvites,
   revokeCircleInvite,
-  getMemberProgress,
-  notifyMissingContributors,
   getFinancialHealth,
   getCircleJoinRequests,
   closeRoscaCircle,
   extendCycleDeadline,
   type Payout,
-  type Contribution as ApiContribution,
   type RoscaCircle,
   type PayoutAssignment,
   type CircleInvite,
-  type MemberProgress,
   type FinancialHealth,
 } from '@/utils/api'
+import { GroupOverviewTab, GroupHistoryTab } from './GroupOverviewTab'
+import { GroupContributionsTab } from './GroupContributionsTab'
+import { GroupNotificationsTab } from './GroupNotificationsTab'
+import { GroupPaymentsTab } from './GroupPaymentsTab'
+import { GroupPayoutsTab } from './GroupPayoutsTab'
+import { GroupMembersTab } from './GroupMembersTab'
 
 const PRIMARY = '#0b6b55'
 
@@ -123,388 +120,6 @@ const defaultRestartMembers: RestartMember[] = [
   { id: '6', name: 'Bob Brown', email: 'bobb@domain.com' },
 ]
 
-// ── Group Notifications & Peer Review ────────────────────────────────────────
-
-type ApiMemberBasic = { userId: string; name: string; status: string; position: number | null; joinedAt: string }
-
-function GroupNotificationsTab({ circleId, members }: { circleId: string; members: ApiMemberBasic[] }) {
-  const activeMembers = members.filter((m) => m.status === 'ACTIVE')
-
-  // Notifications
-  const [notifMessage, setNotifMessage] = useState('')
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
-  const [sendingAll, setSendingAll] = useState(false)
-  const [sendingOne, setSendingOne] = useState<string | null>(null)
-  const [notifSuccess, setNotifSuccess] = useState<string | null>(null)
-  const [notifError, setNotifError] = useState<string | null>(null)
-
-  // Member progress
-  const [progress, setProgress] = useState<MemberProgress[]>([])
-  const [progressLoading, setProgressLoading] = useState(false)
-
-  useEffect(() => {
-    if (!circleId) return
-    setProgressLoading(true)
-    getMemberProgress(circleId).then((data) => setProgress(Array.isArray(data) ? data : (data as any)?.data ?? [])).catch(() => {}).finally(() => setProgressLoading(false))
-  }, [circleId])
-
-  function toggleMember(userId: string) {
-    setSelectedMemberIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
-    )
-  }
-
-  async function handleRemindAll() {
-    if (!notifMessage.trim()) return
-    setSendingAll(true)
-    setNotifError(null)
-    try {
-      const allMemberIds = activeMembers.map((m) => m.userId)
-      const res = await notifyMissingContributors(circleId, { memberIds: allMemberIds, message: notifMessage.trim() })
-      const count = res.notified ?? activeMembers.length
-      setNotifSuccess(`Reminder sent to ${count} member${count !== 1 ? 's' : ''}`)
-      setNotifMessage('')
-    } catch (err) {
-      setNotifError(err instanceof Error ? err.message : 'Failed to send reminder')
-    } finally {
-      setSendingAll(false)
-      setTimeout(() => { setNotifSuccess(null); setNotifError(null) }, 4000)
-    }
-  }
-
-  async function handleRemindSelected() {
-    if (!notifMessage.trim() || selectedMemberIds.length === 0) return
-    setSendingOne('selected')
-    setNotifError(null)
-    try {
-      const res = await notifyMissingContributors(circleId, { memberIds: selectedMemberIds, message: notifMessage.trim() })
-      const count = res.notified ?? selectedMemberIds.length
-      setNotifSuccess(`Reminder sent to ${count} member${count !== 1 ? 's' : ''}`)
-      setNotifMessage('')
-      setSelectedMemberIds([])
-    } catch (err) {
-      setNotifError(err instanceof Error ? err.message : 'Failed to send reminder')
-    } finally {
-      setSendingOne(null)
-      setTimeout(() => { setNotifSuccess(null); setNotifError(null) }, 4000)
-    }
-  }
-
-  // Peer Review
-  const [reviews, setReviews] = useState<{ userId: string; name: string; rating: number; comment: string }[]>([])
-  const [adminReviewMember, setAdminReviewMember] = useState<ApiMemberBasic | null>(null)
-  const [adminRating, setAdminRating] = useState(0)
-  const [adminComment, setAdminComment] = useState('')
-  const [submittingReview, setSubmittingReview] = useState(false)
-  const [reviewSuccess, setReviewSuccess] = useState(false)
-
-  async function handleSubmitReview() {
-    if (!adminReviewMember || adminRating === 0) return
-    setSubmittingReview(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setReviews((prev) => [
-      ...prev.filter((r) => r.userId !== adminReviewMember.userId),
-      { userId: adminReviewMember.userId, name: adminReviewMember.name, rating: adminRating, comment: adminComment },
-    ])
-    setSubmittingReview(false)
-    setReviewSuccess(true)
-    setAdminReviewMember(null)
-    setAdminRating(0)
-    setAdminComment('')
-    setTimeout(() => setReviewSuccess(false), 3000)
-  }
-
-  return (
-    <Stack gap="lg">
-      {/* ── Notifications Section ── */}
-      <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-        <Group justify="space-between" align="center" mb="md">
-          <Box>
-            <Text fw={700} fz="md">Send Reminder</Text>
-            <Text fz="xs" c="dimmed" mt={2}>Notify all members or select specific ones</Text>
-          </Box>
-        </Group>
-
-        <Textarea
-          placeholder="Type your reminder message..."
-          radius="md"
-          minRows={3}
-          value={notifMessage}
-          onChange={(e) => setNotifMessage(e.currentTarget.value)}
-          styles={{ input: { border: '1px solid #dee2e6' } }}
-          mb="md"
-        />
-
-        {notifSuccess && (
-          <Paper p="sm" radius="md" mb="md" style={{ background: '#e6f5f1', border: '1px solid #b2dfdb' }}>
-            <Group gap="xs">
-              <IconCheck size={16} color={PRIMARY} />
-              <Text fz="sm" fw={500} style={{ color: PRIMARY }}>{notifSuccess}</Text>
-            </Group>
-          </Paper>
-        )}
-        {notifError && (
-          <Paper p="sm" radius="md" mb="md" style={{ background: '#fef2f2', border: '1px solid #fca5a5' }}>
-            <Text fz="sm" fw={500} c="red">{notifError}</Text>
-          </Paper>
-        )}
-
-        {/* Member selection */}
-        <Text fz="xs" fw={600} c="dimmed" mb="xs">SELECT MEMBERS (optional — leave empty to remind all)</Text>
-        <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8, marginBottom: 16 }}>
-          {activeMembers.map((m) => (
-            <Box
-              key={m.userId}
-              onClick={() => toggleMember(m.userId)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 12px',
-                borderRadius: 8,
-                border: `1px solid ${selectedMemberIds.includes(m.userId) ? PRIMARY : '#dee2e6'}`,
-                background: selectedMemberIds.includes(m.userId) ? '#e6f5f1' : 'white',
-                cursor: 'pointer',
-              }}
-            >
-              <Avatar size={28} radius="xl" color="gray">{(m.name || '?').charAt(0)}</Avatar>
-              <Text fz="sm" fw={500} style={{ color: selectedMemberIds.includes(m.userId) ? PRIMARY : '#0F172A' }}>
-                {m.name}
-              </Text>
-            </Box>
-          ))}
-          {activeMembers.length === 0 && (
-            <Text fz="sm" c="dimmed">No active members</Text>
-          )}
-        </Box>
-
-        <Group gap="sm">
-          <Button
-            size="sm"
-            radius="md"
-            style={{ background: PRIMARY }}
-            loading={sendingAll}
-            disabled={!notifMessage.trim() || sendingOne !== null}
-            onClick={handleRemindAll}
-          >
-            Remind All
-          </Button>
-          {selectedMemberIds.length > 0 && (
-            <Button
-              size="sm"
-              radius="md"
-              variant="outline"
-              style={{ borderColor: PRIMARY, color: PRIMARY }}
-              loading={sendingOne === 'selected'}
-              disabled={!notifMessage.trim() || sendingAll}
-              onClick={handleRemindSelected}
-            >
-              Remind Selected ({selectedMemberIds.length})
-            </Button>
-          )}
-        </Group>
-      </Paper>
-
-      {/* ── Member Progress ── */}
-      <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-        <Group justify="space-between" align="center" px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
-          <Box>
-            <Text fw={700} fz="md">Member Lifecycle Progress</Text>
-            <Text fz="xs" c="dimmed" mt={2}>Contribution status per member across all rounds</Text>
-          </Box>
-          {progressLoading && <Loader size="xs" color={PRIMARY} />}
-        </Group>
-        <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 480 }}>
-          <Table.Thead>
-            <Table.Tr style={{ background: '#f8f9fa' }}>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Member</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Rounds Paid</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Late Payments</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Payout Position</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#495057' }}>Payout Status</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {progress.length === 0 && !progressLoading && (
-              <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Text c="dimmed" ta="center" py="xl" fz="sm">No progress data available</Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-            {progress.map((p) => {
-              const isPaid = (p.status ?? '').toUpperCase() === 'PAID'
-              const hasMissed = Number(p.missedPayments ?? 0) > 0
-              return (
-                <Table.Tr key={p.userId}>
-                  <Table.Td>
-                    <Group gap="sm" align="center">
-                      <Avatar size={28} radius="xl" color="gray">{(p.name || '?').charAt(0)}</Avatar>
-                      <Text fz="sm" fw={500}>{p.name}</Text>
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm">{p.roundsPaid ?? 0} / {p.totalRounds ?? '—'}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm" c={hasMissed ? 'red' : 'dimmed'}>{p.missedPayments ?? 0}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm" c="dimmed">#{p.payoutPosition ?? '—'}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      radius="sm"
-                      style={{
-                        background: isPaid ? '#e6f5f1' : '#fdf3e7',
-                        color: isPaid ? PRIMARY : '#e67e22',
-                        border: 'none',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {isPaid ? 'Paid Out' : 'Upcoming'}
-                    </Badge>
-                  </Table.Td>
-                </Table.Tr>
-              )
-            })}
-          </Table.Tbody>
-        </Table></div>
-      </Paper>
-
-      {/* ── Peer Review Section ── */}
-      <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-        <Group justify="space-between" align="center" px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
-          <Box>
-            <Text fw={700} fz="md">Peer Reviews</Text>
-            <Text fz="xs" c="dimmed" mt={2}>Member reviews after each cycle — admin can also submit</Text>
-          </Box>
-          {reviewSuccess && (
-            <Group gap="xs">
-              <IconCheck size={14} color={PRIMARY} />
-              <Text fz="xs" fw={500} style={{ color: PRIMARY }}>Review submitted</Text>
-            </Group>
-          )}
-        </Group>
-
-        <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 480 }}>
-          <Table.Thead>
-            <Table.Tr style={{ background: '#f8f9fa' }}>
-              <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Member</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Rating</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Comment</Table.Th>
-              <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Action</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {activeMembers.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={4}>
-                  <Text c="dimmed" ta="center" py="xl" fz="sm">No active members to review</Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-            {activeMembers.map((m) => {
-              const review = reviews.find((r) => r.userId === m.userId)
-              return (
-                <Table.Tr key={m.userId}>
-                  <Table.Td>
-                    <Group gap="sm" align="center">
-                      <Avatar size={28} radius="xl" color="gray">{(m.name || '?').charAt(0)}</Avatar>
-                      <Text fz="sm" fw={500}>{m.name}</Text>
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>
-                    {review ? (
-                      <Group gap={2}>
-                        {[1,2,3,4,5].map((s) => (
-                          <span key={s} style={{ color: s <= review.rating ? '#F59E0B' : '#D1D5DB', fontSize: 16 }}>★</span>
-                        ))}
-                      </Group>
-                    ) : (
-                      <Text fz="xs" c="dimmed">—</Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm" c="dimmed">{review?.comment || '—'}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      style={{ color: PRIMARY }}
-                      px="xs"
-                      onClick={() => {
-                        setAdminReviewMember(m)
-                        setAdminRating(review?.rating ?? 0)
-                        setAdminComment(review?.comment ?? '')
-                      }}
-                    >
-                      {review ? 'Edit Review' : 'Add Review'}
-                    </Button>
-                  </Table.Td>
-                </Table.Tr>
-              )
-            })}
-          </Table.Tbody>
-        </Table></div>
-      </Paper>
-
-      {/* Review Modal */}
-      {adminReviewMember && (
-        <Modal
-          opened={!!adminReviewMember}
-          onClose={() => setAdminReviewMember(null)}
-          centered
-          radius="md"
-          size="sm"
-          title={<Text fw={700} fz="md">Review: {adminReviewMember.name}</Text>}
-        >
-          <Stack gap="md">
-            <Box>
-              <Text fz="sm" fw={500} mb={8}>Rating</Text>
-              <Group gap={8}>
-                {[1,2,3,4,5].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setAdminRating(s)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 28, color: s <= adminRating ? '#F59E0B' : '#D1D5DB', padding: 0 }}
-                  >
-                    ★
-                  </button>
-                ))}
-              </Group>
-            </Box>
-            <Textarea
-              label="Comment (optional)"
-              placeholder="e.g. Consistently paid on time, great group member..."
-              radius="md"
-              minRows={3}
-              value={adminComment}
-              onChange={(e) => setAdminComment(e.currentTarget.value)}
-              styles={{ input: { border: '1px solid #dee2e6' } }}
-            />
-            <Group justify="flex-end" gap="sm">
-              <Button variant="default" radius="md" size="sm" onClick={() => setAdminReviewMember(null)}>Cancel</Button>
-              <Button
-                radius="md"
-                size="sm"
-                style={{ background: PRIMARY }}
-                loading={submittingReview}
-                disabled={adminRating === 0}
-                onClick={handleSubmitReview}
-              >
-                Submit Review
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-      )}
-    </Stack>
-  )
-}
-
 export function GroupDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -542,12 +157,8 @@ export function GroupDetail() {
   const [inviteContact, setInviteContact] = useState('')
   const [inviteBy, setInviteBy] = useState<string | null>('email')
 
-  // Payment Oversight state
-  const [selectedRound, setSelectedRound] = useState<string | null>('1')
-
-  // Restart group modal state
+  // Restart group modal state — preview-only placeholder, not yet wired to a backend endpoint
   const [restartModal, setRestartModal] = useState(false)
-  const [restartStep, setRestartStep] = useState<'form' | 'restarting'>('form')
   const [keepMembers, setKeepMembers] = useState(false)
   const [restartGroupSize, setRestartGroupSize] = useState('6')
   const [restartContribution, setRestartContribution] = useState('20,000')
@@ -557,38 +168,26 @@ export function GroupDetail() {
   const groupSizeNum = parseInt(restartGroupSize) || 0
   const memberShortfall = groupSizeNum - restartMembers.length
 
-  function handleRestartGroup() {
-    setRestartStep('restarting')
-    setTimeout(() => {
-      setRestartModal(false)
-      setRestartStep('form')
-    }, 2000)
-  }
-
   function openRestartModal() {
-    setRestartStep('form')
     setRestartModal(true)
   }
 
   // Remove member modal state
   const [removeMemberModal, setRemoveMemberModal] = useState(false)
-  const [removeMemberStep, setRemoveMemberStep] = useState<'confirm' | 'removing'>('confirm')
   const [removeMember, setRemoveMember] = useState<RestartMember | null>(null)
 
   function openRemoveMemberModal(member: RestartMember) {
     setRemoveMember(member)
-    setRemoveMemberStep('confirm')
     setRemoveMemberModal(true)
   }
 
+  // Only edits the local restart-preview list above — no backend call, since
+  // the restart feature itself isn't implemented yet (see restartModal).
   function handleRemoveMember() {
-    setRemoveMemberStep('removing')
-    setTimeout(() => {
-      if (removeMember) {
-        setRestartMembers((prev) => prev.filter((m) => m.id !== removeMember.id))
-      }
-      setRemoveMemberModal(false)
-    }, 1500)
+    if (removeMember) {
+      setRestartMembers((prev) => prev.filter((m) => m.id !== removeMember.id))
+    }
+    setRemoveMemberModal(false)
   }
 
   // Send invite modal state
@@ -643,7 +242,6 @@ export function GroupDetail() {
   const [financialHealthLoading, setFinancialHealthLoading] = useState(false)
   const financialHealthFetched = useRef(false)
   const payoutsFetched = useRef(false)
-  const contribsFetched = useRef(false)
   const [pendingJoinCount, setPendingJoinCount] = useState<number>(0)
 
   const totalCollectedKobo = financialHealth?.cycles
@@ -772,19 +370,12 @@ export function GroupDetail() {
   const [reverseReason, setReverseReason] = useState('')
   const [reverseLoading, setReverseLoading] = useState(false)
 
-  // Contributions state
-  const [contributions, setContributions] = useState<ApiContribution[]>([])
-  const [contribLoading, setContribLoading] = useState(false)
-
   // Payment Oversight state
-  const [paymentContribs, setPaymentContribs] = useState<AdminContributionsResponse | null>(null)
-  const [paymentContribsLoading, setPaymentContribsLoading] = useState(false)
-  const [disbursements, setDisbursements] = useState<ApiDisbursement[]>([])
-  const [disbursementsLoading, setDisbursementsLoading] = useState(false)
   const [extendModal, setExtendModal] = useState<{ cycleNumber: number } | null>(null)
   const [extendDate, setExtendDate] = useState<string | null>(null)
   const [extendLoading, setExtendLoading] = useState(false)
   const [extendError, setExtendError] = useState<string | null>(null)
+  const [paymentsRefreshToken, setPaymentsRefreshToken] = useState(0)
 
   // Load payouts eagerly so Member Management tab can check who's been paid
   useEffect(() => {
@@ -804,21 +395,7 @@ export function GroupDetail() {
         .catch(() => setPayouts([]))
         .finally(() => setPayoutsLoading(false))
     }
-    if (activeTab === 'contributions' && id && !contribsFetched.current) {
-      contribsFetched.current = true
-      setContribLoading(true)
-      getCircleContributions(id)
-        .then((data) => setContributions(data))
-        .catch(() => setContributions([]))
-        .finally(() => setContribLoading(false))
-    }
     if (activeTab === 'payments' && id) {
-      setDisbursementsLoading(true)
-      getAdminDisbursements(id)
-        .then(setDisbursements)
-        .catch(() => setDisbursements([]))
-        .finally(() => setDisbursementsLoading(false))
-
       if (!financialHealthFetched.current) {
         financialHealthFetched.current = true
         setFinancialHealthLoading(true)
@@ -833,15 +410,6 @@ export function GroupDetail() {
     }
   }, [activeTab, id])
 
-  useEffect(() => {
-    if (activeTab !== 'payments' || !id || !selectedRound) return
-    setPaymentContribsLoading(true)
-    getAdminCircleContributions(id, Number(selectedRound))
-      .then(setPaymentContribs)
-      .catch(() => setPaymentContribs(null))
-      .finally(() => setPaymentContribsLoading(false))
-  }, [activeTab, selectedRound, id])
-
   async function handleExtendDeadline() {
     if (!id || !extendModal || !extendDate) return
     setExtendLoading(true)
@@ -850,12 +418,9 @@ export function GroupDetail() {
       await extendCycleDeadline(id, extendModal.cycleNumber, new Date(extendDate).toISOString())
       setExtendModal(null)
       setExtendDate(null)
-      const [updated, updatedHealth] = await Promise.all([
-        getAdminDisbursements(id),
-        getFinancialHealth(id),
-      ])
-      setDisbursements(updated)
+      const updatedHealth = await getFinancialHealth(id)
       setFinancialHealth(updatedHealth)
+      setPaymentsRefreshToken((t) => t + 1)
     } catch (err) {
       setExtendError(err instanceof Error ? err.message : 'Failed to extend deadline')
     } finally {
@@ -1091,99 +656,12 @@ export function GroupDetail() {
 
           {/* Overview Tab */}
           <Tabs.Panel value="overview" pt="lg">
-            <Stack gap="lg">
-              <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>Total Members</Text>
-                    <Text fz="xl" fw={700}>6</Text>
-                  </Box>
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>Total Rounds</Text>
-                    <Text fz="xl" fw={700}>6</Text>
-                  </Box>
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>Total Contribution</Text>
-                    <Text fz="xl" fw={700}>₦10,000</Text>
-                  </Box>
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>Contribution Rate</Text>
-                    <Text fz="xl" fw={700} style={{ color: PRIMARY }}>100%</Text>
-                  </Box>
-                </SimpleGrid>
-              </Paper>
-
-              <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>Start</Text>
-                    <Text fz="md" fw={600}>Nov 2024</Text>
-                  </Box>
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>End</Text>
-                    <Text fz="md" fw={600}>Apr 2025</Text>
-                  </Box>
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>Contribution Frequency</Text>
-                    <Text fz="md" fw={600}>Monthly</Text>
-                  </Box>
-                  <Box ta="center">
-                    <Text fz="xs" c="dimmed" mb={4}>Disbursement Amount</Text>
-                    <Text fz="md" fw={600}>₦60,000</Text>
-                  </Box>
-                </SimpleGrid>
-              </Paper>
-
-              <Button
-                radius="md"
-                size="sm"
-                style={{ background: PRIMARY, alignSelf: 'flex-start' }}
-                onClick={openRestartModal}
-              >
-                Start New Cycle With Members
-              </Button>
-            </Stack>
+            <GroupOverviewTab circleData={circleData} payouts={payouts} onStartNewCycle={openRestartModal} />
           </Tabs.Panel>
 
           {/* History Tab */}
           <Tabs.Panel value="history" pt="lg">
-            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-              <Group px="lg" py="md">
-                <Text fw={600} fz="md">History</Text>
-              </Group>
-
-              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
-                <Table.Thead>
-                  <Table.Tr style={{ background: PRIMARY }}>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Rounds</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Disbursed Amount</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Start Date</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>End Date</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Action</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td><Text fz="sm">Cycle 1</Text></Table.Td>
-                    <Table.Td><Text fz="sm">6</Text></Table.Td>
-                    <Table.Td><Text fz="sm">₦60,000</Text></Table.Td>
-                    <Table.Td><Text fz="sm">Nov 2024</Text></Table.Td>
-                    <Table.Td><Text fz="sm">Apr 2025</Text></Table.Td>
-                    <Table.Td>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        radius="md"
-                        style={{ borderColor: '#dee2e6', color: '#495057' }}
-                      >
-                        View Details
-                      </Button>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table></div>
-            </Paper>
+            <GroupHistoryTab payouts={payouts} />
           </Tabs.Panel>
         </Tabs>
       ) : (
@@ -1205,815 +683,73 @@ export function GroupDetail() {
 
         {/* Member Management Tab */}
         <Tabs.Panel value="members" pt="lg">
-          <Stack gap="lg">
-            {/* Invite Member + Pending Requests */}
-            {!isCompleted && (
-              <Group align="flex-start" gap="lg" wrap="wrap">
-                <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef', flex: '1 1 260px' }}>
-                  <Text fw={600} fz="md" mb="md">Invite Member</Text>
-                  <Stack gap="sm">
-                    <TextInput
-                      label="Name"
-                      placeholder="Enter name"
-                      size="sm"
-                      radius="md"
-                      value={inviteName}
-                      onChange={(e) => setInviteName(e.currentTarget.value)}
-                      styles={{ input: { border: '1px solid #dee2e6' } }}
-                    />
-                    <Group gap="sm" grow>
-                      <TextInput
-                        label="Email / Phone"
-                        placeholder="Enter email or phone"
-                        size="sm"
-                        radius="md"
-                        value={inviteContact}
-                        onChange={(e) => setInviteContact(e.currentTarget.value)}
-                        styles={{ input: { border: '1px solid #dee2e6' } }}
-                      />
-                      <Select
-                        label="Invite by"
-                        data={[
-                          { value: 'email', label: 'Email' },
-                          { value: 'phone', label: 'Phone (Coming Soon)', disabled: true },
-                        ]}
-                        value={inviteBy}
-                        onChange={setInviteBy}
-                        size="sm"
-                        radius="md"
-                        rightSection={<IconChevronDown size={14} />}
-                        styles={{ input: { border: '1px solid #dee2e6' } }}
-                        allowDeselect={false}
-                      />
-                    </Group>
-                    <Button
-                      size="sm"
-                      radius="md"
-                      style={{ background: PRIMARY, alignSelf: 'flex-start' }}
-                      mt="xs"
-                      onClick={openInviteModal}
-                    >
-                      Send Invite
-                    </Button>
-                  </Stack>
-                </Paper>
-
-                <Paper
-                  p="lg"
-                  radius="md"
-                  style={{
-                    border: '1px solid #e9ecef',
-                    flex: '1 1 200px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <RingProgress
-                    size={120}
-                    thickness={10}
-                    roundCaps
-                    sections={[{ value: Math.min((pendingJoinCount / (circleData?.maxSlots ?? 1)) * 100, 100), color: PRIMARY }]}
-                    label={
-                      <Text ta="center" fz={22} fw={700} style={{ color: PRIMARY }}>
-                        {pendingJoinCount}
-                      </Text>
-                    }
-                  />
-                  <Text fz="sm" fw={500} ta="center" mt="sm">
-                    Pending Join {pendingJoinCount === 1 ? 'Request' : 'Requests'}
-                  </Text>
-                </Paper>
-              </Group>
-            )}
-
-            {/* Manage Members */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-              <Group justify="space-between" align="center" px="lg" py="md">
-                <Text fw={600} fz="md">Manage Members</Text>
-                <TextInput
-                  placeholder="Search by names"
-                  leftSection={<IconSearch size={15} stroke={1.5} color="#868e96" />}
-                  radius="md"
-                  size="sm"
-                  value={memberSearch}
-                  onChange={(e) => setMemberSearch(e.currentTarget.value)}
-                  styles={{ input: { border: '1px solid #dee2e6' } }}
-                  style={{ width: 260 }}
-                />
-              </Group>
-
-              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
-                <Table.Thead>
-                  <Table.Tr style={{ background: PRIMARY }}>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Name</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Position</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Joined</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}></Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {filteredMembers.length === 0 && (
-                    <Table.Tr>
-                      <Table.Td colSpan={5}>
-                        <Text c="dimmed" ta="center" py="xl" fz="sm">
-                          {memberSearch ? 'No members match your search' : 'No members have joined this group yet'}
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  )}
-                  {filteredMembers.map((member) => {
-                    const hasPayout = payouts.some(
-                      (p) => p.recipientId === member.userId &&
-                        ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase())
-                    )
-                    return (
-                    <Table.Tr key={member.userId}>
-                      <Table.Td>
-                        <Group gap="sm" align="center">
-                          <Avatar size={32} radius="xl" color="gray">
-                            {member.name.charAt(0)}
-                          </Avatar>
-                          <Text fz="sm" fw={500}>{member.name}</Text>
-                        </Group>
-                      </Table.Td>
-                      <Table.Td style={{ minWidth: 180 }}>
-                        <Text fz="xs" c="dimmed">
-                          Position: {member.position ?? 'Not assigned'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge
-                          size="sm"
-                          radius="sm"
-                          style={{
-                            background: member.status === 'ACTIVE' ? '#e6f5f1' : '#f1f3f5',
-                            color: member.status === 'ACTIVE' ? PRIMARY : '#868e96',
-                            border: 'none',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {member.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text fz="sm">
-                          {new Date(member.joinedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          radius="md"
-                          disabled={hasPayout}
-                          title={hasPayout ? 'Position cannot be changed after payout' : undefined}
-                          style={hasPayout ? { borderColor: '#dee2e6', color: '#adb5bd' } : { borderColor: PRIMARY, color: PRIMARY }}
-                          onClick={() => !hasPayout && openAssignModal({ userId: member.userId, name: member.name })}
-                        >
-                          {hasPayout ? 'Paid Out' : 'Assign Position'}
-                        </Button>
-                      </Table.Td>
-                    </Table.Tr>
-                    )
-                  })}
-                </Table.Tbody>
-              </Table></div>
-            </Paper>
-
-            {/* Sent Invites */}
-            {!isCompleted && (
-              <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-                <Group justify="space-between" align="center" px="lg" py="md">
-                  <Text fw={600} fz="md">Sent Invites</Text>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    radius="md"
-                    leftSection={<IconRefresh size={13} />}
-                    style={{ borderColor: '#dee2e6', color: '#495057' }}
-                    onClick={loadInvites}
-                  >
-                    Refresh
-                  </Button>
-                </Group>
-                <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
-                  <Table.Thead>
-                    <Table.Tr style={{ background: '#f8f9fa' }}>
-                      <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Name / Contact</Table.Th>
-                      <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Status</Table.Th>
-                      <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Sent</Table.Th>
-                      <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}></Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {invitesLoading ? (
-                      <Table.Tr>
-                        <Table.Td colSpan={4} style={{ textAlign: 'center', padding: '20px 0' }}>
-                          <Loader size="sm" color={PRIMARY} />
-                        </Table.Td>
-                      </Table.Tr>
-                    ) : invites.length === 0 ? (
-                      <Table.Tr>
-                        <Table.Td colSpan={4}>
-                          <Text c="dimmed" ta="center" py="lg" fz="sm">No invites sent yet</Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    ) : invites.map((inv) => (
-                      <Table.Tr key={inv.id}>
-                        <Table.Td>
-                          <Text fz="sm" fw={500}>{inv.name || '—'}</Text>
-                          <Text fz="xs" c="dimmed">{inv.email || inv.phone || ''}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Badge
-                            size="sm"
-                            radius="sm"
-                            style={{
-                              background: inv.status === 'ACCEPTED' ? '#e6f5f1' : inv.status === 'REVOKED' ? '#f1f3f5' : '#fdf3e7',
-                              color: inv.status === 'ACCEPTED' ? PRIMARY : inv.status === 'REVOKED' ? '#868e96' : '#e67e22',
-                              border: 'none',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {inv.status}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text fz="sm" c="dimmed">
-                            {new Date(inv.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          {inv.status === 'PENDING' && (
-                            <Button
-                              variant="outline"
-                              size="xs"
-                              radius="md"
-                              color="red"
-                              loading={revokingId === inv.id}
-                              onClick={() => handleRevokeInvite(inv.id)}
-                            >
-                              Revoke
-                            </Button>
-                          )}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table></div>
-              </Paper>
-            )}
-          </Stack>
+          <GroupMembersTab
+            isCompleted={isCompleted}
+            inviteName={inviteName}
+            onInviteNameChange={setInviteName}
+            inviteContact={inviteContact}
+            onInviteContactChange={setInviteContact}
+            inviteBy={inviteBy}
+            onInviteByChange={setInviteBy}
+            onOpenInviteModal={openInviteModal}
+            pendingJoinCount={pendingJoinCount}
+            maxSlots={circleData?.maxSlots}
+            memberSearch={memberSearch}
+            onMemberSearchChange={setMemberSearch}
+            filteredMembers={filteredMembers}
+            payouts={payouts}
+            onAssignPosition={openAssignModal}
+            invites={invites}
+            invitesLoading={invitesLoading}
+            onRefreshInvites={loadInvites}
+            revokingId={revokingId}
+            onRevokeInvite={handleRevokeInvite}
+          />
         </Tabs.Panel>
 
         {/* Payment Oversight Tab */}
         <Tabs.Panel value="payments" pt="lg">
-          <Stack gap="lg">
-            {/* Financial Health */}
-            <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-              <Group justify="space-between" align="center" mb="md">
-                <Text fw={600} fz="md">Financial Health</Text>
-                {financialHealthLoading && <Loader size="xs" color={PRIMARY} />}
-              </Group>
-              {financialHealth ? (() => {
-                const cycles = financialHealth.cycles ?? []
-                const totalExpKobo = cycles.reduce((s, c) => s + Number(c.expectedPot ?? 0), 0)
-                const totalColKobo = cycles.reduce((s, c) => s + Number(c.collected ?? 0), 0)
-                const overallRate = totalExpKobo > 0 ? (totalColKobo / totalExpKobo) * 100 : 0
-                return (
-                  <Stack gap="md">
-                    <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-                      <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
-                        <Text fz="xs" c="dimmed" mb={4}>Total Expected</Text>
-                        <Text fz="lg" fw={700}>₦{(totalExpKobo / 100).toLocaleString('en-NG')}</Text>
-                      </Box>
-                      <Box style={{ textAlign: 'center', background: '#f0faf7', borderRadius: 8, padding: '12px 8px' }}>
-                        <Text fz="xs" c="dimmed" mb={4}>Total Collected</Text>
-                        <Text fz="lg" fw={700} style={{ color: PRIMARY }}>₦{(totalColKobo / 100).toLocaleString('en-NG')}</Text>
-                      </Box>
-                      <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
-                        <Text fz="xs" c="dimmed" mb={4}>Collection Rate</Text>
-                        <Text fz="lg" fw={700}>{overallRate.toFixed(1)}%</Text>
-                      </Box>
-                      <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
-                        <Text fz="xs" c="dimmed" mb={4}>Total Outstanding</Text>
-                        <Text fz="lg" fw={700}>₦{(cycles.reduce((s, c) => s + Number(c.outstanding ?? 0), 0) / 100).toLocaleString('en-NG')}</Text>
-                      </Box>
-                    </SimpleGrid>
-                    {cycles.length > 0 && (
-                      <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="md" style={{ minWidth: 480 }}>
-                        <Table.Thead>
-                          <Table.Tr style={{ background: '#f8f9fa' }}>
-                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Cycle</Table.Th>
-                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Deadline</Table.Th>
-                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Expected Pot</Table.Th>
-                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Collected</Table.Th>
-                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Rate</Table.Th>
-                            <Table.Th style={{ fontWeight: 600, fontSize: 12, color: '#6B7280' }}>Outstanding</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {cycles.map((cyc) => {
-                            const exp = Number(cyc.expectedPot ?? 0)
-                            const col = Number(cyc.collected ?? 0)
-                            const rate = exp > 0 ? Math.round((col / exp) * 100) : 0
-                            const deadline = cyc.contributionDeadline
-                              ? new Date(cyc.contributionDeadline).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
-                              : '—'
-                            return (
-                              <Table.Tr key={cyc.cycleNumber}>
-                                <Table.Td><Text fz="sm" fw={500}>Cycle {cyc.cycleNumber}</Text></Table.Td>
-                                <Table.Td><Text fz="sm" c="dimmed">{deadline}</Text></Table.Td>
-                                <Table.Td><Text fz="sm">₦{(exp / 100).toLocaleString('en-NG')}</Text></Table.Td>
-                                <Table.Td><Text fz="sm" style={{ color: PRIMARY }}>₦{(col / 100).toLocaleString('en-NG')}</Text></Table.Td>
-                                <Table.Td>
-                                  <Badge size="sm" radius="sm" style={{ background: rate >= 80 ? '#e6f5f1' : '#fdf3e7', color: rate >= 80 ? PRIMARY : '#e67e22', border: 'none', fontWeight: 600 }}>
-                                    {rate}%
-                                  </Badge>
-                                </Table.Td>
-                                <Table.Td><Text fz="sm" c="dimmed">₦{(Number(cyc.outstanding ?? 0) / 100).toLocaleString('en-NG')}</Text></Table.Td>
-                              </Table.Tr>
-                            )
-                          })}
-                        </Table.Tbody>
-                      </Table></div>
-                    )}
-                  </Stack>
-                )
-              })() : !financialHealthLoading ? (
-                <Text fz="sm" c="dimmed">No financial health data available</Text>
-              ) : null}
-            </Paper>
-
-            {/* Contributions In */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-              <Group
-                justify="space-between"
-                align="center"
-                px="lg"
-                py="sm"
-                style={{ background: PRIMARY }}
-              >
-                <Text fw={600} fz="sm" c="white">Contributions In</Text>
-                <Select
-                  data={financialHealth?.cycles?.map((c) => ({ value: String(c.cycleNumber), label: `Round ${c.cycleNumber}` })) ?? roundOptions}
-                  value={selectedRound}
-                  onChange={setSelectedRound}
-                  size="xs"
-                  radius="md"
-                  rightSection={<IconChevronDown size={12} color="white" />}
-                  styles={{
-                    input: {
-                      background: 'rgba(255,255,255,0.15)',
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      color: 'white',
-                      minWidth: 110,
-                    },
-                  }}
-                  allowDeselect={false}
-                />
-              </Group>
-
-              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
-                <Table.Thead>
-                  <Table.Tr style={{ background: '#f8f9fa' }}>
-                    <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Members Name</Table.Th>
-                    <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Amount (₦)</Table.Th>
-                    <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Status</Table.Th>
-                    <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Payout Method</Table.Th>
-                    <Table.Th style={{ fontWeight: 600, fontSize: 13, color: '#495057' }}>Date & Time</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {paymentContribsLoading ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={5} style={{ textAlign: 'center', padding: '24px 0' }}>
-                        <Loader size="sm" color={PRIMARY} />
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : (paymentContribs?.contributions ?? []).length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={5}>
-                        <Text c="dimmed" ta="center" py="xl" fz="sm">No contributions found</Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : (
-                    (paymentContribs?.contributions ?? []).map((c) => {
-                      const amountNaira = Number(c.amount) / 100
-                      const dateStr = c.paidAt
-                        ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : '—'
-                      return (
-                        <Table.Tr key={c.contributionId}>
-                          <Table.Td>
-                            <Group gap="sm" align="center">
-                              <Avatar size={28} radius="xl" color="gray">{(c.memberName || '?').charAt(0)}</Avatar>
-                              <Text fz="sm" fw={500}>{c.memberName}</Text>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td><Text fz="sm">₦{amountNaira.toLocaleString('en-NG')}</Text></Table.Td>
-                          <Table.Td>
-                            <Badge
-                              size="sm"
-                              radius="sm"
-                              style={{
-                                background: c.isLate ? '#fdf3e7' : '#e6f5f1',
-                                color: c.isLate ? '#e67e22' : PRIMARY,
-                                border: 'none',
-                                fontWeight: 600,
-                              }}
-                            >
-                              {c.isLate ? 'Late' : 'Paid'}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td><Text fz="sm">Wallet</Text></Table.Td>
-                          <Table.Td><Text fz="sm">{dateStr}</Text></Table.Td>
-                        </Table.Tr>
-                      )
-                    })
-                  )}
-                </Table.Tbody>
-              </Table></div>
-
-              {/* Summary footer */}
-              <Group
-                justify="space-between"
-                align="center"
-                px="lg"
-                py="md"
-                style={{ borderTop: '1px solid #e9ecef', background: '#f8f9fa' }}
-              >
-                <Group gap="xl">
-                  <Box>
-                    <Text fz="xs" c="dimmed">Total Expected</Text>
-                    <Text fz="sm" fw={600}>
-                      ₦{(() => {
-                        const cyc = financialHealth?.cycles?.find((c) => c.cycleNumber === Number(selectedRound))
-                        return cyc ? (Number(cyc.expectedPot) / 100).toLocaleString('en-NG') : '0'
-                      })()}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Text fz="xs" c="dimmed">Total Received</Text>
-                    <Text fz="sm" fw={600} style={{ color: PRIMARY }}>
-                      ₦{(Number(paymentContribs?.totalCollected ?? 0) / 100).toLocaleString('en-NG')}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Text fz="xs" c="dimmed">Complete Rate</Text>
-                    <Text fz="sm" fw={600} style={{ color: PRIMARY }}>
-                      {(() => {
-                        const cyc = financialHealth?.cycles?.find((c) => c.cycleNumber === Number(selectedRound))
-                        if (!cyc || Number(cyc.expectedPot) === 0) return '—'
-                        return `${Math.round((Number(cyc.collected) / Number(cyc.expectedPot)) * 100)}%`
-                      })()}
-                    </Text>
-                  </Box>
-                </Group>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  radius="md"
-                  leftSection={<IconDownload size={14} />}
-                  style={{ borderColor: PRIMARY, color: PRIMARY }}
-                >
-                  Download Logs
-                </Button>
-              </Group>
-            </Paper>
-
-            {/* Disbursement Status */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-              <Group justify="space-between" align="center" px="lg" py="md">
-                <Text fw={600} fz="md">Disbursement Status</Text>
-              </Group>
-
-              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
-                <Table.Thead>
-                  <Table.Tr style={{ background: PRIMARY }}>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Members Name</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Payment Method</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date Disbursed</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }} w={140} />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {disbursementsLoading ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={6} style={{ textAlign: 'center', padding: '24px 0' }}>
-                        <Loader size="sm" color={PRIMARY} />
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : disbursements.length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={6}>
-                        <Text c="dimmed" ta="center" py="xl" fz="sm">No disbursements found</Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : disbursements.map((d) => {
-                    const isSuccess = d.payoutStatus != null && ['SUCCESS', 'COMPLETED', 'PAID'].includes(d.payoutStatus.toUpperCase())
-                    const isUpcoming = d.payoutStatus == null || ['UPCOMING', 'PENDING'].includes((d.scheduleStatus ?? '').toUpperCase())
-                    const isStuck = isUpcoming && d.payoutDate != null && new Date(d.payoutDate) < new Date()
-                    const amountNaira = d.amountPaidOut != null ? (Number(d.amountPaidOut) / 100).toLocaleString('en-NG') : null
-                    const dateStr = (d.processedAt ?? (isUpcoming ? d.payoutDate : null))
-                      ? new Date((d.processedAt ?? d.payoutDate) as string).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-                      : '—'
-                    return (
-                      <Table.Tr key={d.cycleNumber} style={isStuck ? { background: '#fff5f5' } : isUpcoming ? { background: '#f0faf7' } : undefined}>
-                        <Table.Td>
-                          <Group gap="sm" align="center">
-                            <Avatar size={28} radius="xl" color="gray">{(d.recipientName || '?').charAt(0)}</Avatar>
-                            <Box>
-                              <Text fz="sm" fw={500}>{d.recipientName}</Text>
-                              <Text fz="xs" c="dimmed">Cycle {d.cycleNumber}</Text>
-                            </Box>
-                          </Group>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>
-                            {amountNaira ? `₦${amountNaira}` : 'Pending'}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Badge
-                            size="sm"
-                            radius="sm"
-                            style={{
-                              background: isSuccess ? '#e6f5f1' : isStuck ? '#ffe3e3' : isUpcoming ? '#fdf3e7' : '#f1f3f5',
-                              color: isSuccess ? PRIMARY : isStuck ? '#c92a2a' : isUpcoming ? '#e67e22' : '#868e96',
-                              border: 'none',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {isSuccess ? 'Disbursed' : isStuck ? 'Overdue' : isUpcoming ? 'Upcoming' : d.payoutStatus}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td><Text fz="sm">Wallet</Text></Table.Td>
-                        <Table.Td><Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>{dateStr}</Text></Table.Td>
-                        <Table.Td>
-                          {isStuck && (
-                            <Button
-                              size="xs"
-                              variant="light"
-                              color="orange"
-                              onClick={() => { setExtendModal({ cycleNumber: d.cycleNumber }); setExtendDate(null); setExtendError(null) }}
-                            >
-                              Extend Deadline
-                            </Button>
-                          )}
-                        </Table.Td>
-                      </Table.Tr>
-                    )
-                  })}
-                </Table.Tbody>
-              </Table></div>
-            </Paper>
-          </Stack>
+          <GroupPaymentsTab
+            circleId={id}
+            isActive={activeTab === 'payments'}
+            financialHealth={financialHealth}
+            financialHealthLoading={financialHealthLoading}
+            refreshToken={paymentsRefreshToken}
+            onExtendDeadline={(cycleNumber) => {
+              setExtendModal({ cycleNumber })
+              setExtendDate(null)
+              setExtendError(null)
+            }}
+          />
         </Tabs.Panel>
 
         {/* ── Payouts Tab ── */}
         <Tabs.Panel value="payouts" pt="lg">
-          <Stack gap="lg">
-            {/* Trigger payout action */}
-            <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-              <Text fw={600} fz="md" mb="md">Manually Trigger Payout</Text>
-              <Group gap="sm" align="flex-end">
-                <TextInput
-                  label="Cycle Number"
-                  placeholder="e.g. 1"
-                  radius="md"
-                  size="sm"
-                  value={processCycleInput}
-                  onChange={(e) => setProcessCycleInput(e.currentTarget.value.replace(/\D/g, ''))}
-                  styles={{ input: { border: '1px solid #dee2e6' }, root: { flex: 1, maxWidth: 180 } }}
-                />
-                <Button
-                  size="sm"
-                  radius="md"
-                  style={{ background: PRIMARY }}
-                  leftSection={<IconPlayerPlay size={14} />}
-                  loading={processingCycle !== null}
-                  disabled={!processCycleInput}
-                  onClick={handleProcessPayout}
-                >
-                  Process Payout
-                </Button>
-              </Group>
-              {payoutError && (
-                <Text fz="sm" c="red" mt="sm">{payoutError}</Text>
-              )}
-            </Paper>
-
-            {/* Payout History */}
-            <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-              <Group justify="space-between" align="center" px="lg" py="md">
-                <Text fw={600} fz="md">Payout History</Text>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  radius="md"
-                  leftSection={<IconRefresh size={13} />}
-                  style={{ borderColor: '#dee2e6', color: '#495057' }}
-                  onClick={() => {
-                    if (!id) return
-                    setPayoutsLoading(true)
-                    getPayoutHistory(id).then(setPayouts).catch(() => {}).finally(() => setPayoutsLoading(false))
-                  }}
-                >
-                  Refresh
-                </Button>
-              </Group>
-
-              {payoutsLoading ? (
-                <Group justify="center" py="xl">
-                  <Loader size="sm" color={PRIMARY} />
-                </Group>
-              ) : (
-                <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
-                  <Table.Thead>
-                    <Table.Tr style={{ background: PRIMARY }}>
-                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
-                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Recipient</Table.Th>
-                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
-                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
-                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
-                      <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}></Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {payouts.length === 0 && (
-                      <Table.Tr>
-                        <Table.Td colSpan={6}>
-                          <Text c="dimmed" ta="center" py="xl" fz="sm">No payouts found for this circle</Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    )}
-                    {payouts.map((p) => {
-                      const statusColor =
-                        p.status === 'SUCCESS' || p.status === 'COMPLETED'
-                          ? { bg: '#e6f5f1', color: PRIMARY }
-                          : p.status === 'FAILED'
-                          ? { bg: '#fef2f2', color: '#e74c3c' }
-                          : { bg: '#f1f3f5', color: '#868e96' }
-                      const cycleNumber = p.cycleNumber ?? p.schedule?.cycleNumber
-                      const recipient = p.recipient
-                        ? `${p.recipient.firstName} ${p.recipient.lastName}`.trim()
-                        : '—'
-                      const amountNaira = (Number(p.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
-                      return (
-                        <Table.Tr key={p.id}>
-                          <Table.Td><Text fz="sm" fw={500}>{cycleNumber != null ? `Cycle ${cycleNumber}` : '—'}</Text></Table.Td>
-                          <Table.Td>
-                            <Group gap="sm" align="center">
-                              <Avatar size={28} radius="xl" color="gray">{(recipient || '?').charAt(0)}</Avatar>
-                              <Text fz="sm">{recipient}</Text>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text fz="sm" fw={600}>
-                              ₦{amountNaira}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge
-                              size="sm"
-                              radius="sm"
-                              style={{ background: statusColor.bg, color: statusColor.color, border: 'none', fontWeight: 600 }}
-                            >
-                              {p.status}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text fz="sm" c="dimmed">
-                              {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG') : '—'}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              {p.status === 'FAILED' && (
-                                <Button
-                                  variant="subtle"
-                                  size="xs"
-                                  px="xs"
-                                  leftSection={<IconRefresh size={12} />}
-                                  style={{ color: '#e67e22' }}
-                                  onClick={() => handleRetryPayout(p.id)}
-                                >
-                                  Retry
-                                </Button>
-                              )}
-                              {(p.status === 'SUCCESS' || p.status === 'COMPLETED') && (
-                                <Button
-                                  variant="subtle"
-                                  size="xs"
-                                  px="xs"
-                                  leftSection={<IconArrowBackUp size={12} />}
-                                  style={{ color: '#e74c3c' }}
-                                  onClick={() => {
-                                    setReversePayout_(p)
-                                    setReverseReason('')
-                                    setReverseModal(true)
-                                  }}
-                                >
-                                  Reverse
-                                </Button>
-                              )}
-                            </Group>
-                          </Table.Td>
-                        </Table.Tr>
-                      )
-                    })}
-                  </Table.Tbody>
-                </Table></div>
-              )}
-            </Paper>
-          </Stack>
+          <GroupPayoutsTab
+            payouts={payouts}
+            payoutsLoading={payoutsLoading}
+            payoutError={payoutError}
+            processCycleInput={processCycleInput}
+            onProcessCycleInputChange={setProcessCycleInput}
+            processingCycle={processingCycle}
+            onProcessPayout={handleProcessPayout}
+            onRefresh={() => {
+              if (!id) return
+              setPayoutsLoading(true)
+              getPayoutHistory(id).then(setPayouts).catch(() => {}).finally(() => setPayoutsLoading(false))
+            }}
+            onRetryPayout={handleRetryPayout}
+            onReverseClick={(payout) => {
+              setReversePayout_(payout)
+              setReverseReason('')
+              setReverseModal(true)
+            }}
+          />
         </Tabs.Panel>
 
         {/* ── Contributions Tab ── */}
         <Tabs.Panel value="contributions" pt="lg">
-          <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-            <Group justify="space-between" align="center" px="lg" py="md">
-              <Text fw={600} fz="md">Contribution History</Text>
-              <Button
-                variant="outline"
-                size="xs"
-                radius="md"
-                leftSection={<IconRefresh size={13} />}
-                style={{ borderColor: '#dee2e6', color: '#495057' }}
-                onClick={() => {
-                  if (!id) return
-                  setContribLoading(true)
-                  getCircleContributions(id).then((data) => setContributions(data)).catch(() => {}).finally(() => setContribLoading(false))
-                }}
-              >
-                Refresh
-              </Button>
-            </Group>
-
-            {contribLoading ? (
-              <Group justify="center" py="xl">
-                <Loader size="sm" color={PRIMARY} />
-              </Group>
-            ) : (
-              <div style={{ overflowX: 'auto' }}><Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 560 }}>
-                <Table.Thead>
-                  <Table.Tr style={{ background: PRIMARY }}>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Member</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
-                    <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {contributions.length === 0 && (
-                    <Table.Tr>
-                      <Table.Td colSpan={5}>
-                        <Text c="dimmed" ta="center" py="xl" fz="sm">No contributions found for this circle</Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  )}
-                  {contributions.map((c, i) => {
-                    const amountNaira = (Number(c.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
-                    return (
-                      <Table.Tr key={c.contributionId ?? i}>
-                        <Table.Td>
-                          <Group gap="sm" align="center">
-                            <Avatar size={28} radius="xl" color="gray">{(c.memberName || '?').charAt(0)}</Avatar>
-                            <Text fz="sm" fw={500}>{c.memberName}</Text>
-                          </Group>
-                        </Table.Td>
-                        <Table.Td><Text fz="sm">Cycle {c.cycleNumber}</Text></Table.Td>
-                        <Table.Td>
-                          <Text fz="sm" fw={600}>₦{amountNaira}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Badge
-                            size="sm"
-                            radius="sm"
-                            style={{ background: c.isLate ? '#fef2f2' : '#e6f5f1', color: c.isLate ? '#e74c3c' : PRIMARY, border: 'none', fontWeight: 600 }}
-                          >
-                            {c.isLate ? 'Late' : 'On Time'}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text fz="sm" c="dimmed">
-                            {c.paidAt ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                          </Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    )
-                  })}
-                </Table.Tbody>
-              </Table></div>
-            )}
-          </Paper>
+          <GroupContributionsTab circleId={id} isActive={activeTab === 'contributions'} />
         </Tabs.Panel>
 
         {/* Group Notifications & Peer Review Tab */}
@@ -2045,7 +781,7 @@ export function GroupDetail() {
               </Group>
               <Group justify="space-between">
                 <Text fz="sm" c="dimmed">Amount</Text>
-                <Text fz="sm" fw={600} c="red">₦{Number(reversePayout_.amount).toLocaleString('en-NG')}</Text>
+                <Text fz="sm" fw={600} c="red">₦{(Number(reversePayout_.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text>
               </Group>
             </Paper>
           )}
@@ -2359,8 +1095,6 @@ export function GroupDetail() {
         size="lg"
         withCloseButton={false}
       >
-        {/* Form */}
-        {restartStep === 'form' && (
           <Stack gap="md">
             <Group justify="space-between" align="center">
               <Text fw={700} fz="lg">Restart Group</Text>
@@ -2458,6 +1192,10 @@ export function GroupDetail() {
               This {group.name} group will start with {restartMembers.length} members on July 1, 2026.
             </Text>
 
+            <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
+              Restarting a group isn't wired up yet — this form is a preview only. Saving has no effect until the backend endpoint exists.
+            </Alert>
+
             <Group justify="flex-end" gap="sm">
               <Button
                 variant="outline"
@@ -2472,22 +1210,12 @@ export function GroupDetail() {
                 radius="md"
                 size="sm"
                 style={{ background: PRIMARY }}
-                onClick={handleRestartGroup}
+                disabled
               >
-                Restart Group
+                Restart Group (Coming Soon)
               </Button>
             </Group>
           </Stack>
-        )}
-
-        {/* Restarting */}
-        {restartStep === 'restarting' && (
-          <Stack align="center" gap="md" py="xl">
-            <Loader size="lg" color={PRIMARY} />
-            <Text fw={700} fz="lg">Restarting {group.name}</Text>
-            <Text fz="sm" c="dimmed">Do not close this window.</Text>
-          </Stack>
-        )}
       </Modal>
 
       {/* Remove Member Modal */}
@@ -2499,11 +1227,10 @@ export function GroupDetail() {
         size="sm"
         withCloseButton={false}
       >
-        {/* Confirm */}
-        {removeMemberStep === 'confirm' && removeMember && (
+        {removeMember && (
           <Stack align="center" gap="md" py="md">
             <Text fw={600} fz="md" ta="center">
-              Are you sure you want to remove {removeMember.name}?
+              Remove {removeMember.name} from this restart preview?
             </Text>
             <Group justify="center" gap="sm" style={{ width: '100%' }}>
               <Button
@@ -2524,14 +1251,6 @@ export function GroupDetail() {
                 Yes
               </Button>
             </Group>
-          </Stack>
-        )}
-
-        {/* Removing */}
-        {removeMemberStep === 'removing' && removeMember && (
-          <Stack align="center" gap="md" py="xl">
-            <Loader size="lg" color={PRIMARY} />
-            <Text fw={700} fz="lg">Removing {removeMember.name}</Text>
           </Stack>
         )}
       </Modal>

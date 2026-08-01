@@ -1,73 +1,17 @@
+import { ApiError, createApiClient, parseJsonSafely } from '@ajoti/shared'
+
+export { ApiError }
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
-export class ApiError extends Error {
-  readonly code?: number
+const client = createApiClient({
+  baseUrl: BASE_URL,
+  storagePrefix: 'admin_',
+  sessionExpiredRedirect: '/login',
+  extraSessionKeys: ['admin_kyc_completed', 'admin_verify_email'],
+})
 
-  constructor(message: string, code?: number) {
-    super(message)
-    this.code = code
-    this.name = 'ApiError'
-  }
-}
-
-function parseJsonSafely(res: Response): Promise<unknown> {
-  return res.json().catch((e: unknown) => {
-    if (import.meta.env.DEV) console.error('[api] Failed to parse response JSON:', e)
-    return {}
-  })
-}
-
-async function request<T>(path: string, options: RequestInit): Promise<T> {
-  const { headers, ...rest } = options
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...rest,
-    headers: { 'Content-Type': 'application/json', ...headers },
-  })
-
-  const data = await parseJsonSafely(res)
-
-  if (res.status === 503 && (data as { maintenance?: boolean }).maintenance) {
-    window.location.replace('/maintenance')
-    throw new ApiError('Maintenance', 503)
-  }
-
-  if (!res.ok) {
-    const msg = (data as { message?: string | string[] }).message
-    throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
-  }
-
-  return data as T
-}
-
-// ── Token refresh ────────────────────────────────────────────────────────────
-
-let isRefreshing = false
-let refreshQueue: Array<(token: string) => void> = []
-
-async function tryRefresh(): Promise<string> {
-  const refreshToken = localStorage.getItem('admin_refresh_token')
-  if (!refreshToken) throw new Error('No refresh token')
-
-  const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  })
-
-  if (!res.ok) throw new Error('Refresh failed')
-
-  const data = await res.json() as { accessToken: string; refreshToken: string }
-  localStorage.setItem('admin_access_token', data.accessToken)
-  localStorage.setItem('admin_refresh_token', data.refreshToken)
-  return data.accessToken
-}
-
-function clearSessionAndRedirect() {
-  ;['admin_access_token', 'admin_refresh_token', 'admin_user', 'admin_kyc_completed', 'admin_verify_email'].forEach(
-    (k) => localStorage.removeItem(k),
-  )
-  window.location.href = '/login'
-}
+const { request, authRequest } = client
 
 // ── Auth ────────────────────────────────────────────────────────────────────
 
@@ -161,64 +105,6 @@ export function resendOtp(email: string): Promise<{ message: string }> {
   return request('/api/auth/resend-verify-otp', {
     method: 'POST',
     body: JSON.stringify({ email }),
-  })
-}
-
-// ── Authenticated requests ──────────────────────────────────────────────────
-
-function authHeaders(token?: string): Record<string, string> {
-  const t = token ?? localStorage.getItem('admin_access_token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
-
-async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
-  const { headers, ...rest } = options
-
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...rest,
-    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...headers },
-  })
-
-  if (res.status !== 401) {
-    const data = await parseJsonSafely(res)
-    if (!res.ok) {
-      const msg = (data as { message?: string | string[] }).message
-      throw new ApiError(Array.isArray(msg) ? msg[0] : msg ?? 'Something went wrong', res.status)
-    }
-    return data as T
-  }
-
-  // 401 — attempt token refresh
-  if (!isRefreshing) {
-    isRefreshing = true
-    try {
-      const newToken = await tryRefresh()
-      refreshQueue.forEach((resolve) => resolve(newToken))
-      refreshQueue = []
-      isRefreshing = false
-
-      return request<T>(path, {
-        ...options,
-        headers: { ...authHeaders(newToken), ...headers },
-      })
-    } catch {
-      refreshQueue = []
-      isRefreshing = false
-      clearSessionAndRedirect()
-      throw new ApiError('Session expired. Please log in again.')
-    }
-  }
-
-  return new Promise<T>((resolve, reject) => {
-    refreshQueue.push((newToken) => {
-      resolve(
-        request<T>(path, {
-          ...options,
-          headers: { ...authHeaders(newToken), ...headers },
-        }),
-      )
-    })
-    setTimeout(() => reject(new ApiError('Session expired')), 30_000)
   })
 }
 
@@ -409,6 +295,147 @@ export function listRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest('/api/rosca', { method: 'GET' })
 }
 
+export interface CircleRules {
+  collateralRatioPercent: number
+  latePenaltyRatioPercent: number
+  minTrustScore: number
+  postStartExitPenaltyPercent: number
+}
+
+// GET /api/rosca/circle-rules — current platform-wide circle rules (member-facing).
+// Always fetch this live for disclosure copy — never hardcode the rate, so the UI
+// can't drift from whatever the superadmin has actually configured.
+export function getCircleRules(): Promise<{ success: boolean; data: CircleRules }> {
+  return authRequest('/api/rosca/circle-rules', { method: 'GET' })
+}
+
+export interface MyJoinRequest {
+  membershipId: string
+  circleId: string
+  status: string
+  requestedAt?: string
+  collateralReserved?: string
+  circle?: {
+    id?: string
+    name?: string
+    durationCycles?: number
+    filledSlots?: number
+    maxSlots?: number
+    frequency?: string
+    contributionAmount?: number | string
+    admin?: { firstName?: string; lastName?: string }
+  }
+  [key: string]: unknown
+}
+
+// GET /api/rosca/my-join-requests — generic authenticated-user endpoint; admins
+// are members too, so this reads the admin's own join requests (not the circles
+// they administer — that's listAllRoscaCircles).
+export async function getMyJoinRequests(): Promise<MyJoinRequest[]> {
+  const res = await authRequest<{ data?: MyJoinRequest[] } | MyJoinRequest[]>(
+    '/api/rosca/my-join-requests',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: MyJoinRequest[] }).data ?? []
+}
+
+// GET /api/rosca/my-participations — circles the admin (as a member) is actively
+// participating in.
+export async function getMyParticipations(): Promise<RoscaCircle[]> {
+  const res = await authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>(
+    '/api/rosca/my-participations',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: RoscaCircle[] }).data ?? []
+}
+
+// The circles the admin is actually a MEMBER of (participations + approved join
+// requests), merged and deduped by circleId — distinct from listAllRoscaCircles,
+// which is circles the admin ADMINISTERS. Anywhere that needs "my memberships"
+// (e.g. the loan application's group selector) should use this.
+export async function getMyActiveCircles(): Promise<RoscaCircle[]> {
+  const [participations, joinRequests] = await Promise.all([
+    getMyParticipations().catch(() => []),
+    getMyJoinRequests().catch(() => []),
+  ])
+
+  const approvedRequests = joinRequests.filter((r) =>
+    ['ACTIVE', 'STARTED'].includes((r.status ?? '').toUpperCase()),
+  )
+
+  const seenIds = new Set<string>()
+  const merged: RoscaCircle[] = []
+  for (const c of participations) {
+    if (!seenIds.has(c.id)) {
+      seenIds.add(c.id)
+      merged.push(c)
+    }
+  }
+  for (const r of approvedRequests) {
+    const c = r.circle
+    if (c?.id && !seenIds.has(c.id)) {
+      seenIds.add(c.id)
+      merged.push({
+        id: c.id,
+        name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
+        description: '',
+        contributionAmount: Number(c.contributionAmount ?? 0),
+        frequency: c.frequency ?? '',
+        durationCycles: c.durationCycles ?? 0,
+        maxSlots: c.maxSlots ?? 0,
+        totalSlots: c.maxSlots ?? 0,
+        filledSlots: c.filledSlots ?? 0,
+        status: r.status,
+        visibility: '',
+        collateralPercentage: 0,
+        payoutLogic: '',
+        autoStartOnFull: false,
+        latePenaltyPercent: 0,
+        admin: { firstName: c.admin?.firstName ?? '', lastName: c.admin?.lastName ?? '' },
+      })
+    }
+  }
+  return merged
+}
+
+// ── Debts ─────────────────────────────────────────────────────────────────────
+
+export type DebtCategory = 'MISSED_CONTRIBUTION' | 'LATE_PENALTY' | 'MIXED'
+
+export interface Debt {
+  id: string
+  circleId: string
+  circleName?: string
+  cycleNumber: number
+  status: string
+  category: DebtCategory
+  categoryLabel: string
+  outstandingTotal: string
+  outstandingBreakdown: {
+    contribution: string
+    interest: string
+    bridge: string
+    collateral: string
+    penalty: string
+  }
+  blocksLoanEligibility: boolean
+  createdAt: string
+  settledAt: string | null
+}
+
+export async function getMyDebts(): Promise<Debt[]> {
+  const res = await authRequest<{ success: boolean; data: Debt[] }>('/api/debts/mine', { method: 'GET' })
+  return res.data
+}
+
+export async function repayDebt(debtId: string, amountKobo?: number): Promise<Debt> {
+  const res = await authRequest<{ success: boolean; message: string; data: Debt }>(
+    `/api/debts/${debtId}/repay`,
+    { method: 'POST', body: JSON.stringify(amountKobo !== undefined ? { amountKobo } : {}) },
+  )
+  return res.data
+}
+
 // GET /api/admin/rosca/my-circles — view admin's own circles
 export function listAllRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest('/api/admin/rosca/my-circles', { method: 'GET' })
@@ -429,13 +456,32 @@ export interface CreateRoscaPayload {
   durationCycles: number
   maxSlots: number
   payoutLogic: string
-  autoStartOnFull: boolean
   visibility: string
 }
 
 export function createRoscaCircle(payload: CreateRoscaPayload): Promise<RoscaCircle> {
   return authRequest('/api/admin/rosca', {
     method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+// PATCH /api/admin/rosca/{circleId} — update a DRAFT circle's configuration.
+// payoutLogic is deliberately NOT here — use updatePayoutConfig instead, the
+// dedicated endpoint (backend rejects payoutLogic on this DTO entirely).
+export interface UpdateRoscaPayload {
+  name?: string
+  description?: string
+  contributionAmount?: string
+  maxSlots?: number
+  frequency?: 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY'
+  visibility?: string
+  initialContributionDeadline?: string
+}
+
+export function updateRoscaCircle(circleId: string, payload: UpdateRoscaPayload): Promise<RoscaCircle> {
+  return authRequest(`/api/admin/rosca/${circleId}`, {
+    method: 'PATCH',
     body: JSON.stringify(payload),
   })
 }
@@ -834,8 +880,8 @@ export async function getBanks(): Promise<BankOption[]> {
   return res.data ?? []
 }
 
-export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ account_number: string; account_name: string }> {
-  const res = await authRequest<{ data: { account_number: string; account_name: string } }>(
+export async function resolveAccount(accountNumber: string, bankCode: string): Promise<{ accountNumber: string; accountName: string }> {
+  const res = await authRequest<{ data: { accountNumber: string; accountName: string } }>(
     '/api/wallet/withdrawal/resolve-account',
     { method: 'POST', body: JSON.stringify({ accountNumber, bankCode }) },
   )
@@ -918,9 +964,13 @@ export async function getTrustScore(): Promise<TrustScore> {
 export interface LoanEligibility {
   eligible: boolean
   reason?: string
-  maxLoanAmount?: number
-  expectedPayout?: number
-  feeRate?: number
+  ineligibilityReason?: string
+  finalCreditScore?: number
+  allowedPercent?: number
+  expectedPayoutAmount?: string
+  grossLoanAmount?: string
+  companyFee?: string
+  maxLoanAmount?: string
   [key: string]: unknown
 }
 
@@ -936,13 +986,13 @@ export interface Loan {
   id: string
   circleId: string
   circleName?: string
-  amount: number | string
-  feeAmount?: number | string
-  disbursedAmount?: number | string
+  payoutAmount: number | string
+  loanAmount: number | string
+  companyFee: number | string
+  finalPayout: number | string
   status: string
   createdAt: string
-  dueDate?: string
-  disbursedAt?: string
+  repaidAt?: string | null
   [key: string]: unknown
 }
 
@@ -1049,6 +1099,38 @@ export async function getCircleInvites(circleId: string): Promise<CircleInvite[]
     { method: 'GET' },
   )
   return Array.isArray(res) ? res : (res as { data?: CircleInvite[] }).data ?? []
+}
+
+export interface PeerReview {
+  id: string
+  reviewerId: string
+  reviewerName: string
+  revieweeId: string
+  revieweeName: string
+  rating: number
+  comment?: string | null
+  createdAt: string
+}
+
+// GET /api/rosca/:circleId/reviews — CIRCLE_ADMIN (own circle) or STAFF only
+export async function getCircleReviews(circleId: string): Promise<PeerReview[]> {
+  const res = await authRequest<{ data?: PeerReview[] } | PeerReview[]>(
+    `/api/rosca/${circleId}/reviews`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: PeerReview[] }).data ?? []
+}
+
+// POST /api/rosca/:circleId/reviews — circle must be COMPLETED, one review per reviewer/reviewee/circle
+export async function submitPeerReview(
+  circleId: string,
+  payload: { revieweeId: string; rating: number; comment?: string },
+): Promise<PeerReview> {
+  const res = await authRequest<{ data?: PeerReview } | PeerReview>(
+    `/api/rosca/${circleId}/reviews`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+  return ('data' in res && res.data ? res.data : res) as PeerReview
 }
 
 export function revokeCircleInvite(circleId: string, inviteId: string): Promise<{ message: string }> {
@@ -1158,11 +1240,11 @@ export interface ChatCircle {
 }
 
 export function getChatBaseUrl(): string {
-  return BASE_URL
+  return client.getBaseUrl()
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem('admin_access_token')
+  return client.getAccessToken()
 }
 
 export async function getChatCircles(): Promise<ChatCircle[]> {

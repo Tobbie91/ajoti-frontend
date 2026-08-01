@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Progress, Alert, Loader, Badge } from '@mantine/core'
+import { Text, TextInput, Progress, Alert, Loader, Badge, Checkbox } from '@mantine/core'
 import {
   IconArrowLeft,
   IconCheck,
@@ -224,6 +224,24 @@ function UpgradeSection({
 }) {
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+
+  if (targetLevel === 3) {
+    return (
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <IconLock size={16} color="#9CA3AF" />
+          <Text fw={600} className="text-[14px] text-[#374151]">
+            Level 3 verification unavailable
+          </Text>
+        </div>
+        <Text fw={400} className="text-[13px] leading-[1.6] text-[#6B7280]">
+          Level 3 identity verification isn't available right now. Your Level 2 limits stay in
+          effect in the meantime.
+        </Text>
+      </div>
+    )
+  }
 
   const nextLimits = targetLevel === 2
     ? { single: '₦100,000', daily: '₦500,000' }
@@ -291,10 +309,23 @@ function UpgradeSection({
           The verification widget will open in a new tab. Return to this page after completing it —
           your status will update automatically.
         </Text>
+
+        <Checkbox
+          checked={confirmed}
+          onChange={(e) => setConfirmed(e.currentTarget.checked)}
+          label={
+            <Text fw={400} className="text-[12px] leading-normal text-[#374151]">
+              I'm ready to complete this now — I understand starting the check can't be
+              refunded if I don't finish it.
+            </Text>
+          }
+          styles={{ input: { borderColor: '#D1D5DB' } }}
+        />
+
         <button
           onClick={handleStart}
-          disabled={starting}
-          className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${!starting ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]' : 'cursor-not-allowed bg-[#9CA3AF]'}`}
+          disabled={starting || !confirmed}
+          className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${!starting && confirmed ? 'cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]' : 'cursor-not-allowed bg-[#9CA3AF]'}`}
         >
           {starting ? 'Opening verification...' : `Start Level ${targetLevel} Verification`}
         </button>
@@ -347,6 +378,7 @@ export function Kyc() {
   // Step 1 — NIN + BVN (Level 0 → 1 onboarding)
   const [nin, setNin] = useState('')
   const [bvn, setBvn] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
   const [initiating, setInitiating] = useState(false)
   const [initiateError, setInitiateError] = useState<string | null>(null)
 
@@ -652,7 +684,7 @@ export function Kyc() {
   }
 
   // ── Main flow: NIN + BVN (Level 0 → 1) ────────────────────────────────────
-  const canInitiate = nin.length === 11 && bvn.length === 11
+  const canInitiate = nin.length === 11 && bvn.length === 11 && confirmed
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -733,6 +765,18 @@ export function Kyc() {
               <strong>BVN:</strong> dial *565*0# or check your bank app
             </Text>
           </div>
+
+          <Checkbox
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.currentTarget.checked)}
+            label={
+              <Text fw={400} className="text-[12px] leading-normal text-[#374151]">
+                I'm ready to complete this now — I understand starting the check can't be
+                refunded if I don't finish it.
+              </Text>
+            }
+            styles={{ input: { borderColor: '#D1D5DB' } }}
+          />
 
           <button
             onClick={handleProveInitiate}

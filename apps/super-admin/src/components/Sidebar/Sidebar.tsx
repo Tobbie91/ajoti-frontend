@@ -17,6 +17,8 @@ import {
   IconHeadset,
   IconUsersGroup,
   IconBuildingBank,
+  IconCoin,
+  IconFileInvoice,
 } from '@tabler/icons-react'
 import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
@@ -29,6 +31,8 @@ const mainLinks: NavLink_[] = [
   { label: 'Manage ROSCA',  icon: IconTopologyRing,     path: '/manage-rosca', permission: 'MANAGE_CIRCLES' },
   { label: 'Wallets',       icon: IconWallet,            path: '/wallets',      permission: 'VIEW_LEDGER' },
   { label: 'Platform Accounts', icon: IconBuildingBank,  path: '/system-accounts', permission: 'VIEW_SYSTEM_ACCOUNTS' },
+  { label: 'Loans',         icon: IconCoin,              path: '/loans',        permission: 'VIEW_SYSTEM_ACCOUNTS' },
+  { label: 'Debts',         icon: IconFileInvoice,       path: '/debts',        permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Trust Scores',  icon: IconAward,             path: '/trust-scores', permission: null },
   { label: 'Simulations',   icon: IconTestPipe,          path: '/simulations',  permission: 'MANAGE_CIRCLES' },
   { label: 'Support',       icon: IconHeadset,           path: '/support',      permission: 'MANAGE_TICKETS' },
@@ -42,6 +46,9 @@ const savingsChildren = [
 const bottomLinks: NavLink_[] = [
   { label: 'Transactions',    icon: IconReceipt,     path: '/transactions',  permission: 'VIEW_LEDGER' },
   { label: 'Staff Management',icon: IconUsersGroup,  path: '/staff',         permission: 'MANAGE_ADMIN_ACCOUNTS' },
+  { label: 'Payout Fee Settings', icon: IconSettings, path: '/settings/payout-fee',  permission: 'SYSTEM_CONFIG' },
+  { label: 'Loan Settings',       icon: IconSettings, path: '/settings/loan',        permission: 'SYSTEM_CONFIG' },
+  { label: 'Circle Rules',        icon: IconSettings, path: '/settings/circle-rules', permission: 'SYSTEM_CONFIG' },
   { label: 'Settings & Logs', icon: IconSettings,    path: '/settings-logs', permission: 'VIEW_AUDIT_LOGS' },
 ]
 

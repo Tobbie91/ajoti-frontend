@@ -11,14 +11,12 @@ import {
   Alert,
 } from '@mantine/core'
 import { DateInput } from '@mantine/dates'
-import { IconUsers, IconUserCircle, IconAlertCircle } from '@tabler/icons-react'
+import { IconUsers, IconAlertCircle } from '@tabler/icons-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '@/utils/auth'
 import { register } from '@/utils/api'
 import { PhoneInputField } from '@/components'
-
-const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL ?? 'https://admin.ajoti.com'
 
 export function Signup() {
   const { login } = useAuth()
@@ -114,7 +112,7 @@ export function Signup() {
                   Everything in one place
                 </Text>
                 <Text size="xs" className="mt-1 text-white/80">
-                  Savings, ROSCA, investments, insurance, and remittances.
+                  Savings, ajo, investments, insurance, and remittances.
                 </Text>
               </div>
             </div>
@@ -216,34 +214,16 @@ export function Signup() {
                 />
               </Group>
 
-              {/* Account type — member only; admins use the separate admin app */}
-              <div>
-                <Text fw={500} size="sm" className="mb-2 text-[#0F172A]">
-                  I want to
+              {/* Every signup is a member account. Managing an ajo circle is a role
+                  upgrade requested later from Profile, not a separate account type —
+                  a direct link to a separate admin signup here previously encouraged
+                  people to create a second account instead of upgrading this one. */}
+              <div className="flex items-start gap-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+                <IconUsers size={20} color="#6B7280" className="mt-0.5 shrink-0" />
+                <Text fw={400} className="text-[12px] leading-[1.6] text-[#6B7280]">
+                  Already run a savings group? Sign up here first, then request Admin Access
+                  from your profile to manage it.
                 </Text>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex cursor-default flex-col items-center gap-2 rounded-xl border-2 border-[#02A36E] bg-[#F0FDF4] px-4 py-4">
-                    <IconUserCircle size={28} color="#02A36E" />
-                    <Text fw={600} className="text-[13px] text-[#02A36E]">
-                      Join Groups
-                    </Text>
-                    <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
-                      Save with others in ROSCA groups
-                    </Text>
-                  </div>
-                  <a
-                    href={`${ADMIN_APP_URL}/signup`}
-                    className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-[#E5E7EB] bg-white px-4 py-4 no-underline transition-colors hover:border-[#BFEBD1]"
-                  >
-                    <IconUsers size={28} color="#9CA3AF" />
-                    <Text fw={600} className="text-[13px] text-[#374151]">
-                      Manage a Group
-                    </Text>
-                    <Text fw={400} className="text-center text-[11px] text-[#6B7280]">
-                      I already run a savings group
-                    </Text>
-                  </a>
-                </div>
               </div>
 
               <PasswordInput
