@@ -101,7 +101,7 @@ export function Login() {
             <div className="grid gap-3">
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
                 <Text fw={600} size="sm">
-                  Savings & ROSCA
+                  Savings & Ajo
                 </Text>
                 <Text size="xs" className="mt-1 text-white/80">
                   Fixed savings, target savings, and trusted group contributions.

@@ -1031,7 +1031,7 @@ export function Profile() {
           Create and manage your own savings group
         </Text>
 
-        {userRole === 'ADMIN' || userRole === 'SUPERADMIN' ? (
+        {userRole === 'CIRCLE_ADMIN' ? (
           <a
             href="https://admin.ajoti.com/login"
             target="_blank"

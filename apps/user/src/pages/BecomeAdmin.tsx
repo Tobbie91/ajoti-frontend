@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 const VERIFICATION_ITEMS = [
   'Verified Phone Number',
   'Valid ID',
-  'At least 1 successful ROSCA membership',
+  'At least 1 successful ajo membership',
   'No flagged activity on account',
 ]
 
@@ -27,7 +27,7 @@ export function BecomeAdmin() {
             <IconArrowLeft size={18} color="#374151" />
           </button>
           <Text fw={700} className="text-[22px] text-[#0F172A]">
-            Apply to Become a ROSCA Admin
+            Apply to Become an Ajo Admin
           </Text>
         </div>
 
@@ -39,10 +39,10 @@ export function BecomeAdmin() {
 
           <div className="mt-5">
             <Text fw={600} className="mb-2 text-[13px] text-[#374151]">
-              Why do you want to be a ROSCA Admin?
+              Why do you want to be an Ajo Admin?
             </Text>
             <Textarea
-              placeholder="Tell us why you'd like to manage a ROSCA group..."
+              placeholder="Tell us why you'd like to manage an ajo group..."
               value={reason}
               onChange={(e) => setReason(e.currentTarget.value)}
               minRows={5}
@@ -61,7 +61,7 @@ export function BecomeAdmin() {
           </div>
 
           <Checkbox
-            label="I agree to comply with ROSCA group policies."
+            label="I agree to comply with ajo group policies."
             checked={agreed}
             onChange={(e) => setAgreed(e.currentTarget.checked)}
             className="mt-5"

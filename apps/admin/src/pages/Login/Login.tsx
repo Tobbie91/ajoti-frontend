@@ -121,7 +121,7 @@ export function Login() {
 
             <div className="space-y-4">
               <Text fw={700} size="xl">
-                Manage your ROSCA groups
+                Manage your ajo groups
               </Text>
               <Text size="sm" className="text-white/90">
                 Create, manage, and monitor your savings groups from one dashboard.
