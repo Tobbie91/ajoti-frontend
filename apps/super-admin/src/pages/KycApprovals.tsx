@@ -23,6 +23,7 @@ import {
   ScrollArea,
   Code,
   SegmentedControl,
+  Collapse,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
@@ -34,6 +35,8 @@ import {
   IconX,
   IconShieldCheck,
   IconRefresh,
+  IconChevronDown,
+  IconChevronUp,
 } from '@tabler/icons-react'
 import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, getMonoIdentity, type KycQueueRow } from '@/utils/api'
 
@@ -63,6 +66,31 @@ function fmt(iso: string | null) {
 
 // ── Mono Verification Card ────────────────────────────────────────────────────
 
+function RawDataToggle({ data }: { data: Record<string, unknown> }) {
+  const [opened, { toggle }] = useDisclosure(false)
+  return (
+    <Stack gap={4}>
+      <Button
+        variant="subtle"
+        color="gray"
+        size="compact-xs"
+        onClick={toggle}
+        rightSection={opened ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
+        style={{ alignSelf: 'flex-start' }}
+      >
+        {opened ? 'Hide raw data' : 'View raw data'}
+      </Button>
+      <Collapse in={opened}>
+        <ScrollArea h={220} type="auto">
+          <Code block fz="xs" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {JSON.stringify(data, null, 2)}
+          </Code>
+        </ScrollArea>
+      </Collapse>
+    </Stack>
+  )
+}
+
 function MonoVerificationCard({ data }: { data: Record<string, unknown> }) {
   const inner = (data?.data ?? data) as Record<string, unknown>
   const customer = inner?.customer as Record<string, string> | undefined
@@ -73,6 +101,7 @@ function MonoVerificationCard({ data }: { data: Record<string, unknown> }) {
   const createdAt = inner?.created_at as string | undefined
   const liveMode = inner?.live_mode as boolean | undefined
 
+  // Unrecognised shape — nothing sensible to summarise, so raw data is the primary view.
   if (!status && !kycLevel && !customer) {
     return (
       <ScrollArea h={220} type="auto">
@@ -111,6 +140,7 @@ function MonoVerificationCard({ data }: { data: Record<string, unknown> }) {
         {reference && <InfoRow label="Reference" value={reference} />}
         {createdAt && <InfoRow label="Verified At" value={fmt(createdAt)} />}
       </SimpleGrid>
+      <RawDataToggle data={data} />
     </Stack>
   )
 }
