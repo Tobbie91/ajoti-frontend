@@ -17,6 +17,8 @@ import {
 import { IconAlertCircle, IconAlertTriangle } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import { getLoanDetail, getLoans, type LoanDetail, type LoanRow, type LoanStatus, type PaginatedResponse } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 function formatNaira(kobo: string) {
   const n = parseFloat(kobo)
@@ -169,6 +171,19 @@ export function LoansList() {
   const rows = loans?.data ?? []
   const totalPages = loans?.meta.totalPages ?? 1
 
+  type LoanSortKey = 'borrower' | 'circle' | 'advance' | 'fee' | 'gross' | 'status' | 'applied' | 'repaid'
+  const { sort, toggleSort } = useSortState<LoanSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    borrower: (l) => `${l.user.firstName} ${l.user.lastName}`,
+    circle: (l) => l.circle.name,
+    advance: (l) => Number(l.loanAmount),
+    fee: (l) => Number(l.companyFee),
+    gross: (l) => Number(l.grossAmount),
+    status: (l) => l.status,
+    applied: (l) => new Date(l.createdAt).getTime(),
+    repaid: (l) => (l.repaidAt ? new Date(l.repaidAt).getTime() : null),
+  })
+
   return (
     <Stack gap="lg" p="xl">
       <div>
@@ -219,38 +234,42 @@ export function LoansList() {
           <Table highlightOnHover layout="fixed">
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white" w={180}>Borrower</Table.Th>
-                <Table.Th c="white" w={160}>Circle</Table.Th>
-                <Table.Th c="white" w={130}>Advance</Table.Th>
-                <Table.Th c="white" w={110}>Fee</Table.Th>
-                <Table.Th c="white" w={130}>Gross</Table.Th>
-                <Table.Th c="white" w={110}>Status</Table.Th>
-                <Table.Th c="white" w={140}>Applied</Table.Th>
-                <Table.Th c="white" w={140}>Repaid</Table.Th>
+                <Table.Th c="white" w={40}>#</Table.Th>
+                <SortableTh label="Borrower" sortKey="borrower" sort={sort} onSort={toggleSort} width={180} />
+                <SortableTh label="Circle" sortKey="circle" sort={sort} onSort={toggleSort} width={160} />
+                <SortableTh label="Advance" sortKey="advance" sort={sort} onSort={toggleSort} width={130} />
+                <SortableTh label="Fee" sortKey="fee" sort={sort} onSort={toggleSort} width={110} />
+                <SortableTh label="Gross" sortKey="gross" sort={sort} onSort={toggleSort} width={130} />
+                <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={110} />
+                <SortableTh label="Applied" sortKey="applied" sort={sort} onSort={toggleSort} width={140} />
+                <SortableTh label="Repaid" sortKey="repaid" sort={sort} onSort={toggleSort} width={140} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {loading ? (
                 [...Array(10)].map((_, i) => (
                   <Table.Tr key={i}>
-                    {[...Array(8)].map((__, j) => (
+                    {[...Array(9)].map((__, j) => (
                       <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                     ))}
                   </Table.Tr>
                 ))
               ) : rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={8}>
+                  <Table.Td colSpan={9}>
                     <Text ta="center" py="xl" c="dimmed">No loans found</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                rows.map((loan) => (
+                sortedRows.map((loan, i) => (
                   <Table.Tr
                     key={loan.id}
                     onClick={() => setSelectedLoanId(loan.id)}
                     style={{ cursor: 'pointer' }}
                   >
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">{rowNumber(page, LIMIT, i)}</Text>
+                    </Table.Td>
                     <Table.Td>
                       <Text size="sm" fw={500}>{loan.user.firstName} {loan.user.lastName}</Text>
                       <Text size="xs" c="dimmed">{loan.user.email}</Text>

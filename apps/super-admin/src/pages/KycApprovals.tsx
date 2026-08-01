@@ -39,6 +39,8 @@ import {
   IconChevronUp,
 } from '@tabler/icons-react'
 import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, getProviderIdentity, type KycQueueRow } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -467,6 +469,16 @@ export function KycApprovals() {
   const [selected, setSelected] = useState<KycQueueRow | null>(null)
   const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false)
 
+  type KycSortKey = 'name' | 'email' | 'submittedAt' | 'kycLevel' | 'status'
+  const { sort, toggleSort } = useSortState<KycSortKey>()
+  const sortedRecords = sortRows(records, sort, {
+    name: (r) => `${r.user.firstName} ${r.user.lastName}`,
+    email: (r) => r.user.email,
+    submittedAt: (r) => (r.submittedAt ? new Date(r.submittedAt).getTime() : null),
+    kycLevel: (r) => r.kycLevel,
+    status: (r) => r.status,
+  })
+
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => setDebouncedSearch(search), 400)
@@ -560,13 +572,14 @@ export function KycApprovals() {
         <Table verticalSpacing="sm" horizontalSpacing="md" layout="fixed">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
-              <Table.Th style={{ color: 'white' }} w={180}>Name</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={230}>Email</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={44}>#</Table.Th>
+              <SortableTh label="Name" sortKey="name" sort={sort} onSort={toggleSort} width={180} />
+              <SortableTh label="Email" sortKey="email" sort={sort} onSort={toggleSort} width={230} />
               <Table.Th style={{ color: 'white' }} w={140}>Phone</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={140}>Submitted</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={110}>Level</Table.Th>
+              <SortableTh label="Submitted" sortKey="submittedAt" sort={sort} onSort={toggleSort} width={140} />
+              <SortableTh label="Level" sortKey="kycLevel" sort={sort} onSort={toggleSort} width={110} />
               <Table.Th style={{ color: 'white' }} w={150}>Step</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={140}>Status</Table.Th>
+              <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={140} />
               <Table.Th style={{ color: 'white' }} w={60} />
             </Table.Tr>
           </Table.Thead>
@@ -574,22 +587,25 @@ export function KycApprovals() {
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <Table.Tr key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
+                  {Array.from({ length: 9 }).map((__, j) => (
                     <Table.Td key={j}><Skeleton h={20} radius="sm" /></Table.Td>
                   ))}
                 </Table.Tr>
               ))
             ) : records.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={8}>
+                <Table.Td colSpan={9}>
                   <Text ta="center" py="xl" c="dimmed">
                     {search ? 'No records match your search' : `No ${activeTab.toLowerCase()} KYC submissions`}
                   </Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              records.map((r) => (
+              sortedRecords.map((r, i) => (
                 <Table.Tr key={r.id}>
+                  <Table.Td>
+                    <Text fz="sm" c="dimmed">{rowNumber(page, PAGE_SIZE, i)}</Text>
+                  </Table.Td>
                   <Table.Td>
                     <Text fz="sm" fw={500}>{r.user.firstName} {r.user.lastName}</Text>
                   </Table.Td>

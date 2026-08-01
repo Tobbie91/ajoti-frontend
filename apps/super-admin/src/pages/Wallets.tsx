@@ -21,6 +21,10 @@ import {
 import { IconSearch, IconX, IconWallet, IconAlertCircle } from '@tabler/icons-react'
 import { useState, useEffect, useCallback } from 'react'
 import { listWallets, getLedger, type WalletRow, type LedgerRow } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
+
+const PAGE_SIZE = 20
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'green',
@@ -113,6 +117,16 @@ export function Wallets() {
 
   const hasFilters = !!search || !!statusFilter
 
+  type WalletSortKey = 'user' | 'balance' | 'status' | 'lastActivity' | 'created'
+  const { sort, toggleSort } = useSortState<WalletSortKey>()
+  const sortedWallets = sortRows(wallets, sort, {
+    user: (w) => `${w.user.firstName} ${w.user.lastName}`,
+    balance: (w) => Number(w.balanceKobo),
+    status: (w) => w.status,
+    lastActivity: (w) => (w.lastActivityAt ? new Date(w.lastActivityAt).getTime() : null),
+    created: (w) => new Date(w.createdAt).getTime(),
+  })
+
   return (
     <Stack mt="xl" gap="lg">
       {loadError && (
@@ -171,36 +185,40 @@ export function Wallets() {
           <Table striped highlightOnHover layout="fixed" styles={{ th: { padding: '14px 18px' }, td: { padding: '14px 18px' } }}>
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white" w={200}>User</Table.Th>
+                <Table.Th c="white" w={40}>#</Table.Th>
+                <SortableTh label="User" sortKey="user" sort={sort} onSort={toggleSort} width={200} />
                 <Table.Th c="white" w={140}>Wallet ID</Table.Th>
-                <Table.Th c="white" w={150}>Balance</Table.Th>
-                <Table.Th c="white" w={120}>Status</Table.Th>
-                <Table.Th c="white" w={170}>Last Activity</Table.Th>
-                <Table.Th c="white" w={170}>Created</Table.Th>
+                <SortableTh label="Balance" sortKey="balance" sort={sort} onSort={toggleSort} width={150} />
+                <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={120} />
+                <SortableTh label="Last Activity" sortKey="lastActivity" sort={sort} onSort={toggleSort} width={170} />
+                <SortableTh label="Created" sortKey="created" sort={sort} onSort={toggleSort} width={170} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <Table.Tr key={i}>
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <Table.Td key={j}><Skeleton h={16} radius="sm" /></Table.Td>
                     ))}
                   </Table.Tr>
                 ))
               ) : wallets.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text ta="center" py="xl" c="dimmed">No wallets found</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                wallets.map((row) => (
+                sortedWallets.map((row, i) => (
                   <Table.Tr
                     key={row.walletId}
                     style={{ cursor: 'pointer' }}
                     onClick={() => openDrawer(row)}
                   >
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">{rowNumber(page, PAGE_SIZE, i)}</Text>
+                    </Table.Td>
                     <Table.Td>
                       <Text fw={500}>{row.user.firstName} {row.user.lastName}</Text>
                       <Text size="xs" c="dimmed">{row.user.email}</Text>
@@ -234,7 +252,7 @@ export function Wallets() {
         {total > 0 && (
           <Group justify="space-between" p="md">
             <Text size="sm" c="dimmed">
-              Showing {Math.min((page - 1) * 20 + 1, total)}–{Math.min(page * 20, total)} of {total}
+              Showing {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total}
             </Text>
             {totalPages > 1 && (
               <Pagination total={totalPages} value={page} onChange={setPage} color="#0B6B55" />

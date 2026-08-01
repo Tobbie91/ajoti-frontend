@@ -17,6 +17,8 @@ import {
 import { IconAlertCircle } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import { getDebtDetail, getDebts, type DebtDetail, type DebtRow, type DebtStatus, type PaginatedResponse } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 function formatNaira(kobo: string) {
   const n = parseFloat(kobo)
@@ -155,6 +157,18 @@ export function DebtsList() {
   const rows = debts?.data ?? []
   const totalPages = debts?.meta.totalPages ?? 1
 
+  type DebtSortKey = 'member' | 'circle' | 'category' | 'outstanding' | 'status' | 'created' | 'settled'
+  const { sort, toggleSort } = useSortState<DebtSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    member: (d) => `${d.user.firstName} ${d.user.lastName}`,
+    circle: (d) => d.circleName ?? d.circleId,
+    category: (d) => d.categoryLabel,
+    outstanding: (d) => Number(d.outstandingTotal),
+    status: (d) => d.status,
+    created: (d) => new Date(d.createdAt).getTime(),
+    settled: (d) => (d.settledAt ? new Date(d.settledAt).getTime() : null),
+  })
+
   return (
     <Stack gap="lg" p="xl">
       <div>
@@ -201,37 +215,41 @@ export function DebtsList() {
           <Table highlightOnHover layout="fixed">
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white" w={180}>Member</Table.Th>
-                <Table.Th c="white" w={160}>Circle</Table.Th>
-                <Table.Th c="white" w={170}>Category</Table.Th>
-                <Table.Th c="white" w={130}>Outstanding</Table.Th>
-                <Table.Th c="white" w={130}>Status</Table.Th>
-                <Table.Th c="white" w={140}>Created</Table.Th>
-                <Table.Th c="white" w={140}>Settled</Table.Th>
+                <Table.Th c="white" w={40}>#</Table.Th>
+                <SortableTh label="Member" sortKey="member" sort={sort} onSort={toggleSort} width={180} />
+                <SortableTh label="Circle" sortKey="circle" sort={sort} onSort={toggleSort} width={160} />
+                <SortableTh label="Category" sortKey="category" sort={sort} onSort={toggleSort} width={170} />
+                <SortableTh label="Outstanding" sortKey="outstanding" sort={sort} onSort={toggleSort} width={130} />
+                <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={130} />
+                <SortableTh label="Created" sortKey="created" sort={sort} onSort={toggleSort} width={140} />
+                <SortableTh label="Settled" sortKey="settled" sort={sort} onSort={toggleSort} width={140} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {loading ? (
                 [...Array(10)].map((_, i) => (
                   <Table.Tr key={i}>
-                    {[...Array(7)].map((__, j) => (
+                    {[...Array(8)].map((__, j) => (
                       <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                     ))}
                   </Table.Tr>
                 ))
               ) : rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={7}>
+                  <Table.Td colSpan={8}>
                     <Text ta="center" py="xl" c="dimmed">No debts found</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                rows.map((debt) => (
+                sortedRows.map((debt, i) => (
                   <Table.Tr
                     key={debt.id}
                     onClick={() => setSelectedDebtId(debt.id)}
                     style={{ cursor: 'pointer' }}
                   >
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">{rowNumber(page, LIMIT, i)}</Text>
+                    </Table.Td>
                     <Table.Td>
                       <Text size="sm" fw={500}>{debt.user.firstName} {debt.user.lastName}</Text>
                       <Text size="xs" c="dimmed">{debt.user.email}</Text>

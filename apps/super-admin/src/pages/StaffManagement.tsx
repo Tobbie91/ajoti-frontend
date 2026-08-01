@@ -36,6 +36,11 @@ import {
   type PaginatedResponse,
 } from '@/utils/api'
 import { getStaffRoleFromStorage } from '@/utils/permissions'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
+
+const STAFF_PAGE_SIZE = 20
+const AUDIT_PAGE_SIZE = 20
 
 const ROLE_LABELS: Record<StaffAdminRole, string> = {
   SUPPORT: 'Support',
@@ -480,6 +485,23 @@ export function StaffManagement() {
   const rows = data?.data ?? []
   const totalPages = data ? Math.ceil(data.meta.total / 20) : 1
 
+  type StaffSortKey = 'name' | 'role' | 'status' | 'since'
+  const { sort, toggleSort } = useSortState<StaffSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    name: (r) => `${r.firstName} ${r.lastName}`,
+    role: (r) => r.staffRole,
+    status: (r) => r.status,
+    since: (r) => new Date(r.createdAt).getTime(),
+  })
+
+  type AuditSortKey = 'action' | 'target' | 'time'
+  const { sort: auditSort, toggleSort: toggleAuditSort } = useSortState<AuditSortKey>()
+  const sortedAuditRows = sortRows(auditData?.data ?? [], auditSort, {
+    action: (r) => AUDIT_ACTION_LABELS[r.action] ?? r.action,
+    target: (r) => r.entityId,
+    time: (r) => new Date(r.createdAt).getTime(),
+  })
+
   return (
     <Stack>
       <Group justify="space-between" align="center">
@@ -542,10 +564,11 @@ export function StaffManagement() {
               <Table striped highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Name / Email</Table.Th>
-                    <Table.Th>Role</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Since</Table.Th>
+                    <Table.Th w={40}>#</Table.Th>
+                    <SortableTh label="Name / Email" sortKey="name" sort={sort} onSort={toggleSort} dark={false} />
+                    <SortableTh label="Role" sortKey="role" sort={sort} onSort={toggleSort} dark={false} />
+                    <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} dark={false} />
+                    <SortableTh label="Since" sortKey="since" sort={sort} onSort={toggleSort} dark={false} />
                     {isSuperadmin && <Table.Th w={50} />}
                   </Table.Tr>
                 </Table.Thead>
@@ -557,19 +580,23 @@ export function StaffManagement() {
                           <Table.Td><Skeleton h={16} /></Table.Td>
                           <Table.Td><Skeleton h={16} /></Table.Td>
                           <Table.Td><Skeleton h={16} /></Table.Td>
+                          <Table.Td><Skeleton h={16} /></Table.Td>
                           {isSuperadmin && <Table.Td />}
                         </Table.Tr>
                       ))
                     : rows.length === 0
                     ? (
                         <Table.Tr>
-                          <Table.Td colSpan={isSuperadmin ? 5 : 4}>
+                          <Table.Td colSpan={isSuperadmin ? 6 : 5}>
                             <Text ta="center" c="dimmed" py="xl">No staff accounts found.</Text>
                           </Table.Td>
                         </Table.Tr>
                       )
-                    : rows.map((row) => (
+                    : sortedRows.map((row, i) => (
                         <Table.Tr key={row.id}>
+                          <Table.Td>
+                            <Text size="sm" c="dimmed">{rowNumber(page, STAFF_PAGE_SIZE, i)}</Text>
+                          </Table.Td>
                           <Table.Td>
                             <Stack gap={2}>
                               <Text size="sm" fw={500}>
@@ -657,10 +684,11 @@ export function StaffManagement() {
               <Table striped>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Action</Table.Th>
-                    <Table.Th>Target</Table.Th>
+                    <Table.Th w={40}>#</Table.Th>
+                    <SortableTh label="Action" sortKey="action" sort={auditSort} onSort={toggleAuditSort} dark={false} />
+                    <SortableTh label="Target" sortKey="target" sort={auditSort} onSort={toggleAuditSort} dark={false} />
                     <Table.Th>Details</Table.Th>
-                    <Table.Th>Time</Table.Th>
+                    <SortableTh label="Time" sortKey="time" sort={auditSort} onSort={toggleAuditSort} dark={false} />
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -671,18 +699,22 @@ export function StaffManagement() {
                           <Table.Td><Skeleton h={16} /></Table.Td>
                           <Table.Td><Skeleton h={16} /></Table.Td>
                           <Table.Td><Skeleton h={16} /></Table.Td>
+                          <Table.Td><Skeleton h={16} /></Table.Td>
                         </Table.Tr>
                       ))
-                    : (auditData?.data ?? []).length === 0
+                    : sortedAuditRows.length === 0
                     ? (
                         <Table.Tr>
-                          <Table.Td colSpan={4}>
+                          <Table.Td colSpan={5}>
                             <Text ta="center" c="dimmed" py="xl">No audit log entries yet.</Text>
                           </Table.Td>
                         </Table.Tr>
                       )
-                    : (auditData?.data ?? []).map((log) => (
+                    : sortedAuditRows.map((log, i) => (
                         <Table.Tr key={log.id}>
+                          <Table.Td>
+                            <Text size="xs" c="dimmed">{rowNumber(auditPage, AUDIT_PAGE_SIZE, i)}</Text>
+                          </Table.Td>
                           <Table.Td>
                             <Badge variant="light" color="blue">
                               {AUDIT_ACTION_LABELS[log.action] ?? log.action}

@@ -33,6 +33,8 @@ import {
   type TrustStatsFull,
   type PaginatedResponse,
 } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -342,6 +344,15 @@ export function TrustScores() {
   const rows = data?.data ?? []
   const totalPages = data?.meta.totalPages ?? 1
 
+  type TrustSortKey = 'user' | 'score' | 'contributions' | 'peerRating'
+  const { sort, toggleSort } = useSortState<TrustSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    user: (r) => `${r.user?.firstName ?? ''} ${r.user?.lastName ?? ''}`,
+    score: (r) => r.displayScore,
+    contributions: (r) => r.totalExpectedPayments,
+    peerRating: (r) => (r.totalPeerRatings > 0 ? r.averagePeerRating : null),
+  })
+
   return (
     <Stack gap="lg" p="xl">
       <Group justify="space-between">
@@ -401,11 +412,12 @@ export function TrustScores() {
           <Table highlightOnHover layout="fixed">
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white" w={200}>User</Table.Th>
-                <Table.Th c="white" w={170}>ATI Score</Table.Th>
-                <Table.Th c="white" w={130}>Contributions</Table.Th>
+                <Table.Th c="white" w={40}>#</Table.Th>
+                <SortableTh label="User" sortKey="user" sort={sort} onSort={toggleSort} width={200} />
+                <SortableTh label="ATI Score" sortKey="score" sort={sort} onSort={toggleSort} width={170} />
+                <SortableTh label="Contributions" sortKey="contributions" sort={sort} onSort={toggleSort} width={130} />
                 <Table.Th c="white" w={220} style={{ whiteSpace: 'nowrap' }}>On Time / Late / Missed</Table.Th>
-                <Table.Th c="white" w={110}>Peer Rating</Table.Th>
+                <SortableTh label="Peer Rating" sortKey="peerRating" sort={sort} onSort={toggleSort} width={110} />
                 <Table.Th c="white" w={110}>Payout</Table.Th>
                 <Table.Th c="white" w={50}></Table.Th>
               </Table.Tr>
@@ -414,20 +426,23 @@ export function TrustScores() {
               {loading ? (
                 [...Array(10)].map((_, i) => (
                   <Table.Tr key={i}>
-                    {[...Array(7)].map((__, j) => (
+                    {[...Array(8)].map((__, j) => (
                       <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                     ))}
                   </Table.Tr>
                 ))
               ) : rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={7}>
+                  <Table.Td colSpan={8}>
                     <Text ta="center" py="xl" c="dimmed">No trust score records found</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                rows.map((row) => (
+                sortedRows.map((row, i) => (
                   <Table.Tr key={row.userId}>
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">{rowNumber(page, LIMIT, i)}</Text>
+                    </Table.Td>
                     <Table.Td>
                       <Text size="sm" fw={500}>{row.user?.firstName} {row.user?.lastName}</Text>
                       <Text size="xs" c="dimmed">{row.user?.email}</Text>
