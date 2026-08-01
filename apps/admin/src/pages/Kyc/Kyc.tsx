@@ -225,6 +225,23 @@ function UpgradeSection({
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  if (targetLevel === 3) {
+    return (
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <IconLock size={16} color="#9CA3AF" />
+          <Text fw={600} className="text-[14px] text-[#374151]">
+            Level 3 verification unavailable
+          </Text>
+        </div>
+        <Text fw={400} className="text-[13px] leading-[1.6] text-[#6B7280]">
+          Level 3 identity verification isn't available right now. Your Level 2 limits stay in
+          effect in the meantime.
+        </Text>
+      </div>
+    )
+  }
+
   const nextLimits = targetLevel === 2
     ? { single: '₦100,000', daily: '₦500,000' }
     : { single: '₦5,000,000', daily: '₦25,000,000' }
