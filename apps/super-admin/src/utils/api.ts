@@ -249,7 +249,7 @@ export interface KycQueueRow {
   lga: string | null
   country: string | null
   verificationData: Record<string, unknown> | null
-  monoProveStatus: string | null
+  providerStatus: string | null
   approvalSource: 'SYSTEM_AUTO' | 'SUPERADMIN' | 'LEGACY_MANUAL' | null
   user: {
     id: string
@@ -298,8 +298,8 @@ export function overrideKycLevel(userId: string, kycLevel: number): Promise<unkn
   })
 }
 
-export function getMonoIdentity(userId: string): Promise<Record<string, unknown>> {
-  return authRequest(`/api/superadmin/kyc/mono-identity/${userId}`, {})
+export function getProviderIdentity(userId: string): Promise<Record<string, unknown>> {
+  return authRequest(`/api/superadmin/kyc/identity/${userId}`, {})
 }
 
 // ── Ledger & Audit ────────────────────────────────────────────────────────────
