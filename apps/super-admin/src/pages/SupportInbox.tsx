@@ -22,6 +22,10 @@ import {
   type TicketCategory,
   type TicketStatus,
 } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
+
+const PAGE_SIZE = 20
 
 const STATUS_COLORS: Record<TicketStatus, string> = {
   OPEN: 'blue',
@@ -68,6 +72,18 @@ export function SupportInbox() {
   }
 
   const rows = data?.data ?? []
+
+  type TicketSortKey = 'user' | 'subject' | 'category' | 'status' | 'messages' | 'lastActivity' | 'assigned'
+  const { sort, toggleSort } = useSortState<TicketSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    user: (t) => `${t.user.firstName} ${t.user.lastName}`,
+    subject: (t) => t.subject,
+    category: (t) => t.category,
+    status: (t) => t.status,
+    messages: (t) => t._count.messages,
+    lastActivity: (t) => new Date(t.updatedAt).getTime(),
+    assigned: (t) => (t.assignedTo ? `${t.assignedTo.firstName} ${t.assignedTo.lastName}` : null),
+  })
 
   return (
     <Stack gap="md" p="md">
@@ -122,27 +138,28 @@ export function SupportInbox() {
         <Table highlightOnHover striped={false}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>User</Table.Th>
-              <Table.Th>Subject</Table.Th>
-              <Table.Th>Category</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Messages</Table.Th>
-              <Table.Th>Last Activity</Table.Th>
-              <Table.Th>Assigned</Table.Th>
+              <Table.Th w={40}>#</Table.Th>
+              <SortableTh label="User" sortKey="user" sort={sort} onSort={toggleSort} dark={false} />
+              <SortableTh label="Subject" sortKey="subject" sort={sort} onSort={toggleSort} dark={false} />
+              <SortableTh label="Category" sortKey="category" sort={sort} onSort={toggleSort} dark={false} />
+              <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} dark={false} />
+              <SortableTh label="Messages" sortKey="messages" sort={sort} onSort={toggleSort} dark={false} />
+              <SortableTh label="Last Activity" sortKey="lastActivity" sort={sort} onSort={toggleSort} dark={false} />
+              <SortableTh label="Assigned" sortKey="assigned" sort={sort} onSort={toggleSort} dark={false} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <Table.Tr key={i}>
-                  {Array.from({ length: 7 }).map((__, j) => (
+                  {Array.from({ length: 8 }).map((__, j) => (
                     <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                   ))}
                 </Table.Tr>
               ))
             ) : rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={7}>
+                <Table.Td colSpan={8}>
                   <Stack align="center" py="xl" gap="xs">
                     <IconMessageCircle size={32} color="#D1D5DB" />
                     <Text c="dimmed" size="sm">No tickets found</Text>
@@ -150,12 +167,15 @@ export function SupportInbox() {
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((ticket) => (
+              sortedRows.map((ticket, i) => (
                 <Table.Tr
                   key={ticket.id}
                   style={{ cursor: 'pointer' }}
                   onClick={() => navigate(`/support/${ticket.id}`)}
                 >
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">{rowNumber(page, PAGE_SIZE, i)}</Text>
+                  </Table.Td>
                   <Table.Td>
                     <Text size="sm" fw={500}>
                       {ticket.user.firstName} {ticket.user.lastName}

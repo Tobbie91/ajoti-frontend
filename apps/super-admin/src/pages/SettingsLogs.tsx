@@ -23,6 +23,8 @@ import {
 import { IconAlertCircle, IconRefresh, IconSearch } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { changePassword, getAuditLogs, type AuditLogRow, type PaginatedResponse } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 // ── Change Password card (real, self-contained) ─────────────────────────────
 
@@ -256,6 +258,15 @@ function AuditLogsTab() {
   const rows = data?.data ?? []
   const totalPages = data?.meta.totalPages ?? 1
 
+  type AuditSortKey = 'timestamp' | 'actor' | 'action' | 'entity'
+  const { sort, toggleSort } = useSortState<AuditSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    timestamp: (r) => new Date(r.createdAt).getTime(),
+    actor: (r) => r.actorLabel ?? r.actorType,
+    action: (r) => r.action,
+    entity: (r) => r.entityType,
+  })
+
   return (
     <Stack gap="md" pt="md">
       <Group gap="sm">
@@ -315,10 +326,11 @@ function AuditLogsTab() {
         <Table highlightOnHover layout="fixed">
           <Table.Thead>
             <Table.Tr bg="#0B6B55">
-              <Table.Th c="white" w={160}>Timestamp</Table.Th>
-              <Table.Th c="white" w={200}>Actor</Table.Th>
-              <Table.Th c="white" w={180}>Action</Table.Th>
-              <Table.Th c="white" w={180}>Entity</Table.Th>
+              <Table.Th c="white" w={40}>#</Table.Th>
+              <SortableTh label="Timestamp" sortKey="timestamp" sort={sort} onSort={toggleSort} width={160} />
+              <SortableTh label="Actor" sortKey="actor" sort={sort} onSort={toggleSort} width={200} />
+              <SortableTh label="Action" sortKey="action" sort={sort} onSort={toggleSort} width={180} />
+              <SortableTh label="Entity" sortKey="entity" sort={sort} onSort={toggleSort} width={180} />
               <Table.Th c="white" w={230}>Reason</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -326,20 +338,23 @@ function AuditLogsTab() {
             {loading ? (
               [...Array(10)].map((_, i) => (
                 <Table.Tr key={i}>
-                  {[...Array(5)].map((__, j) => (
+                  {[...Array(6)].map((__, j) => (
                     <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                   ))}
                 </Table.Tr>
               ))
             ) : rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={5}>
+                <Table.Td colSpan={6}>
                   <Text ta="center" py="xl" c="dimmed">No audit log entries found</Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => (
+              sortedRows.map((row, i) => (
                 <Table.Tr key={row.id}>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">{rowNumber(page, LIMIT, i)}</Text>
+                  </Table.Td>
                   <Table.Td>
                     <Text size="sm">{new Date(row.createdAt).toLocaleDateString('en-NG')}</Text>
                     <Text size="xs" c="dimmed">

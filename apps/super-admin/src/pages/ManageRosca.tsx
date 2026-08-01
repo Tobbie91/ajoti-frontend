@@ -44,6 +44,8 @@ import {
   type CircleRow,
   type PaginatedResponse,
 } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -462,6 +464,19 @@ function CirclesTab() {
 
   const rows = showAll ? (allCircles ?? []) : (data?.data ?? [])
   const totalPages = showAll ? 1 : (data?.meta.totalPages ?? 1)
+  const effectivePage = showAll ? 1 : page
+
+  type CircleSortKey = 'name' | 'admin' | 'contribution' | 'frequency' | 'cycle' | 'members' | 'status'
+  const { sort, toggleSort } = useSortState<CircleSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    name: (c) => c.name,
+    admin: (c) => (c.admin ? `${c.admin.firstName} ${c.admin.lastName}` : null),
+    contribution: (c) => Number(c.contributionAmount),
+    frequency: (c) => c.frequency,
+    cycle: (c) => c.currentCycle,
+    members: (c) => c.memberCount,
+    status: (c) => c.status,
+  })
 
   return (
     <>
@@ -513,13 +528,14 @@ function CirclesTab() {
         <Table highlightOnHover layout="fixed">
           <Table.Thead>
             <Table.Tr bg="#0B6B55">
-              <Table.Th c="white" w={200}>Name</Table.Th>
-              <Table.Th c="white" w={200}>Admin</Table.Th>
-              <Table.Th c="white" w={140}>Contribution</Table.Th>
-              <Table.Th c="white" w={110}>Frequency</Table.Th>
-              <Table.Th c="white" w={90}>Cycle</Table.Th>
-              <Table.Th c="white" w={100}>Members</Table.Th>
-              <Table.Th c="white" w={130}>Status</Table.Th>
+              <Table.Th c="white" w={40}>#</Table.Th>
+              <SortableTh label="Name" sortKey="name" sort={sort} onSort={toggleSort} width={200} />
+              <SortableTh label="Admin" sortKey="admin" sort={sort} onSort={toggleSort} width={200} />
+              <SortableTh label="Contribution" sortKey="contribution" sort={sort} onSort={toggleSort} width={140} />
+              <SortableTh label="Frequency" sortKey="frequency" sort={sort} onSort={toggleSort} width={110} />
+              <SortableTh label="Cycle" sortKey="cycle" sort={sort} onSort={toggleSort} width={90} />
+              <SortableTh label="Members" sortKey="members" sort={sort} onSort={toggleSort} width={100} />
+              <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={130} />
               <Table.Th c="white" w={50} />
             </Table.Tr>
           </Table.Thead>
@@ -527,20 +543,21 @@ function CirclesTab() {
             {loading ? (
               [...Array(8)].map((_, i) => (
                 <Table.Tr key={i}>
-                  {[...Array(8)].map((__, j) => (
+                  {[...Array(9)].map((__, j) => (
                     <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                   ))}
                 </Table.Tr>
               ))
             ) : rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={8}>
+                <Table.Td colSpan={9}>
                   <Text ta="center" py="xl" c="dimmed">No circles found</Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((c) => (
+              sortedRows.map((c, i) => (
                 <Table.Tr key={c.id}>
+                  <Table.Td c="dimmed">{rowNumber(effectivePage, LIMIT, i)}</Table.Td>
                   <Table.Td fw={500}>{c.name}</Table.Td>
                   <Table.Td>
                     {c.admin ? (
@@ -610,6 +627,21 @@ function DefaultersTab() {
   const rows = (data?.data ?? []) as Record<string, unknown>[]
   const totalPages = data?.meta.totalPages ?? 1
 
+  type DefaulterSortKey = 'user' | 'circle' | 'amount' | 'missedCycles'
+  const { sort, toggleSort } = useSortState<DefaulterSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    user: (d) => {
+      const user = d.user as Record<string, unknown> | undefined
+      return user ? `${user.firstName} ${user.lastName}` : String(d.userId ?? '')
+    },
+    circle: (d) => {
+      const circle = d.circle as Record<string, unknown> | undefined
+      return String(circle?.name ?? d.circleId ?? '')
+    },
+    amount: (d) => Number(d.amountOwedKobo ?? d.amount ?? 0),
+    missedCycles: (d) => Number(d.missedCycles ?? d.missedPayments ?? 0),
+  })
+
   return (
     <>
       {error && (
@@ -623,11 +655,12 @@ function DefaultersTab() {
         <Table highlightOnHover layout="fixed">
           <Table.Thead>
             <Table.Tr bg="#0B6B55">
-              <Table.Th c="white" w={180}>User</Table.Th>
+              <Table.Th c="white" w={40}>#</Table.Th>
+              <SortableTh label="User" sortKey="user" sort={sort} onSort={toggleSort} width={180} />
               <Table.Th c="white" w={220}>Email</Table.Th>
-              <Table.Th c="white" w={160}>Circle</Table.Th>
-              <Table.Th c="white" w={140}>Amount Owed</Table.Th>
-              <Table.Th c="white" w={130}>Missed Cycles</Table.Th>
+              <SortableTh label="Circle" sortKey="circle" sort={sort} onSort={toggleSort} width={160} />
+              <SortableTh label="Amount Owed" sortKey="amount" sort={sort} onSort={toggleSort} width={140} />
+              <SortableTh label="Missed Cycles" sortKey="missedCycles" sort={sort} onSort={toggleSort} width={130} />
               <Table.Th c="white" w={100}>Status</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -635,23 +668,24 @@ function DefaultersTab() {
             {loading ? (
               [...Array(8)].map((_, i) => (
                 <Table.Tr key={i}>
-                  {[...Array(6)].map((__, j) => (
+                  {[...Array(7)].map((__, j) => (
                     <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                   ))}
                 </Table.Tr>
               ))
             ) : rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={6}>
+                <Table.Td colSpan={7}>
                   <Text ta="center" py="xl" c="dimmed">No defaulters found</Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((d, i) => {
+              sortedRows.map((d, i) => {
                 const user = d.user as Record<string, unknown> | undefined
                 const circle = d.circle as Record<string, unknown> | undefined
                 return (
                   <Table.Tr key={i}>
+                    <Table.Td c="dimmed">{rowNumber(page, 20, i)}</Table.Td>
                     <Table.Td fw={500}>
                       {user ? `${user.firstName} ${user.lastName}` : String(d.userId ?? '—')}
                     </Table.Td>

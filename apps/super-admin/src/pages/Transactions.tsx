@@ -40,6 +40,8 @@ import {
   type ReconcileResult,
   type TransactionAnalytics,
 } from '@/utils/api'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -225,6 +227,17 @@ export function Transactions() {
   const rows = ledger?.data ?? []
   const totalPages = ledger?.meta.totalPages ?? 1
 
+  type LedgerSortKey = 'date' | 'type' | 'amount' | 'balanceAfter' | 'reference' | 'user'
+  const { sort, toggleSort } = useSortState<LedgerSortKey>()
+  const sortedRows = sortRows(rows, sort, {
+    date: (r) => new Date(r.createdAt).getTime(),
+    type: (r) => r.movementType ?? r.entryType,
+    amount: (r) => Number(r.amount),
+    balanceAfter: (r) => Number(r.balanceAfter),
+    reference: (r) => r.reference,
+    user: (r) => (r.wallet?.user ? `${r.wallet.user.firstName} ${r.wallet.user.lastName}` : null),
+  })
+
   return (
     <Stack gap="lg" p="xl">
       {/* Header */}
@@ -330,36 +343,40 @@ export function Transactions() {
           <Table highlightOnHover layout="fixed">
             <Table.Thead>
               <Table.Tr bg="#0B6B55">
-                <Table.Th c="white" w={140}>Date</Table.Th>
-                <Table.Th c="white" w={130}>Type</Table.Th>
-                <Table.Th c="white" w={140}>Amount</Table.Th>
-                <Table.Th c="white" w={150}>Balance After</Table.Th>
-                <Table.Th c="white" w={190}>Reference</Table.Th>
-                <Table.Th c="white" w={200}>User</Table.Th>
+                <Table.Th c="white" w={40}>#</Table.Th>
+                <SortableTh label="Date" sortKey="date" sort={sort} onSort={toggleSort} width={140} />
+                <SortableTh label="Type" sortKey="type" sort={sort} onSort={toggleSort} width={130} />
+                <SortableTh label="Amount" sortKey="amount" sort={sort} onSort={toggleSort} width={140} />
+                <SortableTh label="Balance After" sortKey="balanceAfter" sort={sort} onSort={toggleSort} width={150} />
+                <SortableTh label="Reference" sortKey="reference" sort={sort} onSort={toggleSort} width={190} />
+                <SortableTh label="User" sortKey="user" sort={sort} onSort={toggleSort} width={200} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {ledgerLoading ? (
                 [...Array(10)].map((_, i) => (
                   <Table.Tr key={i}>
-                    {[...Array(6)].map((__, j) => (
+                    {[...Array(7)].map((__, j) => (
                       <Table.Td key={j}><Skeleton height={16} radius="sm" /></Table.Td>
                     ))}
                   </Table.Tr>
                 ))
               ) : rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text ta="center" py="xl" c="dimmed">No ledger entries found</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                rows.map((row) => {
+                sortedRows.map((row, i) => {
                   const user = row.wallet?.user
                   const amtKobo = parseFloat(String(row.amount))
                   const balKobo = parseFloat(String(row.balanceAfter))
                   return (
                     <Table.Tr key={row.id}>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">{rowNumber(page, LIMIT, i)}</Text>
+                      </Table.Td>
                       <Table.Td>
                         <Text size="sm">{new Date(row.createdAt).toLocaleDateString('en-NG')}</Text>
                         <Text size="xs" c="dimmed">{new Date(row.createdAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</Text>

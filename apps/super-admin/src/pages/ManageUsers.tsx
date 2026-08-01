@@ -42,6 +42,8 @@ import {
   type SuperadminUserDetail,
 } from '@/utils/api'
 import { getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
+import { SortableTh } from '@/components/SortableTh'
+import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -551,6 +553,18 @@ export function ManageUsers() {
 
   const hasFilters = !!(search || roleFilter || statusFilter || kycFilter || pendingAdminFilter)
 
+  type UserSortKey = 'name' | 'email' | 'phone' | 'role' | 'kyc' | 'rosca' | 'status'
+  const { sort, toggleSort } = useSortState<UserSortKey>()
+  const sortedUsers = sortRows(users, sort, {
+    name: (u) => `${u.firstName} ${u.lastName}`,
+    email: (u) => u.email,
+    phone: (u) => u.phone,
+    role: (u) => u.role,
+    kyc: (u) => u.kyc?.status ?? 'NOT_SUBMITTED',
+    rosca: (u) => u._count.roscaMemberships,
+    status: (u) => u.status,
+  })
+
   return (
     <Stack gap="md">
       <Group justify="space-between" align="center">
@@ -621,13 +635,14 @@ export function ManageUsers() {
         <Table verticalSpacing="sm" horizontalSpacing="md" layout="fixed">
           <Table.Thead>
             <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
-              <Table.Th style={{ color: 'white' }} w={200}>Name</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={240}>Email</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={150}>Phone</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={130}>Role</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={150}>KYC</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={90}>ROSCA</Table.Th>
-              <Table.Th style={{ color: 'white' }} w={130}>Status</Table.Th>
+              <Table.Th style={{ color: 'white' }} w={44}>#</Table.Th>
+              <SortableTh label="Name" sortKey="name" sort={sort} onSort={toggleSort} width={200} />
+              <SortableTh label="Email" sortKey="email" sort={sort} onSort={toggleSort} width={240} />
+              <SortableTh label="Phone" sortKey="phone" sort={sort} onSort={toggleSort} width={150} />
+              <SortableTh label="Role" sortKey="role" sort={sort} onSort={toggleSort} width={130} />
+              <SortableTh label="KYC" sortKey="kyc" sort={sort} onSort={toggleSort} width={150} />
+              <SortableTh label="ROSCA" sortKey="rosca" sort={sort} onSort={toggleSort} width={90} />
+              <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={130} />
               <Table.Th style={{ color: 'white' }} w={50} />
             </Table.Tr>
           </Table.Thead>
@@ -635,22 +650,25 @@ export function ManageUsers() {
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <Table.Tr key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
+                  {Array.from({ length: 9 }).map((__, j) => (
                     <Table.Td key={j}><Skeleton h={20} radius="sm" /></Table.Td>
                   ))}
                 </Table.Tr>
               ))
             ) : users.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={8}>
+                <Table.Td colSpan={9}>
                   <Text ta="center" py="xl" c="dimmed">
                     {hasFilters ? 'No users match your filters' : 'No users yet'}
                   </Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              users.map((user) => (
+              sortedUsers.map((user, i) => (
                 <Table.Tr key={user.id}>
+                  <Table.Td>
+                    <Text fz="sm" c="dimmed">{rowNumber(page, PAGE_SIZE, i)}</Text>
+                  </Table.Td>
                   <Table.Td>
                     <Group gap="xs" wrap="nowrap">
                       <Text fz="sm" fw={500}>{user.firstName} {user.lastName}</Text>
