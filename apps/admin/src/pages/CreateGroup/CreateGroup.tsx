@@ -81,7 +81,7 @@ export function CreateGroup() {
           <IconArrowLeft size={20} stroke={1.5} />
         </ActionIcon>
         <Text fz={22} fw={700}>
-          Create New ROSCA Group
+          Create New ajo Group
         </Text>
       </Group>
 
@@ -479,7 +479,7 @@ export function CreateGroup() {
               Review Your Group Setup
             </Text>
             <Text fz="sm" c="dimmed">
-              Confirm the details below before creating your ROSCA group.
+              Confirm the details below before creating your ajo group.
             </Text>
           </Box>
 

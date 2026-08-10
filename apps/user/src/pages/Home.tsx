@@ -129,7 +129,7 @@ export function Home() {
                             <IconButton
                                 defaultIcon={joinRosca}
                                 pressedIcon={joinRoscaPressed}
-                                alt="Join ROSCA"
+                                alt="Join an ajo"
                                 onClick={() => navigate("/rosca")}
                                 width={107}
                                 height={118}
@@ -153,14 +153,14 @@ export function Home() {
 
                             <div className="grid grid-cols-2 gap-4 sm:gap-5">
                                 <QuickCard
-                                    title="ROSCA"
-                                    desc="Join ROSCA to save with your peers"
+                                    title="Ajo"
+                                    desc="Join an ajo to save with your peers"
                                     icon={<img src={Rosca} alt="" />}
                                     onClick={() => navigate("/rosca")}
                                 />
                                 <QuickCard
                                     title="Loans"
-                                    desc="Get your ROSCA payout early"
+                                    desc="Get your ajo payout early"
                                     icon={
                                         <div style={{ width: 51, height: 51, borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <IconCash size={26} color="white" />

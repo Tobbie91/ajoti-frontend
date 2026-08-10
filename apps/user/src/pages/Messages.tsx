@@ -203,7 +203,7 @@ export function Messages() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', gap: 10 }}>
           <IconMessages size={40} color="#D1D5DB" />
           <Text fw={600} fz={15} style={{ color: '#374151' }}>No circles yet</Text>
-          <Text fz={13} c="dimmed" style={{ textAlign: 'center' }}>Join or create a ROSCA circle to start chatting.</Text>
+          <Text fz={13} c="dimmed" style={{ textAlign: 'center' }}>Join or create an ajo circle to start chatting.</Text>
         </div>
       ) : (
         <div>

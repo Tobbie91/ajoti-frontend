@@ -64,7 +64,7 @@ export function Login() {
                 Platform oversight, simplified
               </Text>
               <Text size="sm" className="text-white/90">
-                Manage users, review KYC, govern ROSCA circles, and monitor platform health — all from one place.
+                Manage users, review KYC, govern ajo circles, and monitor platform health — all from one place.
               </Text>
             </div>
 
@@ -76,7 +76,7 @@ export function Login() {
                 </Text>
               </div>
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text fw={600} size="sm">ROSCA Governance</Text>
+                <Text fw={600} size="sm">ajo Governance</Text>
                 <Text size="xs" className="mt-1 text-white/80">
                   Monitor circles, flag defaulters, and force-cancel problematic groups.
                 </Text>

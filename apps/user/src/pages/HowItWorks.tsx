@@ -68,7 +68,7 @@ export function HowItWorks() {
             Learn & Grow
           </Text>
           <Text fw={500} className="mt-1 text-[14px] text-[#6B7280] sm:text-[15px]">
-            Everything you need to know about ROSCA savings on Ajoti
+            Everything you need to know about ajo savings on Ajoti
           </Text>
         </div>
 

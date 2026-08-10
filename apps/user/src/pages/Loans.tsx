@@ -196,7 +196,7 @@ export function Loans() {
 
           <div>
             <Text fw={700} className="text-[24px] text-[#0F172A]">Early Payout (Loans)</Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">Get your ROSCA payout before your turn arrives</Text>
+            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">Get your ajo payout before your turn arrives</Text>
           </div>
 
           {/* Active loan banner */}
@@ -237,7 +237,7 @@ export function Loans() {
                 <IconAlertTriangle size={24} color="#F59E0B" />
               </div>
               <Text fw={600} className="text-[16px] text-[#0F172A]">No Active Groups</Text>
-              <Text fw={400} className="max-w-[280px] text-[13px] text-[#6B7280]">You need to be in an active ROSCA group to request an early payout.</Text>
+              <Text fw={400} className="max-w-[280px] text-[13px] text-[#6B7280]">You need to be in an active ajo group to request an early payout.</Text>
               <button onClick={() => navigate('/rosca')} className="cursor-pointer rounded-xl bg-[#02A36E] px-6 py-2.5 text-[13px] font-semibold text-white hover:bg-[#028a5b]">Browse Groups</button>
             </div>
           )}
@@ -273,7 +273,7 @@ export function Loans() {
             <Text fw={600} className="mb-3 text-[14px] text-[#0F172A]">How Early Payout Works</Text>
             <div className="flex flex-col gap-3">
               {[
-                'Choose one of your active ROSCA groups',
+                'Choose one of your active ajo groups',
                 'Receive up to 75% of your expected payout now instead of waiting for your turn',
                 'Continue making your regular contributions as scheduled',
                 'A 10% fee is deducted from the advance — you receive the rest upfront',
@@ -298,11 +298,11 @@ export function Loans() {
 
           <div>
             <Text fw={700} className="text-[24px] text-[#0F172A]">Request Early Payout</Text>
-            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">Select an active ROSCA group</Text>
+            <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">Select an active ajo group</Text>
           </div>
 
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-            <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Select ROSCA Group</Text>
+            <Text fw={600} className="mb-3 text-[14px] text-[#374151]">Select ajo Group</Text>
             <Select
               data={circles.map((c) => ({ value: c.id, label: c.name }))}
               value={selectedCircleId}
@@ -426,7 +426,7 @@ export function Loans() {
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="flex flex-col gap-4">
               {[
-                { label: 'ROSCA Group', value: selectedCircle.name },
+                { label: 'ajo Group', value: selectedCircle.name },
                 { label: 'Expected Payout (100%)', value: `₦${fmt(expectedPayoutAmount)}` },
                 { label: `Early Payout Amount (${allowedPercent}%)`, value: `₦${fmt(grossLoanAmount)}`, bold: true },
                 { label: 'Service Fee (10%)', value: `-₦${fmt(serviceFee)}`, red: true },

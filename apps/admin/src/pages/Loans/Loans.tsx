@@ -179,7 +179,7 @@ export function Loans() {
         <>
           <Box>
             <Text fz={22} fw={700}>Early Payout (Loans)</Text>
-            <Text fz="sm" c="dimmed" mt={4}>Get your ROSCA payout before your turn arrives</Text>
+            <Text fz="sm" c="dimmed" mt={4}>Get your ajo payout before your turn arrives</Text>
           </Box>
 
           {/* Stats */}
@@ -231,7 +231,7 @@ export function Loans() {
             <Paper p="xl" radius="md" style={{ border: '1px solid #e9ecef', textAlign: 'center' }}>
               <IconAlertTriangle size={28} color="#F59E0B" style={{ marginBottom: 12 }} />
               <Text fw={600} fz="md" mb={8}>No Active Groups</Text>
-              <Text fz="sm" c="dimmed" mb={16}>You need an active ROSCA group to request an early payout.</Text>
+              <Text fz="sm" c="dimmed" mb={16}>You need an active ajo group to request an early payout.</Text>
               <button onClick={() => navigate('/rosca/groups')} style={{ background: PRIMARY, color: 'white', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>View Groups</button>
             </Paper>
           )}
@@ -273,11 +273,11 @@ export function Loans() {
 
           <Box>
             <Text fz={22} fw={700}>Request Early Payout</Text>
-            <Text fz="sm" c="dimmed" mt={4}>Select an active ROSCA group</Text>
+            <Text fz="sm" c="dimmed" mt={4}>Select an active ajo group</Text>
           </Box>
 
           <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
-            <Text fw={600} fz="sm" mb="sm">Select ROSCA Group</Text>
+            <Text fw={600} fz="sm" mb="sm">Select ajo Group</Text>
             <Select
               data={circles.map((c) => ({ value: c.id, label: c.name }))}
               value={selectedCircleId}
@@ -373,7 +373,7 @@ export function Loans() {
           <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
             <Stack gap="md">
               {[
-                { label: 'ROSCA Group', value: selectedCircle.name },
+                { label: 'ajo Group', value: selectedCircle.name },
                 { label: 'Expected Payout (100%)', value: `₦${fmt(expectedPayoutAmount)}` },
                 { label: `Early Payout Amount (${allowedPercent}%)`, value: `₦${fmt(grossLoanAmount)}` },
                 { label: 'Service Fee (10%)', value: `-₦${fmt(serviceFee)}`, red: true },

@@ -121,7 +121,7 @@ export function JoinSummary() {
               </Text>
             </div>
             <div className="flex items-center justify-between">
-              <Text fw={500} className="text-[13px] text-[#6B7280]">ROSCA Duration</Text>
+              <Text fw={500} className="text-[13px] text-[#6B7280]">ajo Duration</Text>
               <Text fw={600} className="text-[14px] text-[#0F172A]">{durationLabel}</Text>
             </div>
           </div>
