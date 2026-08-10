@@ -301,7 +301,7 @@ export function AppHeader({ avatarSrc, accountLabel = 'My account', initials: in
           className={({ isActive }: { isActive: boolean }) => cx(styles.navItem, isActive ? styles.active : styles.inactive)}
         >
           <RoscaIcon className={styles.navIconRosca} />
-          <span className={styles.navLabel}>ROSCA</span>
+          <span className={styles.navLabel}>Ajo</span>
         </RouterNavLink>
 
         <RouterNavLink

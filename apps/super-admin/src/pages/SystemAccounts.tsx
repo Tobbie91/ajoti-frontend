@@ -31,7 +31,7 @@ import { getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 const ACCOUNT_LABELS: Record<SystemAccountType, { title: string; description: string }> = {
   PLATFORM_POOL: {
     title: 'Platform Pool',
-    description: 'Custody only — balance equals undistributed ROSCA pots. Never revenue.',
+    description: 'Custody only — balance equals undistributed ajo pots. Never revenue.',
   },
   PLATFORM_REVENUE: {
     title: 'Platform Revenue',

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Card, Group, PasswordInput, Text, TextInput, Alert, Modal, Stack, PinInput } from '@mantine/core'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { login as loginApi, forgotPassword, resetPassword } from '@/utils/api'
 
@@ -148,11 +148,8 @@ export function Login() {
             </div>
           </div>
 
-          <div className="mt-8 flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm">
-            <span>Need an admin account?</span>
-            <Link to="/signup" className="font-semibold text-white">
-              Create account
-            </Link>
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm">
+            Request admin access from your Ajoti user account before signing in here.
           </div>
         </div>
 
@@ -213,7 +210,7 @@ export function Login() {
                 }}
               />
 
-              <Group justify="space-between" className="text-xs text-[#6B7280]">
+              <Group justify="flex-end" className="text-xs text-[#6B7280]">
                 <Text
                   component="span"
                   style={{ cursor: 'pointer', color: '#0B6B55' }}
@@ -221,9 +218,6 @@ export function Login() {
                 >
                   Forgot password?
                 </Text>
-                <Link to="/signup" className="text-[#0B6B55]">
-                  Create account
-                </Link>
               </Group>
 
               <Button

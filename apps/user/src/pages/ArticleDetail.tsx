@@ -259,7 +259,7 @@ export function ArticleDetail() {
             onClick={() => navigate('/rosca')}
             className="cursor-pointer rounded-lg bg-[#02A36E] px-6 py-2.5 text-[13px] font-semibold text-white"
           >
-            Go to ROSCA
+            Go to ajo
           </button>
         </div>
       </div>

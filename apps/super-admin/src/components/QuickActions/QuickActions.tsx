@@ -12,7 +12,7 @@ import {
 const actions = [
   { label: 'KYC Approvals', icon: IconId, color: '#0B6B55', path: '/kyc-approvals' },
   { label: 'Manage Users', icon: IconUsersGroup, color: '#095C49', path: '/manage-users' },
-  { label: 'ROSCA Circles', icon: IconTopologyRing, color: '#074D3D', path: '/manage-rosca' },
+  { label: 'ajo Circles', icon: IconTopologyRing, color: '#074D3D', path: '/manage-rosca' },
   { label: 'Transactions', icon: IconReceipt, color: '#053E31', path: '/transactions' },
   { label: 'Audit Logs', icon: IconShieldCheck, color: '#41D980', path: '/settings-logs' },
   { label: 'Export Data', icon: IconFileExport, color: '#0B6B55', path: '/settings-logs' },

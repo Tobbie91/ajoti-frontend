@@ -727,7 +727,7 @@ export function ManageRosca() {
       <div>
         <Title order={2} fw={700}>Circle Governance</Title>
         <Text c="dimmed" size="sm" mt={4}>
-          Monitor and manage all ROSCA circles, members, and defaulters.
+          Monitor and manage all ajo circles, members, and defaulters.
         </Text>
       </div>
 

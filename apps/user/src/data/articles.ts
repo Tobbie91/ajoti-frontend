@@ -1,5 +1,5 @@
 /**
- * ROSCA Articles / Blog Content
+ * ajo Articles / Blog Content
  *
  * To add a new article:
  * 1. Add an entry to the ARTICLES array below
@@ -45,7 +45,7 @@ export interface Article {
 export const ARTICLES: Article[] = [
   {
     id: 'what-is-rosca',
-    title: 'What is ROSCA and How Does it Work?',
+    title: 'What is ajo and How Does it Work?',
     excerpt:
       'Learn the basics of Rotating Savings and Credit Associations — how members contribute, how payouts work, and why millions of people trust this system.',
     category: 'Getting Started',
@@ -57,7 +57,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: 'paragraph',
-        text: 'A Rotating Savings and Credit Association (ROSCA) is one of the oldest and most trusted forms of communal savings worldwide. In a ROSCA, a group of individuals agree to contribute a fixed amount of money to a common pool at regular intervals — weekly, bi-weekly, or monthly.',
+        text: 'A Rotating Savings and Credit Association (ajo) is one of the oldest and most trusted forms of communal savings worldwide. In a ajo, a group of individuals agree to contribute a fixed amount of money to a common pool at regular intervals — weekly, bi-weekly, or monthly.',
       },
       {
         type: 'heading',
@@ -78,11 +78,11 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'heading',
-        text: 'Why People Trust ROSCA',
+        text: 'Why People Trust ajo',
       },
       {
         type: 'paragraph',
-        text: 'ROSCA has been practiced for centuries across Africa, Asia, and Latin America. It works because of mutual accountability — every member benefits, and social trust keeps the system running smoothly.',
+        text: 'ajo has been practiced for centuries across Africa, Asia, and Latin America. It works because of mutual accountability — every member benefits, and social trust keeps the system running smoothly.',
       },
       {
         type: 'list',
@@ -95,17 +95,17 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'heading',
-        text: 'ROSCA on Ajoti',
+        text: 'ajo on Ajoti',
       },
       {
         type: 'paragraph',
-        text: 'On Ajoti, we bring the traditional ROSCA model into a modern, secure digital platform. Groups are managed by verified admins, contributions are tracked automatically, and your money is protected with escrow-level security. Whether you\'re saving for a business, education, or an emergency fund — ROSCA on Ajoti makes it simple and safe.',
+        text: 'On Ajoti, we bring the traditional ajo model into a modern, secure digital platform. Groups are managed by verified admins, contributions are tracked automatically, and your money is protected with escrow-level security. Whether you\'re saving for a business, education, or an emergency fund — ajo on Ajoti makes it simple and safe.',
       },
     ],
   },
   {
     id: 'join-first-group',
-    title: 'How to Join Your First ROSCA Group',
+    title: 'How to Join Your First ajo Group',
     excerpt:
       'A step-by-step guide to finding the right group, submitting a request, and making your first contribution on Ajoti.',
     category: 'Getting Started',
@@ -116,7 +116,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: 'paragraph',
-        text: 'Joining your first ROSCA group on Ajoti is straightforward. Here\'s everything you need to know to get started.',
+        text: 'Joining your first ajo group on Ajoti is straightforward. Here\'s everything you need to know to get started.',
       },
       {
         type: 'heading',
@@ -124,7 +124,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'paragraph',
-        text: 'Navigate to the ROSCA page from your dashboard. You\'ll see a list of available groups organized by tabs — All Groups, Open Groups, Invite-Only, and more. Use the search bar to find groups by name or admin.',
+        text: 'Navigate to the ajo page from your dashboard. You\'ll see a list of available groups organized by tabs — All Groups, Open Groups, Invite-Only, and more. Use the search bar to find groups by name or admin.',
       },
       {
         type: 'heading',
@@ -177,7 +177,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: 'paragraph',
-        text: 'The payout cycle is the heart of every ROSCA group. Understanding how it works ensures you know exactly when to expect your payout and what your obligations are.',
+        text: 'The payout cycle is the heart of every ajo group. Understanding how it works ensures you know exactly when to expect your payout and what your obligations are.',
       },
       {
         type: 'heading',
@@ -185,7 +185,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'paragraph',
-        text: 'When a ROSCA group is formed, the admin determines the payout order. This can be based on join date, random selection, or mutual agreement. Each member is assigned a position in the cycle.',
+        text: 'When a ajo group is formed, the admin determines the payout order. This can be based on join date, random selection, or mutual agreement. Each member is assigned a position in the cycle.',
       },
       {
         type: 'callout',
@@ -235,7 +235,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: 'paragraph',
-        text: 'Your Trust Score is a measure of your reliability as a ROSCA group member. It\'s visible to group admins and influences your ability to join premium groups.',
+        text: 'Your Trust Score is a measure of your reliability as a ajo group member. It\'s visible to group admins and influences your ability to join premium groups.',
       },
       {
         type: 'heading',
@@ -243,13 +243,13 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'paragraph',
-        text: 'Your Trust Score starts at 50% when you join Ajoti and is updated based on your payment behaviour across all ROSCA groups you participate in.',
+        text: 'Your Trust Score starts at 50% when you join Ajoti and is updated based on your payment behaviour across all ajo groups you participate in.',
       },
       {
         type: 'list',
         items: [
           'On-time payments: +5 points per payment',
-          'Completed ROSCA cycle: +10 bonus points',
+          'Completed ajo cycle: +10 bonus points',
           'Late payment: -5 points',
           'Missed payment: -15 points',
           'Leaving a group early: -20 points',
@@ -265,7 +265,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'callout',
-        text: 'Pro tip: Maintain a score above 80% to unlock access to premium ROSCA groups with higher contribution amounts.',
+        text: 'Pro tip: Maintain a score above 80% to unlock access to premium ajo groups with higher contribution amounts.',
       },
       {
         type: 'heading',
@@ -286,7 +286,7 @@ export const ARTICLES: Article[] = [
     id: 'money-safety',
     title: 'How We Keep Your Money Safe',
     excerpt:
-      'Learn about the security measures, escrow protections, and verification processes that safeguard every ROSCA group on Ajoti.',
+      'Learn about the security measures, escrow protections, and verification processes that safeguard every ajo group on Ajoti.',
     category: 'Safety',
     readTime: '5 min read',
     iconName: 'shield-check-green',
@@ -303,7 +303,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'paragraph',
-        text: 'All ROSCA contributions are held in secure escrow accounts — not in any individual\'s personal account. Funds are only released to the designated member on the scheduled payout date.',
+        text: 'All ajo contributions are held in secure escrow accounts — not in any individual\'s personal account. Funds are only released to the designated member on the scheduled payout date.',
       },
       {
         type: 'heading',
@@ -311,7 +311,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'paragraph',
-        text: 'Every ROSCA admin goes through a thorough verification process before they can create and manage groups. This includes identity verification, phone verification, and activity history review.',
+        text: 'Every ajo admin goes through a thorough verification process before they can create and manage groups. This includes identity verification, phone verification, and activity history review.',
       },
       {
         type: 'heading',
@@ -389,7 +389,7 @@ export const ARTICLES: Article[] = [
   },
   {
     id: 'becoming-admin',
-    title: 'Becoming a ROSCA Admin',
+    title: 'Becoming a ajo Admin',
     excerpt:
       'Everything you need to know about managing your own savings group — from requirements to responsibilities and rewards.',
     category: 'Features',
@@ -400,7 +400,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: 'paragraph',
-        text: 'As a ROSCA Admin on Ajoti, you have the power to create and manage savings groups, help your community save, and earn rewards for your efforts.',
+        text: 'As a ajo Admin on Ajoti, you have the power to create and manage savings groups, help your community save, and earn rewards for your efforts.',
       },
       {
         type: 'heading',
@@ -411,7 +411,7 @@ export const ARTICLES: Article[] = [
         items: [
           'Verified phone number',
           'Valid government-issued ID',
-          'At least 1 successfully completed ROSCA cycle as a member',
+          'At least 1 successfully completed ajo cycle as a member',
           'No flagged activity on your account',
           'Trust Score of 70% or above',
         ],
@@ -440,7 +440,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'callout',
-        text: 'Ready to become an admin? Apply directly from the ROSCA page by clicking "Request Access" on the admin banner.',
+        text: 'Ready to become an admin? Apply directly from the ajo page by clicking "Request Access" on the admin banner.',
       },
     ],
   },
@@ -448,7 +448,7 @@ export const ARTICLES: Article[] = [
     id: 'wallets-payments',
     title: 'Contributions, Wallets & Payments',
     excerpt:
-      'How to fund your wallet, set up auto-pay, and track your contribution history across all your ROSCA groups.',
+      'How to fund your wallet, set up auto-pay, and track your contribution history across all your ajo groups.',
     category: 'Features',
     readTime: '5 min read',
     iconName: 'cash',
@@ -457,7 +457,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: 'paragraph',
-        text: 'Your Ajoti wallet is the central hub for all ROSCA contributions and payouts. Keeping it funded ensures you never miss a contribution.',
+        text: 'Your Ajoti wallet is the central hub for all ajo contributions and payouts. Keeping it funded ensures you never miss a contribution.',
       },
       {
         type: 'heading',
@@ -465,7 +465,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: 'paragraph',
-        text: 'You can fund your Ajoti wallet through bank transfer, card payment, or USSD. Funds are credited instantly and available for ROSCA contributions immediately.',
+        text: 'You can fund your Ajoti wallet through bank transfer, card payment, or USSD. Funds are credited instantly and available for ajo contributions immediately.',
       },
       {
         type: 'heading',
@@ -506,7 +506,7 @@ export const ARTICLES: Article[] = [
     id: 'faqs',
     title: 'Frequently Asked Questions',
     excerpt:
-      'Answers to the most common questions about ROSCA groups, payments, admin roles, and using the Ajoti platform.',
+      'Answers to the most common questions about ajo groups, payments, admin roles, and using the Ajoti platform.',
     category: 'FAQs',
     readTime: '8 min read',
     iconName: 'help-circle',
@@ -515,7 +515,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: 'heading',
-        text: 'Can I be in multiple ROSCA groups at once?',
+        text: 'Can I be in multiple ajo groups at once?',
       },
       {
         type: 'paragraph',

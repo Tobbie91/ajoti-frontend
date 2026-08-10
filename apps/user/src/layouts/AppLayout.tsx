@@ -78,7 +78,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <AppShell.Section grow>
           <Stack gap={4} px="xs" pt="xs">
             <NavLink component={RouterNavLink} to="/home" onClick={close} label="Home" leftSection={<IconHome2 size={20} stroke={1.5} />} active={location.pathname === '/home'} />
-            <NavLink component={RouterNavLink} to="/rosca" onClick={close} label="ROSCA" leftSection={<IconUsers size={20} stroke={1.5} />} active={location.pathname.startsWith('/rosca')} />
+            <NavLink component={RouterNavLink} to="/rosca" onClick={close} label="Ajo" leftSection={<IconUsers size={20} stroke={1.5} />} active={location.pathname.startsWith('/rosca')} />
             <NavLink component={RouterNavLink} to="/create-wallet" onClick={close} label="Wallet" leftSection={<IconWallet size={20} stroke={1.5} />} active={location.pathname.startsWith('/create-wallet') || location.pathname.startsWith('/fund') || location.pathname.startsWith('/withdraw')} />
             <NavLink component={RouterNavLink} to="/transactions" onClick={close} label="Transactions" leftSection={<IconReceipt2 size={20} stroke={1.5} />} active={location.pathname === '/transactions'} />
             <NavLink component={RouterNavLink} to="/loans" onClick={close} label="Loans" leftSection={<IconCash size={20} stroke={1.5} />} active={location.pathname.startsWith('/loans')} />
@@ -104,4 +104,3 @@ export function AppLayout({ children }: AppLayoutProps) {
     </AppShell>
   )
 }
-
