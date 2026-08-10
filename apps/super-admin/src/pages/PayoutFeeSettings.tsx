@@ -140,7 +140,7 @@ export function PayoutFeeSettings() {
     <Stack mt="xl" gap="lg" maw={640}>
       <Title order={3}>Payout Fee Settings</Title>
       <Text size="sm" c="dimmed">
-        The flat fee charged per ROSCA payout, split between the Group Admin and Ajoti, plus the
+        The flat fee charged per ajo payout, split between the Group Admin and Ajoti, plus the
         minimum payout floor enforced at circle creation. Takes effect on the very next payout
         processed — no restart required.
       </Text>
@@ -187,7 +187,7 @@ export function PayoutFeeSettings() {
 
             <NumberInput
               label="Group Admin share (₦)"
-              description="Portion credited to the ROSCA Group Admin's wallet"
+              description="Portion credited to the ajo Group Admin's wallet"
               min={0.01}
               decimalScale={2}
               thousandSeparator=","

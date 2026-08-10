@@ -52,7 +52,7 @@ export function Dashboard() {
           Hi, {adminName || 'Admin'}
         </Text>
         <Text fz="sm" c="dimmed">
-          Here's today's ROSCA snapshot
+          Here's today's ajo snapshot
         </Text>
       </Box>
 

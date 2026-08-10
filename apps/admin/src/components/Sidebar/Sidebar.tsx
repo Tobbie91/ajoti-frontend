@@ -54,7 +54,7 @@ export function Sidebar({ onClose }: SidebarProps) {
         />
 
         <NavLink
-          label="ROSCA"
+          label="Ajo"
           leftSection={<IconTopologyRing size={19} stroke={1.5} />}
           childrenOffset={24}
           opened={roscaOpened}

@@ -133,7 +133,7 @@ function AutoSimTab() {
       <Paper withBorder radius="md" p="md">
         <Text fw={600} mb={4}>3-Circle Auto Simulation</Text>
         <Text size="sm" c="dimmed" mb="md">
-          Runs three pre-configured ROSCA circles in sequence — best case (Circle A), mixed (Circle B), and worst case (Circle C). All data is ephemeral and deleted automatically.
+          Runs three pre-configured ajo circles in sequence — best case (Circle A), mixed (Circle B), and worst case (Circle C). All data is ephemeral and deleted automatically.
         </Text>
         <Group gap="xs" mb="md" wrap="wrap">
           <Badge color="green" variant="light">Circle A — Best case: all on-time</Badge>
@@ -744,7 +744,7 @@ export function Simulations() {
       <div>
         <Title order={2} fw={700}>Simulations</Title>
         <Text c="dimmed" size="sm" mt={4}>
-          Test ROSCA behaviour and trust scoring without touching production data.
+          Test ajo behaviour and trust scoring without touching production data.
         </Text>
       </div>
 

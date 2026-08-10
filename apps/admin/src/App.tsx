@@ -17,7 +17,6 @@ import {
   WithdrawFunds,
   Transactions,
   Login,
-  Signup,
   VerifyOtp,
   Kyc,
   MyProfile,
@@ -42,7 +41,6 @@ function App() {
         {/* Auth routes — no layout */}
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/kyc" element={<KycPageGuard><Kyc /></KycPageGuard>} />
 

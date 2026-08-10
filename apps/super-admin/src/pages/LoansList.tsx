@@ -189,7 +189,7 @@ export function LoansList() {
       <div>
         <Title order={2} fw={700}>Loans</Title>
         <Text c="dimmed" size="sm" mt={4}>
-          Early payouts against expected ROSCA payouts — outstanding and historical.
+          Early payouts against expected ajo payouts — outstanding and historical.
         </Text>
       </div>
 

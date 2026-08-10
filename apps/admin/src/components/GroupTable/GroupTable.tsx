@@ -59,7 +59,7 @@ export function GroupTable() {
       <Box px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
         <Group justify="space-between" align="center" mb="sm">
           <Text fw={700} fz="md">
-            ROSCA Group Portfolio
+            Ajo Group Portfolio
           </Text>
         </Group>
         <Group gap="sm">

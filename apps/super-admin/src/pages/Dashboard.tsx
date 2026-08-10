@@ -80,7 +80,7 @@ export function Dashboard() {
           sparklineData={userSparkline.length > 0 ? userSparkline : [0]}
         />
         <StatsCard
-          title="ROSCA Circles"
+          title="ajo Circles"
           value={stats?.circles.total.toLocaleString() ?? '—'}
           badgeText={stats?.circles.active ? `${stats.circles.active} active` : undefined}
           icon={<IconTopologyRing size={24} color="#0B6B55" stroke={1.5} />}

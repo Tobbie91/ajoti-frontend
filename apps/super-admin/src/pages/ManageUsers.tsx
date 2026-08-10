@@ -162,7 +162,7 @@ function UserDetailBody({
               <IconTopologyRing size={14} stroke={1.5} />
             </ThemeIcon>
             <Stack gap={0}>
-              <Text fz="xs" c="dimmed">ROSCA Groups</Text>
+              <Text fz="xs" c="dimmed">ajo Groups</Text>
               <Text fw={600} fz="sm">{roscaCount}</Text>
             </Stack>
           </Group>
@@ -443,7 +443,7 @@ function UserDetailDrawer({
         <Stack gap="md">
           <Text fz="sm" c="dimmed">
             This will grant admin access to{' '}
-            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong> and allow them to create and manage ROSCA groups.
+            <strong>{(user?.firstName as string)} {(user?.lastName as string)}</strong> and allow them to create and manage ajo groups.
           </Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={closeApproveAdmin}>Cancel</Button>
@@ -641,7 +641,7 @@ export function ManageUsers() {
               <SortableTh label="Phone" sortKey="phone" sort={sort} onSort={toggleSort} width={150} />
               <SortableTh label="Role" sortKey="role" sort={sort} onSort={toggleSort} width={130} />
               <SortableTh label="KYC" sortKey="kyc" sort={sort} onSort={toggleSort} width={150} />
-              <SortableTh label="ROSCA" sortKey="rosca" sort={sort} onSort={toggleSort} width={90} />
+              <SortableTh label="ajo" sortKey="rosca" sort={sort} onSort={toggleSort} width={90} />
               <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={130} />
               <Table.Th style={{ color: 'white' }} w={50} />
             </Table.Tr>

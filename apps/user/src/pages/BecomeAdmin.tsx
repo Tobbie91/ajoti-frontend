@@ -133,7 +133,7 @@ export function BecomeAdmin() {
               onClick={() => navigate('/rosca')}
               className="mt-5 cursor-pointer rounded-lg bg-[#02A36E] px-6 py-3 text-[13px] font-semibold text-white"
             >
-              Back to ROSCA
+              Back to ajo
             </button>
           </div>
         ) : (

@@ -63,7 +63,7 @@ export function BlogLayout({ children }: BlogLayoutProps) {
             onClick={() => navigate('/rosca')}
             className="cursor-pointer rounded-lg bg-[#02A36E] px-3 py-1.5 text-[12px] font-semibold text-white sm:px-4 sm:py-2 sm:text-[13px]"
           >
-            Back to ROSCA
+            Back to ajo
           </button>
         </div>
 

@@ -1176,8 +1176,8 @@ export function Profile() {
                 <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you can still:</Text>
                 <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">
                   <li>Log in and view your account, balances, and transaction history</li>
-                  <li>Receive ROSCA payouts into your wallet</li>
-                  <li>Make contributions to your ROSCA circles</li>
+                  <li>Receive ajo payouts into your wallet</li>
+                  <li>Make contributions to your ajo circles</li>
                 </ul>
                 <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you cannot:</Text>
                 <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">

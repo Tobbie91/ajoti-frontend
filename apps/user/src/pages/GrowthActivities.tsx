@@ -334,7 +334,7 @@ function OverviewTab({
         <Text fw={500} className="text-[13px] leading-relaxed text-[#0C4A6E]">
           {completedCycles > 0
             ? `${completedCycles} of ${totalCycles} cycles completed. Keep up the great work!`
-            : `Your ROSCA is getting started. Your first payout is scheduled for ${nextPaymentDate}.`}
+            : `Your ajo is getting started. Your first payout is scheduled for ${nextPaymentDate}.`}
           {nextPaymentDate !== 'TBD' && completedCycles > 0
             ? ` Your next payout is scheduled for ${nextPaymentDate}.`
             : ''}

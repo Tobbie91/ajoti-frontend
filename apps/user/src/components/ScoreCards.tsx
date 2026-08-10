@@ -53,7 +53,7 @@ export function TrustScoreCard({ score, breakdown }: { score: number | null; bre
               {hasBreakdown && <IconChevronRight size={14} color="#9CA3AF" />}
             </Group>
             <Text fw={300} fz={12} style={{ color: '#6B7280' }}>
-              Based on your ROSCA activity and repayment history
+              Based on your ajo activity and repayment history
             </Text>
             {score !== null && (
               <Badge

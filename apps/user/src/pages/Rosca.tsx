@@ -200,7 +200,7 @@ export function Rosca() {
           <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Text fw={700} className="text-[22px] sm:text-[28px] leading-tight">
-                Welcome to ROSCA
+                Welcome to ajo
               </Text>
               <Text size="sm" className="mt-2 text-white/90 leading-relaxed">
                 Join trusted savings groups and grow your money together with others.
@@ -254,7 +254,7 @@ export function Rosca() {
         <div className="flex items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-6 py-4">
             <div>
               <Text fw={600} size="sm" className="text-[#0F172A]">
-                Become a ROSCA Admin
+                Become an ajo admin
               </Text>
               <Text size="xs" className="text-[#6B7280]">
                 Manage your own savings group. Apply in 2 mins.
@@ -412,7 +412,7 @@ export function Rosca() {
             {/* Login prompt if not authenticated */}
             {needsLogin ? (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <Text fw={600} className="text-[#374151]">Login to view available ROSCA groups</Text>
+                <Text fw={600} className="text-[#374151]">Login to view available ajo groups</Text>
                 <button
                   onClick={() => navigate('/login')}
                   className="cursor-pointer rounded-lg bg-[#02A36E] px-8 py-2.5 text-sm font-semibold text-white"
