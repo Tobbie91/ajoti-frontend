@@ -107,22 +107,70 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     return t ? { Authorization: `Bearer ${t}` } : {}
   }
 
-  async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
+  async function performAuthenticatedRequest<T>(
+    path: string,
+    options: RequestInit,
+    token?: string,
+  ): Promise<{ response: Response; data: unknown }> {
     const { headers, ...rest } = options
     const isFormData = options.body instanceof FormData
     const contentTypeHeader: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
 
-    const res = await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       ...rest,
       headers: {
         ...contentTypeHeader,
-        ...authHeaders(),
+        ...authHeaders(token),
         ...(headers as Record<string, string> | undefined),
       },
     })
 
+    const data = response.status === 204 ? {} : await parseJsonSafely(response)
+    return { response, data }
+  }
+
+  async function verifiedBankAccountRemoval<T>(path: string): Promise<T> {
+    const requestPath = `${path}/removal/request`
+    const confirmPath = `${path}/removal/confirm`
+
+    const requestResult = await authRequest<{ success: boolean; data?: { message?: string } }>(requestPath, {
+      method: 'POST',
+    })
+
+    const otp = window.prompt(
+      requestResult.data?.message ??
+        'A 6-digit verification code has been sent to your email. Enter it to remove this bank account.',
+    )
+
+    if (otp === null) {
+      throw new ApiError('Bank account removal cancelled.')
+    }
+
+    const normalizedOtp = otp.trim()
+    if (!/^\d{6}$/.test(normalizedOtp)) {
+      throw new ApiError('Please enter the 6-digit verification code sent to your email.')
+    }
+
+    return authRequest<T>(confirmPath, {
+      method: 'DELETE',
+      body: JSON.stringify({ otp: normalizedOtp }),
+    })
+  }
+
+  async function authRequest<T>(path: string, options: RequestInit): Promise<T> {
+    // Bank-account deletion is deliberately intercepted here because user and admin
+    // share this client but maintain separate profile screens. The old one-step DELETE
+    // call now becomes request-email-code -> verify-code -> destructive DELETE in both apps.
+    if (
+      (options.method ?? 'GET').toUpperCase() === 'DELETE' &&
+      /^\/api\/users\/me\/bank-accounts\/[^/]+$/.test(path)
+    ) {
+      return verifiedBankAccountRemoval<T>(path)
+    }
+
+    const { response: res, data } = await performAuthenticatedRequest<T>(path, options)
+
     if (res.status !== 401) {
-      const data = await parseJsonSafely(res)
       if (!res.ok) {
         const msg = (data as { message?: string | string[] }).message
         throw new ApiError(Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong'), res.status)
@@ -139,13 +187,20 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
         refreshQueue = []
         isRefreshing = false
 
-        return request<T>(path, {
-          ...options,
-          headers: { ...authHeaders(newToken), ...(headers as Record<string, string> | undefined) },
-        })
-      } catch {
+        const { response: retryRes, data: retryData } = await performAuthenticatedRequest<T>(
+          path,
+          options,
+          newToken,
+        )
+        if (!retryRes.ok) {
+          const msg = (retryData as { message?: string | string[] }).message
+          throw new ApiError(Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong'), retryRes.status)
+        }
+        return retryData as T
+      } catch (error) {
         refreshQueue = []
         isRefreshing = false
+        if (error instanceof ApiError && error.code !== 401) throw error
         clearSessionAndRedirect()
         throw new ApiError('Session expired. Please log in again.')
       }
@@ -154,12 +209,16 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     // Another request is already refreshing — wait for it
     return new Promise<T>((resolve, reject) => {
       refreshQueue.push((newToken) => {
-        resolve(
-          request<T>(path, {
-            ...options,
-            headers: { ...authHeaders(newToken), ...(headers as Record<string, string> | undefined) },
-          }),
-        )
+        performAuthenticatedRequest<T>(path, options, newToken)
+          .then(({ response, data: queuedData }) => {
+            if (!response.ok) {
+              const msg = (queuedData as { message?: string | string[] }).message
+              reject(new ApiError(Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong'), response.status))
+              return
+            }
+            resolve(queuedData as T)
+          })
+          .catch(reject)
       })
       setTimeout(() => reject(new ApiError('Session expired')), 30_000)
     })
