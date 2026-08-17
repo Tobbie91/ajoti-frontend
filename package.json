@@ -1,0 +1,5 @@
+{
+  "name": "ajoti-frontend",
+  "private": true,
+  "packageManager": "pnpm@10.30.0"
+}
