@@ -448,27 +448,24 @@ export function MyProfile() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Email Address</Text>
-              {editing ? (
-                <TextInput value={email} onChange={(e) => setEmail(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconMail size={16} color="#9CA3AF" />} styles={inputStyles} />
-              ) : (
-                <div className="flex items-start gap-2">
-                  <IconMail size={15} color="#9CA3AF" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <Text fw={500} className="text-[14px] text-[#0F172A]" style={{ wordBreak: 'break-all' }}>{email}</Text>
-                </div>
-              )}
+              <div className="flex items-start gap-2">
+                <IconMail size={15} color="#9CA3AF" style={{ flexShrink: 0, marginTop: 2 }} />
+                <Text fw={500} className="text-[14px] text-[#0F172A]" style={{ wordBreak: 'break-all' }}>{email}</Text>
+              </div>
             </div>
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Phone Number</Text>
-              {editing ? (
-                <PhoneInputField value={phone} onChange={setPhone} size="sm" styles={inputStyles} />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <IconPhone size={15} color="#9CA3AF" style={{ flexShrink: 0 }} />
-                  <Text fw={500} className="text-[14px] text-[#0F172A]" style={{ wordBreak: 'break-all' }}>{phone}</Text>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <IconPhone size={15} color="#9CA3AF" style={{ flexShrink: 0 }} />
+                <Text fw={500} className="text-[14px] text-[#0F172A]" style={{ wordBreak: 'break-all' }}>{phone}</Text>
+              </div>
             </div>
           </div>
+          {editing && (
+            <Text fw={400} className="-mt-2 text-[11px] text-[#9CA3AF]">
+              Your email and phone number can&apos;t be changed here. Contact support to update them.
+            </Text>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <InfoRow label="Date of Birth" value={dob || '—'} icon={IconCalendar} />
