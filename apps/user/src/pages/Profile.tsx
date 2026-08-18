@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Text, TextInput, Select, Avatar, Loader, Modal, Button, PinInput, PasswordInput, Checkbox } from '@mantine/core'
+import {
+  Text,
+  TextInput,
+  Select,
+  Avatar,
+  Loader,
+  Modal,
+  Button,
+  PinInput,
+  PasswordInput,
+  Checkbox,
+} from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   IconArrowLeft,
@@ -91,22 +102,55 @@ function VerificationDataCard({ data }: { data: Record<string, unknown> | null |
   const rows: { label: string; value: string }[] = [
     ...(customer?.name ? [{ label: 'Verified Name', value: customer.name }] : []),
     ...(customer?.phone ? [{ label: 'Phone', value: customer.phone }] : []),
-    ...(customer?.identity?.type ? [{ label: 'Identity Type', value: String(customer.identity.type).toUpperCase() }] : []),
-    ...(inner?.kyc_level ? [{ label: 'KYC Tier', value: String(inner.kyc_level).replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) }] : []),
-    ...((inner?.updated_at ?? inner?.created_at) ? [{ label: 'Verified At', value: new Date((inner.updated_at ?? inner.created_at) as string).toLocaleString('en-NG', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }] : []),
+    ...(customer?.identity?.type
+      ? [{ label: 'Identity Type', value: String(customer.identity.type).toUpperCase() }]
+      : []),
+    ...(inner?.kyc_level
+      ? [
+          {
+            label: 'KYC Tier',
+            value: String(inner.kyc_level)
+              .replace('_', ' ')
+              .replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          },
+        ]
+      : []),
+    ...((inner?.updated_at ?? inner?.created_at)
+      ? [
+          {
+            label: 'Verified At',
+            value: new Date((inner.updated_at ?? inner.created_at) as string).toLocaleString(
+              'en-NG',
+              {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }
+            ),
+          },
+        ]
+      : []),
   ]
   if (rows.length === 0) return null
   return (
     <div className="rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] p-4">
       <div className="mb-3 flex items-center gap-2">
         <IconFingerprint size={15} color="#02A36E" />
-        <Text fw={600} className="text-[13px] text-[#065F46]">Verified by Mono</Text>
+        <Text fw={600} className="text-[13px] text-[#065F46]">
+          Verified by Mono
+        </Text>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2">
         {rows.map(({ label, value }) => (
           <div key={label}>
-            <Text fw={400} className="text-[11px] text-[#6B7280]">{label}</Text>
-            <Text fw={600} className="text-[13px] text-[#0F172A]">{value}</Text>
+            <Text fw={400} className="text-[11px] text-[#6B7280]">
+              {label}
+            </Text>
+            <Text fw={600} className="text-[13px] text-[#0F172A]">
+              {value}
+            </Text>
           </div>
         ))}
       </div>
@@ -167,7 +211,9 @@ export function Profile() {
   const [settingDefault, setSettingDefault] = useState<string | null>(null)
 
   useEffect(() => {
-    getKycStatus().then(setKycStatus).catch(() => {})
+    getKycStatus()
+      .then(setKycStatus)
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -197,9 +243,7 @@ export function Profile() {
     setSettingDefault(id)
     try {
       await setDefaultBankAccount(id)
-      setBankAccounts((prev) =>
-        prev.map((a) => ({ ...a, isDefault: a.id === id })),
-      )
+      setBankAccounts((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })))
       notifications.show({
         message: 'Default account updated',
         color: 'green',
@@ -221,13 +265,20 @@ export function Profile() {
     const PROVE_PENDING_STEPS = new Set(['PROVE_PENDING', 'PROVE_PENDING_L2', 'PROVE_PENDING_L3'])
     const isPending = kycStatus?.step ? PROVE_PENDING_STEPS.has(kycStatus.step) : false
 
-    const refresh = () => getKycStatus().then(setKycStatus).catch(() => {})
+    const refresh = () =>
+      getKycStatus()
+        .then(setKycStatus)
+        .catch(() => {})
 
-    const onVisible = () => { if (!document.hidden) refresh() }
+    const onVisible = () => {
+      if (!document.hidden) refresh()
+    }
     document.addEventListener('visibilitychange', onVisible)
 
     const interval = isPending
-      ? setInterval(() => { if (!document.hidden) refresh() }, 10_000)
+      ? setInterval(() => {
+          if (!document.hidden) refresh()
+        }, 10_000)
       : null
 
     return () => {
@@ -277,7 +328,9 @@ export function Profile() {
       })
       setEmailModalStep('otp')
     } catch (err) {
-      setEmailVerificationError(err instanceof Error ? err.message : 'Failed to send verification code')
+      setEmailVerificationError(
+        err instanceof Error ? err.message : 'Failed to send verification code'
+      )
     } finally {
       setEmailVerificationLoading(false)
     }
@@ -295,7 +348,7 @@ export function Profile() {
       const updatedUser = { ...getUserFromStorage(), email }
       localStorage.setItem('user', JSON.stringify(updatedUser))
       setOriginalEmail(email)
-      
+
       notifications.show({
         message: 'Email address updated successfully',
         color: 'green',
@@ -329,10 +382,9 @@ export function Profile() {
       await updateUserProfile({
         firstName,
         lastName,
-        phone,
-        address,
-        city,
-        ...(state ? { state } : {}),
+        ...(!kycStatus?.address && address ? { address } : {}),
+        ...(!kycStatus?.city && city ? { city } : {}),
+        ...(!kycStatus?.state && state ? { state } : {}),
       })
       setSaveSuccess(true)
       setEditing(false)
@@ -385,7 +437,8 @@ export function Profile() {
       setFreezeReason('')
       setFreezeAcknowledged(false)
       notifications.show({
-        message: 'Your account has been frozen. Contact support to unlock it once your identity is verified.',
+        message:
+          'Your account has been frozen. Contact support to unlock it once your identity is verified.',
         color: 'orange',
         autoClose: 6000,
       })
@@ -424,7 +477,9 @@ export function Profile() {
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#FED7AA] bg-[#FFF7ED] p-4">
           <IconLock size={18} color="#F97316" className="mt-0.5 flex-shrink-0" />
           <div>
-            <Text fw={600} className="text-[13px] text-[#9A3412]">Account Frozen</Text>
+            <Text fw={600} className="text-[13px] text-[#9A3412]">
+              Account Frozen
+            </Text>
             <Text fw={400} className="mt-0.5 text-[12px] text-[#9A3412]">
               Withdrawals, bank account changes, and security setting changes are blocked. Contact
               support and verify your identity to unlock your account — this cannot be undone from
@@ -453,7 +508,9 @@ export function Profile() {
               {kycApproved ? (
                 <div className="mt-1.5 flex w-fit items-center gap-1.5 rounded-full bg-[#F0FDF4] px-3 py-1">
                   <IconShieldCheck size={14} color="#02A36E" />
-                  <Text fw={500} className="text-[12px] text-[#02A36E]">KYC Verified</Text>
+                  <Text fw={500} className="text-[12px] text-[#02A36E]">
+                    KYC Verified
+                  </Text>
                 </div>
               ) : (
                 <button
@@ -461,7 +518,9 @@ export function Profile() {
                   className="mt-1.5 flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-[#FEF3C7] px-3 py-1 hover:bg-[#FDE68A]"
                 >
                   <IconShieldCheck size={14} color="#F59E0B" />
-                  <Text fw={500} className="text-[12px] text-[#92400E]">Complete Verification</Text>
+                  <Text fw={500} className="text-[12px] text-[#92400E]">
+                    Complete Verification
+                  </Text>
                 </button>
               )}
             </div>
@@ -534,26 +593,39 @@ export function Profile() {
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
               Email Address
             </Text>
-            <Text fw={500} className="text-[14px] text-[#0F172A]">
-              {email}
-            </Text>
+            {editing ? (
+              <TextInput
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+                radius="md"
+                size="sm"
+                leftSection={<IconMail size={16} color="#9CA3AF" />}
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+              />
+            ) : (
+              <Text fw={500} className="text-[14px] text-[#0F172A]">
+                {email}
+              </Text>
+            )}
           </div>
 
           <div>
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
               Phone Number
             </Text>
-            <Text fw={500} className="text-[14px] text-[#0F172A]">
-              {phone}
-            </Text>
+            {editing ? (
+              <PhoneInputField
+                value={phone}
+                onChange={setPhone}
+                size="sm"
+                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
+              />
+            ) : (
+              <Text fw={500} className="text-[14px] text-[#0F172A]">
+                {phone}
+              </Text>
+            )}
           </div>
-
-          {editing && (
-            <Text fw={400} className="-mt-2 text-[11px] text-[#9CA3AF]">
-              Your email and phone number can&apos;t be changed here. Contact support
-              to update them.
-            </Text>
-          )}
         </div>
       </div>
 
@@ -562,12 +634,14 @@ export function Profile() {
         <Text fw={600} className="mb-5 text-[16px] text-[#0F172A]">
           Residential Address
         </Text>
+
         <div className="flex flex-col gap-4">
           <div>
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
               Address
             </Text>
-            {editing ? (
+
+            {editing && !address ? (
               <TextInput
                 value={address}
                 onChange={(e) => setAddress(e.currentTarget.value)}
@@ -582,12 +656,14 @@ export function Profile() {
               </Text>
             )}
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 City
               </Text>
-              {editing ? (
+
+              {editing && !city ? (
                 <TextInput
                   value={city}
                   onChange={(e) => setCity(e.currentTarget.value)}
@@ -602,11 +678,13 @@ export function Profile() {
                 </Text>
               )}
             </div>
+
             <div>
               <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
                 State
               </Text>
-              {editing ? (
+
+              {editing && !state ? (
                 <Select
                   data={NIGERIAN_STATES}
                   value={state}
@@ -624,6 +702,12 @@ export function Profile() {
               )}
             </div>
           </div>
+
+          {editing && (address || city || state) && (
+            <Text fw={400} className="-mt-2 text-[11px] text-[#9CA3AF]">
+              Your residential address can&apos;t be changed here. Contact support to update it.
+            </Text>
+          )}
         </div>
       </div>
 
@@ -829,7 +913,9 @@ export function Profile() {
       {/* Bank Accounts */}
       <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
-          <Text fw={600} className="text-[16px] text-[#0F172A]">Bank Accounts</Text>
+          <Text fw={600} className="text-[16px] text-[#0F172A]">
+            Bank Accounts
+          </Text>
           <button
             onClick={() => setAddBankModalOpen(true)}
             className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#F0FDF4] px-3 py-1.5 text-[12px] font-medium text-[#02A36E] hover:bg-[#dcfce7]"
@@ -841,12 +927,16 @@ export function Profile() {
         {loadingBankAccounts ? (
           <div className="flex items-center gap-2 py-3">
             <Loader size={14} color="#02A36E" />
-            <Text fw={400} className="text-[13px] text-[#6B7280]">Loading...</Text>
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              Loading...
+            </Text>
           </div>
         ) : bankAccounts.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-6 text-center">
             <IconBuildingBank size={24} color="#9CA3AF" className="mx-auto mb-2" />
-            <Text fw={400} className="text-[13px] text-[#6B7280]">No bank accounts saved yet.</Text>
+            <Text fw={400} className="text-[13px] text-[#6B7280]">
+              No bank accounts saved yet.
+            </Text>
             <Text fw={400} className="text-[12px] text-[#9CA3AF]">
               Add one to speed up future withdrawals.
             </Text>
@@ -860,7 +950,9 @@ export function Profile() {
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <Text fw={600} className="text-[14px] text-[#0F172A]">{acc.accountName}</Text>
+                    <Text fw={600} className="text-[14px] text-[#0F172A]">
+                      {acc.accountName}
+                    </Text>
                     {acc.isDefault && (
                       <span className="rounded-full bg-[#F0FDF4] px-2 py-0.5 text-[11px] font-medium text-[#02A36E]">
                         Default
@@ -918,7 +1010,11 @@ export function Profile() {
         onClose={() => {
           if (!emailVerificationLoading) setEmailModalOpen(false)
         }}
-        title={<Text fw={700} className="text-[16px] text-[#0F172A]">Verify Email Change</Text>}
+        title={
+          <Text fw={700} className="text-[16px] text-[#0F172A]">
+            Verify Email Change
+          </Text>
+        }
         centered
         radius="md"
         size="sm"
@@ -927,10 +1023,13 @@ export function Profile() {
         {emailModalStep === 'password' ? (
           <div className="flex flex-col gap-4">
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              To update your email address to <strong>{email}</strong>, please enter your current account password.
+              To update your email address to <strong>{email}</strong>, please enter your current
+              account password.
             </Text>
             <div>
-              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
+                Current Password
+              </Text>
               <PasswordInput
                 placeholder="Enter password"
                 value={currentPasswordForEmail}
@@ -968,7 +1067,8 @@ export function Profile() {
         ) : (
           <div className="flex flex-col gap-4">
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              We've sent a 6-digit verification code to <strong>{email}</strong>. Enter it below to complete the change.
+              We've sent a 6-digit verification code to <strong>{email}</strong>. Enter it below to
+              complete the change.
             </Text>
             <div className="flex justify-center my-2">
               <PinInput
@@ -1145,12 +1245,16 @@ export function Profile() {
             className="flex w-full cursor-pointer items-center justify-between"
           >
             <div className="text-left">
-              <Text fw={600} className="text-[14px] text-[#EA580C]">Freeze My Account</Text>
+              <Text fw={600} className="text-[14px] text-[#EA580C]">
+                Freeze My Account
+              </Text>
               <Text fw={400} className="text-[12px] text-[#9CA3AF]">
                 Temporarily lock down sensitive actions if you suspect your account is compromised.
               </Text>
             </div>
-            <span className="text-[#EA580C] text-[18px] flex-shrink-0">{freezeExpanded ? '−' : '+'}</span>
+            <span className="text-[#EA580C] text-[18px] flex-shrink-0">
+              {freezeExpanded ? '−' : '+'}
+            </span>
           </button>
 
           {freezeExpanded && (
@@ -1160,33 +1264,41 @@ export function Profile() {
                   Freezing is a security measure — not the same as deleting your account, and it's
                   reversible once support verifies your identity.
                 </Text>
-                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you can still:</Text>
+                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">
+                  While frozen, you can still:
+                </Text>
                 <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">
                   <li>Log in and view your account, balances, and transaction history</li>
                   <li>Receive ajo payouts into your wallet</li>
                   <li>Make contributions to your ajo circles</li>
                 </ul>
-                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">While frozen, you cannot:</Text>
+                <Text fw={600} className="mt-3 text-[12px] text-[#9A3412]">
+                  While frozen, you cannot:
+                </Text>
                 <ul className="mt-1 list-disc pl-4 text-[12px] text-[#9A3412]">
                   <li>Withdraw money to your bank account</li>
                   <li>Add, remove, or change saved bank accounts</li>
                   <li>Change your email, phone number, password, or transaction PIN</li>
                 </ul>
                 <Text fw={400} className="mt-3 text-[12px] text-[#9A3412]">
-                  <strong>To unfreeze:</strong> contact support and verify your identity. There's no way
-                  to unfreeze your account yourself in-app — this is intentional, so a compromised
-                  account can't be un-frozen by whoever compromised it either.
+                  <strong>To unfreeze:</strong> contact support and verify your identity. There's no
+                  way to unfreeze your account yourself in-app — this is intentional, so a
+                  compromised account can't be un-frozen by whoever compromised it either.
                 </Text>
               </div>
 
               {freezeError && (
                 <div className="rounded-xl bg-red-50 px-4 py-3">
-                  <Text fw={500} className="text-[12px] text-red-600">{freezeError}</Text>
+                  <Text fw={500} className="text-[12px] text-red-600">
+                    {freezeError}
+                  </Text>
                 </div>
               )}
 
               <div>
-                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text>
+                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
+                  Reason (optional)
+                </Text>
                 <TextInput
                   placeholder="Why are you freezing your account? (helps support verify you faster)"
                   value={freezeReason}
@@ -1198,7 +1310,9 @@ export function Profile() {
               </div>
 
               <div>
-                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+                <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
+                  Current Password
+                </Text>
                 <PasswordInput
                   placeholder="Enter your password"
                   value={freezePassword}
@@ -1241,25 +1355,32 @@ export function Profile() {
           onClick={() => setDeleteExpanded(!deleteExpanded)}
           className="flex w-full cursor-pointer items-center justify-between"
         >
-          <Text fw={600} className="text-[14px] text-[#EF4444]">Delete Account</Text>
+          <Text fw={600} className="text-[14px] text-[#EF4444]">
+            Delete Account
+          </Text>
           <span className="text-[#EF4444] text-[18px]">{deleteExpanded ? '−' : '+'}</span>
         </button>
 
         {deleteExpanded && (
           <div className="mt-4 flex flex-col gap-4">
             <Text fw={400} className="text-[12px] text-[#6B7280]">
-              This permanently closes your account, deletes your data, and cannot be undone.
-              Make sure your wallet balance is zero and you have no active circle memberships before proceeding.
+              This permanently closes your account, deletes your data, and cannot be undone. Make
+              sure your wallet balance is zero and you have no active circle memberships before
+              proceeding.
             </Text>
 
             {deleteError && (
               <div className="rounded-xl bg-red-50 px-4 py-3">
-                <Text fw={500} className="text-[12px] text-red-600">{deleteError}</Text>
+                <Text fw={500} className="text-[12px] text-red-600">
+                  {deleteError}
+                </Text>
               </div>
             )}
 
             <div>
-              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
+                Current Password
+              </Text>
               <PasswordInput
                 placeholder="Enter your password"
                 value={deletePassword}
@@ -1272,7 +1393,9 @@ export function Profile() {
             </div>
 
             <div>
-              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text>
+              <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
+                Reason (optional)
+              </Text>
               <TextInput
                 placeholder="Why are you leaving?"
                 value={deleteReason}
