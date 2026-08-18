@@ -6,6 +6,8 @@ settings:
 
 importers:
 
+  .: {}
+
   apps/admin:
     dependencies:
       '@ajoti/shared':
