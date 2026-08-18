@@ -15,9 +15,6 @@ import { notifications } from '@mantine/notifications'
 import {
   IconArrowLeft,
   IconUser,
-  IconMail,
-  IconPhone,
-  IconMapPin,
   IconShieldCheck,
   IconEdit,
   IconCheck,
@@ -48,7 +45,7 @@ import {
   type KycStatus,
   type SavedBankAccount,
 } from '@/utils/api'
-import { PhoneInputField, AddBankAccountModal } from '@/components'
+import { AddBankAccountModal } from '@/components'
 
 function getUserFromStorage() {
   const stored = localStorage.getItem('user')
