@@ -593,39 +593,28 @@ export function Profile() {
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
               Email Address
             </Text>
-            {editing ? (
-              <TextInput
-                value={email}
-                onChange={(e) => setEmail(e.currentTarget.value)}
-                radius="md"
-                size="sm"
-                leftSection={<IconMail size={16} color="#9CA3AF" />}
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-              />
-            ) : (
-              <Text fw={500} className="text-[14px] text-[#0F172A]">
-                {email}
-              </Text>
-            )}
+
+            <Text fw={500} className="text-[14px] text-[#0F172A]">
+              {email}
+            </Text>
           </div>
 
           <div>
             <Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">
               Phone Number
             </Text>
-            {editing ? (
-              <PhoneInputField
-                value={phone}
-                onChange={setPhone}
-                size="sm"
-                styles={{ input: { borderColor: '#E5E7EB', fontSize: 14 } }}
-              />
-            ) : (
-              <Text fw={500} className="text-[14px] text-[#0F172A]">
-                {phone}
-              </Text>
-            )}
+
+            <Text fw={500} className="text-[14px] text-[#0F172A]">
+              {phone}
+            </Text>
           </div>
+
+          {editing && (
+            <Text fw={400} className="-mt-2 text-[11px] text-[#9CA3AF]">
+              Your email and phone number can&apos;t be changed here. Contact support to update
+              them.
+            </Text>
+          )}
         </div>
       </div>
 
