@@ -1,5 +1,13 @@
 {
-  "name": "ajoti-frontend",
-  "private": true,
-  "packageManager": "pnpm@10.30.0"
+    "name": "ajoti-monorepo",
+    "private": true,
+    "packageManager": "pnpm@10.28.0",
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "build:admin": "pnpm --filter ajoti-admin build",
+        "build:user": "pnpm --filter ajoti-frontend build",
+        "build:super-admin": "pnpm --filter ajoti-super-admin build"
+    }
 }
