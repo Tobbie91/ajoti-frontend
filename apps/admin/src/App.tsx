@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from '@/layouts'
 import { KycGate } from '@/components/KycGate'
+import { TransactionPinGate } from '@/components/TransactionPinGate'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import {
   Dashboard,
@@ -38,13 +39,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Auth routes — no layout */}
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/login" element={<Login />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/kyc" element={<KycPageGuard><Kyc /></KycPageGuard>} />
 
-        {/* Protected routes — with admin layout */}
         <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/create-group" element={<CreateGroup />} />
@@ -56,7 +55,16 @@ function App() {
           <Route path="/debts" element={<MyDebts />} />
           <Route path="/my-wallet" element={<MyWallet />} />
           <Route path="/fund-wallet" element={<KycGate action="fund your wallet"><FundWallet /></KycGate>} />
-          <Route path="/withdraw" element={<KycGate action="withdraw funds"><WithdrawFunds /></KycGate>} />
+          <Route
+            path="/withdraw"
+            element={
+              <KycGate action="withdraw funds">
+                <TransactionPinGate>
+                  <WithdrawFunds />
+                </TransactionPinGate>
+              </KycGate>
+            }
+          />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/my-profile" element={<MyProfile />} />
           <Route path="/set-pin" element={<SetPin />} />
@@ -65,10 +73,7 @@ function App() {
           <Route path="/support/:ticketId" element={<SupportTicket />} />
         </Route>
 
-        {/* Flutterwave callback — no layout */}
         <Route path="/fund-wallet/callback" element={<FundWalletCallback />} />
-
-        {/* Default: redirect to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
