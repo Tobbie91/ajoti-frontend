@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, Text, PinInput, Loader, Alert } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
@@ -11,7 +11,7 @@ export function VerifyOtp() {
   const [resent, setResent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const email = localStorage.getItem('admin_verify_email') || ''
+  const email = localStorage.getItem('verify_email') || ''
 
   async function handleVerify() {
     if (otp.length < 6) return

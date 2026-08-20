@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Group, Burger, Text, Avatar, Box, Popover, Modal, ScrollArea, Loader, Badge } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { IconBell } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
+import { getCurrentRole } from '@/utils/auth-role'
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -19,6 +20,7 @@ interface HeaderProps {
 const PRIMARY = '#0b6b55'
 
 function NotificationPanel() {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -57,6 +59,17 @@ function NotificationPanel() {
     setUnreadCount((c) => Math.max(0, c - 1))
   }
 
+  async function handleNotificationClick(notification: AppNotification) {
+    if (!notification.read) await handleMarkOne(notification.id)
+    const destination = notification.actionUrl ?? (
+      notification.title?.toLowerCase().includes('invited to join') ? '/rosca/invites' : null
+    )
+    if (destination) {
+      setOpen(false)
+      navigate(destination)
+    }
+  }
+
   const isMobile = useMediaQuery('(max-width: 639px)')
 
   const notifBody = (
@@ -84,7 +97,7 @@ function NotificationPanel() {
             {notifications.map((n, i) => (
               <button
                 key={n.id}
-                onClick={() => !n.read && handleMarkOne(n.id)}
+                onClick={() => handleNotificationClick(n)}
                 style={{ width: '100%', background: !n.read ? '#F0FDF4' : 'transparent', border: 'none', borderBottom: i < notifications.length - 1 ? '1px solid #F3F4F6' : 'none', cursor: !n.read ? 'pointer' : 'default', padding: '12px 16px', textAlign: 'left', display: 'block' }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -149,9 +162,10 @@ function NotificationPanel() {
 
 export function Header({ opened, onToggle }: HeaderProps) {
   const navigate = useNavigate()
-  const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
+  const role = getCurrentRole()
+  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}')
   const [fullName, setFullName] = useState(
-    [storedUser.firstName, storedUser.lastName].filter(Boolean).join(' ') || 'Admin'
+    [storedUser.firstName, storedUser.lastName].filter(Boolean).join(' ') || 'My account'
   )
   const initials = fullName.charAt(0).toUpperCase()
 
@@ -174,7 +188,7 @@ export function Header({ opened, onToggle }: HeaderProps) {
         >
           <Box style={{ textAlign: 'right' }}>
             <Text fz="sm" fw={600} lh={1.2}>{fullName}</Text>
-            <Text fz="xs" c="dimmed" lh={1.2}>Admin</Text>
+            <Text fz="xs" c="dimmed" lh={1.2}>{role === 'CIRCLE_ADMIN' ? 'Circle organiser' : 'Member'}</Text>
           </Box>
           <Avatar
             size={36}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Alert, Button, Card, Group, PasswordInput, Text, TextInput } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -27,15 +27,21 @@ export function Login() {
         throw new Error('This account cannot use the Ajoti customer application.')
       }
 
-      localStorage.setItem('admin_access_token', token)
-      localStorage.setItem('admin_refresh_token', refreshToken)
-      const existing = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
+      localStorage.setItem('access_token', token)
+      localStorage.setItem('refresh_token', refreshToken)
+      const existing = JSON.parse(localStorage.getItem('user') ?? '{}')
       const merged: Record<string, unknown> = { ...existing, role }
       for (const [key, value] of Object.entries(user)) {
         if (value !== '' && value !== null && value !== undefined) merged[key] = value
       }
-      localStorage.setItem('admin_user', JSON.stringify(merged))
-      navigate(defaultAuthenticatedPath(role))
+      localStorage.setItem('user', JSON.stringify(merged))
+      const pendingRedirect = localStorage.getItem('pending_redirect')
+      if (pendingRedirect?.startsWith('/')) {
+        localStorage.removeItem('pending_redirect')
+        navigate(pendingRedirect)
+      } else {
+        navigate(defaultAuthenticatedPath(role))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -87,11 +93,17 @@ export function Login() {
                 {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">{error}</Alert>}
                 <TextInput label="Email" placeholder="you@example.com" radius="md" value={email}
                   onChange={(e) => setEmail(e.currentTarget.value)} styles={{ input: { borderColor: '#BFEBD1' } }} />
-                <PasswordInput label="Password" placeholder="••••••••" radius="md" value={password}
+                <PasswordInput label="Password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" radius="md" value={password}
                   onChange={(e) => setPassword(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   styles={{ input: { borderColor: '#BFEBD1' } }} />
                 <Group justify="flex-end"><Text component="button" type="button" fz="xs" c="#0B6B55" onClick={() => setForgotOpen(true)}>Forgot password?</Text></Group>
                 <Button fullWidth radius="md" onClick={handleLogin} loading={loading} style={{ background: '#0B6B55' }}>Sign in</Button>
+                <Text size="sm" className="text-center text-[#6B7280]">
+                  New to Ajoti?{' '}
+                  <Text component="button" type="button" c="#0B6B55" fw={600} onClick={() => navigate('/signup')}>
+                    Create an account
+                  </Text>
+                </Text>
                 <Text size="xs" className="text-center text-[#6B7280]">By signing in, you agree to our Terms and Privacy Policy.</Text>
               </div>
             </Card>

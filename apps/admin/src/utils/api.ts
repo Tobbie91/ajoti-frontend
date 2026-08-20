@@ -6,9 +6,9 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 const client = createApiClient({
   baseUrl: BASE_URL,
-  storagePrefix: 'admin_',
+  storagePrefix: '',
   sessionExpiredRedirect: '/login',
-  extraSessionKeys: ['admin_kyc_completed', 'admin_verify_email'],
+  extraSessionKeys: ['kyc_completed', 'verify_email', 'reset_email', 'pending_redirect'],
 })
 
 const { request, authRequest } = client
@@ -274,6 +274,7 @@ export interface RoscaCircle {
   contributionAmount: number
   frequency: string
   durationCycles: number
+  currentCycle?: number
   maxSlots: number
   totalSlots: number
   filledSlots: number
@@ -287,12 +288,14 @@ export interface RoscaCircle {
     firstName: string
     lastName: string
   }
+  members?: CircleMember[]
   [key: string]: unknown
 }
 
 // GET /api/rosca — list circles the admin belongs to
 export function listRoscaCircles(): Promise<RoscaCircle[]> {
-  return authRequest('/api/rosca', { method: 'GET' })
+  return authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>('/api/rosca', { method: 'GET' })
+    .then((res) => Array.isArray(res) ? res : res.data ?? [])
 }
 
 export interface CircleRules {
@@ -319,10 +322,12 @@ export interface MyJoinRequest {
     id?: string
     name?: string
     durationCycles?: number
+    currentCycle?: number
     filledSlots?: number
     maxSlots?: number
     frequency?: string
     contributionAmount?: number | string
+    nextPayoutDate?: string
     admin?: { firstName?: string; lastName?: string }
   }
   [key: string]: unknown
@@ -598,14 +603,22 @@ export function updatePayoutConfig(
 }
 
 export interface RoscaSchedule {
-  month: string
-  recipient: string
+  id?: string
+  cycleNumber?: number
+  contributionDeadline?: string
+  payoutDate?: string
+  recipientId?: string | null
+  month?: string
+  recipient?: string
   status: string
   [key: string]: unknown
 }
 
 export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
-  return authRequest(`/api/rosca/${circleId}/schedules`, { method: 'GET' })
+  return authRequest<{ data?: RoscaSchedule[] } | RoscaSchedule[]>(
+    `/api/rosca/${circleId}/schedules`,
+    { method: 'GET' },
+  ).then((res) => Array.isArray(res) ? res : res.data ?? [])
 }
 
 // ── Payouts ──────────────────────────────────────────────────────────────────
@@ -672,7 +685,7 @@ export interface Contribution {
   [key: string]: unknown
 }
 
-export async function getCircleContributions(circleId: string): Promise<Contribution[]> {
+export async function getAllCircleContributions(circleId: string): Promise<Contribution[]> {
   const res = await authRequest<{ data?: Contribution[] }>(
     `/api/admin/rosca/${circleId}/contributions-all`,
     { method: 'GET' },
@@ -747,21 +760,29 @@ export async function getAdminCircleContributions(
   }
 }
 
-export function makeContribution(circleId: string, cycleNumber: number): Promise<{ message: string }> {
-  return authRequest(`/api/rosca/${circleId}/contributions`, {
+export async function makeContribution(circleId: string, cycleNumber: number): Promise<CircleContribution> {
+  const res = await authRequest<{ data?: CircleContribution } | CircleContribution>(`/api/rosca/${circleId}/contributions`, {
     method: 'POST',
     body: JSON.stringify({ cycleNumber }),
   })
+  return ('data' in res && res.data ? res.data : res) as CircleContribution
 }
 
 // ── Wallet Transactions ───────────────────────────────────────────────────────
 
 export interface WalletTransaction {
   id: string
-  type: string
-  amount: number
-  description: string
+  entryType: string
+  movementType: string
+  bucketType: string | null
+  amount: string | number
+  balanceBefore?: string | number
+  balanceAfter?: string | number
   createdAt: string
+  metadata?: Record<string, unknown>
+  sourceType?: string
+  type?: string
+  description?: string
   [key: string]: unknown
 }
 
@@ -1103,13 +1124,17 @@ export async function getCircleInvites(circleId: string): Promise<CircleInvite[]
 
 export interface PeerReview {
   id: string
+  circleId?: string
   reviewerId: string
-  reviewerName: string
+  reviewerName?: string
   revieweeId: string
-  revieweeName: string
+  revieweeName?: string
   rating: number
   comment?: string | null
   createdAt: string
+  reviewee?: { firstName?: string; lastName?: string; [key: string]: unknown }
+  reviewer?: { firstName?: string; lastName?: string; [key: string]: unknown }
+  [key: string]: unknown
 }
 
 // GET /api/rosca/:circleId/reviews — CIRCLE_ADMIN (own circle) or STAFF only
@@ -1330,4 +1355,258 @@ export function replyToTicket(ticketId: string, body: string): Promise<SupportMe
 
 export function closeMyTicket(ticketId: string): Promise<{ id: string; status: TicketStatus }> {
   return authRequest(`/api/support/tickets/${ticketId}/close`, { method: 'PATCH' })
+}
+
+// Customer capabilities retained from the retired member application.
+export interface ProveInitiateResult {
+  monoUrl: string | null   // null = test bypass (auto-verified, skip widget)
+  reference: string
+}
+
+export function resendResetOtp(email: string): Promise<{ message: string }> {
+  return request('/api/auth/resend-reset-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export interface ResetPasswordPayload {
+  email: string
+  otp: string
+  newPassword: string
+}
+
+export interface ChangePasswordPayload {
+  oldPassword: string
+  newPassword: string
+}
+
+export function changePassword(payload: ChangePasswordPayload): Promise<{ message: string }> {
+  return authRequest('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function leaveRoscaCircle(circleId: string): Promise<{ success: boolean; message: string }> {
+  return authRequest(`/api/rosca/${circleId}/leave`, { method: 'DELETE' })
+}
+
+export function joinRoscaCircle(circleId: string): Promise<{ message: string }> {
+  return authRequest(`/api/rosca/${circleId}/join`, { method: 'POST' })
+}
+
+export async function getRoscaCircle(circleId: string): Promise<RoscaCircle> {
+  const res = await authRequest<{ data?: RoscaCircle } | RoscaCircle>(
+    `/api/rosca/${circleId}`,
+    { method: 'GET' },
+  )
+  return ('data' in res && res.data ? res.data : res) as RoscaCircle
+}
+
+export interface CircleContribution {
+  id: string
+  cycleNumber: number
+  amount: string
+  penaltyAmount: string
+  paidAt: string
+}
+
+export async function getCircleContributions(circleId: string): Promise<CircleContribution[]> {
+  const res = await authRequest<{ data?: CircleContribution[] } | CircleContribution[]>(
+    `/api/rosca/${circleId}/contributions`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : res.data ?? []
+}
+
+// ── Wallet ──────────────────────────────────────────────────────────────────
+
+export interface PendingWithdrawal {
+  reference: string
+  amountKobo: string
+  initiatedAt: string
+}
+
+export interface Wallet {
+  id: string
+  currency: string
+  status: string
+  balance: WalletBalance
+  // Stage 11: while a withdrawal is PENDING, every other debit/reserve on the
+  // wallet is blocked (contributions, circle joins, savings, another
+  // withdrawal). Null when nothing is pending.
+  pendingWithdrawal: PendingWithdrawal | null
+  [key: string]: unknown
+}
+
+export async function getWallet(): Promise<Wallet> {
+  const res = await authRequest<{ data?: Wallet } | Wallet>('/api/wallet', { method: 'GET' })
+  return ('data' in res && res.data ? res.data : res) as Wallet
+}
+
+export interface WalletBucket {
+  name: string
+  amount: number
+  [key: string]: unknown
+}
+
+export function getWalletBuckets(): Promise<WalletBucket[]> {
+  return authRequest('/api/wallet/buckets', { method: 'GET' })
+}
+
+export interface WalletStatistics {
+  totalInflow: number
+  totalOutflow: number
+  [key: string]: unknown
+}
+
+export function getWalletStatistics(): Promise<WalletStatistics> {
+  return authRequest('/api/wallet/statistics', { method: 'GET' })
+}
+
+export function getWalletStatus(): Promise<{ status: string; [key: string]: unknown }> {
+  return authRequest('/api/wallet/status', { method: 'GET' })
+}
+
+export function checkSufficientBalance(amount: number): Promise<{ sufficient: boolean }> {
+  return authRequest(`/api/wallet/balance/check/${amount}`, { method: 'GET' })
+}
+
+// ── Wallet Funding ────────────────────────────────────────────────────────────
+
+export interface FundingMethod {
+  id: string
+  name: string
+  icon: string
+  fee: number
+  minAmount: number
+  description: string
+}
+
+export async function getFundingMethods(): Promise<FundingMethod[]> {
+  const res = await authRequest<unknown>('/api/wallet/funding/methods', { method: 'GET' })
+  // Response: { success, data: { methods: [...] } }
+  if (Array.isArray(res)) return res as FundingMethod[]
+  const data = (res as Record<string, unknown>).data
+  if (Array.isArray(data)) return data as FundingMethod[]
+  if (data && typeof data === 'object') {
+    const methods = (data as Record<string, unknown>).methods
+    if (Array.isArray(methods)) return methods as FundingMethod[]
+  }
+  return []
+}
+
+export interface WithdrawalResponse {
+  reference?: string
+  status?: string
+  message?: string
+  [key: string]: unknown
+}
+
+export interface LoanApplication {
+  circleId: string
+}
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+
+export function handleFlutterwaveWebhook(payload: Record<string, unknown>): Promise<{ message: string }> {
+  return request('/api/webhooks/flutterwave', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export interface PendingInvite {
+  id: string
+  token: string
+  email: string
+  expiresAt: string
+  createdAt: string
+  circle: {
+    id: string
+    name: string
+    contributionAmount: string
+    frequency: string
+    durationCycles: number
+    maxSlots: number
+    filledSlots: number
+    admin: { firstName: string; lastName: string }
+  }
+}
+
+export async function getMyInvites(): Promise<PendingInvite[]> {
+  const res = await authRequest<{ data?: PendingInvite[] } | PendingInvite[]>(
+    '/api/rosca/my-invites',
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: PendingInvite[] }).data ?? []
+}
+
+export interface InvitePreview {
+  token: string
+  email: string
+  expiresAt: string
+  usedAt: string | null
+  circle: {
+    name: string
+    contributionAmount: string
+    frequency: string
+    durationCycles: number
+    maxSlots: number
+    filledSlots: number
+    adminName: string
+  }
+}
+
+export async function getInvitePreview(token: string): Promise<InvitePreview> {
+  const res = await authRequest<{ data: InvitePreview }>(`/api/rosca/invite-preview/${token}`, { method: 'GET' })
+  return (res as { data: InvitePreview }).data
+}
+
+export async function joinByInvite(token: string): Promise<{ message: string }> {
+  return authRequest('/api/rosca/join-by-invite', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
+export async function messageAdmin(circleId: string, message: string): Promise<{ message: string }> {
+  return authRequest(`/api/rosca/${circleId}/message-admin`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  })
+}
+
+// ── Peer Reviews ──────────────────────────────────────────────────────────────
+
+export interface CircleMember {
+  userId: string
+  name: string
+  firstName?: string
+  lastName?: string
+  position?: number
+  status?: string
+  joinedAt?: string
+  trustScore?: number
+  [key: string]: unknown
+}
+
+export async function getCircleMembers(circleId: string): Promise<CircleMember[]> {
+  const circle = await getRoscaCircle(circleId)
+  return circle.members ?? []
+}
+
+export async function getCirclePeerReviews(circleId: string): Promise<PeerReview[]> {
+  const res = await authRequest<{ data?: PeerReview[] } | PeerReview[]>(
+    `/api/rosca/${circleId}/reviews/mine`,
+    { method: 'GET' },
+  )
+  return Array.isArray(res) ? res : (res as { data?: PeerReview[] }).data ?? []
+}
+
+// ── Admin Access Request ──────────────────────────────────────────────────────
+
+export function requestAdminAccess(): Promise<{ message: string }> {
+  return authRequest('/api/users/me/request-admin', { method: 'POST' })
 }

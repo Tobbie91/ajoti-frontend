@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Paper, Group, Text, Button, Loader, Table, Avatar, Badge } from '@mantine/core'
 import { IconRefresh } from '@tabler/icons-react'
-import { getCircleContributions, type Contribution as ApiContribution } from '@/utils/api'
+import { getAllCircleContributions, type Contribution as ApiContribution } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -19,7 +19,7 @@ export function GroupContributionsTab({ circleId, isActive }: GroupContributions
     if (isActive && circleId && !contribsFetched.current) {
       contribsFetched.current = true
       setContribLoading(true)
-      getCircleContributions(circleId)
+      getAllCircleContributions(circleId)
         .then((data) => setContributions(data))
         .catch(() => setContributions([]))
         .finally(() => setContribLoading(false))
@@ -29,7 +29,7 @@ export function GroupContributionsTab({ circleId, isActive }: GroupContributions
   function refresh() {
     if (!circleId) return
     setContribLoading(true)
-    getCircleContributions(circleId).then((data) => setContributions(data)).catch(() => {}).finally(() => setContribLoading(false))
+    getAllCircleContributions(circleId).then((data) => setContributions(data)).catch(() => {}).finally(() => setContribLoading(false))
   }
 
   return (

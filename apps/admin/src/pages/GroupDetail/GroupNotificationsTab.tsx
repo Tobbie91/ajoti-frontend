@@ -97,7 +97,12 @@ export function GroupNotificationsTab({ circleId, members }: { circleId: string;
     if (!circleId) return
     setReviewsLoading(true)
     getCircleReviews(circleId)
-      .then((data) => setReviews(data.map((r) => ({ userId: r.revieweeId, name: r.revieweeName, rating: r.rating, comment: r.comment ?? '' }))))
+      .then((data) => setReviews(data.map((r) => ({
+        userId: r.revieweeId,
+        name: r.revieweeName ?? ([r.reviewee?.firstName, r.reviewee?.lastName].filter(Boolean).join(' ') || 'Member'),
+        rating: r.rating,
+        comment: r.comment ?? '',
+      }))))
       .catch(() => {})
       .finally(() => setReviewsLoading(false))
   }, [circleId])

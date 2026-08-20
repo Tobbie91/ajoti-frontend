@@ -1,5 +1,14 @@
 # Ajoti Frontend
 
+The pnpm workspace contains two active applications:
+
+- `apps/admin`: the canonical Ajoti customer application for both `MEMBER` and
+  `CIRCLE_ADMIN` accounts. Circle organisers receive additional guarded capabilities.
+- `apps/super-admin`: the internal staff application.
+
+`apps/user` has been consolidated into `apps/admin` and retired. See
+`docs/user-admin-consolidation.md` for the verified feature inventory.
+
 A minimal, clean, and scalable React + TypeScript boilerplate for fintech applications.
 
 ## Tech Stack
@@ -58,14 +67,14 @@ A minimal, clean, and scalable React + TypeScript boilerplate for fintech applic
 # Install dependencies
 pnpm install
 
-# Start development server
-pnpm dev
+# Start the customer application
+pnpm --filter ajoti-admin dev
 
 # Build for production
-pnpm build
+pnpm build:admin
 
 # Preview production build
-pnpm preview
+pnpm --filter ajoti-admin preview
 ```
 
 ### Available Scripts
@@ -164,4 +173,3 @@ export const theme = createTheme({
 ## License
 
 Private
-

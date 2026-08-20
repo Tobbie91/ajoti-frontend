@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import {
     Text,
     TextInput,
@@ -51,7 +51,7 @@ import {
 import { PhoneInputField, AddBankAccountModal } from "@/components";
 
 function getUserFromStorage() {
-    const stored = localStorage.getItem("admin_user");
+    const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : {};
 }
 
@@ -207,7 +207,7 @@ export function MyProfile() {
                 setDob((profile.dob as string) || "");
                 if (profile.status) setAccountStatus(profile.status);
                 // Update localStorage with fresh data
-                localStorage.setItem("admin_user", JSON.stringify(profile));
+                localStorage.setItem("user", JSON.stringify(profile));
             })
             .catch(() => {}) // fallback to localStorage values already set
             .finally(() => setProfileLoading(false));
@@ -315,7 +315,7 @@ export function MyProfile() {
         try {
             await verifyPendingEmailChange(emailOtp);
             const updatedUser = { ...getUserFromStorage(), email };
-            localStorage.setItem("admin_user", JSON.stringify(updatedUser));
+            localStorage.setItem("user", JSON.stringify(updatedUser));
             setOriginalEmail(email);
 
             notifications.show({
@@ -358,7 +358,7 @@ export function MyProfile() {
                 ...(!kycStatus?.lga && lga ? { lga } : {}),
             });
             if (res.data)
-                localStorage.setItem("admin_user", JSON.stringify(res.data));
+                localStorage.setItem("user", JSON.stringify(res.data));
             setSaveSuccess(true);
             setEditing(false);
             setTimeout(() => setSaveSuccess(false), 3000);
@@ -373,15 +373,15 @@ export function MyProfile() {
 
     async function handleLogout() {
         try {
-            const refreshToken = localStorage.getItem("admin_refresh_token");
+            const refreshToken = localStorage.getItem("refresh_token");
             if (refreshToken) await logoutApi(refreshToken);
         } catch {
             // ignore logout API errors
         }
-        localStorage.removeItem("admin_access_token");
-        localStorage.removeItem("admin_refresh_token");
-        localStorage.removeItem("admin_user");
-        localStorage.removeItem("admin_kyc_completed");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("kyc_completed");
         navigate("/login");
     }
 
@@ -392,7 +392,7 @@ export function MyProfile() {
             await freezeMyAccount(freezePassword, freezeReason || undefined);
             setAccountStatus("FROZEN");
             localStorage.setItem(
-                "admin_user",
+                "user",
                 JSON.stringify({ ...getUserFromStorage(), status: "FROZEN" }),
             );
             setFreezeExpanded(false);
@@ -419,10 +419,10 @@ export function MyProfile() {
         setDeleteError(null);
         try {
             await deleteMyAccount(deletePassword, deleteReason || undefined);
-            localStorage.removeItem("admin_access_token");
-            localStorage.removeItem("admin_refresh_token");
-            localStorage.removeItem("admin_user");
-            localStorage.removeItem("admin_kyc_completed");
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("user");
+            localStorage.removeItem("kyc_completed");
             navigate("/login");
         } catch (err) {
             setDeleteError(
@@ -459,7 +459,7 @@ export function MyProfile() {
                         >
                             Withdrawals, bank account changes, and security
                             setting changes are blocked. Contact support and
-                            verify your identity to unlock your account — this
+                            verify your identity to unlock your account â€” this
                             cannot be undone from within the app.
                         </Text>
                     </div>
@@ -690,7 +690,7 @@ export function MyProfile() {
                     <div className="grid grid-cols-2 gap-4">
                         <InfoRow
                             label="Date of Birth"
-                            value={dob || "—"}
+                            value={dob || "â€”"}
                             icon={IconCalendar}
                         />
                     </div>
@@ -751,7 +751,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {address || "—"}
+                                    {address || "â€”"}
                                 </Text>
                             </div>
                         )}
@@ -782,7 +782,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {city || "—"}
+                                    {city || "â€”"}
                                 </Text>
                             )}
                         </div>
@@ -811,7 +811,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {state || "—"}
+                                    {state || "â€”"}
                                 </Text>
                             )}
                         </div>
@@ -840,7 +840,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {lga || "—"}
+                                    {lga || "â€”"}
                                 </Text>
                             )}
                         </div>
@@ -883,17 +883,17 @@ export function MyProfile() {
                         number,
                         { single: string; daily: string }
                     > = {
-                        0: { single: "₦0", daily: "₦0" },
-                        1: { single: "₦50,000", daily: "₦300,000" },
-                        2: { single: "₦100,000", daily: "₦500,000" },
-                        3: { single: "₦5,000,000", daily: "₦25,000,000" },
+                        0: { single: "â‚¦0", daily: "â‚¦0" },
+                        1: { single: "â‚¦50,000", daily: "â‚¦300,000" },
+                        2: { single: "â‚¦100,000", daily: "â‚¦500,000" },
+                        3: { single: "â‚¦5,000,000", daily: "â‚¦25,000,000" },
                     };
                     const nextLimits: Record<
                         number,
                         { single: string; daily: string }
                     > = {
-                        1: { single: "₦100,000", daily: "₦500,000" },
-                        2: { single: "₦5,000,000", daily: "₦25,000,000" },
+                        1: { single: "â‚¦100,000", daily: "â‚¦500,000" },
+                        2: { single: "â‚¦5,000,000", daily: "â‚¦25,000,000" },
                     };
 
                     return (
@@ -968,7 +968,7 @@ export function MyProfile() {
                                 )}
                             </div>
 
-                            {/* NIN / BVN rows — only shown while at Level 0 */}
+                            {/* NIN / BVN rows â€” only shown while at Level 0 */}
                             {level === 0 && (
                                 <>
                                     <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
@@ -1060,13 +1060,13 @@ export function MyProfile() {
                                             className="text-[13px] text-[#D97706]"
                                         >
                                             Level {level + 1} upgrade under
-                                            review — usually approved within
-                                            24–48 hours.
+                                            review â€” usually approved within
+                                            24â€“48 hours.
                                         </Text>
                                     </div>
                                 )}
 
-                            {/* Upgrade prompt — Level 1 or Level 2 */}
+                            {/* Upgrade prompt â€” Level 1 or Level 2 */}
                             {level >= 1 &&
                                 level < 3 &&
                                 step !== "PHOTO_REQUIRED" &&
@@ -1214,7 +1214,7 @@ export function MyProfile() {
                                         fw={400}
                                         className="text-[12px] text-[#6B7280]"
                                     >
-                                        {acc.accountNumber} · {acc.bankName}
+                                        {acc.accountNumber} Â· {acc.bankName}
                                     </Text>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -1455,7 +1455,7 @@ export function MyProfile() {
                             </Text>
                         </div>
                         <span className="text-[#EA580C] text-[18px] flex-shrink-0">
-                            {freezeExpanded ? "−" : "+"}
+                            {freezeExpanded ? "âˆ’" : "+"}
                         </span>
                     </button>
 
@@ -1466,7 +1466,7 @@ export function MyProfile() {
                                     fw={400}
                                     className="text-[12px] text-[#9A3412]"
                                 >
-                                    Freezing is a security measure — not the
+                                    Freezing is a security measure â€” not the
                                     same as deleting your account, and it's
                                     reversible once support verifies your
                                     identity.
@@ -1513,7 +1513,7 @@ export function MyProfile() {
                                     <strong>To unfreeze:</strong> contact
                                     support and verify your identity. There's no
                                     way to unfreeze your account yourself in-app
-                                    — this is intentional, so a compromised
+                                    â€” this is intentional, so a compromised
                                     account can't be un-frozen by whoever
                                     compromised it either.
                                 </Text>
@@ -1628,7 +1628,7 @@ export function MyProfile() {
                         Delete Account
                     </Text>
                     <span className="text-[#EF4444] text-[18px]">
-                        {deleteExpanded ? "−" : "+"}
+                        {deleteExpanded ? "âˆ’" : "+"}
                     </span>
                 </button>
 

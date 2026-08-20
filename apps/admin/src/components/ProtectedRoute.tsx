@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+﻿import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Loader } from '@mantine/core'
 import { getTokenRole } from '@/utils/auth-role'
@@ -10,11 +10,11 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GuardState>('loading')
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_access_token')
+    const token = localStorage.getItem('access_token')
     const role = getTokenRole(token)
     if (!token || !role || !['MEMBER', 'CIRCLE_ADMIN'].includes(role)) {
-      localStorage.removeItem('admin_access_token')
-      localStorage.removeItem('admin_refresh_token')
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
       setState('no-auth')
       return
     }

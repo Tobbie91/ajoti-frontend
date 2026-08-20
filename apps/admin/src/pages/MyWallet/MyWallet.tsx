@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Text, Button, Loader, Modal, Badge, Divider } from '@mantine/core'
 import { IconPlus, IconArrowUpRight, IconArrowDownLeft } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
@@ -21,7 +21,7 @@ function formatTxLabel(raw: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-// A sourceType with a friendly override always wins — otherwise generic
+// A sourceType with a friendly override always wins â€” otherwise generic
 // movementTypes like TRANSFER would mask it (a fee credit and a plain
 // wallet-to-wallet transfer both have movementType=TRANSFER).
 function resolveTxLabel(tx: WalletTransaction, entryType: string): string {
@@ -35,8 +35,8 @@ function resolveTxLabel(tx: WalletTransaction, entryType: string): string {
 }
 
 function formatKobo(val: string | number | undefined): string {
-  if (val == null) return '—'
-  return `₦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+  if (val == null) return 'â€”'
+  return `â‚¦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -55,7 +55,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
   const color = isCredit ? '#02A36E' : '#EF4444'
   const label = resolveTxLabel(tx, entryType)
   const d = new Date(tx.createdAt)
-  const amtNaira = `₦${(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+  const amtNaira = `â‚¦${(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 
   const metaEntries = tx.metadata
     ? Object.entries(tx.metadata as Record<string, unknown>).filter(([, v]) => v != null && v !== '' && typeof v !== 'object')
@@ -104,7 +104,7 @@ export function MyWallet() {
   const [loading, setLoading] = useState(true)
   const [selectedTx, setSelectedTx] = useState<Tx | null>(null)
 
-  const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
+  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}')
   const userId = storedUser.id ?? storedUser._id ?? ''
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export function MyWallet() {
           </div>
         ) : (
           <Text fw={600} className="mb-4 text-[32px] text-white/90">
-            ₦{(balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+            â‚¦{(balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
           </Text>
         )}
         <div className="flex gap-3">
@@ -212,7 +212,7 @@ export function MyWallet() {
                 </div>
               </div>
               <Text fw={600} className={`text-[14px] ${isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
-                {isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                {isCredit ? '+' : '-'}â‚¦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>
           )

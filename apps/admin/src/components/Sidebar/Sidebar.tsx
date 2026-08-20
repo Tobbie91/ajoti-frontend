@@ -5,6 +5,7 @@ import {
   IconLayoutDashboard, IconTopologyRing, IconWallet, IconCash, IconAlertTriangle,
   IconUserCircle, IconUserCheck, IconCirclePlus, IconUsers, IconMessageCircle, IconHeadset,
   IconTargetArrow,
+  IconHome2, IconReceipt2,
 } from '@tabler/icons-react'
 import { isCircleAdmin } from '@/utils/auth-role'
 
@@ -28,6 +29,9 @@ export function Sidebar({ onClose }: SidebarProps) {
   return (
     <Box h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
       <Stack gap={2} px="xs" py="md" style={{ flex: 1 }}>
+        <NavLink component={RouterNavLink} to="/home" label="Home"
+          leftSection={<IconHome2 size={19} stroke={1.5} />} active={isActive('/home')} onClick={onClose}
+          styles={commonStyle(isActive('/home'))} />
         {admin && <NavLink component={RouterNavLink} to="/dashboard" label="Dashboard"
           leftSection={<IconLayoutDashboard size={19} stroke={1.5} />} active={location.pathname === '/dashboard'} onClick={onClose}
           styles={commonStyle(location.pathname === '/dashboard')} />}
@@ -40,11 +44,16 @@ export function Sidebar({ onClose }: SidebarProps) {
             styles={{ root: { borderRadius: 8 } }} />)}
         </NavLink>}
 
+        <NavLink component={RouterNavLink} to="/rosca" label="Ajo"
+          leftSection={<IconUsers size={19} stroke={1.5} />} active={location.pathname === '/rosca' || /^\/rosca\/(requests|invites|invite\/|[^/]+(?:\/join|\/summary|\/activities)?$)/.test(location.pathname)} onClick={onClose}
+          styles={commonStyle(location.pathname === '/rosca')} />
         <NavLink component={RouterNavLink} to="/target-savings" label="Target Savings"
           leftSection={<IconTargetArrow size={19} stroke={1.5} />} active={isActive('/target-savings')} onClick={onClose}
           styles={commonStyle(isActive('/target-savings'))} />
         <NavLink component={RouterNavLink} to="/my-wallet" label="My Wallet" leftSection={<IconWallet size={19} stroke={1.5} />}
           active={isActive('/my-wallet')} onClick={onClose} styles={commonStyle(isActive('/my-wallet'))} />
+        <NavLink component={RouterNavLink} to="/transactions" label="Transactions" leftSection={<IconReceipt2 size={19} stroke={1.5} />}
+          active={isActive('/transactions')} onClick={onClose} styles={commonStyle(isActive('/transactions'))} />
         <NavLink component={RouterNavLink} to="/loans" label="Loans" leftSection={<IconCash size={19} stroke={1.5} />}
           active={isActive('/loans')} onClick={onClose} styles={commonStyle(isActive('/loans'))} />
         <NavLink component={RouterNavLink} to="/debts" label="Debts" leftSection={<IconAlertTriangle size={19} stroke={1.5} />}

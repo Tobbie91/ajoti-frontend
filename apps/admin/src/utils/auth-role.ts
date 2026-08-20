@@ -11,7 +11,7 @@ export function getTokenRole(token?: string | null): AppRole | undefined {
 }
 
 export function getCurrentRole(): AppRole | undefined {
-  return getTokenRole(localStorage.getItem('admin_access_token'))
+  return getTokenRole(localStorage.getItem('access_token'))
 }
 
 export function isCircleAdmin(role = getCurrentRole()): boolean {
@@ -19,5 +19,5 @@ export function isCircleAdmin(role = getCurrentRole()): boolean {
 }
 
 export function defaultAuthenticatedPath(role = getCurrentRole()): string {
-  return role === 'CIRCLE_ADMIN' ? '/dashboard' : '/my-wallet'
+  return role === 'CIRCLE_ADMIN' ? '/dashboard' : '/home'
 }

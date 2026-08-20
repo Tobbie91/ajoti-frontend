@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Text, TextInput, Select, Loader, Modal, Badge, Divider } from '@mantine/core'
 import {
   IconArrowLeft,
@@ -45,7 +45,7 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
     name: label,
     type: entryType,
     time: d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', hour12: true }),
-    amount: `₦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+    amount: `â‚¦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
     direction: entryType === 'CREDIT' ? 'credit' : 'debit',
     date: dateLabel,
     raw: tx,
@@ -53,8 +53,8 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
 }
 
 function formatKobo(val: string | number | undefined): string {
-  if (val == null) return '—'
-  return `₦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+  if (val == null) return 'â€”'
+  return `â‚¦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -137,7 +137,7 @@ const CATEGORY_OPTIONS = ['All', 'Transfer', 'Funding', 'ROSCA', 'Investment']
 export function Transactions() {
   const navigate = useNavigate()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [walletBalance, setWalletBalance] = useState('₦ —')
+  const [walletBalance, setWalletBalance] = useState('â‚¦ â€”')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string | null>('All')
@@ -145,7 +145,7 @@ export function Transactions() {
   const [category, setCategory] = useState<string | null>('All')
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
 
-  const storedUser = JSON.parse(localStorage.getItem('admin_user') ?? '{}')
+  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}')
   const userId = storedUser.id ?? storedUser._id ?? ''
 
   useEffect(() => {
@@ -153,22 +153,22 @@ export function Transactions() {
       ? getAdminWalletBalance(userId)
           .then((data) => {
             const bal = data.available ?? data.total ?? 0
-            setWalletBalance(`₦${Number(bal).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+            setWalletBalance(`â‚¦${Number(bal).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
           })
           .catch(() =>
             getWalletBalance()
               .then((data) => {
                 const bal = Number(data.available ?? data.total ?? 0) / 100
-                setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+                setWalletBalance(`â‚¦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
               })
-              .catch(() => setWalletBalance('₦0.00')),
+              .catch(() => setWalletBalance('â‚¦0.00')),
           )
       : getWalletBalance()
           .then((data) => {
             const bal = Number(data.available ?? data.total ?? 0) / 100
-            setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+            setWalletBalance(`â‚¦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
           })
-          .catch(() => setWalletBalance('₦0.00'))
+          .catch(() => setWalletBalance('â‚¦0.00'))
 
     Promise.all([
       balanceFetch,
@@ -274,7 +274,7 @@ export function Transactions() {
                       </div>
                       <div>
                         <Text fw={500} className="text-[14px] text-[#0F172A]">{tx.name}</Text>
-                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">{tx.type} · {tx.time}</Text>
+                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">{tx.type} Â· {tx.time}</Text>
                       </div>
                     </div>
                     <Text fw={600} className={`text-[14px] ${tx.direction === 'credit' ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>

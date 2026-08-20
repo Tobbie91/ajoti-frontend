@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
     Button,
     Card,
@@ -53,9 +53,9 @@ export function Signup() {
                 gender: gender.toUpperCase() as "MALE" | "FEMALE",
                 password,
             });
-            localStorage.setItem("admin_verify_email", email.trim());
+            localStorage.setItem("verify_email", email.trim());
             localStorage.setItem(
-                "admin_user",
+                "user",
                 JSON.stringify({
                     firstName: firstName.trim(),
                     lastName: lastName.trim(),
@@ -83,7 +83,7 @@ export function Signup() {
                                 AJOTI
                             </Text>
                             <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs">
-                                Admin · Portal
+                                Admin Â· Portal
                             </span>
                         </div>
 
@@ -273,7 +273,7 @@ export function Signup() {
 
                             <PasswordInput
                                 label="Password"
-                                placeholder="••••••••"
+                                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                                 radius="md"
                                 value={password}
                                 onChange={(e) =>

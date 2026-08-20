@@ -6,6 +6,9 @@ import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import './index.css'
 import App from './App'
+import { migrateLegacyCustomerStorage } from '@/utils/customer-storage'
+
+migrateLegacyCustomerStorage()
 
 const theme = createTheme({
   primaryColor: 'green',
