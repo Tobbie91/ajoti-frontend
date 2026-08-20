@@ -2,11 +2,12 @@
 
 See `../AGENTS.md` for cross-cutting workflow rules (propose-before-implementing, commit cadence, push approval, logging to the completed-changes doc). This file is frontend-specific technical detail only.
 
-## Three apps, three access levels
+## Two active apps, three access levels
 
-- **`apps/user`** — regular users (`role: MEMBER`). No staff or circle-admin gating.
-- **`apps/admin`** — circle-admin portal. Gate: `role === 'CIRCLE_ADMIN'` only (`pages/Login/Login.tsx`, `components/ProtectedRoute.tsx`). Used to also let any `STAFF` account in (via the old `role === 'ADMIN' || role === 'SUPERADMIN'` check, back when the coarse role field conflated "is staff" with "is circle admin") — that leak is closed.
-- **`apps/super-admin`** — internal staff panel. Coarse gate: `role === 'STAFF'` (`pages/Login.tsx`). Fine-grained gate: `staffRole`-based permission checks via `utils/permissions.ts` (`getPermissions`, `hasPermission`, `getStaffRoleFromStorage`).
+- **`apps/admin`** — canonical customer app. Gate: `role === 'MEMBER' || role === 'CIRCLE_ADMIN'`. Shared customer routes are available to both roles; organiser URLs additionally require `CircleAdminRoute`.
+- **`apps/super-admin`** — internal staff panel. Coarse gate: `role === 'STAFF'` (`pages/Login.tsx`). Fine-grained gate: `staffRole`-based permission checks via `utils/permissions.ts`.
+
+`apps/user` was consolidated into `apps/admin` and retired. Do not recreate a separate MEMBER implementation; add shared customer behavior to `apps/admin` and guard only the capabilities that differ.
 
 ## `StaffAdminRole` naming (intentional inconsistency, don't "fix" it)
 

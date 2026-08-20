@@ -1,5 +1,6 @@
 packages:
-  - 'apps/*'
+  - 'apps/admin'
+  - 'apps/super-admin'
   - 'packages/*'
 allowBuilds:
   esbuild: true

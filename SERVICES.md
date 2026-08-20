@@ -1,6 +1,6 @@
 # External Services — Ajoti Frontend
 
-Configuration and setup for every external service and environment dependency across the three frontend apps.
+Configuration and setup for every external service and environment dependency across the two active frontend apps.
 
 **Status legend:** ✅ Integrated · 🔲 Planned · ⚠️ Dev/staging only
 
@@ -20,9 +20,9 @@ Configuration and setup for every external service and environment dependency ac
 
 ## 1. Backend API
 
-### All Apps ✅
+### Both Apps ✅
 
-**Purpose**: All three frontend apps talk exclusively to the Ajoti backend REST API. No app calls third-party services directly (payments, KYC, etc. are all mediated by the backend).
+**Purpose**: Both frontend apps talk exclusively to the Ajoti backend REST API. No app calls third-party services directly (payments, KYC, etc. are all mediated by the backend).
 
 **Environment variable** (all apps):
 
@@ -40,33 +40,18 @@ VITE_API_BASE_URL=http://localhost:3001   # local dev
 
 ## 2. Google OAuth
 
-### User App only ✅
+### Retired pending secure integration
 
-**Purpose**: Optional "Sign in with Google" on the login/register screen.
-
-**Setup**:
-1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-2. Create an OAuth 2.0 Client ID (Web application)
-3. Add authorised JavaScript origins:
-   - `http://localhost:5173` (local dev)
-   - `https://user.ajoti.com` (production)
-4. Copy the **Client ID**
-
-**Environment variable** (`apps/user/.env.local`):
-
-```bash
-VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-```
-
-**Notes**:
-- If `VITE_GOOGLE_CLIENT_ID` is not set, the Google login button is hidden automatically
-- The frontend passes the Google ID token to the backend (`POST /api/auth/google`) — the backend validates it and returns a JWT
+The retired `apps/user` UI exposed a Google button, but its implementation decoded the
+Google credential locally without exchanging it for an Ajoti access/refresh-token session.
+It is intentionally not present in the canonical customer app. Reintroducing it requires a
+server-validated `POST /api/auth/google` exchange and the normal Ajoti role checks.
 
 ---
 
 ## 3. Mono Prove Widget
 
-### User App only ✅
+### Customer App ✅
 
 **Purpose**: In-app KYC identity verification (BVN/NIN). The Mono Prove widget is loaded via a `<script>` tag and opened with a session token obtained from the backend.
 
@@ -93,11 +78,12 @@ VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 
 | App | Domain |
 |-----|--------|
-| User | `user.ajoti.com` |
-| Admin | `admin.ajoti.com` |
+| Customer | `admin.ajoti.com` |
 | Super Admin | `super-admin.ajoti.com` |
 
-**Deployment**: Each app is built with `pnpm --filter <app> build` and the output (`dist/`) is served by Nginx (configured in Dokploy). The backend CORS config must include all three origins.
+**Deployment**: Each active app is built with `pnpm --filter <app> build` and the output
+(`dist/`) is served by Nginx (configured in Dokploy). Configure `user.ajoti.com` as an
+HTTP redirect to `https://admin.ajoti.com` before removing it from backend CORS.
 
 ---
 
@@ -106,12 +92,6 @@ VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ### Development
 
 Create `.env.local` in each app directory (these are gitignored):
-
-**`apps/user/.env.local`**:
-```bash
-VITE_API_BASE_URL=http://localhost:3001
-VITE_GOOGLE_CLIENT_ID=        # optional — omit to hide Google login
-```
 
 **`apps/admin/.env.local`**:
 ```bash
@@ -133,7 +113,6 @@ VITE_API_BASE_URL=https://api-staging.ajoti.com
 
 ```bash
 VITE_API_BASE_URL=https://api.ajoti.com
-VITE_GOOGLE_CLIENT_ID=your-production-client-id.apps.googleusercontent.com
 ```
 
 ---
@@ -143,25 +122,22 @@ VITE_GOOGLE_CLIENT_ID=your-production-client-id.apps.googleusercontent.com
 ### Before building
 
 - [ ] `VITE_API_BASE_URL` points to the correct environment's API
-- [ ] `VITE_GOOGLE_CLIENT_ID` is set for the user app (production)
 - [ ] No hardcoded `localhost` URLs in `api.ts` files
 - [ ] No `console.log` statements with sensitive data
 
 ### Build
 
 ```bash
-pnpm --filter user build
-pnpm --filter admin build
-pnpm --filter super-admin build
+pnpm --filter ajoti-admin build
+pnpm --filter ajoti-super-admin build
 ```
 
 ### After deploying
 
-- [ ] `user.ajoti.com` loads and can log in
-- [ ] `admin.ajoti.com` loads and can log in as an admin
+- [ ] `user.ajoti.com` redirects to `admin.ajoti.com`
+- [ ] `admin.ajoti.com` accepts MEMBER and CIRCLE_ADMIN accounts
 - [ ] `super-admin.ajoti.com` loads and can log in as superadmin
 - [ ] `VITE_API_BASE_URL` is reachable from the browser (no CORS errors)
-- [ ] Google login works on user app (if enabled)
 - [ ] KYC widget opens correctly
 
 ---
@@ -170,15 +146,10 @@ pnpm --filter super-admin build
 
 ### CORS error on API calls
 
-- Check that `CORS_ORIGIN` in the backend `.env` includes all three frontend origins:
+- During the domain transition, keep both customer origins in backend `CORS_ORIGIN`:
   ```
   CORS_ORIGIN=https://user.ajoti.com,https://admin.ajoti.com,https://super-admin.ajoti.com
   ```
-
-### Google login button not showing
-
-- Confirm `VITE_GOOGLE_CLIENT_ID` is set in `.env.local`
-- Vite env vars must start with `VITE_` to be exposed to the browser
 
 ### API calls failing in production but working locally
 

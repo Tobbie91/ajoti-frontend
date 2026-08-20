@@ -1,7 +1,7 @@
 // packages/shared/src/api-client.ts
 //
 // Factory for the fetch/refresh/session-expiry machinery that was
-// byte-for-byte duplicated across all three apps' utils/api.ts files
+// byte-for-byte duplicated across the frontend apps' utils/api.ts files
 // (differing only in localStorage key prefix and the redirect target on
 // session expiry). Each app still owns its ~1000 lines of domain-specific
 // endpoint functions — this only consolidates the infrastructure beneath them.
