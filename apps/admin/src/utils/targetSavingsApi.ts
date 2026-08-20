@@ -1,0 +1,9 @@
+import { createApiClient } from '@ajoti/shared'
+const {authRequest}=createApiClient({baseUrl:import.meta.env.VITE_API_BASE_URL??'',storagePrefix:'admin_',sessionExpiredRedirect:'/login',extraSessionKeys:['admin_kyc_completed','admin_verify_email']})
+export type TargetSavingsMember={id:string;userId:string;user:{firstName:string;lastName:string};savedAmountKobo:string;targetAmountKobo:string;progressPercent:number;status:string;maturityDestination:'SELF'|'ORGANISER'}
+export type TargetSavingsPlan={id:string;ownerId:string;type:'INDIVIDUAL'|'GROUP';name:string;description?:string|null;targetAmountKobo:string;contributionAmountKobo:string;frequency:'DAILY'|'WEEKLY'|'MONTHLY';currency:string;startDate:string;maturityDate:string;status:string;isPublic:boolean;inviteToken?:string;memberCount:number;totalSavedKobo:string;groupTargetAmountKobo:string;myMembership:TargetSavingsMember|null;members:TargetSavingsMember[]}
+export async function getMyTargetSavings(){const r=await authRequest<{data?:TargetSavingsPlan[]}|TargetSavingsPlan[]>('/api/target-savings/mine',{method:'GET'});return Array.isArray(r)?r:(r.data??[])}
+export async function getPublicTargetSavings(){const r=await authRequest<{data?:TargetSavingsPlan[]}|TargetSavingsPlan[]>('/api/target-savings/public',{method:'GET'});return Array.isArray(r)?r:(r.data??[])}
+export const createTargetSavings=(payload:object)=>authRequest('/api/target-savings',{method:'POST',body:JSON.stringify(payload)})
+export const joinTargetSavings=(id:string,inviteToken?:string)=>authRequest(`/api/target-savings/${id}/join`,{method:'POST',body:JSON.stringify({inviteToken})})
+export const contributeTargetSavings=(id:string,amountKobo:string)=>authRequest(`/api/target-savings/${id}/contributions`,{method:'POST',body:JSON.stringify({amountKobo})})
