@@ -83,7 +83,7 @@ export function GroupNotificationsTab({ circleId, members }: { circleId: string;
     }
   }
 
-  // Peer Review — real data, via POST/GET /rosca/:circleId/reviews
+  // Peer Review - real data, via POST/GET /rosca/:circleId/reviews
   const [reviews, setReviews] = useState<ReviewRow[]>([])
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [adminReviewMember, setAdminReviewMember] = useState<ApiMemberBasic | null>(null)
@@ -169,7 +169,7 @@ export function GroupNotificationsTab({ circleId, members }: { circleId: string;
         )}
 
         {/* Member selection */}
-        <Text fz="xs" fw={600} c="dimmed" mb="xs">SELECT MEMBERS (optional — leave empty to remind all)</Text>
+        <Text fz="xs" fw={600} c="dimmed" mb="xs">SELECT MEMBERS (optional - leave empty to remind all)</Text>
         <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8, marginBottom: 16 }}>
           {activeMembers.map((m) => (
             <Box
@@ -263,13 +263,13 @@ export function GroupNotificationsTab({ circleId, members }: { circleId: string;
                     </Group>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm">{p.roundsPaid ?? 0} / {p.totalRounds ?? '—'}</Text>
+                    <Text fz="sm">{p.roundsPaid ?? 0} / {p.totalRounds ?? '-'}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Text fz="sm" c={hasMissed ? 'red' : 'dimmed'}>{p.missedPayments ?? 0}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm" c="dimmed">#{p.payoutPosition ?? '—'}</Text>
+                    <Text fz="sm" c="dimmed">#{p.payoutPosition ?? '-'}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Badge
@@ -297,7 +297,7 @@ export function GroupNotificationsTab({ circleId, members }: { circleId: string;
         <Group justify="space-between" align="center" px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
           <Box>
             <Text fw={700} fz="md">Peer Reviews</Text>
-            <Text fz="xs" c="dimmed" mt={2}>Member reviews after each cycle — admin can also submit</Text>
+            <Text fz="xs" c="dimmed" mt={2}>Member reviews after each cycle - admin can also submit</Text>
           </Box>
           {reviewsLoading && <Loader size="xs" color={PRIMARY} />}
           {reviewSuccess && (
@@ -343,11 +343,11 @@ export function GroupNotificationsTab({ circleId, members }: { circleId: string;
                         ))}
                       </Group>
                     ) : (
-                      <Text fz="xs" c="dimmed">—</Text>
+                      <Text fz="xs" c="dimmed">-</Text>
                     )}
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm" c="dimmed">{review?.comment || '—'}</Text>
+                    <Text fz="sm" c="dimmed">{review?.comment || '-'}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Button

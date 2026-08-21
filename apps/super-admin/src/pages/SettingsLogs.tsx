@@ -111,7 +111,7 @@ function SettingsTab() {
       <ChangePasswordCard />
 
       <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
-        Everything below is not yet wired to the backend. These controls are read-only previews — changes will have no effect until backend configuration endpoints are implemented.
+        Everything below is not yet wired to the backend. These controls are read-only previews - changes will have no effect until backend configuration endpoints are implemented.
       </Alert>
 
       <Paper withBorder radius="md" p="md" style={{ opacity: 0.6, pointerEvents: 'none' }}>
@@ -390,7 +390,7 @@ function AuditLogsTab() {
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm" c="dimmed" lineClamp={2} style={{ maxWidth: 200 }}>
-                      {row.reason ?? '—'}
+                      {row.reason ?? '-'}
                     </Text>
                   </Table.Td>
                 </Table.Tr>

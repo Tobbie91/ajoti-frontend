@@ -58,7 +58,7 @@ const ROLE_COLORS: Record<StaffAdminRole, string> = {
   SUPERADMIN: 'red',
 }
 
-// SUPERADMIN can never be assigned through this UI — creation/promotion to
+// SUPERADMIN can never be assigned through this UI - creation/promotion to
 // SUPERADMIN is rejected unconditionally at the API layer regardless of actor.
 const ASSIGNABLE_ROLES: { value: StaffAdminRole; label: string }[] = [
   { value: 'SUPPORT', label: 'Support' },
@@ -125,7 +125,7 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
       <Stack>
         {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}
         <Text size="xs" c="dimmed">
-          Emails them a one-time setup link (valid 7 days) — they choose their own password when they
+          Emails them a one-time setup link (valid 7 days) - they choose their own password when they
           accept. Use "Create Staff Account" instead if you want the account active right now with a
           temporary password you hand over yourself.
         </Text>
@@ -230,7 +230,7 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
         {created ? (
           <>
             <Alert color="green">
-              Account created and active. Share the email and temporary password with {firstName} directly —
+              Account created and active. Share the email and temporary password with {firstName} directly -
               no email was sent. They must change the password at their first login before they can do
               anything else, so you will never know their real password.
             </Alert>
@@ -252,7 +252,7 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
           <>
             <Text size="xs" c="dimmed">
               Creates a real, immediately-active account with a temporary password you set and hand over
-              directly — no email involved. They must change it at first login. Use "Invite Staff Member"
+              directly - no email involved. They must change it at first login. Use "Invite Staff Member"
               instead if you'd rather they receive an email link and set their own password from the start.
             </Text>
             <Group grow>
@@ -317,7 +317,7 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
             </Group>
             <PasswordInput
               label="Temporary password"
-              description="8–20 characters — they must change it at first login"
+              description="8–20 characters - they must change it at first login"
               value={tempPassword}
               onChange={(e) => setTempPassword(e.currentTarget.value)}
               required

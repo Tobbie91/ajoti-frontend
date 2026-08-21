@@ -51,7 +51,7 @@ import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
 function formatNaira(kobo: string | number) {
   const n = typeof kobo === 'string' ? parseFloat(kobo) : kobo
-  if (isNaN(n)) return '—'
+  if (isNaN(n)) return '-'
   return `₦${(n / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
@@ -208,16 +208,16 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
             {/* Summary */}
             <Paper withBorder radius="md" p="md">
               <Group justify="space-between" mb="xs">
-                <Text fw={700} size="lg">{String(circle.name ?? '—')}</Text>
+                <Text fw={700} size="lg">{String(circle.name ?? '-')}</Text>
                 <Badge color={statusColor(String(circle.status ?? ''))} variant="light">
-                  {String(circle.status ?? '—')}
+                  {String(circle.status ?? '-')}
                 </Badge>
               </Group>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-3">
-                <InfoItem label="Admin" value={admin ? `${admin.firstName} ${admin.lastName}` : '—'} />
-                <InfoItem label="Admin Email" value={admin?.email ?? '—'} />
+                <InfoItem label="Admin" value={admin ? `${admin.firstName} ${admin.lastName}` : '-'} />
+                <InfoItem label="Admin Email" value={admin?.email ?? '-'} />
                 <InfoItem label="Contribution" value={formatNaira(String(circle.contributionAmount ?? 0))} />
-                <InfoItem label="Frequency" value={String(circle.frequency ?? '—')} />
+                <InfoItem label="Frequency" value={String(circle.frequency ?? '-')} />
                 <InfoItem label="Cycle" value={`${String(circle.currentCycle ?? 0)} / ${String(circle.durationCycles ?? 0)}`} />
                 <InfoItem label="Members" value={String(circle.memberCount ?? 0)} />
               </div>
@@ -238,12 +238,12 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
                           <Text size="sm" fw={500}>
                             {user ? `${user.firstName} ${user.lastName}` : `Member ${i + 1}`}
                           </Text>
-                          <Text size="xs" c="dimmed">{String(user?.email ?? '—')}</Text>
+                          <Text size="xs" c="dimmed">{String(user?.email ?? '-')}</Text>
                         </div>
                         <Group gap="xs">
                           {isFlagged && <Badge color="orange" size="xs">Flagged</Badge>}
                           <Badge color={statusColor(String(m.status ?? ''))} size="xs" variant="light">
-                            {String(m.status ?? '—')}
+                            {String(m.status ?? '-')}
                           </Badge>
                           <ActionIcon
                             variant="light"
@@ -262,7 +262,7 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
               </Paper>
             )}
 
-            {/* Cancel button — only for active/pending circles */}
+            {/* Cancel button - only for active/pending circles */}
             {['ACTIVE', 'PENDING'].includes(String(circle.status ?? '').toUpperCase()) && (
               <Button
                 color="red"
@@ -274,7 +274,7 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
               </Button>
             )}
 
-            {/* Release collateral — only for cancelled circles */}
+            {/* Release collateral - only for cancelled circles */}
             {String(circle.status ?? '').toUpperCase() === 'CANCELLED' && (
               <Stack gap="xs">
                 <Button
@@ -292,7 +292,7 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
               </Stack>
             )}
 
-            {/* Delete — only for cancelled circles */}
+            {/* Delete - only for cancelled circles */}
             {String(circle.status ?? '').toUpperCase() === 'CANCELLED' && (
               <Button
                 color="red"
@@ -565,10 +565,10 @@ function CirclesTab() {
                         <Text size="sm">{c.admin.firstName} {c.admin.lastName}</Text>
                         <Text size="xs" c="dimmed">{c.admin.email}</Text>
                       </div>
-                    ) : '—'}
+                    ) : '-'}
                   </Table.Td>
                   <Table.Td>{formatNaira(c.contributionAmount)}</Table.Td>
-                  <Table.Td style={{ textTransform: 'capitalize' }}>{c.frequency?.toLowerCase() ?? '—'}</Table.Td>
+                  <Table.Td style={{ textTransform: 'capitalize' }}>{c.frequency?.toLowerCase() ?? '-'}</Table.Td>
                   <Table.Td>{c.currentCycle} / {c.durationCycles}</Table.Td>
                   <Table.Td>{c.memberCount}</Table.Td>
                   <Table.Td>
@@ -687,12 +687,12 @@ function DefaultersTab() {
                   <Table.Tr key={i}>
                     <Table.Td c="dimmed">{rowNumber(page, 20, i)}</Table.Td>
                     <Table.Td fw={500}>
-                      {user ? `${user.firstName} ${user.lastName}` : String(d.userId ?? '—')}
+                      {user ? `${user.firstName} ${user.lastName}` : String(d.userId ?? '-')}
                     </Table.Td>
-                    <Table.Td c="dimmed">{String(user?.email ?? '—')}</Table.Td>
-                    <Table.Td>{String(circle?.name ?? d.circleId ?? '—')}</Table.Td>
+                    <Table.Td c="dimmed">{String(user?.email ?? '-')}</Table.Td>
+                    <Table.Td>{String(circle?.name ?? d.circleId ?? '-')}</Table.Td>
                     <Table.Td>{formatNaira(String(d.amountOwedKobo ?? d.amount ?? 0))}</Table.Td>
-                    <Table.Td>{String(d.missedCycles ?? d.missedPayments ?? '—')}</Table.Td>
+                    <Table.Td>{String(d.missedCycles ?? d.missedPayments ?? '-')}</Table.Td>
                     <Table.Td>
                       <Badge color="red" variant="light" size="sm">
                         {String(d.status ?? 'DEFAULTED')}

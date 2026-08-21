@@ -6,9 +6,9 @@ const PRIMARY = '#0b6b55'
 const FREQ_LABEL: Record<string, string> = { WEEKLY: 'Weekly', BI_WEEKLY: 'Bi-weekly', MONTHLY: 'Monthly' }
 
 function formatMonthYear(value?: string): string {
-  if (!value) return '—'
+  if (!value) return '-'
   const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return '-'
   return d.toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })
 }
 
@@ -23,7 +23,7 @@ export function GroupOverviewTab({ circleData, payouts, onStartNewCycle }: Group
   const totalRounds = circleData?.durationCycles ?? 0
   const contributionAmountNaira = Number(circleData?.contributionAmount ?? 0) / 100
   const disbursementAmountNaira = contributionAmountNaira * totalMembers
-  const frequency = circleData ? (FREQ_LABEL[circleData.frequency as string] ?? circleData.frequency ?? '—') : '—'
+  const frequency = circleData ? (FREQ_LABEL[circleData.frequency as string] ?? circleData.frequency ?? '-') : '-'
 
   const sortedPayouts = [...payouts].sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))
   const firstPayout = sortedPayouts[0]
@@ -49,7 +49,7 @@ export function GroupOverviewTab({ circleData, payouts, onStartNewCycle }: Group
           </Box>
           <Box ta="center">
             <Text fz="xs" c="dimmed" mb={4}>Contribution Rate</Text>
-            <Text fz="xl" fw={700} style={{ color: PRIMARY }}>—</Text>
+            <Text fz="xl" fw={700} style={{ color: PRIMARY }}>-</Text>
           </Box>
         </SimpleGrid>
       </Paper>
@@ -118,10 +118,10 @@ export function GroupHistoryTab({ payouts }: { payouts: Payout[] }) {
             ) : (
               sortedPayouts.map((p) => (
                 <Table.Tr key={p.id}>
-                  <Table.Td><Text fz="sm">Cycle {p.cycleNumber ?? p.schedule?.cycleNumber ?? '—'}</Text></Table.Td>
+                  <Table.Td><Text fz="sm">Cycle {p.cycleNumber ?? p.schedule?.cycleNumber ?? '-'}</Text></Table.Td>
                   <Table.Td>
                     <Text fz="sm">
-                      {p.recipient ? `${p.recipient.firstName} ${p.recipient.lastName}` : '—'}
+                      {p.recipient ? `${p.recipient.firstName} ${p.recipient.lastName}` : '-'}
                     </Text>
                   </Table.Td>
                   <Table.Td><Text fz="sm">₦{(Number(p.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text></Table.Td>

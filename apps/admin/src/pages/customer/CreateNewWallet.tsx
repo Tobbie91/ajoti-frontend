@@ -16,7 +16,7 @@ type Currency = "NGN";
 const BENEFITS = [
   {
     icon: <IconShieldCheck size={18} color="#02A36E" />,
-    text: "No Naira loss — your funds are fully secured",
+    text: "No Naira loss - your funds are fully secured",
   },
   {
     icon: <IconWallet size={18} color="#02A36E" />,

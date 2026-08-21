@@ -348,7 +348,7 @@ export function inviteStaff(dto: {
 }
 
 // Creates a real, immediately-active staff account with an admin-supplied TEMPORARY
-// password — the new staff member must change it at first login before they can do
+// password - the new staff member must change it at first login before they can do
 // anything else. No email is sent; the admin hands over the credentials directly.
 export function createStaff(dto: {
   email: string;

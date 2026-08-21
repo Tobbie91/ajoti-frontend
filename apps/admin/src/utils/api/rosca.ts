@@ -35,7 +35,7 @@ export interface RoscaCircle {
   [key: string]: unknown;
 }
 
-// GET /api/rosca — list circles the admin belongs to
+// GET /api/rosca - list circles the admin belongs to
 export function listRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>("/api/rosca", {
     method: "GET",
@@ -49,8 +49,8 @@ export interface CircleRules {
   postStartExitPenaltyPercent: number;
 }
 
-// GET /api/rosca/circle-rules — current platform-wide circle rules (member-facing).
-// Always fetch this live for disclosure copy — never hardcode the rate, so the UI
+// GET /api/rosca/circle-rules - current platform-wide circle rules (member-facing).
+// Always fetch this live for disclosure copy - never hardcode the rate, so the UI
 // can't drift from whatever the superadmin has actually configured.
 export function getCircleRules(): Promise<{
   success: boolean;
@@ -80,9 +80,9 @@ export interface MyJoinRequest {
   [key: string]: unknown;
 }
 
-// GET /api/rosca/my-join-requests — generic authenticated-user endpoint; admins
+// GET /api/rosca/my-join-requests - generic authenticated-user endpoint; admins
 // are members too, so this reads the admin's own join requests (not the circles
-// they administer — that's listAllRoscaCircles).
+// they administer - that's listAllRoscaCircles).
 export async function getMyJoinRequests(): Promise<MyJoinRequest[]> {
   const res = await authRequest<{ data?: MyJoinRequest[] } | MyJoinRequest[]>(
     "/api/rosca/my-join-requests",
@@ -93,7 +93,7 @@ export async function getMyJoinRequests(): Promise<MyJoinRequest[]> {
     : ((res as { data?: MyJoinRequest[] }).data ?? []);
 }
 
-// GET /api/rosca/my-participations — circles the admin (as a member) is actively
+// GET /api/rosca/my-participations - circles the admin (as a member) is actively
 // participating in.
 export async function getMyParticipations(): Promise<RoscaCircle[]> {
   const res = await authRequest<{ data?: RoscaCircle[] } | RoscaCircle[]>(
@@ -106,7 +106,7 @@ export async function getMyParticipations(): Promise<RoscaCircle[]> {
 }
 
 // The circles the admin is actually a MEMBER of (participations + approved join
-// requests), merged and deduped by circleId — distinct from listAllRoscaCircles,
+// requests), merged and deduped by circleId - distinct from listAllRoscaCircles,
 // which is circles the admin ADMINISTERS. Anywhere that needs "my memberships"
 // (e.g. the loan application's group selector) should use this.
 export async function getMyActiveCircles(): Promise<RoscaCircle[]> {
@@ -205,12 +205,12 @@ export async function repayDebt(
   return res.data;
 }
 
-// GET /api/admin/rosca/my-circles — view admin's own circles
+// GET /api/admin/rosca/my-circles - view admin's own circles
 export function listAllRoscaCircles(): Promise<RoscaCircle[]> {
   return authRequest("/api/admin/rosca/my-circles", { method: "GET" });
 }
 
-// GET /api/admin/rosca/{circleId} — get circle details
+// GET /api/admin/rosca/{circleId} - get circle details
 export async function getAdminCircleDetail(
   circleId: string,
 ): Promise<RoscaCircle> {
@@ -221,7 +221,7 @@ export async function getAdminCircleDetail(
   return ("data" in res && res.data ? res.data : res) as RoscaCircle;
 }
 
-// POST /api/admin/rosca — create a new ROSCA circle
+// POST /api/admin/rosca - create a new ROSCA circle
 export interface CreateRoscaPayload {
   name: string;
   description: string;
@@ -242,8 +242,8 @@ export function createRoscaCircle(
   });
 }
 
-// PATCH /api/admin/rosca/{circleId} — update a DRAFT circle's configuration.
-// payoutLogic is deliberately NOT here — use updatePayoutConfig instead, the
+// PATCH /api/admin/rosca/{circleId} - update a DRAFT circle's configuration.
+// payoutLogic is deliberately NOT here - use updatePayoutConfig instead, the
 // dedicated endpoint (backend rejects payoutLogic on this DTO entirely).
 export interface UpdateRoscaPayload {
   name?: string;
@@ -265,7 +265,7 @@ export function updateRoscaCircle(
   });
 }
 
-// PATCH /api/admin/rosca/{circleId}/activate — activate a circle
+// PATCH /api/admin/rosca/{circleId}/activate - activate a circle
 export function activateRoscaCircle(
   circleId: string,
   startDate: string,
@@ -276,14 +276,14 @@ export function activateRoscaCircle(
   });
 }
 
-// PATCH /api/admin/rosca/{circleId}/close — close (cancel) a circle
+// PATCH /api/admin/rosca/{circleId}/close - close (cancel) a circle
 export function closeRoscaCircle(
   circleId: string,
 ): Promise<{ message: string }> {
   return authRequest(`/api/admin/rosca/${circleId}/close`, { method: "PATCH" });
 }
 
-// GET /api/admin/rosca/dashboard — admin dashboard stats
+// GET /api/admin/rosca/dashboard - admin dashboard stats
 export interface AdminDashboard {
   totalGroups: number;
   nextDeadline: { groupName: string; deadline: string } | null;
@@ -301,7 +301,7 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
   return ("data" in res && res.data ? res.data : res) as AdminDashboard;
 }
 
-// GET /api/admin/rosca/join-requests — list circles with pending join requests
+// GET /api/admin/rosca/join-requests - list circles with pending join requests
 export interface CirclePendingRequests {
   circleId: string;
   name: string;
@@ -339,7 +339,7 @@ export async function getCircleJoinRequests(
     : ((res as { data?: JoinRequesterDossier[] }).data ?? []);
 }
 
-// PATCH /api/admin/rosca/{circleId}/members/{userId}/approve — approve a member
+// PATCH /api/admin/rosca/{circleId}/members/{userId}/approve - approve a member
 export function approveMember(
   circleId: string,
   userId: string,
@@ -349,7 +349,7 @@ export function approveMember(
   });
 }
 
-// PATCH /api/admin/rosca/{circleId}/members/{userId}/reject — reject a member
+// PATCH /api/admin/rosca/{circleId}/members/{userId}/reject - reject a member
 export function rejectMember(
   circleId: string,
   userId: string,
@@ -359,7 +359,7 @@ export function rejectMember(
   });
 }
 
-// GET /api/admin/rosca/{circleId}/payout-config — get current payout config
+// GET /api/admin/rosca/{circleId}/payout-config - get current payout config
 export interface PayoutAssignment {
   userId: string;
   name: string;
@@ -380,7 +380,7 @@ export async function getPayoutConfig(circleId: string): Promise<PayoutConfig> {
   return ("data" in res && res.data ? res.data : res) as PayoutConfig;
 }
 
-// PATCH /api/admin/rosca/{circleId}/payout-config — update payout config
+// PATCH /api/admin/rosca/{circleId}/payout-config - update payout config
 export function updatePayoutConfig(
   circleId: string,
   config: {
@@ -498,7 +498,7 @@ export async function getAllCircleContributions(
   return (res as { data?: Contribution[] }).data ?? [];
 }
 
-// GET /api/admin/rosca/{circleId}/disbursements — admin view of disbursements
+// GET /api/admin/rosca/{circleId}/disbursements - admin view of disbursements
 export interface Disbursement {
   cycleNumber: number;
   recipientId: string;
@@ -538,7 +538,7 @@ export function extendCycleDeadline(
   );
 }
 
-// GET /api/admin/rosca/{circleId}/contributions — admin view of contributions
+// GET /api/admin/rosca/{circleId}/contributions - admin view of contributions
 export interface AdminContribution {
   contributionId: string;
   userId: string;

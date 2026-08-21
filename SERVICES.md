@@ -1,4 +1,4 @@
-# External Services — Ajoti Frontend
+# External Services - Ajoti Frontend
 
 Configuration and setup for every external service and environment dependency across the two active frontend apps.
 
@@ -11,7 +11,7 @@ Configuration and setup for every external service and environment dependency ac
 1. [Backend API](#1-backend-api)
 2. [Google OAuth](#2-google-oauth)
 3. [Mono Prove Widget](#3-mono-prove-widget)
-4. [Hosting — Dokploy / Static](#4-hosting--dokploy--static)
+4. [Hosting - Dokploy / Static](#4-hosting--dokploy--static)
 5. [Environment Configuration](#5-environment-configuration)
 6. [Build & Deployment Checklist](#6-build--deployment-checklist)
 7. [Troubleshooting](#7-troubleshooting)
@@ -55,7 +55,7 @@ server-validated `POST /api/auth/google` exchange and the normal Ajoti role chec
 
 **Purpose**: In-app KYC identity verification (BVN/NIN). The Mono Prove widget is loaded via a `<script>` tag and opened with a session token obtained from the backend.
 
-**Setup**: No frontend API key needed — the backend initiates the session and returns a `sessionToken`. The frontend opens the widget with that token.
+**Setup**: No frontend API key needed - the backend initiates the session and returns a `sessionToken`. The frontend opens the widget with that token.
 
 **How it works**:
 1. User taps "Verify Identity" → frontend calls `POST /api/kyc/prove/session`
@@ -70,7 +70,7 @@ server-validated `POST /api/auth/google` exchange and the normal Ajoti role chec
 
 ---
 
-## 4. Hosting — Dokploy / Static
+## 4. Hosting - Dokploy / Static
 
 ### Production ✅
 
@@ -154,7 +154,7 @@ pnpm --filter ajoti-super-admin build
 ### API calls failing in production but working locally
 
 - Confirm `VITE_API_BASE_URL` is set to the production backend URL in Dokploy's environment variable settings
-- Vite bakes env vars in at build time — rebuilding after changing the variable is required
+- Vite bakes env vars in at build time - rebuilding after changing the variable is required
 
 ### KYC widget doesn't open
 

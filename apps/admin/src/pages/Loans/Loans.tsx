@@ -66,8 +66,8 @@ export function Loans() {
   }, [])
 
   const selectedCircle = circles.find((c) => c.id === selectedCircleId)
-  // Every figure here comes straight from the eligibility response — never
-  // recomputed locally — so the displayed breakdown can't drift from what
+  // Every figure here comes straight from the eligibility response - never
+  // recomputed locally - so the displayed breakdown can't drift from what
   // applyLoan actually disburses.
   const expectedPayoutAmount = eligibility?.expectedPayoutAmount != null ? Number(eligibility.expectedPayoutAmount) / 100 : 0
   const allowedPercent = eligibility?.allowedPercent ?? 0
@@ -186,7 +186,7 @@ export function Loans() {
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
             <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
               <Text fz="xs" c="dimmed">Active Loan</Text>
-              <Text fz={20} fw={700} mt={4}>{activeLoan ? `₦${fmt(Number(activeLoan.loanAmount) / 100)}` : '—'}</Text>
+              <Text fz={20} fw={700} mt={4}>{activeLoan ? `₦${fmt(Number(activeLoan.loanAmount) / 100)}` : '-'}</Text>
               {activeLoan && <Badge size="xs" mt={4} style={{ background: `${loanStatusColor(activeLoan.status)}15`, color: loanStatusColor(activeLoan.status), border: 'none' }}>{activeLoan.status}</Badge>}
             </Paper>
             <Paper p="md" radius="md" style={{ border: '1px solid #e9ecef' }}>
@@ -311,7 +311,7 @@ export function Loans() {
                       <SimpleGrid cols={2} spacing="sm">
                         {[
                           { icon: IconUsers, label: 'Members', value: `${selectedCircle.filledSlots}/${selectedCircle.maxSlots}` },
-                          { icon: IconCalendar, label: 'Frequency', value: selectedCircle.frequency ?? '—' },
+                          { icon: IconCalendar, label: 'Frequency', value: selectedCircle.frequency ?? '-' },
                           { icon: IconCash, label: 'Contribution', value: `₦${(Number(selectedCircle.contributionAmount) / 100).toLocaleString()}` },
                           { icon: IconShieldCheck, label: 'Eligible', value: 'Yes', green: true },
                         ].map(({ icon: Icon, label, value, green }) => (

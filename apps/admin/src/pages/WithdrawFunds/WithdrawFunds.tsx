@@ -130,7 +130,7 @@ export function WithdrawFunds() {
       setStep("success");
     } catch (err) {
       // 409: a withdrawal is already in progress (started elsewhere, e.g. another
-      // tab/device, between this page loading and submitting) — refresh wallet
+      // tab/device, between this page loading and submitting) - refresh wallet
       // state so the blocked-state screen shows instead of letting the user retry
       // into the same error again.
       if (err instanceof ApiError && err.code === 409) {
@@ -226,7 +226,7 @@ export function WithdrawFunds() {
           </Text>
         </div>
         <div className="flex w-full max-w-[300px] flex-col gap-3">
-          {/* A withdrawal already in progress can't be retried immediately —
+          {/* A withdrawal already in progress can't be retried immediately -
               only offer "Try Again" when that's not why this failed. */}
           {!pendingWithdrawal && (
             <button
@@ -307,7 +307,7 @@ export function WithdrawFunds() {
                     {new Date(pendingWithdrawal.initiatedAt).toLocaleString(
                       "en-NG",
                     )}
-                    . Please wait for it to complete before starting another —
+                    . Please wait for it to complete before starting another -
                     your balance is safe and this usually resolves within a few
                     minutes.
                   </Text>

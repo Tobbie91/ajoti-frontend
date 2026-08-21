@@ -29,16 +29,9 @@ import {
   type CircleContribution,
   type CircleMember,
 } from "@/utils/api";
-import { formatNaira } from "./utils";
+import { formatNaira, getRatingColor } from "./utils";
 
 // ── Growth & Activities Tab ───────────────────────────────────────────────────
-
-export function getRatingColor(v: number) {
-  if (v >= 80) return "#02A36E";
-  if (v >= 60) return "#10B981";
-  if (v >= 40) return "#F59E0B";
-  return "#EF4444";
-}
 
 export function GrowthTab({
   trustPercent,
@@ -320,7 +313,7 @@ export function GrowthTab({
         <div className="flex items-center gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4">
           <IconCheck size={20} color="#16a34a" />
           <Text fw={600} className="text-[13px] text-[#15803D]">
-            Cycle {nextCycleNumber} contribution received — you&rsquo;re all
+            Cycle {nextCycleNumber} contribution received - you&rsquo;re all
             set!
           </Text>
         </div>

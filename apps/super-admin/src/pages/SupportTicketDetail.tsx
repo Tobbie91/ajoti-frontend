@@ -209,7 +209,7 @@ export function SupportTicketDetail() {
             </Text>
             {ticket.refType && ticket.refId && (
               <Text size="xs" c="dimmed" mt={4}>
-                Context: {ticket.refType} — <code style={{ fontSize: 11 }}>{ticket.refId}</code>
+                Context: {ticket.refType} - <code style={{ fontSize: 11 }}>{ticket.refId}</code>
               </Text>
             )}
           </div>

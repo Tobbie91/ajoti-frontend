@@ -96,7 +96,7 @@ export function GroupContributionsTab({ circleId, isActive }: GroupContributions
                   </Table.Td>
                   <Table.Td>
                     <Text fz="sm" c="dimmed">
-                      {c.paidAt ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      {c.paidAt ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                     </Text>
                   </Table.Td>
                 </Table.Tr>

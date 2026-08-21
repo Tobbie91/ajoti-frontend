@@ -58,7 +58,7 @@ export interface PeerReview {
   [key: string]: unknown;
 }
 
-// GET /api/rosca/:circleId/reviews — CIRCLE_ADMIN (own circle) or STAFF only
+// GET /api/rosca/:circleId/reviews - CIRCLE_ADMIN (own circle) or STAFF only
 export async function getCircleReviews(
   circleId: string,
 ): Promise<PeerReview[]> {
@@ -71,7 +71,7 @@ export async function getCircleReviews(
     : ((res as { data?: PeerReview[] }).data ?? []);
 }
 
-// POST /api/rosca/:circleId/reviews — circle must be COMPLETED, one review per reviewer/reviewee/circle
+// POST /api/rosca/:circleId/reviews - circle must be COMPLETED, one review per reviewer/reviewee/circle
 export async function submitPeerReview(
   circleId: string,
   payload: { revieweeId: string; rating: number; comment?: string },

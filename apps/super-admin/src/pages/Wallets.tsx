@@ -38,7 +38,7 @@ function fmt(naira: string) {
 }
 
 function fmtDate(iso: string | null) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   return new Date(iso).toLocaleDateString('en-NG', {
     day: '2-digit', month: 'short', year: 'numeric',
   })

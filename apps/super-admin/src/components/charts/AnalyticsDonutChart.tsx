@@ -39,7 +39,7 @@ export function AnalyticsDonutChart({ kyc }: AnalyticsDonutChartProps) {
           size={180}
           thickness={24}
           tooltipDataSource="segment"
-          chartLabel={total > 0 ? `${approvalRate}%` : '—'}
+          chartLabel={total > 0 ? `${approvalRate}%` : '-'}
           paddingAngle={2}
         />
 

@@ -32,7 +32,7 @@ import {
   type MyJoinRequest,
 } from "@/utils/api";
 
-// Shape returned by getMyParticipations — a circle object with the user already a member
+// Shape returned by getMyParticipations - a circle object with the user already a member
 type Participation = RoscaCircle;
 
 const TABS = ["All Groups", "Open Groups", "Invite-Only", "Joined"] as const;
@@ -139,7 +139,7 @@ export function Rosca() {
       }
       setJoinedIds(ids);
     });
-    // Live rate for the post-start exit warning — never hardcode it.
+    // Live rate for the post-start exit warning - never hardcode it.
     getCircleRules()
       .then((res) =>
         setPostStartExitPenaltyPercent(res.data.postStartExitPenaltyPercent),
@@ -221,7 +221,7 @@ export function Rosca() {
           ["ACTIVE", "STARTED"].includes((r.status ?? "").toUpperCase()),
         );
 
-        // Build merged list — participations take priority (dedup by circleId)
+        // Build merged list - participations take priority (dedup by circleId)
         const seenIds = new Set<string>();
         const merged: JoinedGroup[] = [];
         for (const c of participations) {
@@ -706,7 +706,7 @@ export function Rosca() {
                         fw={500}
                         className="text-[13px] leading-relaxed text-[#374151]"
                       >
-                        This group has already started —{" "}
+                        This group has already started -{" "}
                         <Text component="span" fw={700}>
                           {postStartExitPenaltyPercent !== null
                             ? `${postStartExitPenaltyPercent}% of`

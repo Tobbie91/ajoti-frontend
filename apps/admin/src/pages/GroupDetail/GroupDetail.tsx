@@ -157,7 +157,7 @@ export function GroupDetail() {
   const [inviteContact, setInviteContact] = useState('')
   const [inviteBy, setInviteBy] = useState<string | null>('email')
 
-  // Restart group modal state — preview-only placeholder, not yet wired to a backend endpoint
+  // Restart group modal state - preview-only placeholder, not yet wired to a backend endpoint
   const [restartModal, setRestartModal] = useState(false)
   const [keepMembers, setKeepMembers] = useState(false)
   const [restartGroupSize, setRestartGroupSize] = useState('6')
@@ -181,7 +181,7 @@ export function GroupDetail() {
     setRemoveMemberModal(true)
   }
 
-  // Only edits the local restart-preview list above — no backend call, since
+  // Only edits the local restart-preview list above - no backend call, since
   // the restart feature itself isn't implemented yet (see restartModal).
   function handleRemoveMember() {
     if (removeMember) {
@@ -549,7 +549,7 @@ export function GroupDetail() {
                       </Box>
                     ) : (
                       <Text fz={12} c="dimmed" style={{ fontStyle: 'italic' }}>
-                        {circleData?.filledSlots ?? 0}/{circleData?.maxSlots ?? '?'} slots filled — invite more members to start
+                        {circleData?.filledSlots ?? 0}/{circleData?.maxSlots ?? '?'} slots filled - invite more members to start
                       </Text>
                     )}
                     <Group gap="sm">
@@ -623,7 +623,7 @@ export function GroupDetail() {
               <IconCheck size={20} color="#16a34a" />
             </ThemeIcon>
             <Box>
-              <Text fw={700} fz="sm" style={{ color: '#15803d' }}>All slots filled — circle is ready to start!</Text>
+              <Text fw={700} fz="sm" style={{ color: '#15803d' }}>All slots filled - circle is ready to start!</Text>
               <Text fz="xs" style={{ color: '#166534' }}>Click "Start Circle" to set the first contribution deadline and activate the savings cycle.</Text>
             </Box>
           </Group>
@@ -1193,7 +1193,7 @@ export function GroupDetail() {
             </Text>
 
             <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
-              Restarting a group isn't wired up yet — this form is a preview only. Saving has no effect until the backend endpoint exists.
+              Restarting a group isn't wired up yet - this form is a preview only. Saving has no effect until the backend endpoint exists.
             </Alert>
 
             <Group justify="flex-end" gap="sm">
@@ -1330,7 +1330,7 @@ export function GroupDetail() {
                 <Stack gap={8}>
                   <Text fz="sm" fw={500}>Select Position</Text>
                   {availablePositions.length === 0 ? (
-                    <Text fz="sm" c="dimmed">No positions available — all slots are taken or paid out.</Text>
+                    <Text fz="sm" c="dimmed">No positions available - all slots are taken or paid out.</Text>
                   ) : (
                     <Group gap="sm">
                       {availablePositions.map(pos => (

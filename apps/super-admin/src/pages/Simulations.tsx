@@ -133,12 +133,12 @@ function AutoSimTab() {
       <Paper withBorder radius="md" p="md">
         <Text fw={600} mb={4}>3-Circle Auto Simulation</Text>
         <Text size="sm" c="dimmed" mb="md">
-          Runs three pre-configured ajo circles in sequence — best case (Circle A), mixed (Circle B), and worst case (Circle C). All data is ephemeral and deleted automatically.
+          Runs three pre-configured ajo circles in sequence - best case (Circle A), mixed (Circle B), and worst case (Circle C). All data is ephemeral and deleted automatically.
         </Text>
         <Group gap="xs" mb="md" wrap="wrap">
-          <Badge color="green" variant="light">Circle A — Best case: all on-time</Badge>
-          <Badge color="yellow" variant="light">Circle B — Mixed: late + missed + malicious rating</Badge>
-          <Badge color="red" variant="light">Circle C — Worst: defaults + post-payout default + loan</Badge>
+          <Badge color="green" variant="light">Circle A - Best case: all on-time</Badge>
+          <Badge color="yellow" variant="light">Circle B - Mixed: late + missed + malicious rating</Badge>
+          <Badge color="red" variant="light">Circle C - Worst: defaults + post-payout default + loan</Badge>
         </Group>
         <Button
           leftSection={<IconPlayerPlay size={16} />}
@@ -165,9 +165,9 @@ function AutoSimTab() {
       {result && (
         <Stack gap="md">
           <Text size="xs" c="dimmed">Run ID: <Code>{result.runId}</Code></Text>
-          <SimResultCard label="Circle A — Best Case" result={result.circleA} />
-          <SimResultCard label="Circle B — Mixed" result={result.circleB} />
-          <SimResultCard label="Circle C — Worst Case" result={result.circleC} />
+          <SimResultCard label="Circle A - Best Case" result={result.circleA} />
+          <SimResultCard label="Circle B - Mixed" result={result.circleB} />
+          <SimResultCard label="Circle C - Worst Case" result={result.circleC} />
         </Stack>
       )}
     </Stack>
@@ -286,19 +286,19 @@ function SandboxTab() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Step 1 — Create Users
+  // Step 1 - Create Users
   const [userCount, setUserCount] = useState<number | string>(4)
   const [fundAmount, setFundAmount] = useState<number | string>(5000000)
   const [usersResult, setUsersResult] = useState<SandboxUsersResult | null>(null)
 
-  // Step 2 — Create Circle
+  // Step 2 - Create Circle
   const [circleName, setCircleName] = useState('Sandbox Circle')
   const [contributionKobo, setContributionKobo] = useState<number | string>(100000)
   const [frequency, setFrequency] = useState<string>('MONTHLY')
   const [payoutLogic, setPayoutLogic] = useState<string>('SEQUENTIAL')
   const [circleResult, setCircleResult] = useState<SandboxCircleResult | null>(null)
 
-  // Step 3 — Cycles
+  // Step 3 - Cycles
   const [cycleNumber, setCycleNumber] = useState(1)
   const [memberTimings, setMemberTimings] = useState<Record<string, 'on_time' | 'late' | 'skip'>>({})
   const [cycleResults, setCycleResults] = useState<SandboxCycleResult[]>([])
@@ -459,7 +459,7 @@ function SandboxTab() {
       <Paper withBorder radius="md" p="md">
         <Group gap="xs" mb="sm">
           {step !== 'users' ? <IconCircleCheck size={18} color="green" /> : <IconFlask size={18} />}
-          <Text fw={600} size="sm">Step 1 — Create Sandbox Users</Text>
+          <Text fw={600} size="sm">Step 1 - Create Sandbox Users</Text>
         </Group>
         {!usersResult ? (
           <Stack gap="sm">
@@ -506,7 +506,7 @@ function SandboxTab() {
         <Paper withBorder radius="md" p="md">
           <Group gap="xs" mb="sm">
             {(step === 'cycles' || step === 'done') ? <IconCircleCheck size={18} color="green" /> : <IconFlask size={18} />}
-            <Text fw={600} size="sm">Step 2 — Create Circle</Text>
+            <Text fw={600} size="sm">Step 2 - Create Circle</Text>
           </Group>
           {!circleResult ? (
             <Stack gap="sm">
@@ -537,12 +537,12 @@ function SandboxTab() {
         <Paper withBorder radius="md" p="md">
           <Group gap="xs" mb="sm">
             {step === 'done' ? <IconCircleCheck size={18} color="green" /> : <IconFlask size={18} />}
-            <Text fw={600} size="sm">Step 3 — Run Cycles</Text>
+            <Text fw={600} size="sm">Step 3 - Run Cycles</Text>
           </Group>
 
           {/* Loan tool */}
           <Paper withBorder radius="sm" p="sm" mb="sm" bg="gray.0">
-            <Text size="xs" fw={600} mb="xs">Apply Loan (optional — run before cycle where user receives payout)</Text>
+            <Text size="xs" fw={600} mb="xs">Apply Loan (optional - run before cycle where user receives payout)</Text>
             <Group gap="sm">
               <Select
                 placeholder="Select user..."
@@ -642,7 +642,7 @@ function SandboxTab() {
         </Paper>
       )}
 
-      {/* Ledger inspect + Reconcile — available once circle exists */}
+      {/* Ledger inspect + Reconcile - available once circle exists */}
       {circleResult && (
         <Paper withBorder radius="md" p="md">
           <Text fw={600} size="sm" mb="sm">Inspect &amp; Reconcile</Text>

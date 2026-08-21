@@ -43,7 +43,7 @@ const STATUS_OPTIONS = [
 
 const LIMIT = 20
 
-// ── Detail drawer (read-only — no write actions) ────────────────────────────
+// ── Detail drawer (read-only - no write actions) ────────────────────────────
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -111,7 +111,7 @@ function DebtDetailDrawer({
           <DetailRow label="Category" value={detail.categoryLabel} />
           <DetailRow label="Cycle" value={detail.cycleNumber} />
           <DetailRow label="Created" value={new Date(detail.createdAt).toLocaleString('en-NG')} />
-          <DetailRow label="Settled" value={detail.settledAt ? new Date(detail.settledAt).toLocaleString('en-NG') : '—'} />
+          <DetailRow label="Settled" value={detail.settledAt ? new Date(detail.settledAt).toLocaleString('en-NG') : '-'} />
           <DetailRow label="Blocks loan eligibility" value={detail.blocksLoanEligibility ? 'Yes' : 'No'} />
 
           <Divider label="Outstanding breakdown" labelPosition="left" />
@@ -174,7 +174,7 @@ export function DebtsList() {
       <div>
         <Title order={2} fw={700}>Debts</Title>
         <Text c="dimmed" size="sm" mt={4}>
-          Missed contributions and late-penalty shortfalls owed by members — outstanding and historical.
+          Missed contributions and late-penalty shortfalls owed by members - outstanding and historical.
         </Text>
       </div>
 
@@ -260,7 +260,7 @@ export function DebtsList() {
                     <Table.Td>{statusBadge(debt.status)}</Table.Td>
                     <Table.Td><Text size="sm">{new Date(debt.createdAt).toLocaleDateString('en-NG')}</Text></Table.Td>
                     <Table.Td>
-                      <Text size="sm">{debt.settledAt ? new Date(debt.settledAt).toLocaleDateString('en-NG') : '—'}</Text>
+                      <Text size="sm">{debt.settledAt ? new Date(debt.settledAt).toLocaleDateString('en-NG') : '-'}</Text>
                     </Table.Td>
                   </Table.Tr>
                 ))

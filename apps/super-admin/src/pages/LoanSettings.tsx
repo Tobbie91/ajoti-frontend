@@ -24,7 +24,7 @@ function fmtDate(iso: string) {
   })
 }
 
-// Mirrors the write-time validation in LoanSettingsService — kept in sync
+// Mirrors the write-time validation in LoanSettingsService - kept in sync
 // deliberately so users see the same rule client-side before ever hitting the server.
 function validate(values: {
   maxPayoutRatioPercent: number | ''
@@ -125,7 +125,7 @@ export function LoanSettings() {
       <Text size="sm" c="dimmed">
         The maximum early-payout advance (as a share of a member's expected payout) and the
         per-circle eligibility thresholds. Takes effect on the very next loan application
-        processed — no restart required.
+        processed - no restart required.
       </Text>
 
       {loadError && (
@@ -215,7 +215,7 @@ export function LoanSettings() {
       >
         <Stack gap="sm">
           <Text size="sm">
-            These values take effect on the <strong>next loan application processed</strong> —
+            These values take effect on the <strong>next loan application processed</strong> -
             immediately, with no restart. Review before saving:
           </Text>
           <Stack gap={4}>

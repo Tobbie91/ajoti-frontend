@@ -8,14 +8,14 @@ Closes #<!-- issue number -->
 
 ## Type of Change
 
-- [ ] `feat` — new feature
-- [ ] `fix` — bug fix
-- [ ] `refactor` — code change with no feature/fix
-- [ ] `perf` — performance improvement
-- [ ] `test` — tests only
-- [ ] `docs` — documentation only
-- [ ] `chore` — build, tooling, deps
-- [ ] `hotfix` — urgent production fix
+- [ ] `feat` - new feature
+- [ ] `fix` - bug fix
+- [ ] `refactor` - code change with no feature/fix
+- [ ] `perf` - performance improvement
+- [ ] `test` - tests only
+- [ ] `docs` - documentation only
+- [ ] `chore` - build, tooling, deps
+- [ ] `hotfix` - urgent production fix
 
 ---
 
@@ -40,7 +40,7 @@ Closes #<!-- issue number -->
 
 ## Sensitive Areas Touched
 
-Check all that apply — these require **2 approvals**:
+Check all that apply - these require **2 approvals**:
 
 - [ ] Auth / login / session management
 - [ ] Transaction PIN entry or transmission
@@ -59,7 +59,7 @@ Check all that apply — these require **2 approvals**:
 
 ## Checklist
 
-- [ ] Branch targets `dev` (or `staging` for release PRs) — **not `main`**
+- [ ] Branch targets `dev` (or `staging` for release PRs) - **not `main`**
 - [ ] Commit messages follow Conventional Commits format
 - [ ] No secrets, API keys, or PII in the diff
 - [ ] `.env.example` updated if new env vars were added

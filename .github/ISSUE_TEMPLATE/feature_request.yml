@@ -48,9 +48,9 @@ body:
     attributes:
       label: Suggested Priority
       options:
-        - P0 — Blocker (cannot launch / operate without this)
-        - P1 — High (core user journey affected)
-        - P2 — Medium (improvement to existing flow)
-        - P3 — Low (nice to have)
+        - P0 - Blocker (cannot launch / operate without this)
+        - P1 - High (core user journey affected)
+        - P2 - Medium (improvement to existing flow)
+        - P3 - Low (nice to have)
     validations:
       required: true

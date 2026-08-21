@@ -1,6 +1,6 @@
 // packages/shared/src/hooks/useChat.ts
 //
-// Socket.io connection + circle chat state management — previously
+// Socket.io connection + circle chat state management - previously
 // duplicated near-identically in the user and admin apps. Each app's own
 // getChatBaseUrl/getAccessToken/getChatMessages stay where they are (they
 // go through that app's own api-client instance), injected here as config

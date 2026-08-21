@@ -271,7 +271,7 @@ export function GroupMembersTab({
               ) : invites.map((inv) => (
                 <Table.Tr key={inv.id}>
                   <Table.Td>
-                    <Text fz="sm" fw={500}>{inv.name || '—'}</Text>
+                    <Text fz="sm" fw={500}>{inv.name || '-'}</Text>
                     <Text fz="xs" c="dimmed">{inv.email || inv.phone || ''}</Text>
                   </Table.Td>
                   <Table.Td>

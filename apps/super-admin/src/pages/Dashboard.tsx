@@ -74,14 +74,14 @@ export function Dashboard() {
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <StatsCard
           title="Total Users"
-          value={stats?.users.total.toLocaleString() ?? '—'}
+          value={stats?.users.total.toLocaleString() ?? '-'}
           badgeText={stats?.users.newThisWeek ? `+${stats.users.newThisWeek} this week` : undefined}
           icon={<IconUsers size={24} color="#0B6B55" stroke={1.5} />}
           sparklineData={userSparkline.length > 0 ? userSparkline : [0]}
         />
         <StatsCard
           title="ajo Circles"
-          value={stats?.circles.total.toLocaleString() ?? '—'}
+          value={stats?.circles.total.toLocaleString() ?? '-'}
           badgeText={stats?.circles.active ? `${stats.circles.active} active` : undefined}
           icon={<IconTopologyRing size={24} color="#0B6B55" stroke={1.5} />}
           sparklineData={circleSparkline.length > 0 ? circleSparkline : [0]}

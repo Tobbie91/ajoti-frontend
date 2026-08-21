@@ -49,7 +49,7 @@ export function KycGate({ children, action = 'perform this action' }: KycGatePro
           Verification Under Review
         </Text>
         <Text fw={400} className="mt-2 max-w-[340px] text-[14px] leading-relaxed text-[#6B7280]">
-          Your identity documents have been submitted and are being reviewed. You'll be able to {action} once approved — this usually takes less than 24 hours.
+          Your identity documents have been submitted and are being reviewed. You'll be able to {action} once approved - this usually takes less than 24 hours.
         </Text>
         <button
           onClick={() => navigate(-1)}
@@ -89,7 +89,7 @@ export function KycGate({ children, action = 'perform this action' }: KycGatePro
     )
   }
 
-  // incomplete — NOT_SUBMITTED or in progress
+  // incomplete - NOT_SUBMITTED or in progress
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#FEF3C7]">

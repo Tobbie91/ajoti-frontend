@@ -41,7 +41,7 @@ function DebtCard({ debt, onRepaid }: { debt: Debt; onRepaid: () => void }) {
       <div className="flex items-start justify-between">
         <div>
           <Text fw={600} className="text-[14px] text-[#0F172A]">
-            {debt.circleName ?? `Circle ${debt.circleId.slice(0, 6)}`} — Cycle {debt.cycleNumber}
+            {debt.circleName ?? `Circle ${debt.circleId.slice(0, 6)}`} - Cycle {debt.cycleNumber}
           </Text>
           <Text fw={400} className="mt-0.5 text-[12px] text-[#6B7280]">{debt.categoryLabel}</Text>
         </div>

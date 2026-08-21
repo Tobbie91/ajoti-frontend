@@ -24,7 +24,7 @@ export function StatsCard({ title, value, subtitle, withBar = false }: StatsCard
         minHeight: 110,
       }}
     >
-      {/* Decorative green bar — right side (matches screenshot card 1) */}
+      {/* Decorative green bar - right side (matches screenshot card 1) */}
       {withBar && (
         <Box
           style={{

@@ -100,7 +100,7 @@ export function GroupDetails() {
         getCirclePeerReviews(id!)
           .then(setExistingReviews)
           .catch(() => {});
-        // Live rate for the post-start exit warning — never hardcode it.
+        // Live rate for the post-start exit warning - never hardcode it.
         getCircleRules()
           .then((res) =>
             setPostStartExitPenaltyPercent(
@@ -140,7 +140,7 @@ export function GroupDetails() {
             payoutOrder:
               payoutLogicLabel[(circle.payoutLogic as string) ?? ""] ??
               String(circle.payoutLogic ?? "-"),
-            penalty: "Late fee applies — paid to your circle admin",
+            penalty: "Late fee applies - paid to your circle admin",
             admin: adminName,
             adminBio: String(
               (circle as Record<string, unknown>).adminBio ?? "",
@@ -842,7 +842,7 @@ export function GroupDetails() {
         </div>
       )}
 
-      {/* Message Admin Modal — disabled */}
+      {/* Message Admin Modal - disabled */}
     </div>
   );
 }

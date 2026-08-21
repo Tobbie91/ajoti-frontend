@@ -128,7 +128,7 @@ export function FundWallet() {
               {[
                 'Transfer any amount from your bank app to the account above',
                 'Your Ajoti wallet is credited automatically within minutes',
-                'This account is unique to you — transfers always go to your wallet',
+                'This account is unique to you - transfers always go to your wallet',
               ].map((step, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#02A36E] text-[10px] font-bold text-white">

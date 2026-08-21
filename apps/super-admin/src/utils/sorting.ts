@@ -2,7 +2,7 @@
 //
 // Superadmin list endpoints don't support `sortBy`/`sortOrder` query params today
 // (checked all `apps/super-admin/src/utils/api.ts` list functions and the backend
-// `superadmin-*.controller.ts` files — none accept sort params), so sorting here is
+// `superadmin-*.controller.ts` files - none accept sort params), so sorting here is
 // client-side over whatever page of rows is currently loaded. That's the right
 // tradeoff for these screens: pages are 20 rows, and re-sorting only the visible
 // page (not the full dataset) matches how the rest of these tables already behave
@@ -53,7 +53,7 @@ export function sortRows<T, K extends string>(
   })
 }
 
-// Row position that respects current pagination — page 2 at page size 20 continues
+// Row position that respects current pagination - page 2 at page size 20 continues
 // 21, 22... instead of restarting at 1.
 export function rowNumber(page: number, pageSize: number, index: number): number {
   return (page - 1) * pageSize + index + 1

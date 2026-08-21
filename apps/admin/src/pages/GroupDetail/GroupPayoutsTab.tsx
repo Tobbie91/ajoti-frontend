@@ -111,11 +111,11 @@ export function GroupPayoutsTab({
                 const cycleNumber = p.cycleNumber ?? p.schedule?.cycleNumber
                 const recipient = p.recipient
                   ? `${p.recipient.firstName} ${p.recipient.lastName}`.trim()
-                  : '—'
+                  : '-'
                 const amountNaira = (Number(p.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
                 return (
                   <Table.Tr key={p.id}>
-                    <Table.Td><Text fz="sm" fw={500}>{cycleNumber != null ? `Cycle ${cycleNumber}` : '—'}</Text></Table.Td>
+                    <Table.Td><Text fz="sm" fw={500}>{cycleNumber != null ? `Cycle ${cycleNumber}` : '-'}</Text></Table.Td>
                     <Table.Td>
                       <Group gap="sm" align="center">
                         <Avatar size={28} radius="xl" color="gray">{(recipient || '?').charAt(0)}</Avatar>
@@ -138,7 +138,7 @@ export function GroupPayoutsTab({
                     </Table.Td>
                     <Table.Td>
                       <Text fz="sm" c="dimmed">
-                        {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG') : '—'}
+                        {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG') : '-'}
                       </Text>
                     </Table.Td>
                     <Table.Td>
@@ -157,7 +157,7 @@ export function GroupPayoutsTab({
                         )}
                         {/* Reversal is an admin recovery tool for a payout still
                             stuck mid-flight (PENDING/PROCESSING). A COMPLETED/settled
-                            payout is not reversible — the backend rejects it too, this
+                            payout is not reversible - the backend rejects it too, this
                             isn't just a hidden-but-callable button. */}
                           {(p.status === 'PENDING' || p.status === 'PROCESSING') && (
                           <Button

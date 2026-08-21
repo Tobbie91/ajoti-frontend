@@ -122,7 +122,7 @@ export function verifyFunding(
 // ── Withdrawal ────────────────────────────────────────────────────────────────
 
 export interface WithdrawalPayload {
-  amount: number; // naira — will be multiplied × 100 to kobo before sending
+  amount: number; // naira - will be multiplied × 100 to kobo before sending
   accountNumber: string;
   accountName: string;
   bankCode: string;

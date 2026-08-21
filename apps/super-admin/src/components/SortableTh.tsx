@@ -20,7 +20,7 @@ export function SortableTh<K extends string>({
   width?: number
   align?: 'left' | 'right' | 'center'
   // Most superadmin tables use a solid dark-green header row (white text).
-  // A few (e.g. StaffManagement) use Mantine's default plain header — pass
+  // A few (e.g. StaffManagement) use Mantine's default plain header - pass
   // dark={false} there so text stays legible against the light background.
   dark?: boolean
 }) {

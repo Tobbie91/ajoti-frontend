@@ -5,16 +5,16 @@
  * 1. Add an entry to the ARTICLES array below
  * 2. Give it a unique `id` (used in the URL)
  * 3. Fill in metadata (title, excerpt, category, readTime, iconName, iconBg)
- * 4. Write the `body` array — each item is a content block rendered in order
+ * 4. Write the `body` array - each item is a content block rendered in order
  *
  * Body block types:
- *   { type: 'paragraph', text: '...' }           — regular paragraph
- *   { type: 'heading',   text: '...' }           — section heading (h2)
- *   { type: 'subheading', text: '...' }          — sub-section heading (h3)
- *   { type: 'list',      items: ['...', '...'] } — bulleted list
- *   { type: 'numbered',  items: ['...', '...'] } — numbered list
- *   { type: 'callout',   text: '...' }           — highlighted info box
- *   { type: 'quote',     text: '...' }           — block quote
+ *   { type: 'paragraph', text: '...' }           - regular paragraph
+ *   { type: 'heading',   text: '...' }           - section heading (h2)
+ *   { type: 'subheading', text: '...' }          - sub-section heading (h3)
+ *   { type: 'list',      items: ['...', '...'] } - bulleted list
+ *   { type: 'numbered',  items: ['...', '...'] } - numbered list
+ *   { type: 'callout',   text: '...' }           - highlighted info box
+ *   { type: 'quote',     text: '...' }           - block quote
  */
 
 export type Category = "Getting Started" | "Features" | "Safety" | "FAQs";
@@ -47,7 +47,7 @@ export const ARTICLES: Article[] = [
     id: "what-is-rosca",
     title: "What is ajo and How Does it Work?",
     excerpt:
-      "Learn the basics of Rotating Savings and Credit Associations — how members contribute, how payouts work, and why millions of people trust this system.",
+      "Learn the basics of Rotating Savings and Credit Associations - how members contribute, how payouts work, and why millions of people trust this system.",
     category: "Getting Started",
     readTime: "5 min read",
     iconName: "users",
@@ -57,7 +57,7 @@ export const ARTICLES: Article[] = [
     body: [
       {
         type: "paragraph",
-        text: "A Rotating Savings and Credit Association (ajo) is one of the oldest and most trusted forms of communal savings worldwide. In a ajo, a group of individuals agree to contribute a fixed amount of money to a common pool at regular intervals — weekly, bi-weekly, or monthly.",
+        text: "A Rotating Savings and Credit Association (ajo) is one of the oldest and most trusted forms of communal savings worldwide. In a ajo, a group of individuals agree to contribute a fixed amount of money to a common pool at regular intervals - weekly, bi-weekly, or monthly.",
       },
       {
         type: "heading",
@@ -82,15 +82,15 @@ export const ARTICLES: Article[] = [
       },
       {
         type: "paragraph",
-        text: "ajo has been practiced for centuries across Africa, Asia, and Latin America. It works because of mutual accountability — every member benefits, and social trust keeps the system running smoothly.",
+        text: "ajo has been practiced for centuries across Africa, Asia, and Latin America. It works because of mutual accountability - every member benefits, and social trust keeps the system running smoothly.",
       },
       {
         type: "list",
         items: [
-          "No interest charges — unlike bank loans",
-          "Forced savings discipline — regular contributions build your savings habit",
-          "Community support — you save alongside people you know and trust",
-          "Access to lump sums — receive a large payout without taking on debt",
+          "No interest charges - unlike bank loans",
+          "Forced savings discipline - regular contributions build your savings habit",
+          "Community support - you save alongside people you know and trust",
+          "Access to lump sums - receive a large payout without taking on debt",
         ],
       },
       {
@@ -99,7 +99,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: "paragraph",
-        text: "On Ajoti, we bring the traditional ajo model into a modern, secure digital platform. Groups are managed by verified admins, contributions are tracked automatically, and your money is protected with escrow-level security. Whether you're saving for a business, education, or an emergency fund — ajo on Ajoti makes it simple and safe.",
+        text: "On Ajoti, we bring the traditional ajo model into a modern, secure digital platform. Groups are managed by verified admins, contributions are tracked automatically, and your money is protected with escrow-level security. Whether you're saving for a business, education, or an emergency fund - ajo on Ajoti makes it simple and safe.",
       },
     ],
   },
@@ -124,7 +124,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: "paragraph",
-        text: "Navigate to the ajo page from your dashboard. You'll see a list of available groups organized by tabs — All Groups, Open Groups, Invite-Only, and more. Use the search bar to find groups by name or admin.",
+        text: "Navigate to the ajo page from your dashboard. You'll see a list of available groups organized by tabs - All Groups, Open Groups, Invite-Only, and more. Use the search bar to find groups by name or admin.",
       },
       {
         type: "heading",
@@ -132,7 +132,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: "paragraph",
-        text: "Click on any group card to see its full details — contribution amount, duration, payout schedule, group rules, and admin information. Take your time to find a group that matches your savings goals.",
+        text: "Click on any group card to see its full details - contribution amount, duration, payout schedule, group rules, and admin information. Take your time to find a group that matches your savings goals.",
       },
       {
         type: "heading",
@@ -303,7 +303,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: "paragraph",
-        text: "All ajo contributions are held in secure escrow accounts — not in any individual's personal account. Funds are only released to the designated member on the scheduled payout date.",
+        text: "All ajo contributions are held in secure escrow accounts - not in any individual's personal account. Funds are only released to the designated member on the scheduled payout date.",
       },
       {
         type: "heading",
@@ -323,7 +323,7 @@ export const ARTICLES: Article[] = [
           "Bank-grade encryption for all transactions",
           "Two-factor authentication for account access",
           "Real-time fraud monitoring and detection",
-          "Automated contribution collection — no manual transfers",
+          "Automated contribution collection - no manual transfers",
           "Complete audit trail for every transaction",
         ],
       },
@@ -391,7 +391,7 @@ export const ARTICLES: Article[] = [
     id: "becoming-admin",
     title: "Becoming a ajo Admin",
     excerpt:
-      "Everything you need to know about managing your own savings group — from requirements to responsibilities and rewards.",
+      "Everything you need to know about managing your own savings group - from requirements to responsibilities and rewards.",
     category: "Features",
     readTime: "7 min read",
     iconName: "trending-up",
@@ -551,7 +551,7 @@ export const ARTICLES: Article[] = [
       },
       {
         type: "paragraph",
-        text: "Absolutely. Admins don't hold any funds — all contributions are in secure escrow. If an admin becomes unavailable, Ajoti's support team can appoint a replacement or manage the group directly.",
+        text: "Absolutely. Admins don't hold any funds - all contributions are in secure escrow. If an admin becomes unavailable, Ajoti's support team can appoint a replacement or manage the group directly.",
       },
       {
         type: "heading",

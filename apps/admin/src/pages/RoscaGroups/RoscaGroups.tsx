@@ -49,7 +49,7 @@ function mapCircleToGroup(c: RoscaCircle): RoscaGroup {
     id: c.id,
     name: c.name || 'Unnamed',
     members: `${filled}/${total}`,
-    nextPayout: status === 'Pending' ? 'Pending' : status === 'Completed' ? 'Completed' : '—',
+    nextPayout: status === 'Pending' ? 'Pending' : status === 'Completed' ? 'Completed' : '-',
     roundProgress: status === 'Pending' ? 'Pending' : `${filled} of ${c.durationCycles ?? total}`,
     status,
     readyToStart,
@@ -447,7 +447,7 @@ export function RoscaGroups() {
             />
 
             <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
-              Bulk notifications across groups aren't wired up yet — this form is a preview only. Sending has no effect until a backend endpoint exists.
+              Bulk notifications across groups aren't wired up yet - this form is a preview only. Sending has no effect until a backend endpoint exists.
             </Alert>
 
             <Group justify="flex-end" gap="sm" mt="xs">
@@ -531,7 +531,7 @@ export function RoscaGroups() {
           )}
 
           <Alert icon={<IconAlertCircle size={16} />} color="blue" radius="md" variant="light">
-            Deleting groups isn't wired up yet here — real circle deletion is a superadmin-only action (cancel, release collateral, then delete). This form doesn't do anything yet.
+            Deleting groups isn't wired up yet here - real circle deletion is a superadmin-only action (cancel, release collateral, then delete). This form doesn't do anything yet.
           </Alert>
 
           <Group justify="flex-end" gap="sm" mt="xs">
@@ -550,7 +550,7 @@ export function RoscaGroups() {
               color="red"
               disabled
             >
-              Delete ({deleteTargets.length}) — Coming Soon
+              Delete ({deleteTargets.length}) - Coming Soon
             </Button>
           </Group>
         </Stack>

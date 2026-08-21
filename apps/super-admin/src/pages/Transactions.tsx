@@ -416,7 +416,7 @@ export function Transactions() {
                             <Text size="sm" fw={500}>{user.firstName} {user.lastName}</Text>
                             <Text size="xs" c="dimmed">{user.email}</Text>
                           </div>
-                        ) : <Text size="sm" c="dimmed">—</Text>}
+                        ) : <Text size="sm" c="dimmed">-</Text>}
                       </Table.Td>
                     </Table.Tr>
                   )

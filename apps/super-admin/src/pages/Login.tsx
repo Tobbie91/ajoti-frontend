@@ -32,7 +32,7 @@ export function Login() {
       localStorage.setItem('superadmin_user', JSON.stringify(user))
 
       // Directly-created staff must replace their temporary password before
-      // anything else — the backend rejects every other action until they do.
+      // anything else - the backend rejects every other action until they do.
       navigate(mustChangePassword ? '/change-password-required' : '/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
@@ -64,7 +64,7 @@ export function Login() {
                 Platform oversight, simplified
               </Text>
               <Text size="sm" className="text-white/90">
-                Manage users, review KYC, govern ajo circles, and monitor platform health — all from one place.
+                Manage users, review KYC, govern ajo circles, and monitor platform health - all from one place.
               </Text>
             </div>
 
@@ -110,7 +110,7 @@ export function Login() {
                     Super Admin Sign In
                   </Text>
                   <Text size="sm" className="text-[#6B7280]">
-                    Restricted access — SUPERADMIN accounts only.
+                    Restricted access - SUPERADMIN accounts only.
                   </Text>
                 </div>
 

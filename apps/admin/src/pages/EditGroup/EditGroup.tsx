@@ -72,7 +72,7 @@ export function EditGroup() {
 
   const isDraft = circle?.status === 'DRAFT'
   const filledSlots = circle?.filledSlots ?? 0
-  // Real minimum for maxSlots: approved members + still-pending join requests —
+  // Real minimum for maxSlots: approved members + still-pending join requests -
   // approveMember doesn't re-check capacity, so the backend enforces this same
   // floor (see updateCircle's pending-aware guard); mirrored here so the admin
   // sees the real constraint before submitting, not just a server rejection.
@@ -186,7 +186,7 @@ export function EditGroup() {
                 disabled={!isDraft}
                 description={
                   isDraft && minSlots > 0
-                    ? 'Locked once a member holds reserved collateral — remove pending/active members first to change this'
+                    ? 'Locked once a member holds reserved collateral - remove pending/active members first to change this'
                     : undefined
                 }
               />
@@ -205,12 +205,12 @@ export function EditGroup() {
             </Group>
           </Paper>
 
-          {/* Payout Order — managed from the group detail page, not here */}
+          {/* Payout Order - managed from the group detail page, not here */}
           <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
             <Text fw={600} fz="md" mb="xs">Payout Order</Text>
             <Text fz="sm" c="dimmed" mb="sm">
               Current: <strong>{circle.payoutLogic}</strong>. Payout order has its own dedicated
-              settings, validated separately from the rest of this form — manage it from the
+              settings, validated separately from the rest of this form - manage it from the
               group's detail page.
             </Text>
             <Button

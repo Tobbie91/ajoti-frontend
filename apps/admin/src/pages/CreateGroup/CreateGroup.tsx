@@ -58,7 +58,7 @@ export function CreateGroup() {
   const isMobile = useMediaQuery('(max-width: 639px)')
   const [selectedRules, setSelectedRules] = useState<string[]>([])
 
-  // The late-penalty rate is platform-set and can change — fetch it live so the
+  // The late-penalty rate is platform-set and can change - fetch it live so the
   // rules checklist never shows a stale or vague figure for what a member actually pays.
   const [latePenaltyRatioPercent, setLatePenaltyRatioPercent] = useState<number | null>(null)
   useEffect(() => {
@@ -198,9 +198,9 @@ export function CreateGroup() {
               value={currency}
               onChange={setCurrency}
               data={[
-                { value: 'NGN', label: '🇳🇬 NGN — Nigerian Naira' },
-                { value: 'USD', label: '🇺🇸 USD — US Dollar' },
-                { value: 'GBP', label: '🇬🇧 GBP — British Pound' },
+                { value: 'NGN', label: '🇳🇬 NGN - Nigerian Naira' },
+                { value: 'USD', label: '🇺🇸 USD - US Dollar' },
+                { value: 'GBP', label: '🇬🇧 GBP - British Pound' },
               ]}
               styles={{
                 label: { fontWeight: 600, marginBottom: 4 },
@@ -416,7 +416,7 @@ export function CreateGroup() {
 
           <Stack gap="xs">
             {[
-              // Omitted until the live rate loads (rather than shown as a placeholder) —
+              // Omitted until the live rate loads (rather than shown as a placeholder) -
               // the rule text doubles as the checkbox's identity in selectedRules below,
               // so it must never change under a user who has already checked it.
               ...(latePenaltyRatioPercent !== null
@@ -509,15 +509,15 @@ export function CreateGroup() {
               <Stack gap="xs" style={{ flex: 1 }}>
                 <Box>
                   <Text fz="xs" c="dimmed">Group Name</Text>
-                  <Text fz="sm" fw={500}>{groupName || '—'}</Text>
+                  <Text fz="sm" fw={500}>{groupName || '-'}</Text>
                 </Box>
                 <Box>
                   <Text fz="xs" c="dimmed">Tagline</Text>
-                  <Text fz="sm" fw={500}>{tagline || '—'}</Text>
+                  <Text fz="sm" fw={500}>{tagline || '-'}</Text>
                 </Box>
                 <Box>
                   <Text fz="xs" c="dimmed">Description</Text>
-                  <Text fz="sm" fw={500}>{description || '—'}</Text>
+                  <Text fz="sm" fw={500}>{description || '-'}</Text>
                 </Box>
               </Stack>
               <Box
@@ -560,11 +560,11 @@ export function CreateGroup() {
               </Box>
               <Box>
                 <Text fz="xs" c="dimmed">Frequency</Text>
-                <Text fz="sm" fw={500}>{frequency.length > 0 ? frequency.join(', ') : '—'}</Text>
+                <Text fz="sm" fw={500}>{frequency.length > 0 ? frequency.join(', ') : '-'}</Text>
               </Box>
               <Box>
                 <Text fz="xs" c="dimmed">Payout Order</Text>
-                <Text fz="sm" fw={500}>{payoutStructure || '—'}</Text>
+                <Text fz="sm" fw={500}>{payoutStructure || '-'}</Text>
               </Box>
             </Group>
             <Text fz="xs" c="dimmed" mt="sm">

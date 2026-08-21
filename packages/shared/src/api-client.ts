@@ -4,7 +4,7 @@
 // byte-for-byte duplicated across the frontend apps' utils/api.ts files
 // (differing only in localStorage key prefix and the redirect target on
 // session expiry). Each app still owns its ~1000 lines of domain-specific
-// endpoint functions — this only consolidates the infrastructure beneath them.
+// endpoint functions - this only consolidates the infrastructure beneath them.
 
 export class ApiError extends Error {
   readonly code?: number
@@ -50,7 +50,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   async function request<T>(path: string, options: RequestInit): Promise<T> {
     const { headers, ...rest } = options
     // FormData bodies (e.g. KYC document uploads) must not get a JSON
-    // Content-Type — the browser needs to set its own multipart boundary.
+    // Content-Type - the browser needs to set its own multipart boundary.
     const isFormData = options.body instanceof FormData
     const contentTypeHeader: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
 
@@ -356,7 +356,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       return data as T
     }
 
-    // 401 — attempt token refresh (queue concurrent calls so we only refresh once)
+    // 401 - attempt token refresh (queue concurrent calls so we only refresh once)
     if (!isRefreshing) {
       isRefreshing = true
       try {
@@ -384,7 +384,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       }
     }
 
-    // Another request is already refreshing — wait for it
+    // Another request is already refreshing - wait for it
     return new Promise<T>((resolve, reject) => {
       refreshQueue.push((newToken) => {
         performAuthenticatedRequest<T>(path, options, newToken)

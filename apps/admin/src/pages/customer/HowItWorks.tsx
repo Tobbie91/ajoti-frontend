@@ -160,7 +160,7 @@ export function HowItWorks() {
                 </button>
               </div>
 
-              {/* Decorative side — hidden on mobile */}
+              {/* Decorative side - hidden on mobile */}
               <div className="relative hidden h-full w-[280px] flex-shrink-0 items-center justify-center sm:flex">
                 <div className="absolute right-8 h-48 w-48 rounded-full bg-white/10" />
                 <div className="absolute right-24 top-6 h-20 w-20 rounded-full bg-white/5" />

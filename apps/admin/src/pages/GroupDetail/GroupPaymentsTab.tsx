@@ -108,7 +108,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                       const rate = exp > 0 ? Math.round((col / exp) * 100) : 0
                       const deadline = cyc.contributionDeadline
                         ? new Date(cyc.contributionDeadline).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
-                        : '—'
+                        : '-'
                       return (
                         <Table.Tr key={cyc.cycleNumber}>
                           <Table.Td><Text fz="sm" fw={500}>Cycle {cyc.cycleNumber}</Text></Table.Td>
@@ -191,7 +191,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                 const amountNaira = Number(c.amount) / 100
                 const dateStr = c.paidAt
                   ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                  : '—'
+                  : '-'
                 return (
                   <Table.Tr key={c.contributionId}>
                     <Table.Td>
@@ -253,7 +253,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
               <Text fz="sm" fw={600} style={{ color: PRIMARY }}>
                 {(() => {
                   const cyc = financialHealth?.cycles?.find((c) => c.cycleNumber === Number(selectedRound))
-                  if (!cyc || Number(cyc.expectedPot) === 0) return '—'
+                  if (!cyc || Number(cyc.expectedPot) === 0) return '-'
                   return `${Math.round((Number(cyc.collected) / Number(cyc.expectedPot)) * 100)}%`
                 })()}
               </Text>
@@ -308,7 +308,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
               const amountNaira = d.amountPaidOut != null ? (Number(d.amountPaidOut) / 100).toLocaleString('en-NG') : null
               const dateStr = (d.processedAt ?? (isUpcoming ? d.payoutDate : null))
                 ? new Date((d.processedAt ?? d.payoutDate) as string).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-                : '—'
+                : '-'
               return (
                 <Table.Tr key={d.cycleNumber} style={isStuck ? { background: '#fff5f5' } : isUpcoming ? { background: '#f0faf7' } : undefined}>
                   <Table.Td>

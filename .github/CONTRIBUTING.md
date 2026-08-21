@@ -9,12 +9,12 @@ Thank you for contributing. These guidelines apply to this repository and all ot
 We use **trunk-based development** with short-lived feature branches.
 
 ```
-main       — production-ready code; protected, requires PR + review
-staging    — pre-production integration branch
-dev        — active development integration
-feat/*     — short-lived feature branches (branch from dev)
-fix/*      — bug fix branches
-hotfix/*   — urgent production fixes (branch from main)
+main       - production-ready code; protected, requires PR + review
+staging    - pre-production integration branch
+dev        - active development integration
+feat/*     - short-lived feature branches (branch from dev)
+fix/*      - bug fix branches
+hotfix/*   - urgent production fixes (branch from main)
 ```
 
 Branch naming examples:
@@ -54,11 +54,11 @@ docs(readme): update app URLs table
 ## Pull Requests
 
 - PRs must target `dev` (or `staging` for release candidates). **Never directly to `main`.**
-- Fill out the PR template completely — incomplete PRs will not be reviewed.
+- Fill out the PR template completely - incomplete PRs will not be reviewed.
 - All CI checks must pass before merge.
 - Minimum **1 approval** required.
 - **2 approvals required** for anything touching: auth flows, payment/wallet UI, PIN entry, KYC widget, or admin/superadmin access controls.
-- Keep PRs small and focused — one concern per PR.
+- Keep PRs small and focused - one concern per PR.
 
 ### Review Expectations
 
@@ -76,9 +76,9 @@ docs(readme): update app URLs table
 ## Issue Reporting
 
 Use the appropriate issue template:
-- 🐛 **Bug Report** — something is broken or behaving unexpectedly
-- ✨ **Feature Request** — new capability or enhancement
-- 🔒 **Security Issue** — email **security@ajoti.com** directly; do not open a public issue
+- 🐛 **Bug Report** - something is broken or behaving unexpectedly
+- ✨ **Feature Request** - new capability or enhancement
+- 🔒 **Security Issue** - email **security@ajoti.com** directly; do not open a public issue
 
 ---
 

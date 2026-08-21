@@ -229,7 +229,7 @@ export function ArticleDetail() {
           </Text>
         </div>
 
-        {/* Decorative — hidden on mobile to prevent overflow */}
+        {/* Decorative - hidden on mobile to prevent overflow */}
         <div className="absolute -right-16 -top-16 hidden h-72 w-72 rounded-full bg-white/10 sm:block" />
         <div className="absolute -bottom-12 right-28 hidden h-48 w-48 rounded-full bg-white/10 sm:block" />
         <div className="absolute right-48 top-8 hidden h-20 w-20 rounded-full bg-white/5 sm:block" />

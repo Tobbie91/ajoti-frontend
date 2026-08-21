@@ -114,7 +114,7 @@ function UserDetailBody({
       </Group>
 
       <SimpleGrid cols={2} spacing="xs">
-        <InfoItem label="Phone" value={(user.phone as string) ?? '—'} />
+        <InfoItem label="Phone" value={(user.phone as string) ?? '-'} />
         <InfoItem label="Role" value={currentRole} />
         <InfoItem
           label="Status"
@@ -132,7 +132,7 @@ function UserDetailBody({
             </Badge>
           }
         />
-        <InfoItem label="Joined" value={user.createdAt ? new Date(user.createdAt as string).toLocaleDateString('en-NG') : '—'} />
+        <InfoItem label="Joined" value={user.createdAt ? new Date(user.createdAt as string).toLocaleDateString('en-NG') : '-'} />
         <InfoItem label="Verified" value={(user.isVerified as boolean) ? 'Yes' : 'No'} />
       </SimpleGrid>
 
@@ -189,7 +189,7 @@ function UserDetailBody({
 
       <Divider />
 
-      {/* Pending admin request — backend gates approve/reject on MANAGE_ADMIN_ACCOUNTS */}
+      {/* Pending admin request - backend gates approve/reject on MANAGE_ADMIN_ACCOUNTS */}
       {(user.adminRequestedAt as string | null) && hasPermission(getStaffRoleFromStorage(), 'MANAGE_ADMIN_ACCOUNTS') && (
         <Alert color="orange" radius="md" variant="light" title="Pending Admin Request">
           <Text fz="xs">Requested on {new Date(user.adminRequestedAt as string).toLocaleDateString('en-NG')}</Text>
@@ -204,7 +204,7 @@ function UserDetailBody({
         </Alert>
       )}
 
-      {/* Actions — gated to match the backend's actual permission requirements
+      {/* Actions - gated to match the backend's actual permission requirements
           for each endpoint, not just shown to whoever can open this drawer. */}
       {(() => {
         const staffRole = getStaffRoleFromStorage()
@@ -222,7 +222,7 @@ function UserDetailBody({
                   <Alert color="orange" radius="md" variant="light" title="Self-Frozen Account">
                     <Text fz="xs">
                       This user froze their own account. Unfreezing requires verifying their identity through
-                      the standard process outside this app first — this button is the final step, not a
+                      the standard process outside this app first - this button is the final step, not a
                       verification step itself. Check the linked support ticket (category Account, ref type
                       ACCOUNT_FREEZE) for context before proceeding.
                     </Text>
@@ -256,7 +256,7 @@ function UserDetailBody({
               </>
             )}
             {/* Promoting a member to staff in-place is removed entirely, not
-                just the SUPERADMIN option — staff accounts go through Staff
+                just the SUPERADMIN option - staff accounts go through Staff
                 Management's dedicated onboarding (phone/dob/gender, temp
                 password, mustChangePassword lock), which this generic drawer
                 skips. Assigning a staff tier here would create a staff
@@ -477,7 +477,7 @@ function InfoItem({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack gap={2}>
       <Text fz="xs" c="dimmed">{label}</Text>
-      {typeof value === 'string' ? <Text fz="sm" fw={500}>{value || '—'}</Text> : value}
+      {typeof value === 'string' ? <Text fz="sm" fw={500}>{value || '-'}</Text> : value}
     </Stack>
   )
 }
@@ -681,7 +681,7 @@ export function ManageUsers() {
                     <Text fz="sm" c="dimmed">{user.email}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm">{user.phone ?? '—'}</Text>
+                    <Text fz="sm">{user.phone ?? '-'}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Badge variant="light" size="sm" color={user.role === 'STAFF' ? 'violet' : user.role === 'CIRCLE_ADMIN' ? 'blue' : 'gray'}>

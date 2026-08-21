@@ -57,7 +57,7 @@ export async function login(
   const token = (payload.accessToken ?? payload.token ?? "") as string;
   const refreshToken = (payload.refreshToken ?? "") as string;
 
-  // Role and sub are in the JWT payload — backend doesn't return a user object
+  // Role and sub are in the JWT payload - backend doesn't return a user object
   const jwtPayload = decodeJwtPayload(token);
 
   const user: SuperadminUser = {

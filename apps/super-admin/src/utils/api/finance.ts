@@ -82,7 +82,7 @@ export function exportCsv(params: {
   }).then((r) => r.blob());
 }
 
-// ── Wallets (customer wallets only — system accounts have their own page) ─────
+// ── Wallets (customer wallets only - system accounts have their own page) ─────
 
 export interface WalletRow {
   walletId: string;
@@ -102,7 +102,7 @@ export interface WalletRow {
   };
 }
 
-// ── System Accounts (Financial Architecture Phase 1) — ownerless platform accounts ─
+// ── System Accounts (Financial Architecture Phase 1) - ownerless platform accounts ─
 
 export type SystemAccountType =
   | "PLATFORM_POOL"
@@ -144,7 +144,7 @@ export function capitalizeLoanFloat(
   );
 }
 
-// ── Payout Fee Settings — SYSTEM_CONFIG (SUPERADMIN only) ──────────────────────
+// ── Payout Fee Settings - SYSTEM_CONFIG (SUPERADMIN only) ──────────────────────
 
 export interface PayoutFeeSettingMeta {
   updatedBy: string | null;
@@ -191,7 +191,7 @@ export function updatePayoutFeeSettings(
   );
 }
 
-// ── Loan Settings — SYSTEM_CONFIG (SUPERADMIN only) ─────────────────────────────
+// ── Loan Settings - SYSTEM_CONFIG (SUPERADMIN only) ─────────────────────────────
 
 export interface LoanSettingMeta {
   updatedBy: string | null;
@@ -235,7 +235,7 @@ export function updateLoanSettings(
   );
 }
 
-// ── Circle rules settings — SYSTEM_CONFIG (superadmin) ──────────────────────────
+// ── Circle rules settings - SYSTEM_CONFIG (superadmin) ──────────────────────────
 export interface CircleRuleSettingMeta {
   updatedBy: string | null;
   updatedByLabel: string | null;
@@ -281,7 +281,7 @@ export function updateCircleRulesSettings(
   );
 }
 
-// ── Loans (early payouts) — VIEW_SYSTEM_ACCOUNTS (COMPLIANCE+) ──────────────────
+// ── Loans (early payouts) - VIEW_SYSTEM_ACCOUNTS (COMPLIANCE+) ──────────────────
 // Read-only oversight: list + detail, no write-off/cancel/force-repay actions.
 
 export type LoanStatus = "ACTIVE" | "REPAID" | "DEFAULTED" | "CANCELLED";
@@ -338,7 +338,7 @@ export async function getLoanDetail(loanId: string): Promise<LoanDetail> {
   return res.data;
 }
 
-// ── Debts — Super Admin ─────────────────────────────────────────────────────────
+// ── Debts - Super Admin ─────────────────────────────────────────────────────────
 // Read-only oversight: list + detail, no write actions (repayment is member-only).
 
 export type DebtStatus = "OUTSTANDING" | "PARTIALLY_REPAID" | "SETTLED";

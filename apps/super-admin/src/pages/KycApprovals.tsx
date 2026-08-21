@@ -60,7 +60,7 @@ const APPROVAL_SOURCE_LABEL: Record<string, string> = {
 }
 
 function fmt(iso: string | null) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   return new Date(iso).toLocaleDateString('en-NG', {
     day: '2-digit', month: 'short', year: 'numeric',
   })
@@ -103,7 +103,7 @@ function VerificationDataCard({ data }: { data: Record<string, unknown> }) {
   const createdAt = inner?.created_at as string | undefined
   const liveMode = inner?.live_mode as boolean | undefined
 
-  // Unrecognised shape — nothing sensible to summarise, so raw data is the primary view.
+  // Unrecognised shape - nothing sensible to summarise, so raw data is the primary view.
   if (!status && !kycLevel && !customer) {
     return (
       <ScrollArea h={220} type="auto">
@@ -271,17 +271,17 @@ function KycDetailDrawer({
             </Group>
 
             <SimpleGrid cols={2} spacing="xs">
-              <InfoRow label="Phone" value={u?.phone ?? '—'} />
-              <InfoRow label="Gender" value={u?.gender ?? '—'} />
-              <InfoRow label="Date of Birth" value={u?.dob ? fmt(u.dob) : '—'} />
+              <InfoRow label="Phone" value={u?.phone ?? '-'} />
+              <InfoRow label="Gender" value={u?.gender ?? '-'} />
+              <InfoRow label="Date of Birth" value={u?.dob ? fmt(u.dob) : '-'} />
               <InfoRow label="Submitted" value={fmt(record.submittedAt)} />
               <InfoRow label="KYC Level" value={`Level ${record.kycLevel}`} />
-              <InfoRow label="Step" value={record.step ?? '—'} />
-              <InfoRow label="Mono Status" value={record.providerStatus ?? '—'} />
-              <InfoRow label="Reviewed" value={record.reviewedAt ? fmt(record.reviewedAt) : '—'} />
+              <InfoRow label="Step" value={record.step ?? '-'} />
+              <InfoRow label="Mono Status" value={record.providerStatus ?? '-'} />
+              <InfoRow label="Reviewed" value={record.reviewedAt ? fmt(record.reviewedAt) : '-'} />
               <InfoRow
                 label="Approval Source"
-                value={record.approvalSource ? APPROVAL_SOURCE_LABEL[record.approvalSource] ?? record.approvalSource : '—'}
+                value={record.approvalSource ? APPROVAL_SOURCE_LABEL[record.approvalSource] ?? record.approvalSource : '-'}
               />
             </SimpleGrid>
 
@@ -291,8 +291,8 @@ function KycDetailDrawer({
                 <Divider label="Next of Kin" labelPosition="left" />
                 <SimpleGrid cols={2} spacing="xs">
                   <InfoRow label="Name" value={record.nextOfKinName} />
-                  <InfoRow label="Relationship" value={record.nextOfKinRelationship ?? '—'} />
-                  <InfoRow label="Phone" value={record.nextOfKinPhone ?? '—'} />
+                  <InfoRow label="Relationship" value={record.nextOfKinRelationship ?? '-'} />
+                  <InfoRow label="Phone" value={record.nextOfKinPhone ?? '-'} />
                 </SimpleGrid>
               </>
             )}
@@ -444,7 +444,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <Stack gap={2}>
       <Text fz="xs" c="dimmed">{label}</Text>
-      <Text fz="sm" fw={500}>{value || '—'}</Text>
+      <Text fz="sm" fw={500}>{value || '-'}</Text>
     </Stack>
   )
 }
@@ -549,8 +549,8 @@ export function KycApprovals() {
       {activeTab === 'PENDING' && (
         <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light" radius="md">
           Most KYC levels now auto-approve on Mono verification. This queue only shows records
-          auto-approval couldn't resolve — ambiguous verification results and legacy submissions
-          from before auto-approval — for manual review.
+          auto-approval couldn't resolve - ambiguous verification results and legacy submissions
+          from before auto-approval - for manual review.
         </Alert>
       )}
 
@@ -613,7 +613,7 @@ export function KycApprovals() {
                     <Text fz="sm" c="dimmed">{r.user.email}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text fz="sm">{r.user.phone ?? '—'}</Text>
+                    <Text fz="sm">{r.user.phone ?? '-'}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Text fz="sm">{fmt(r.submittedAt)}</Text>

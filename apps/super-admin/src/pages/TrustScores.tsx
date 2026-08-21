@@ -171,7 +171,7 @@ function TrustDrawer({
             <Group justify="space-between" mb="xs">
               <Text size="sm" fw={600}>ATI Score</Text>
               <Badge color={scoreColor(full.displayScore)} variant="filled" size="lg">
-                {full.displayScore} — {scoreLabel(full.displayScore)}
+                {full.displayScore} - {scoreLabel(full.displayScore)}
               </Badge>
             </Group>
             <Progress
@@ -359,7 +359,7 @@ export function TrustScores() {
         <div>
           <Title order={2} fw={700}>Trust Scores</Title>
           <Text c="dimmed" size="sm" mt={4}>
-            Ajoti Trust Index (ATI) — 300 to 850 scale.
+            Ajoti Trust Index (ATI) - 300 to 850 scale.
           </Text>
         </div>
         <ActionIcon variant="default" size="lg" radius="md" onClick={fetchData} title="Refresh">
@@ -470,7 +470,7 @@ export function TrustScores() {
                       {row.totalPeerRatings > 0 ? (
                         <Text size="sm">{row.averagePeerRating.toFixed(1)} <Text span size="xs" c="dimmed">/ 5</Text></Text>
                       ) : (
-                        <Text size="xs" c="dimmed">—</Text>
+                        <Text size="xs" c="dimmed">-</Text>
                       )}
                     </Table.Td>
                     <Table.Td>

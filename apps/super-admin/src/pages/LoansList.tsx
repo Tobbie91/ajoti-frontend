@@ -45,7 +45,7 @@ const STATUS_OPTIONS = [
 
 const LIMIT = 20
 
-// ── Detail drawer (read-only — no write-off/cancel/force-repay actions) ────────
+// ── Detail drawer (read-only - no write-off/cancel/force-repay actions) ────────
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -101,9 +101,9 @@ function LoanDetailDrawer({
               <Text size="sm" fw={600}>Stranded</Text>
               <Text size="xs" mt={4}>
                 This loan is still ACTIVE, but the borrower already had a completed payout in this
-                circle — the shortfall guard skipped repayment (the actual pot came in below what
+                circle - the shortfall guard skipped repayment (the actual pot came in below what
                 was owed) and there is no automatic collection path. Accepted risk of the 75%
-                advance ratio, not a bug — see docs/specs/loan-repayment-flow.md.
+                advance ratio, not a bug - see docs/specs/loan-repayment-flow.md.
               </Text>
             </Alert>
           )}
@@ -123,9 +123,9 @@ function LoanDetailDrawer({
           <Divider label="Status" labelPosition="left" />
           <DetailRow label="Loan status" value={statusBadge(detail.status)} />
           <DetailRow label="Applied" value={new Date(detail.createdAt).toLocaleString('en-NG')} />
-          <DetailRow label="Repaid" value={detail.repaidAt ? new Date(detail.repaidAt).toLocaleString('en-NG') : '—'} />
+          <DetailRow label="Repaid" value={detail.repaidAt ? new Date(detail.repaidAt).toLocaleString('en-NG') : '-'} />
 
-          <Divider label="Amounts — frozen at application time, not live" labelPosition="left" />
+          <Divider label="Amounts - frozen at application time, not live" labelPosition="left" />
           <DetailRow label="Estimated expected payout" value={formatNaira(detail.payoutAmount)} />
           <DetailRow label="Advance disbursed (net)" value={formatNaira(detail.loanAmount)} />
           <DetailRow label="Company fee" value={formatNaira(detail.companyFee)} />
@@ -189,7 +189,7 @@ export function LoansList() {
       <div>
         <Title order={2} fw={700}>Loans</Title>
         <Text c="dimmed" size="sm" mt={4}>
-          Early payouts against expected ajo payouts — outstanding and historical.
+          Early payouts against expected ajo payouts - outstanding and historical.
         </Text>
       </div>
 
@@ -290,7 +290,7 @@ export function LoansList() {
                     </Table.Td>
                     <Table.Td><Text size="sm">{new Date(loan.createdAt).toLocaleDateString('en-NG')}</Text></Table.Td>
                     <Table.Td>
-                      <Text size="sm">{loan.repaidAt ? new Date(loan.repaidAt).toLocaleDateString('en-NG') : '—'}</Text>
+                      <Text size="sm">{loan.repaidAt ? new Date(loan.repaidAt).toLocaleDateString('en-NG') : '-'}</Text>
                     </Table.Td>
                   </Table.Tr>
                 ))

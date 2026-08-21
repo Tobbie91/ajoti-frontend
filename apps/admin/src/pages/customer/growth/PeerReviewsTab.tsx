@@ -30,7 +30,7 @@ import {
   type CircleContribution,
   type CircleMember,
 } from "@/utils/api";
-import { getRatingColor } from "./GrowthTab";
+import { getRatingColor } from "./utils";
 
 // ── Peer Reviews Tab ──────────────────────────────────────────────────────────
 

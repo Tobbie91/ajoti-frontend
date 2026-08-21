@@ -104,7 +104,7 @@ export function OnboardingFlow({
         window.open(result.monoUrl, "_blank", "noopener,noreferrer");
         onProvePending();
       } else {
-        // Test bypass — already verified, go straight to NOK
+        // Test bypass - already verified, go straight to NOK
         setStep(2);
       }
     } catch (err) {
@@ -156,7 +156,7 @@ export function OnboardingFlow({
               Identity Verification
             </Text>
             <Text fw={400} className="text-[13px] text-[#6B7280]">
-              Step {step} of 2 — {ONBOARDING_LABELS[step - 1]}
+              Step {step} of 2 - {ONBOARDING_LABELS[step - 1]}
             </Text>
           </div>
           <div className="w-[34px]" />
@@ -249,7 +249,7 @@ export function OnboardingFlow({
                 className="text-[13px] leading-[1.6] text-[#1E40AF]"
               >
                 After submitting, a secure Mono identity verification window
-                will open. Complete the short liveness check there — it takes
+                will open. Complete the short liveness check there - it takes
                 under a minute.
               </Text>
             </div>
@@ -316,7 +316,7 @@ export function OnboardingFlow({
                   fw={400}
                   className="text-[12px] leading-normal text-[#374151]"
                 >
-                  I'm ready to complete this now — I understand starting the
+                  I'm ready to complete this now - I understand starting the
                   check can't be refunded if I don't finish it.
                 </Text>
               }

@@ -7,7 +7,7 @@ import { changePassword, clearSessionAndRedirect } from '@/utils/api'
  * Forced first-login password rotation for staff created directly with a
  * temporary password. The backend rejects every other authenticated action
  * until this succeeds, so there is no way to skip this screen meaningfully.
- * After a successful change all sessions are revoked — the user is sent back
+ * After a successful change all sessions are revoked - the user is sent back
  * to log in with their new password.
  */
 export function ChangePasswordRequired() {
@@ -41,7 +41,7 @@ export function ChangePasswordRequired() {
     try {
       await changePassword({ oldPassword: currentPassword, newPassword })
       setDone(true)
-      // Changing the password revokes all sessions — return to login cleanly.
+      // Changing the password revokes all sessions - return to login cleanly.
       setTimeout(() => clearSessionAndRedirect(), 2500)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to change password.')

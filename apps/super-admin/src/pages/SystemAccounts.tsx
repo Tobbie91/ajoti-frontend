@@ -31,15 +31,15 @@ import { getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 const ACCOUNT_LABELS: Record<SystemAccountType, { title: string; description: string }> = {
   PLATFORM_POOL: {
     title: 'Platform Pool',
-    description: 'Custody only — balance equals undistributed ajo pots. Never revenue.',
+    description: 'Custody only - balance equals undistributed ajo pots. Never revenue.',
   },
   PLATFORM_REVENUE: {
     title: 'Platform Revenue',
-    description: "Money Ajoti has earned — Ajoti's ₦600 share of the flat ₦1,000 payout fee, and the early-payout company fee.",
+    description: "Money Ajoti has earned - Ajoti's ₦600 share of the flat ₦1,000 payout fee, and the early-payout company fee.",
   },
   LOAN_FLOAT: {
     title: 'Loan Float',
-    description: 'Lending capital for early payouts — capitalizations minus outstanding principal.',
+    description: 'Lending capital for early payouts - capitalizations minus outstanding principal.',
   },
 }
 
@@ -52,7 +52,7 @@ function fmtKobo(kobo: string) {
 }
 
 function fmtDate(iso: string | null) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   return new Date(iso).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
@@ -139,7 +139,7 @@ export function SystemAccounts() {
       </Group>
 
       <Text size="sm" c="dimmed">
-        Internal chart-of-accounts — custody, earnings, and lending capital. Not tied to any customer.
+        Internal chart-of-accounts - custody, earnings, and lending capital. Not tied to any customer.
       </Text>
 
       <Paper withBorder radius="md">
@@ -195,7 +195,7 @@ export function SystemAccounts() {
         <Stack gap="sm">
           <Text size="sm" c="dimmed">
             Records real money committed as lending capital. The actual bank transfer happens
-            outside the platform — this only creates the matching ledger entry.
+            outside the platform - this only creates the matching ledger entry.
           </Text>
           {capitalizeError && (
             <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
@@ -213,7 +213,7 @@ export function SystemAccounts() {
           />
           <Textarea
             label="Note"
-            placeholder="Initial capitalization — bank transfer ref XYZ123"
+            placeholder="Initial capitalization - bank transfer ref XYZ123"
             value={note}
             onChange={(e) => setNote(e.currentTarget.value)}
             minRows={2}

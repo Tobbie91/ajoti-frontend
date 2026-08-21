@@ -55,7 +55,7 @@ export function LimitCard({ level }: { level: number }) {
       <div className="flex items-center gap-2 mb-3">
         <LevelBadge level={level} />
         <Text fw={500} className="text-[13px] text-[#6B7280]">
-          — Your current KYC tier
+          - Your current KYC tier
         </Text>
       </div>
       <div className="grid grid-cols-2 gap-3">

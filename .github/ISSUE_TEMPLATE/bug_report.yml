@@ -15,19 +15,19 @@ body:
     attributes:
       label: Affected Area
       options:
-        - User App — Auth / Registration
-        - User App — Wallet / Funding
-        - User App — Withdrawals
-        - User App — ROSCA / Circles
-        - User App — Profile / KYC
-        - User App — Notifications
-        - Admin App — Circle Management
-        - Admin App — Disbursements / Payouts
-        - Admin App — Members
-        - Super Admin — Governance
-        - Super Admin — Transactions
-        - Super Admin — Users
-        - All Apps — UI / Navigation
+        - User App - Auth / Registration
+        - User App - Wallet / Funding
+        - User App - Withdrawals
+        - User App - ROSCA / Circles
+        - User App - Profile / KYC
+        - User App - Notifications
+        - Admin App - Circle Management
+        - Admin App - Disbursements / Payouts
+        - Admin App - Members
+        - Super Admin - Governance
+        - Super Admin - Transactions
+        - Super Admin - Users
+        - All Apps - UI / Navigation
         - Infrastructure / Build / Deploy
         - Other
     validations:

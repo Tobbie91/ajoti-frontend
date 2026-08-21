@@ -14,6 +14,13 @@ export function formatNaira(kobo: string | number): string {
   return `₦${n.toLocaleString("en-NG", { minimumFractionDigits: 0 })}`;
 }
 
+export function getRatingColor(value: number): string {
+  if (value >= 80) return "#02A36E";
+  if (value >= 60) return "#10B981";
+  if (value >= 40) return "#F59E0B";
+  return "#EF4444";
+}
+
 export function circleStatusBadge(status: string): {
   bg: string;
   color: string;

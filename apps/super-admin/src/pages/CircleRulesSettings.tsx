@@ -24,7 +24,7 @@ function fmtDate(iso: string) {
   })
 }
 
-// Mirrors the write-time validation in CircleRulesSettingsService — kept in sync
+// Mirrors the write-time validation in CircleRulesSettingsService - kept in sync
 // deliberately so users see the same rule client-side before ever hitting the server.
 function validate(values: {
   collateralRatioPercent: number | ''
@@ -137,9 +137,9 @@ export function CircleRulesSettings() {
     <Stack mt="xl" gap="lg" maw={640}>
       <Title order={3}>Circle Rules</Title>
       <Text size="sm" c="dimmed">
-        Platform-wide rules for savings circles — collateral, late penalty, the minimum trust
+        Platform-wide rules for savings circles - collateral, late penalty, the minimum trust
         score to join a public circle, and the post-start exit forfeit. Ajoti-set (not per-circle).
-        Takes effect on the very next join / contribution — no restart required.
+        Takes effect on the very next join / contribution - no restart required.
       </Text>
 
       {loadError && (
@@ -245,7 +245,7 @@ export function CircleRulesSettings() {
       >
         <Stack gap="sm">
           <Text size="sm">
-            These values take effect on the <strong>next join / contribution</strong> —
+            These values take effect on the <strong>next join / contribution</strong> -
             immediately, with no restart. Review before saving:
           </Text>
           <Stack gap={4}>

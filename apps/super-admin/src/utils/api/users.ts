@@ -78,7 +78,7 @@ export function updateUserStatus(
   });
 }
 
-// Distinct from updateUserStatus — only valid on FROZEN accounts, and is the final step
+// Distinct from updateUserStatus - only valid on FROZEN accounts, and is the final step
 // after identity verification has already happened outside the app. Not a generic
 // reactivate; the backend rejects lifting a freeze via updateUserStatus entirely.
 export function unfreezeAccount(

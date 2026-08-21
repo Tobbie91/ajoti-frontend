@@ -84,7 +84,7 @@ export function UpgradeSection({
     setError(null);
     setStarting(true);
     try {
-      // No payload needed — backend reads NIN/BVN from DB for level upgrades
+      // No payload needed - backend reads NIN/BVN from DB for level upgrades
       const result = await proveInitiate({});
 
       if (result.monoUrl) {
@@ -92,7 +92,7 @@ export function UpgradeSection({
         window.open(result.monoUrl, "_blank", "noopener,noreferrer");
         onProvePending();
       } else {
-        // Test bypass — skip widget
+        // Test bypass - skip widget
         onProvePending();
       }
     } catch (err) {
@@ -161,7 +161,7 @@ export function UpgradeSection({
         </Text>
         <Text fw={400} className="text-[13px] leading-[1.6] text-[#9CA3AF]">
           The verification widget will open in a new tab. Return to this page
-          after completing it — your status will update automatically.
+          after completing it - your status will update automatically.
         </Text>
 
         <Checkbox
@@ -172,7 +172,7 @@ export function UpgradeSection({
               fw={400}
               className="text-[12px] leading-normal text-[#374151]"
             >
-              I'm ready to complete this now — I understand starting the check
+              I'm ready to complete this now - I understand starting the check
               can't be refunded if I don't finish it.
             </Text>
           }
