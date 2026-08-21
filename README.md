@@ -1,174 +1,174 @@
 # Ajoti Frontend
 
-The pnpm workspace contains two active applications:
+Ajoti frontend is a pnpm workspace with two active applications:
 
-- `apps/admin`: the canonical Ajoti customer application for both `MEMBER` and
-  `CIRCLE_ADMIN` accounts. Circle organisers receive additional guarded capabilities.
+- `apps/admin`: the canonical Ajoti customer application for both `MEMBER` and `CIRCLE_ADMIN` accounts. Circle organisers receive additional guarded capabilities inside the same app.
 - `apps/super-admin`: the internal staff application.
 
-`apps/user` has been consolidated into `apps/admin` and retired. See
-`docs/user-admin-consolidation.md` for the verified feature inventory.
+`apps/user` has been consolidated into `apps/admin` and retired. Do not recreate a separate MEMBER application.
 
-A minimal, clean, and scalable React + TypeScript boilerplate for fintech applications.
-
-## Tech Stack
+## Tech stack
 
 | Technology | Purpose |
-|------------|---------|
-| **React 19** | UI library |
-| **TypeScript** | Type safety |
-| **Vite** | Build tool and dev server |
-| **Mantine UI** | Component library (buttons, cards, forms, etc.) |
-| **Tailwind CSS** | Layout utilities and custom styling |
-| **React Router** | Client-side routing |
-| **ESLint + Prettier** | Code quality and formatting |
-| **pnpm** | Package manager |
+| --- | --- |
+| React 19 | UI |
+| TypeScript | Type safety |
+| Vite | Build/dev server |
+| Mantine UI | Components/forms/layout |
+| Tailwind CSS | Layout utilities/custom styling |
+| React Router | Client-side routing |
+| pnpm | Workspace/package manager |
 
-## Project Progress (February 4, 2026)
+## Current customer app shape
 
-### Completed
+`apps/admin` is the shared customer app for both normal members and circle organisers.
 
-- Home dashboard UI with quick actions, transactions card, and invite prompt.
-- Shared application shell with header navigation and responsive layout.
-- Auth screens (Login/Signup) with modern layout and Google OAuth support.
-- Routing for Home, Login, Signup, Create Wallet, ROSCA, and Investments.
-- Placeholder pages for ROSCA and Investments to prevent dead-end navigation.
-- Google OAuth provider initializes only when `VITE_GOOGLE_CLIENT_ID` is set.
+Shared areas include:
 
-### In Progress
+- authentication and email verification
+- dashboard and quick actions
+- wallet and funding
+- transactions
+- KYC
+- profile/security
+- bank accounts and transaction PIN flows
+- Ajo/ROSCA browsing and participation
+- loans/debts
+- support/messages/notifications
+- Target Savings
 
-- Replacing placeholder pages with full ROSCA and Investments flows.
-- Wiring dashboard actions (fund wallet, transfer, quick access tiles) to real features.
-- Transactions list component and API integration.
+Organiser-only circle management routes and actions remain capability/role gated.
 
-### Next Steps
+## Target Savings
 
-- Implement auth-backed route protection and session persistence improvements.
-- Connect UI to backend services and finalize API contracts.
-- Add e2e flow coverage for onboarding and dashboard journeys.
+Target Savings is now a live customer feature.
 
-## Stack Choices
+### My Savings
 
-- **Mantine over Material UI**: Mantine provides a cleaner API, better TypeScript support, and is more lightweight. It's ideal for fintech applications that need a professional, neutral aesthetic.
-- **Tailwind for layout only**: Mantine handles component styling; Tailwind is used for layout utilities (flex, grid, spacing, responsive design).
-- **Vite over CRA**: Faster development experience with instant HMR and optimized builds.
-- **pnpm over npm**: Faster installs, better disk space efficiency, strict dependency management.
+Users can see their individual and group plans, personal progress, remaining target, maturity date and planned contribution cadence.
 
-## Getting Started
+Contribution rules:
+
+- contributions are manual; there is no auto-debit
+- users may contribute more or less than the planned/suggested amount
+- multiple contributions are allowed
+- contributions stop when the personal target or maturity date is reached
+- funds stay locked until maturity even if the target is reached early
+- no early withdrawal is currently available
+
+### Group plans
+
+- Public groups appear in **Discover Groups**.
+- Users review plan rules before joining.
+- Private groups use a shareable Ajoti invite link; users do not handle raw invite tokens.
+- Group members share the same per-member target and maturity rules.
+- Membership may grow over time, so the displayed group target grows with membership.
+- Group creators are labelled **Organiser**, not platform admin.
+
+### Super-admin oversight
+
+The old Target Savings placeholder in `apps/super-admin` has been replaced by a read-only oversight screen with summary metrics, search/filtering and plan/member information. No super-admin money-moving actions are exposed.
+
+## App access model
+
+| Capability | MEMBER | CIRCLE_ADMIN | STAFF app |
+| --- | --- | --- | --- |
+| Customer dashboard/wallet/profile | Yes | Yes | No |
+| Browse/join Ajos | Yes | Yes | No |
+| Target Savings | Yes | Yes | Oversight only |
+| Circle organiser management | No | Yes | Staff-specific tools only |
+| Super-admin/staff operations | No | No | Permission-gated |
+
+## Getting started
 
 ### Prerequisites
 
-- Node.js 20.19+ or 22.12+
-- pnpm 9+
+- Node.js 20+ (use repository `.nvmrc` where applicable)
+- pnpm 10+
 
-### Installation
+Install dependencies:
 
 ```bash
-# Install dependencies
 pnpm install
+```
 
-# Start the customer application
+Run the customer app:
+
+```bash
 pnpm --filter ajoti-admin dev
+```
 
-# Build for production
+Build the active apps:
+
+```bash
 pnpm build:admin
-
-# Preview production build
-pnpm --filter ajoti-admin preview
+pnpm build:super-admin
 ```
 
-### Available Scripts
+Before marking frontend work complete, run a real clean build. See [`AGENTS.md`](AGENTS.md) for the cache/`tsc -b` caveat.
 
-| Script | Description |
-|--------|-------------|
-| `pnpm dev` | Start development server at http://localhost:5173 |
-| `pnpm build` | Build for production |
-| `pnpm preview` | Preview production build |
-| `pnpm lint` | Run ESLint |
-| `pnpm lint:fix` | Run ESLint with auto-fix |
-| `pnpm format` | Format code with Prettier |
+## Environment
 
-## Project Structure
+Both apps require the backend base URL at build time:
 
-```
-src/
-├── components/     # Reusable UI components
-│   └── index.ts    # Component exports
-├── layouts/        # Page layouts (AppShell, etc.)
-│   ├── AppLayout.tsx
-│   └── index.ts
-├── pages/          # Page components
-│   ├── Home.tsx
-│   └── index.ts
-├── styles/         # Global styles and theme
-│   ├── index.css   # Tailwind + Mantine imports
-│   └── theme.ts    # Mantine theme configuration
-├── types/          # TypeScript type definitions
-│   └── index.ts
-├── utils/          # Utility functions
-│   └── index.ts
-├── App.tsx         # Root component with routing
-└── main.tsx        # Entry point with providers
+```bash
+VITE_API_BASE_URL=http://localhost:3001
 ```
 
-## Using Mantine + Tailwind Together
+Use the environment-specific API URL for staging/production. Vite bakes this value into the build.
 
-Mantine handles component styling; use Tailwind for layout:
+See [`SERVICES.md`](SERVICES.md) for deployment/service details.
 
-```tsx
-import { Card, Title, Text, Button } from '@mantine/core'
+## Project structure
 
-function Example() {
-  return (
-    // Tailwind for layout
-    <div className="mx-auto max-w-4xl p-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Mantine for components */}
-        <Card withBorder>
-          <Title order={3}>Card Title</Title>
-          <Text c="dimmed">Card description</Text>
-          <Button mt="md">Action</Button>
-        </Card>
-      </div>
-    </div>
-  )
-}
+```text
+ajoti-frontend/
+├── apps/
+│   ├── admin/                 # Customer app: MEMBER + CIRCLE_ADMIN
+│   └── super-admin/           # Internal staff app
+├── packages/                  # Shared workspace code
+├── docs/
+│   └── user-admin-consolidation.md
+├── AGENTS.md                  # Frontend engineering guidance
+├── SERVICES.md                # External services/deployment config
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+└── package.json
 ```
 
-## Absolute Imports
+## API organisation
 
-Use `@/` to import from the `src` directory:
+The frontend API layer has been split into domain modules rather than keeping all requests in one oversized file. Compatibility barrels remain where needed.
 
-```tsx
-import { AppLayout } from '@/layouts'
-import { Home } from '@/pages'
-import { theme } from '@/styles/theme'
-```
+When adding a request:
 
-## Theme Customization
+- use the existing shared API client/auth-refresh behaviour
+- place the request in the appropriate domain module
+- do not call staff/admin-only endpoints from member-safe customer screens
+- keep super-admin APIs inside the super-admin app
 
-Edit `src/styles/theme.ts` to customize the Mantine theme:
+## Auth/session notes
 
-```tsx
-import { createTheme } from '@mantine/core'
+- `MEMBER` and `CIRCLE_ADMIN` both authenticate through the customer app.
+- Staff accounts authenticate through the super-admin app.
+- Customer role boundaries must be enforced both in UI routing and backend guards.
+- The retired insecure Google-login behaviour was not carried forward; reintroducing Google auth requires a proper backend token exchange.
 
-export const theme = createTheme({
-  primaryColor: 'primary',
-  // Add your customizations
-})
-```
+## Branch / promotion flow
 
-## Adding New Pages
+- Development work lands on `dev`.
+- Locally tested changes are promoted to `staging` for deployment/testing.
+- Production promotion happens only after staging validation and explicit approval.
 
-1. Create a new component in `src/pages/`
-2. Export it from `src/pages/index.ts`
-3. Add a route in `src/App.tsx`
+## Current infrastructure notes
 
-## Adding New Components
+Sentry is not active in the frontend yet. The backend repository contains the current observability/storage handoff. When Sentry is enabled, the customer app and super-admin app should use separate frontend Sentry projects/DSNs rather than sharing the backend project.
 
-1. Create a new component in `src/components/`
-2. Export it from `src/components/index.ts`
-3. Import using `@/components`
+## Documentation
+
+- [`docs/user-admin-consolidation.md`](docs/user-admin-consolidation.md): current customer-app consolidation state and capability boundaries.
+- [`SERVICES.md`](SERVICES.md): frontend environment/deployment dependencies.
+- [`AGENTS.md`](AGENTS.md): frontend-specific engineering rules.
 
 ## License
 
