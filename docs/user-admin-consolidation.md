@@ -2,50 +2,70 @@
 
 Canonical customer application: `apps/admin`.
 
-## Verified overlap
+`apps/user` has been retired. `apps/admin` is the single customer application for both `MEMBER` and `CIRCLE_ADMIN`; organiser capabilities are exposed only where the account has permission.
 
-- Authentication by Ajoti email/password, email verification, KYC gates, wallet funding,
-  transactions, loans, debts, messages, support tickets, notifications, profile editing,
-  saved bank accounts, transaction PIN, and Target Savings existed in both applications.
-- `TransactionPinGate` and `useChat` were identical.
-- Both API clients used the shared refresh/error infrastructure; their meaningful difference
-  was the persisted-key prefix.
+## Verified shared customer capability
 
-## Previously user-only
+The canonical app now covers:
 
-- Customer home dashboard and quick actions.
-- Public Ajo discovery plus join, leave, invite acceptance, personal requests/invites,
-  member group detail, contribution history/payment, growth activity, and peer reviews.
-- Ajo education articles and organiser-access request.
-- Wallet-detail endpoints, pending-withdrawal state, wallet buckets/statistics/status,
-  funding-method discovery, and invite/member/review API helpers.
-- The old Google button was not retained: it decoded a credential entirely in the browser
-  without exchanging it for Ajoti access and refresh tokens. It was not a valid authenticated
-  customer session.
+- Ajoti email/password authentication and email verification
+- KYC
+- wallet/funding/withdrawal
+- transactions
+- loans and debts
+- messages and support tickets
+- notifications
+- profile/security
+- saved bank accounts
+- transaction PIN and recovery
+- Ajo/ROSCA discovery and participation
+- Target Savings
 
-## Previously admin-only
+The shared API client retains token refresh/error handling and neutral customer session keys.
 
-- Circle-organiser dashboard, group creation/editing, join-request decisions, member and
-  payout management, disbursement/contribution administration, invitations, reminders,
-  financial-health views, payout retry/reversal, and scheduler controls.
-- Route-level `CircleAdminRoute` protection and capability-aware navigation.
-- The more complete profile/security screen, including bank-account management, verified
-  email change, account freeze/delete, and transaction-PIN recovery.
+## Member-safe vs organiser-only boundaries
 
-## Meaningful differences resolved
+Member-safe screens use member-safe endpoints. Organiser-only capabilities remain protected by role/capability checks and corresponding backend guards.
 
-- KYC: retained the customer wording and current level/prove-pending behavior instead of
-  the old admin-account approval wording.
-- Withdrawal: retained the member implementation's pending-withdrawal lockout and refresh
-  behavior, together with minimum, KYC, PIN, and saved-account protections.
-- Target Savings: retained variable contributions, group invite token, member progress,
-  descriptions, validation, and public-plan discovery.
-- Ajo API: the authenticated member contribution endpoint is separate from the organiser
-  all-members contribution endpoint.
-- Notifications: action URLs and legacy invite notifications now navigate into customer
-  Ajo routes.
-- Storage: neutral customer keys are now canonical. Existing `admin_*` sessions migrate
-  once at startup before legacy keys are removed.
+Organiser-only functionality includes circle creation/editing, join-request decisions, member/payout management, organiser contribution administration, invitations/reminders and other circle-management operations.
+
+Do not use “admin” in customer-facing copy when the product concept is the circle/group organiser. Platform staff/super-admin is a separate role system.
+
+## Target Savings current state
+
+Target Savings is no longer a placeholder/partial flow.
+
+### Individual
+
+- User chooses target amount, frequency and maturity date.
+- Planned/suggested contribution is calculated from the schedule.
+- Contributions are manual; no auto-debit.
+- Users may contribute more or less than the planned amount and may contribute multiple times.
+- Contributions close when the personal target or maturity date is reached.
+- Funds remain locked until maturity even if the target is reached early.
+- No early withdrawal is currently available.
+
+### Group
+
+- Organiser chooses the per-member contribution amount, frequency and maturity date.
+- All members receive the same full per-member target, including members who join later.
+- Membership can grow, so the current group target is dynamic.
+- Public groups are available through **Discover Groups**.
+- Private groups are shared through an Ajoti invitation link. Raw invite tokens are an implementation detail and should not be shown as the user interaction.
+- Users review the group rules before joining.
+- The creator is labelled **Organiser** in customer UI.
+- Maturity returns each member's savings to that member's own Ajoti wallet; there is no organiser/designated-recipient payout option.
+
+Contribution/API errors are rendered visibly in the Target Savings UI rather than requiring browser-console inspection.
+
+## Other consolidation decisions
+
+- KYC retains customer wording and the current level/prove-pending behaviour rather than old admin-account wording.
+- Withdrawal keeps pending-withdrawal lockout/refresh behaviour together with minimum, KYC, PIN and saved-account protections.
+- Ajo member contribution endpoints remain separate from organiser all-member administration endpoints.
+- Notification action URLs and legacy invite notifications navigate into canonical customer routes.
+- Neutral customer storage keys are canonical; legacy `admin_*` session keys are migration/compatibility concerns only.
+- The previous browser-only Google credential decode was not retained. Any future Google sign-in must exchange the provider credential with the Ajoti backend and receive a normal Ajoti session.
 
 ## Access matrix
 
@@ -53,7 +73,22 @@ Canonical customer application: `apps/admin`.
 | --- | --- | --- |
 | Customer home, wallet, transactions, KYC, profile, savings, loans, support | Yes | Yes |
 | Browse/join/participate in Ajos | Yes | Yes |
-| Target Savings | Yes | Yes |
-| Organiser dashboard and group management URLs | No (route redirect) | Yes |
+| Target Savings individual/group participation | Yes | Yes |
+| Public Target Savings discovery/private invite join | Yes | Yes |
+| Organiser dashboard and circle-management URLs | No | Yes |
 
-Super-admin is unchanged and remains in `apps/super-admin`.
+## Super-admin relationship
+
+`apps/super-admin` remains a separate internal staff application.
+
+It now includes **read-only Target Savings oversight** with summary metrics, filtering/search and plan/member data. This is deliberately oversight only: no undefined super-admin money-moving or maturity-recipient controls should be added without an explicit product requirement.
+
+## Implementation rule going forward
+
+When adding customer functionality:
+
+1. default to `apps/admin`
+2. make the shared member experience work for both customer roles
+3. gate only the organiser capability that actually differs
+4. keep staff/super-admin APIs and screens in `apps/super-admin`
+5. do not recreate `apps/user`
