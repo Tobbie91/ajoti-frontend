@@ -1,30 +1,30 @@
 import { useState } from "react";
-import { Text, Textarea, Checkbox, Loader } from "@mantine/core";
+import { Text, Checkbox, Loader } from "@mantine/core";
 import { IconArrowLeft, IconCircleCheck } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { requestAdminAccess, ApiError } from "@/utils/api";
 
 const VERIFICATION_ITEMS = [
-  "Verified Phone Number",
-  "Valid ID",
-  "At least 1 successful ajo membership",
-  "No flagged activity on account",
+  "Completed KYC Level 1",
+  "Active Ajoti member account",
+  "Agreement to ajo group policies",
 ];
 
 export function BecomeAdmin() {
   const navigate = useNavigate();
-  const [reason, setReason] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [sessionRefreshed, setSessionRefreshed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
-    if (!reason.trim() || !agreed || submitting) return;
+    if (!agreed || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
-      await requestAdminAccess();
+      const result = await requestAdminAccess();
+      setSessionRefreshed(result.sessionRefreshed);
       setSubmitted(true);
     } catch (err) {
       setError(
@@ -49,38 +49,15 @@ export function BecomeAdmin() {
             <IconArrowLeft size={18} color="#374151" />
           </button>
           <Text fw={700} className="text-[22px] text-[#0F172A]">
-            Apply to Become an Ajo Admin
+            Become an Ajo Admin
           </Text>
         </div>
 
         {/* Application Section */}
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
           <Text fw={700} className="text-[16px] text-[#0F172A]">
-            Application
+            Admin Access
           </Text>
-
-          <div className="mt-5">
-            <Text fw={600} className="mb-2 text-[13px] text-[#374151]">
-              Why do you want to be an Ajo Admin?
-            </Text>
-            <Textarea
-              placeholder="Tell us why you'd like to manage an ajo group..."
-              value={reason}
-              onChange={(e) => setReason(e.currentTarget.value)}
-              minRows={5}
-              radius="md"
-              styles={{
-                input: {
-                  borderColor: "#E5E7EB",
-                  backgroundColor: "#FFFFFF",
-                  fontSize: 13,
-                  "&:focus": {
-                    borderColor: "#02A36E",
-                  },
-                },
-              }}
-            />
-          </div>
 
           <Checkbox
             label="I agree to comply with ajo group policies."
@@ -128,16 +105,18 @@ export function BecomeAdmin() {
               <IconCircleCheck size={36} color="#02A36E" />
             </div>
             <Text fw={700} className="mt-4 text-[18px] text-[#0F172A]">
-              Request submitted
+              Admin access activated
             </Text>
             <Text fw={500} className="mt-1 text-[13px] text-[#6B7280]">
-              We'll review your application and get back to you.
+              {sessionRefreshed
+                ? "You can now create and manage ajo groups."
+                : "Your access is active. Sign in again to load your new permissions."}
             </Text>
             <button
-              onClick={() => navigate("/rosca")}
+              onClick={() => navigate(sessionRefreshed ? "/dashboard" : "/login")}
               className="mt-5 cursor-pointer rounded-lg bg-[#02A36E] px-6 py-3 text-[13px] font-semibold text-white"
             >
-              Back to ajo
+              {sessionRefreshed ? "Open Admin Dashboard" : "Sign In Again"}
             </button>
           </div>
         ) : (
@@ -146,16 +125,16 @@ export function BecomeAdmin() {
               <Text className="text-[13px] text-[#EF4444]">{error}</Text>
             )}
             <button
-              disabled={!reason.trim() || !agreed || submitting}
+              disabled={!agreed || submitting}
               onClick={handleSubmit}
               className={`flex w-full items-center justify-center gap-2 rounded-lg py-3.5 text-[14px] font-semibold text-white ${
-                reason.trim() && agreed && !submitting
+                agreed && !submitting
                   ? "cursor-pointer bg-[#02A36E]"
                   : "cursor-not-allowed bg-[#9CA3AF]"
               }`}
             >
               {submitting && <Loader size="xs" color="white" />}
-              {submitting ? "Submitting…" : "Submit Request"}
+              {submitting ? "Activating..." : "Activate Admin Access"}
             </button>
           </>
         )}

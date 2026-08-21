@@ -88,7 +88,7 @@ export function Dashboard() {
     <Stack gap="lg">
       <Box>
         <Text fz={22} fw={700}>
-          Hi, {adminName || 'Admin'}
+          Hi, {adminName || 'there'}
         </Text>
         <Text fz="sm" c="dimmed">
           Here's today's ajo snapshot

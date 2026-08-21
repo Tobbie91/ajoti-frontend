@@ -20,6 +20,7 @@ import {
   IconCircleCheck,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { isCircleAdmin } from "@/utils/auth-role";
 import {
   listRoscaCircles,
   getMyJoinRequests,
@@ -65,6 +66,7 @@ const statusBadge: Record<GroupStatus, { bg: string }> = {
 
 export function Rosca() {
   const navigate = useNavigate();
+  const admin = isCircleAdmin();
   const [activeTab, setActiveTab] = useState("All Groups");
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -317,23 +319,24 @@ export function Rosca() {
           </Tabs.List>
         </Tabs>
 
-        {/* Become Admin Banner */}
-        <div className="flex items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-6 py-4">
-          <div>
-            <Text fw={600} size="sm" className="text-[#0F172A]">
-              Become an ajo admin
-            </Text>
-            <Text size="xs" className="text-[#6B7280]">
-              Manage your own savings group. Apply in 2 mins.
-            </Text>
+        {!admin && (
+          <div className="flex items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-6 py-4">
+            <div>
+              <Text fw={600} size="sm" className="text-[#0F172A]">
+                Become an ajo admin
+              </Text>
+              <Text size="xs" className="text-[#6B7280]">
+                Complete Level 1 verification, then activate access to manage your own group.
+              </Text>
+            </div>
+            <button
+              onClick={() => navigate("/rosca/become-admin")}
+              className="cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2.5 text-sm font-medium text-white"
+            >
+              Activate
+            </button>
           </div>
-          <button
-            onClick={() => navigate("/rosca/become-admin")}
-            className="cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2.5 text-sm font-medium text-white"
-          >
-            Request Access
-          </button>
-        </div>
+        )}
 
         {/* Search + Filter */}
         <div className="flex items-center gap-3">

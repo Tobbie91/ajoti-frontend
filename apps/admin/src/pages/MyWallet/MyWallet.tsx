@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
+import { isCircleAdmin } from '@/utils/auth-role'
 
 // Friendly overrides for sourceTypes whose humanized enum name reads awkwardly
 // or should be phrased for this audience specifically.
@@ -108,6 +109,7 @@ interface Tx extends WalletTransaction {}
 export function MyWallet() {
   const navigate = useNavigate()
   const { hidden, toggle } = useWalletPrivacy()
+  const admin = isCircleAdmin()
   const [balance, setBalance] = useState<number | null>(null)
   const [transactions, setTransactions] = useState<Tx[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,7 +119,7 @@ export function MyWallet() {
   const userId = storedUser.id ?? storedUser._id ?? ''
 
   useEffect(() => {
-    const fetchBalance = userId
+    const fetchBalance = admin && userId
       ? getAdminWalletBalance(userId)
           .then((data) => setBalance(data.available ?? data.total ?? 0))
           .catch(() =>
@@ -135,7 +137,7 @@ export function MyWallet() {
         .then((txns) => setTransactions(txns.slice(0, 5)))
         .catch(() => {}),
     ]).finally(() => setLoading(false))
-  }, [userId])
+  }, [admin, userId])
 
   return (
     <div className="mx-auto w-full max-w-[700px] px-6 py-8">

@@ -188,7 +188,7 @@ export function Header({ opened, onToggle }: HeaderProps) {
         >
           <Box style={{ textAlign: 'right' }}>
             <Text fz="sm" fw={600} lh={1.2}>{fullName}</Text>
-            <Text fz="xs" c="dimmed" lh={1.2}>{role === 'CIRCLE_ADMIN' ? 'Circle organiser' : 'Member'}</Text>
+            <Text fz="xs" c="dimmed" lh={1.2}>{role === 'CIRCLE_ADMIN' ? 'Circle admin' : 'Member'}</Text>
           </Box>
           <Avatar
             size={36}

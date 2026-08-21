@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import { getWalletTransactions, getWalletBalance, getAdminWalletBalance } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
+import { isCircleAdmin } from '@/utils/auth-role'
 
 type Transaction = {
   id: string
@@ -145,6 +146,7 @@ const CATEGORY_OPTIONS = ['All', 'Transfer', 'Funding', 'ROSCA', 'Investment']
 export function Transactions() {
   const navigate = useNavigate()
   const { hidden, toggle } = useWalletPrivacy()
+  const admin = isCircleAdmin()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [walletBalance, setWalletBalance] = useState('₦0.00')
   const [loading, setLoading] = useState(true)
@@ -158,7 +160,7 @@ export function Transactions() {
   const userId = storedUser.id ?? storedUser._id ?? ''
 
   useEffect(() => {
-    const balanceFetch = userId
+    const balanceFetch = admin && userId
       ? getAdminWalletBalance(userId)
           .then((data) => {
             const bal = data.available ?? data.total ?? 0
@@ -185,7 +187,7 @@ export function Transactions() {
         .then((txns) => setTransactions(txns.map(mapApiTxn)))
         .catch(() => {}),
     ]).finally(() => setLoading(false))
-  }, [userId])
+  }, [admin, userId])
 
   const filtered = transactions.filter((tx) => {
     if (search && !tx.name.toLowerCase().includes(search.toLowerCase())) return false

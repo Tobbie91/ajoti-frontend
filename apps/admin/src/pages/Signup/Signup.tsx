@@ -83,37 +83,37 @@ export function Signup() {
                                 AJOTI
                             </Text>
                             <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs">
-                                Admin Â· Portal
+                                One App
                             </span>
                         </div>
 
                         <div className="space-y-4">
                             <Text fw={700} size="xl">
-                                Start managing your group
+                                Start your Ajoti journey
                             </Text>
                             <Text size="sm" className="text-white/90">
-                                Create an admin account and bring your savings
-                                group online.
+                                Create one account to save, join ajos, and work
+                                toward your goals with your community.
                             </Text>
                         </div>
 
                         <div className="grid gap-3">
                             <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
                                 <Text fw={600} size="sm">
-                                    Easy setup
+                                    Save with confidence
                                 </Text>
                                 <Text size="xs" className="mt-1 text-white/80">
-                                    Digitize your existing savings group in
-                                    minutes.
+                                    Build your savings habit and join trusted
+                                    groups from one place.
                                 </Text>
                             </div>
                             <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
                                 <Text fw={600} size="sm">
-                                    Full control
+                                    Grow with your community
                                 </Text>
                                 <Text size="xs" className="mt-1 text-white/80">
-                                    Manage members, payouts, and contributions
-                                    from one place.
+                                    Join trusted ajo groups and build toward
+                                    shared goals.
                                 </Text>
                             </div>
                         </div>
@@ -140,10 +140,10 @@ export function Signup() {
                                     size="lg"
                                     className="text-[#0F172A]"
                                 >
-                                    Create admin account
+                                    Create your account
                                 </Text>
                                 <Text size="sm" className="text-[#6B7280]">
-                                    Get your savings group online.
+                                    Save, join, and manage your money with Ajoti.
                                 </Text>
                             </div>
 
@@ -273,7 +273,6 @@ export function Signup() {
 
                             <PasswordInput
                                 label="Password"
-                                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                                 radius="md"
                                 value={password}
                                 onChange={(e) =>

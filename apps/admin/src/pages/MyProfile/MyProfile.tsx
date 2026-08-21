@@ -50,6 +50,7 @@ import {
     type SavedBankAccount,
 } from "@/utils/api";
 import { PhoneInputField, AddBankAccountModal } from "@/components";
+import { isCircleAdmin } from "@/utils/auth-role";
 
 function getUserFromStorage() {
     const stored = localStorage.getItem("user");
@@ -128,6 +129,8 @@ function InfoRow({
 
 export function MyProfile() {
     const navigate = useNavigate();
+    const admin = isCircleAdmin();
+    const roleLabel = admin ? "Admin" : "Member";
     const [editing, setEditing] = useState(false);
     const [profileLoading, setProfileLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -499,7 +502,7 @@ export function MyProfile() {
                                 size="sm"
                                 style={{ flexShrink: 0 }}
                             >
-                                Admin
+                                {roleLabel}
                             </Badge>
                         </div>
                         <Text
@@ -545,7 +548,7 @@ export function MyProfile() {
                     <div className="flex w-fit items-center gap-1.5 rounded-full bg-[#EFF6FF] px-3 py-1">
                         <IconUserCircle size={13} color="#3B82F6" />
                         <Text fw={500} className="text-[11px] text-[#3B82F6]">
-                            Active Admin
+                            Active {roleLabel}
                         </Text>
                     </div>
                 </div>
@@ -711,7 +714,7 @@ export function MyProfile() {
                                 fw={600}
                                 className="text-[14px] text-[#0B6B55]"
                             >
-                                Admin
+                                {roleLabel}
                             </Text>
                         </div>
                     </div>
@@ -966,7 +969,8 @@ export function MyProfile() {
                                         className="text-[12px] text-[#6B7280]"
                                     >
                                         Complete identity verification to
-                                        activate your admin account.
+                                        unlock transactions and other verified
+                                        features.
                                     </Text>
                                 )}
                             </div>

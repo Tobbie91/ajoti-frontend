@@ -61,7 +61,7 @@ export function Login() {
             <div className="space-y-4">
               <Text fw={700} size="xl">Save, join and manage from one place</Text>
               <Text size="sm" className="text-white/90">
-                Members and group organisers now use the same Ajoti application. Organiser tools appear automatically when your account has permission.
+                Members and group admins now use the same Ajoti application. Admin tools appear automatically when your account has permission.
               </Text>
             </div>
             <div className="grid gap-3">
@@ -70,8 +70,8 @@ export function Login() {
                 <Text size="xs" className="mt-1 text-white/80">Fund your wallet, save towards targets, join ajos and track your money.</Text>
               </div>
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <Text fw={600} size="sm">Organiser Tools</Text>
-                <Text size="xs" className="mt-1 text-white/80">Eligible group admins get additional creation and management capabilities in the same app.</Text>
+                <Text fw={600} size="sm">Admin Tools</Text>
+                <Text size="xs" className="mt-1 text-white/80">Approved group admins get additional creation and management capabilities in the same app.</Text>
               </div>
             </div>
           </div>
