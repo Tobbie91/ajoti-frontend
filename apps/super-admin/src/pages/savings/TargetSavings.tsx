@@ -76,7 +76,7 @@ export function TargetSavings() {
           <Text fw={700} size="xl" mt={4}>{summary?.groupPlans ?? 0}</Text>
         </Card>
         <Card withBorder radius="md" p="md">
-          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Currently saved</Text>
+          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Active locked savings</Text>
           <Text fw={700} size="xl" mt={4}>{money(summary?.totalSavedKobo ?? '0')}</Text>
         </Card>
       </SimpleGrid>
