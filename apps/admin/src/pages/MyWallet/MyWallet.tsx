@@ -1,9 +1,17 @@
 ﻿import { useState, useEffect } from 'react'
-import { Text, Button, Loader, Modal, Badge, Divider } from '@mantine/core'
-import { IconPlus, IconArrowUpRight, IconArrowDownLeft } from '@tabler/icons-react'
+import { ActionIcon, Text, Button, Loader, Modal, Badge, Divider } from '@mantine/core'
+import {
+  IconPlus,
+  IconArrowUpRight,
+  IconArrowDownLeft,
+  IconEye,
+  IconEyeOff,
+  IconLock,
+} from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
+import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 
 // Friendly overrides for sourceTypes whose humanized enum name reads awkwardly
 // or should be phrased for this audience specifically.
@@ -21,7 +29,7 @@ function formatTxLabel(raw: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-// A sourceType with a friendly override always wins â€” otherwise generic
+// A sourceType with a friendly override always wins; otherwise generic
 // movementTypes like TRANSFER would mask it (a fee credit and a plain
 // wallet-to-wallet transfer both have movementType=TRANSFER).
 function resolveTxLabel(tx: WalletTransaction, entryType: string): string {
@@ -35,8 +43,8 @@ function resolveTxLabel(tx: WalletTransaction, entryType: string): string {
 }
 
 function formatKobo(val: string | number | undefined): string {
-  if (val == null) return 'â€”'
-  return `â‚¦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+  if (val == null) return 'Not available'
+  return `₦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -55,7 +63,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
   const color = isCredit ? '#02A36E' : '#EF4444'
   const label = resolveTxLabel(tx, entryType)
   const d = new Date(tx.createdAt)
-  const amtNaira = `â‚¦${(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+  const amtNaira = `₦${(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 
   const metaEntries = tx.metadata
     ? Object.entries(tx.metadata as Record<string, unknown>).filter(([, v]) => v != null && v !== '' && typeof v !== 'object')
@@ -99,6 +107,7 @@ interface Tx extends WalletTransaction {}
 
 export function MyWallet() {
   const navigate = useNavigate()
+  const { hidden, toggle } = useWalletPrivacy()
   const [balance, setBalance] = useState<number | null>(null)
   const [transactions, setTransactions] = useState<Tx[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,15 +141,32 @@ export function MyWallet() {
     <div className="mx-auto w-full max-w-[700px] px-6 py-8">
       {/* Balance card */}
       <div className="mb-6 rounded-2xl bg-[#02A36E] px-6 py-6">
-        <Text fw={400} className="text-[12px] text-white/60">Wallet Balance</Text>
+        <div className="flex items-center gap-2">
+          <Text fw={400} fz={12} c="white" opacity={0.75}>Wallet Balance</Text>
+          <ActionIcon
+            variant="subtle"
+            aria-label={hidden ? 'Show wallet balance and transactions' : 'Hide wallet balance and transactions'}
+            onClick={toggle}
+            style={{ color: 'white' }}
+          >
+            {hidden ? <IconEye size={18} /> : <IconEyeOff size={18} />}
+          </ActionIcon>
+        </div>
         {loading ? (
           <div className="mb-4 flex items-center gap-2 py-1">
             <Loader size="sm" color="white" />
             <Text fw={400} className="text-white/60 text-[14px]">Loading...</Text>
           </div>
+        ) : hidden ? (
+          <IconLock
+            size={25}
+            color="white"
+            aria-label="Wallet balance hidden"
+            style={{ display: 'block', marginTop: 4, marginBottom: 16 }}
+          />
         ) : (
-          <Text fw={600} className="mb-4 text-[32px] text-white/90">
-            â‚¦{(balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+          <Text fw={600} fz={32} c="white" mb={16}>
+            ₦{(balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
           </Text>
         )}
         <div className="flex gap-3">
@@ -185,10 +211,16 @@ export function MyWallet() {
       </div>
 
       <div className="flex flex-col gap-2">
-        {transactions.length === 0 && !loading && (
-          <Text fw={400} className="py-6 text-center text-[14px] text-[#9CA3AF]">No transactions yet</Text>
-        )}
-        {transactions.map((tx) => {
+        {hidden ? (
+          <div className="flex min-h-32 items-center justify-center rounded-xl border border-[#F3F4F6] bg-white">
+            <IconLock size={25} color="#667085" aria-label="Transaction history hidden" />
+          </div>
+        ) : (
+          <>
+          {transactions.length === 0 && !loading && (
+            <Text fw={400} className="py-6 text-center text-[14px] text-[#9CA3AF]">No transactions yet</Text>
+          )}
+          {transactions.map((tx) => {
           const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
           const isCredit = entryType === 'CREDIT'
           const label = resolveTxLabel(tx, entryType)
@@ -212,11 +244,13 @@ export function MyWallet() {
                 </div>
               </div>
               <Text fw={600} className={`text-[14px] ${isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
-                {isCredit ? '+' : '-'}â‚¦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                {isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>
           )
-        })}
+          })}
+          </>
+        )}
       </div>
 
       <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />

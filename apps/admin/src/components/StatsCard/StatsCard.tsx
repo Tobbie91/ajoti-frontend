@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react'
 import { Paper, Text, Box } from '@mantine/core'
 
 interface StatsCardProps {
   title: string
-  value: string
+  value: ReactNode
   subtitle?: string
   /** Renders the green decorative bar graphic on the right (like card 1 in the screenshot) */
   withBar?: boolean

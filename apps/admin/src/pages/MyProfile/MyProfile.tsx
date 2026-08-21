@@ -30,6 +30,7 @@ import {
     IconLock,
     IconChevronRight,
     IconPlus,
+    IconMinus,
     IconStar,
     IconTrash,
 } from "@tabler/icons-react";
@@ -99,13 +100,15 @@ const inputStyles = {
     input: { borderColor: "#E5E7EB", fontSize: 14 },
 };
 
+const missingValue = <IconMinus size={16} color="#9CA3AF" aria-label="Not provided" />;
+
 function InfoRow({
     label,
     value,
     icon: Icon,
 }: {
     label: string;
-    value: string;
+    value: React.ReactNode;
     icon?: React.ElementType;
 }) {
     return (
@@ -459,7 +462,7 @@ export function MyProfile() {
                         >
                             Withdrawals, bank account changes, and security
                             setting changes are blocked. Contact support and
-                            verify your identity to unlock your account â€” this
+                            verify your identity to unlock your account. This
                             cannot be undone from within the app.
                         </Text>
                     </div>
@@ -690,7 +693,7 @@ export function MyProfile() {
                     <div className="grid grid-cols-2 gap-4">
                         <InfoRow
                             label="Date of Birth"
-                            value={dob || "â€”"}
+                            value={dob || missingValue}
                             icon={IconCalendar}
                         />
                     </div>
@@ -751,7 +754,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {address || "â€”"}
+                                    {address || missingValue}
                                 </Text>
                             </div>
                         )}
@@ -782,7 +785,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {city || "â€”"}
+                                    {city || missingValue}
                                 </Text>
                             )}
                         </div>
@@ -811,7 +814,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {state || "â€”"}
+                                    {state || missingValue}
                                 </Text>
                             )}
                         </div>
@@ -840,7 +843,7 @@ export function MyProfile() {
                                     fw={500}
                                     className="text-[14px] text-[#0F172A]"
                                 >
-                                    {lga || "â€”"}
+                                    {lga || missingValue}
                                 </Text>
                             )}
                         </div>
@@ -883,17 +886,17 @@ export function MyProfile() {
                         number,
                         { single: string; daily: string }
                     > = {
-                        0: { single: "â‚¦0", daily: "â‚¦0" },
-                        1: { single: "â‚¦50,000", daily: "â‚¦300,000" },
-                        2: { single: "â‚¦100,000", daily: "â‚¦500,000" },
-                        3: { single: "â‚¦5,000,000", daily: "â‚¦25,000,000" },
+                        0: { single: "₦0", daily: "₦0" },
+                        1: { single: "₦50,000", daily: "₦300,000" },
+                        2: { single: "₦100,000", daily: "₦500,000" },
+                        3: { single: "₦5,000,000", daily: "₦25,000,000" },
                     };
                     const nextLimits: Record<
                         number,
                         { single: string; daily: string }
                     > = {
-                        1: { single: "â‚¦100,000", daily: "â‚¦500,000" },
-                        2: { single: "â‚¦5,000,000", daily: "â‚¦25,000,000" },
+                        1: { single: "₦100,000", daily: "₦500,000" },
+                        2: { single: "₦5,000,000", daily: "₦25,000,000" },
                     };
 
                     return (
@@ -968,7 +971,7 @@ export function MyProfile() {
                                 )}
                             </div>
 
-                            {/* NIN / BVN rows â€” only shown while at Level 0 */}
+                            {/* NIN / BVN rows shown only while at Level 0. */}
                             {level === 0 && (
                                 <>
                                     <div className="flex items-center justify-between rounded-xl bg-[#F9FAFB] px-4 py-3">
@@ -1060,13 +1063,13 @@ export function MyProfile() {
                                             className="text-[13px] text-[#D97706]"
                                         >
                                             Level {level + 1} upgrade under
-                                            review â€” usually approved within
-                                            24â€“48 hours.
+                                            review and is usually approved within
+                                            24 to 48 hours.
                                         </Text>
                                     </div>
                                 )}
 
-                            {/* Upgrade prompt â€” Level 1 or Level 2 */}
+                            {/* Upgrade prompt for Level 1 or Level 2. */}
                             {level >= 1 &&
                                 level < 3 &&
                                 step !== "PHOTO_REQUIRED" &&
@@ -1214,7 +1217,7 @@ export function MyProfile() {
                                         fw={400}
                                         className="text-[12px] text-[#6B7280]"
                                     >
-                                        {acc.accountNumber} Â· {acc.bankName}
+                                        {acc.accountNumber} / {acc.bankName}
                                     </Text>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -1455,7 +1458,7 @@ export function MyProfile() {
                             </Text>
                         </div>
                         <span className="text-[#EA580C] text-[18px] flex-shrink-0">
-                            {freezeExpanded ? "âˆ’" : "+"}
+                            {freezeExpanded ? <IconMinus size={18} /> : <IconPlus size={18} />}
                         </span>
                     </button>
 
@@ -1466,7 +1469,7 @@ export function MyProfile() {
                                     fw={400}
                                     className="text-[12px] text-[#9A3412]"
                                 >
-                                    Freezing is a security measure â€” not the
+                                    Freezing is a security measure, not the
                                     same as deleting your account, and it's
                                     reversible once support verifies your
                                     identity.
@@ -1513,7 +1516,7 @@ export function MyProfile() {
                                     <strong>To unfreeze:</strong> contact
                                     support and verify your identity. There's no
                                     way to unfreeze your account yourself in-app
-                                    â€” this is intentional, so a compromised
+                                    This is intentional, so a compromised
                                     account can't be un-frozen by whoever
                                     compromised it either.
                                 </Text>
@@ -1628,7 +1631,7 @@ export function MyProfile() {
                         Delete Account
                     </Text>
                     <span className="text-[#EF4444] text-[18px]">
-                        {deleteExpanded ? "âˆ’" : "+"}
+                        {deleteExpanded ? <IconMinus size={18} /> : <IconPlus size={18} />}
                     </span>
                 </button>
 

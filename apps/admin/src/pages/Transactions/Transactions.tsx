@@ -1,15 +1,19 @@
 ﻿import { useState, useEffect } from 'react'
-import { Text, TextInput, Select, Loader, Modal, Badge, Divider } from '@mantine/core'
+import { ActionIcon, Text, TextInput, Select, Loader, Modal, Badge, Divider } from '@mantine/core'
 import {
   IconArrowLeft,
   IconSearch,
   IconArrowUpRight,
   IconArrowDownLeft,
   IconPlus,
+  IconEye,
+  IconEyeOff,
+  IconLock,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { getWalletTransactions, getWalletBalance, getAdminWalletBalance } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
+import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 
 type Transaction = {
   id: string
@@ -45,7 +49,7 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
     name: label,
     type: entryType,
     time: d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', hour12: true }),
-    amount: `â‚¦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+    amount: `₦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
     direction: entryType === 'CREDIT' ? 'credit' : 'debit',
     date: dateLabel,
     raw: tx,
@@ -53,8 +57,8 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
 }
 
 function formatKobo(val: string | number | undefined): string {
-  if (val == null) return 'â€”'
-  return `â‚¦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+  if (val == null) return 'Not available'
+  return `₦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -136,8 +140,9 @@ const CATEGORY_OPTIONS = ['All', 'Transfer', 'Funding', 'ROSCA', 'Investment']
 
 export function Transactions() {
   const navigate = useNavigate()
+  const { hidden, toggle } = useWalletPrivacy()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [walletBalance, setWalletBalance] = useState('â‚¦ â€”')
+  const [walletBalance, setWalletBalance] = useState('₦0.00')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string | null>('All')
@@ -153,22 +158,22 @@ export function Transactions() {
       ? getAdminWalletBalance(userId)
           .then((data) => {
             const bal = data.available ?? data.total ?? 0
-            setWalletBalance(`â‚¦${Number(bal).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+            setWalletBalance(`₦${Number(bal).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
           })
           .catch(() =>
             getWalletBalance()
               .then((data) => {
                 const bal = Number(data.available ?? data.total ?? 0) / 100
-                setWalletBalance(`â‚¦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+                setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
               })
-              .catch(() => setWalletBalance('â‚¦0.00')),
+              .catch(() => setWalletBalance('₦0.00')),
           )
       : getWalletBalance()
           .then((data) => {
             const bal = Number(data.available ?? data.total ?? 0) / 100
-            setWalletBalance(`â‚¦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+            setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
           })
-          .catch(() => setWalletBalance('â‚¦0.00'))
+          .catch(() => setWalletBalance('₦0.00'))
 
     Promise.all([
       balanceFetch,
@@ -198,11 +203,23 @@ export function Transactions() {
       {/* Wallet balance banner */}
       <div className="mb-6 flex items-center justify-between rounded-2xl bg-[#02A36E] px-6 py-4">
         <div>
-          <Text fw={400} className="text-[12px] text-white/60">Wallet Balance</Text>
+          <div className="flex items-center gap-2">
+            <Text fw={400} fz={12} c="white" opacity={0.75}>Wallet Balance</Text>
+            <ActionIcon
+              variant="subtle"
+              aria-label={hidden ? 'Show wallet balance and transactions' : 'Hide wallet balance and transactions'}
+              onClick={toggle}
+              style={{ color: 'white' }}
+            >
+              {hidden ? <IconEye size={18} /> : <IconEyeOff size={18} />}
+            </ActionIcon>
+          </div>
           {loading ? (
             <Loader size="sm" color="white" />
+          ) : hidden ? (
+            <IconLock size={25} color="white" aria-label="Wallet balance hidden" />
           ) : (
-            <Text fw={600} className="text-[24px] text-white/90">{walletBalance}</Text>
+            <Text fw={600} fz={24} c="white">{walletBalance}</Text>
           )}
         </div>
         <button
@@ -222,6 +239,12 @@ export function Transactions() {
 
       <Text fw={700} className="mb-6 text-[24px] text-[#0F172A]">Transactions</Text>
 
+      {hidden ? (
+        <div className="flex min-h-48 items-center justify-center rounded-xl border border-[#F3F4F6] bg-white">
+          <IconLock size={25} color="#667085" aria-label="Transaction history hidden" />
+        </div>
+      ) : (
+        <>
       {/* Filters */}
       <div className="mb-4 grid grid-cols-3 gap-2">
         <Select data={STATUS_OPTIONS} value={status} onChange={setStatus} placeholder="Status" radius="md" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
@@ -274,7 +297,7 @@ export function Transactions() {
                       </div>
                       <div>
                         <Text fw={500} className="text-[14px] text-[#0F172A]">{tx.name}</Text>
-                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">{tx.type} Â· {tx.time}</Text>
+                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">{tx.type} / {tx.time}</Text>
                       </div>
                     </div>
                     <Text fw={600} className={`text-[14px] ${tx.direction === 'credit' ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
@@ -287,8 +310,10 @@ export function Transactions() {
           ))}
         </div>
       )}
+        </>
+      )}
 
-      <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
+      {!hidden && <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />}
     </div>
   )
 }

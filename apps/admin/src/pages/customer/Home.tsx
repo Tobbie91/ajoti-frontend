@@ -1,6 +1,6 @@
 import { Title, Text, Card, Box } from "@mantine/core";
 import { useState, useEffect } from "react";
-import { IconCash } from "@tabler/icons-react";
+import { IconCash, IconLock } from "@tabler/icons-react";
 import addFunds from "@/assets/AddFunds_default.svg";
 import addFundsPressed from "@/assets/AddFunds_press.svg";
 import explore from "@/assets/Explore_default.svg";
@@ -24,9 +24,11 @@ import {
   getCreditScore,
 } from "@/utils/api";
 import type { WalletTransaction, TrustScore } from "@/utils/api";
-const KEY = "ajoti:wallet-balance-hidden";
+import { useWalletPrivacy } from "@/hooks/useWalletPrivacy";
+
 export function Home() {
   const navigate = useNavigate();
+  const { hidden, toggle } = useWalletPrivacy();
   const stored = localStorage.getItem("user");
   const user = stored ? JSON.parse(stored) : null;
   const userName = user?.firstName ?? "there";
@@ -35,18 +37,10 @@ export function Home() {
     reserved: number;
     available: number;
   } | null>(null);
-  const [hidden, setHidden] = useState(
-    () => localStorage.getItem(KEY) === "true",
-  );
   const [recentTxns, setRecentTxns] = useState<WalletTransaction[]>([]);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const [trustData, setTrustData] = useState<TrustScore | null>(null);
   const [creditScore, setCreditScore] = useState<number | null>(null);
-  const toggle = () =>
-    setHidden((v) => {
-      localStorage.setItem(KEY, String(!v));
-      return !v;
-    });
   useEffect(() => {
     Promise.allSettled([
       getWalletBalance()
@@ -217,7 +211,22 @@ export function Home() {
             <Title order={4} mb="xs">
               Transactions
             </Title>
-            {recentTxns.length === 0 ? (
+            {hidden ? (
+              <Box
+                style={{
+                  height: 260,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <IconLock
+                  size={25}
+                  color="#667085"
+                  aria-label="Transaction history hidden"
+                />
+              </Box>
+            ) : recentTxns.length === 0 ? (
               <Box
                 style={{
                   height: 260,
