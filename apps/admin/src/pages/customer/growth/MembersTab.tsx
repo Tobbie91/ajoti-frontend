@@ -105,7 +105,7 @@ export function MembersTab({
                       "en-NG",
                       { day: "numeric", month: "short", year: "numeric" },
                     )
-                  : "—";
+                  : "-";
                 return (
                   <tr
                     key={member.userId}
@@ -133,7 +133,7 @@ export function MembersTab({
                     </td>
                     <td className="px-3 py-3.5 sm:px-5">
                       <Text fw={600} className="text-[13px] text-[#0F172A]">
-                        {member.position != null ? `#${member.position}` : "—"}
+                        {member.position != null ? `#${member.position}` : "-"}
                       </Text>
                     </td>
                     <td className="px-3 py-3.5 sm:px-5">

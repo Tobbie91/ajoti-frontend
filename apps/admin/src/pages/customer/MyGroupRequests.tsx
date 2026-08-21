@@ -37,7 +37,7 @@ function mapRequest(r: MyJoinRequest): GroupRequest {
   const formatted =
     amountKobo > 0
       ? `₦${amountNaira.toLocaleString("en-NG", { minimumFractionDigits: 0 })}`
-      : "—";
+      : "-";
   const adminName = circle.admin
     ? `${circle.admin.firstName ?? ""} ${circle.admin.lastName ?? ""}`.trim()
     : "Admin";
@@ -47,12 +47,12 @@ function mapRequest(r: MyJoinRequest): GroupRequest {
         month: "short",
         year: "numeric",
       })
-    : "—";
+    : "-";
   return {
     id: r.membershipId,
     groupName: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
     amount: formatted,
-    duration: circle.durationCycles ? `${circle.durationCycles} cycles` : "—",
+    duration: circle.durationCycles ? `${circle.durationCycles} cycles` : "-",
     admin: adminName,
     status: mapStatus(r.status ?? ""),
     date,

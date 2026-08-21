@@ -24,6 +24,7 @@ export function SummaryCard({
   onToggleHidden,
 }: SummaryCardProps) {
   const navigate = useNavigate()
+  const displayAmount = /\d/.test(amount) ? amount : '-'
 
   return (
     <Paper
@@ -41,16 +42,9 @@ export function SummaryCard({
       }}
     >
       <Stack gap={6} style={{ padding: 24, position: 'relative', zIndex: 2 }}>
-        <Text fz={18} fw={100} opacity={0.9}>
-          {title}
-        </Text>
-        <div className="flex items-center gap-3">
-          <Text fz={30} fw={600} lh={1}>
-            {hidden ? (
-              <IconLock size={26} aria-label="Wallet balance hidden" />
-            ) : (
-              amount
-            )}
+        <div className="flex items-center gap-2">
+          <Text fz={18} fw={100} opacity={0.9}>
+            {title}
           </Text>
           {hideable && onToggleHidden && (
             <ActionIcon
@@ -63,9 +57,18 @@ export function SummaryCard({
               }}
               style={{ color: 'rgba(255,255,255,.9)' }}
             >
-              {hidden ? <IconEye size={22} /> : <IconEyeOff size={22} />}
+              {hidden ? <IconEye size={20} /> : <IconEyeOff size={20} />}
             </ActionIcon>
           )}
+        </div>
+        <div className="flex items-center gap-3">
+          <Text fz={30} fw={600} lh={1}>
+            {hidden ? (
+              <IconLock size={26} aria-label="Wallet balance hidden" />
+            ) : (
+              displayAmount
+            )}
+          </Text>
         </div>
       </Stack>
       <img

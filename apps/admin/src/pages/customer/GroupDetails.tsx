@@ -139,7 +139,7 @@ export function GroupDetails() {
             contribution: `${formattedAmount} ${(circle.frequency ?? "").toLowerCase()}`,
             payoutOrder:
               payoutLogicLabel[(circle.payoutLogic as string) ?? ""] ??
-              String(circle.payoutLogic ?? "—"),
+              String(circle.payoutLogic ?? "-"),
             penalty: "Late fee applies — paid to your circle admin",
             admin: adminName,
             adminBio: String(

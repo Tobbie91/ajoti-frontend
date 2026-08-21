@@ -391,7 +391,7 @@ export function GrowthTab({
                         month: "short",
                         year: "numeric",
                       })
-                    : "—";
+                    : "-";
                   return (
                     <tr
                       key={c.id}
@@ -417,7 +417,7 @@ export function GrowthTab({
                           fw={500}
                           className={`text-[13px] ${penalty > 0 ? "text-[#EF4444]" : "text-[#6B7280]"}`}
                         >
-                          {penalty > 0 ? formatNaira(c.penaltyAmount) : "—"}
+                          {penalty > 0 ? formatNaira(c.penaltyAmount) : "-"}
                         </Text>
                       </td>
                       <td className="px-3 py-3.5 sm:px-5">

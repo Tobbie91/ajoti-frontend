@@ -21,7 +21,7 @@ function mapCircle(c: RoscaCircle): RoscaGroup {
     name: c.name || 'Unnamed',
     status,
     members: `${filled}/${total}`,
-    nextPayout: status === 'Pending' ? 'Pending' : status === 'Completed' ? 'Finished' : '—',
+    nextPayout: status === 'Pending' ? 'Pending' : status === 'Completed' ? 'Finished' : '-',
     cycle: status === 'Pending' ? 'Pending' : `${filled} of ${c.durationCycles ?? total}`,
   }
 }

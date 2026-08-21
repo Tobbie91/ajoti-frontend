@@ -89,6 +89,10 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
       radius={16}
       size="sm"
       centered
+      styles={{
+        content: { borderRadius: 20, overflow: 'hidden' },
+        body: { maxHeight: '70vh', overflowY: 'auto' },
+      }}
     >
       <div className="mb-4 flex flex-col items-center gap-2 py-4">
         <div
@@ -247,14 +251,14 @@ export function Transactions() {
         <>
       {/* Filters */}
       <div className="mb-4 grid grid-cols-3 gap-2">
-        <Select data={STATUS_OPTIONS} value={status} onChange={setStatus} placeholder="Status" radius="md" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
-        <Select data={TYPE_OPTIONS} value={type} onChange={setType} placeholder="Type" radius="md" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
-        <Select data={CATEGORY_OPTIONS} value={category} onChange={setCategory} placeholder="Category" radius="md" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
+        <Select data={STATUS_OPTIONS} value={status} onChange={setStatus} placeholder="Status" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
+        <Select data={TYPE_OPTIONS} value={type} onChange={setType} placeholder="Type" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
+        <Select data={CATEGORY_OPTIONS} value={category} onChange={setCategory} placeholder="Category" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
       </div>
 
       <TextInput
         placeholder="Search transactions"
-        radius="md"
+        radius="lg"
         size="sm"
         value={search}
         onChange={(e) => setSearch(e.currentTarget.value)}

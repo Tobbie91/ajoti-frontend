@@ -1,6 +1,6 @@
 import { Title, Text, Card, Box } from "@mantine/core";
 import { useState, useEffect } from "react";
-import { IconCash, IconLock } from "@tabler/icons-react";
+import { IconArrowDownLeft, IconArrowUpRight, IconCash, IconLock } from "@tabler/icons-react";
 import addFunds from "@/assets/AddFunds_default.svg";
 import addFundsPressed from "@/assets/AddFunds_press.svg";
 import explore from "@/assets/Explore_default.svg";
@@ -73,8 +73,10 @@ export function Home() {
         .catch(() => setCreditScore(0)),
     ]);
   }, []);
+  const legacyMoney = (n: number) =>
+    `₦${n.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
   const money = (n: number) =>
-    `₦ ${n.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+    `${String.fromCharCode(0x20a6)}${n.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-4 sm:px-6 sm:py-6">
       <div className="flex flex-col gap-5 sm:gap-7">
@@ -86,7 +88,7 @@ export function Home() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
           <SummaryCard
             title="Total Balance"
-            amount={walletBalance ? money(walletBalance.total) : "₦ —"}
+            amount={walletBalance ? money(walletBalance.total) : "-"}
             gradient="linear-gradient(135deg,#1F4037 0%,#99F2C8 100%)"
             hideable
             hidden={hidden}
@@ -94,13 +96,13 @@ export function Home() {
           />
           <SummaryCard
             title="Available"
-            amount={walletBalance ? money(walletBalance.available) : "₦ —"}
+            amount={walletBalance ? money(walletBalance.available) : "-"}
             gradient="linear-gradient(135deg,#9EB6E5 0%,#D6E4FF 100%)"
             hidden={hidden}
           />
           <SummaryCard
             title="Reserved"
-            amount={walletBalance ? money(walletBalance.reserved) : "₦ —"}
+            amount={walletBalance ? money(walletBalance.reserved) : "-"}
             gradient="linear-gradient(135deg,#A8D8B9 0%,#DFF3E7 100%)"
             hidden={hidden}
           />
@@ -204,13 +206,14 @@ export function Home() {
           </div>
           <Card
             withBorder
-            radius="md"
-            className="min-h-[300px] cursor-pointer lg:min-h-[500px]"
+            radius="xl"
+            className="min-h-[300px] cursor-pointer border-[#E5E7EB] bg-white p-1 shadow-sm lg:min-h-[500px]"
             onClick={() => navigate("/transactions")}
           >
-            <Title order={4} mb="xs">
-              Transactions
-            </Title>
+            <div className="flex items-center justify-between px-4 pb-3 pt-3">
+              <Title order={4}>Transactions</Title>
+              <Text size="sm" fw={600} c="#02A36E">View all</Text>
+            </div>
             {hidden ? (
               <Box
                 style={{
@@ -245,7 +248,7 @@ export function Home() {
                 </Text>
               </Box>
             ) : (
-              recentTxns.map((tx) => <GroupTx key={tx.id} tx={tx} />)
+              recentTxns.map((tx) => <GroupTxStyled key={tx.id} tx={tx} />)
             )}
           </Card>
         </div>
@@ -253,16 +256,35 @@ export function Home() {
     </div>
   );
 }
-function GroupTx({ tx }: { tx: WalletTransaction }) {
+function GroupTxStyled({ tx }: { tx: WalletTransaction }) {
   const entry = tx.entryType ?? tx.type ?? "";
   const credit = entry === "CREDIT";
   const amt = Number(tx.amount) / 100;
+  const movement = tx.movementType ?? tx.description ?? entry;
+  const label = movement
+    ? movement.charAt(0) + movement.slice(1).toLowerCase()
+    : "Transaction";
+  const date = new Date(tx.createdAt).toLocaleDateString("en-NG", {
+    day: "numeric",
+    month: "short",
+  });
+
   return (
-    <div className="flex items-center justify-between border-b py-2">
-      <Text size="sm">{tx.movementType ?? tx.description ?? entry}</Text>
-      <Text size="sm" c={credit ? "green" : "red"}>
-        {credit ? "+" : "-"}₦
-        {amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+    <div className="mx-3 flex items-center justify-between border-t border-[#F3F4F6] px-1 py-3 first:border-t-0">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${credit ? "bg-[#F0FDF4]" : "bg-[#FEF2F2]"}`}>
+          {credit ? <IconArrowDownLeft size={18} color="#02A36E" /> : <IconArrowUpRight size={18} color="#EF4444" />}
+        </div>
+        <div className="min-w-0">
+          <Text size="sm" fw={600} truncate>{label}</Text>
+          <Text size="xs" c="dimmed">{entry} / {date}</Text>
+        </div>
+      </div>
+      <Text size="sm" fw={600} c={credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0">
+        {credit ? "+" : "-"}{String.fromCharCode(0x20a6)}{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+      </Text>
+      <Text size="sm" fw={600} c={credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0" style={{ display: "none" }}>
+        {credit ? "+" : "-"}₦{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
       </Text>
     </div>
   );
