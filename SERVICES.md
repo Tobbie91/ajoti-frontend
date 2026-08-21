@@ -1,40 +1,39 @@
 # External Services - Ajoti Frontend
 
-Configuration and setup for every external service and environment dependency across the two active frontend apps.
+Configuration and deployment dependencies for the two active frontend applications.
 
-**Status legend:** ✅ Integrated · 🔲 Planned · ⚠️ Dev/staging only
+**Status legend:** ✅ Integrated · 🟡 Prepared/planned · ⚠️ Dev/staging only
 
----
+## Active applications
 
-## Table of Contents
+- `apps/admin`: canonical customer app for both `MEMBER` and `CIRCLE_ADMIN`
+- `apps/super-admin`: internal staff application
 
-1. [Backend API](#1-backend-api)
-2. [Google OAuth](#2-google-oauth)
-3. [Mono Prove Widget](#3-mono-prove-widget)
-4. [Hosting - Dokploy / Static](#4-hosting--dokploy--static)
-5. [Environment Configuration](#5-environment-configuration)
-6. [Build & Deployment Checklist](#6-build--deployment-checklist)
-7. [Troubleshooting](#7-troubleshooting)
+The retired `apps/user` application should not be deployed or reintroduced.
 
 ---
 
-## 1. Backend API
+## 1. Backend API ✅
 
-### Both Apps ✅
-
-**Purpose**: Both frontend apps talk exclusively to the Ajoti backend REST API. No app calls third-party services directly (payments, KYC, etc. are all mediated by the backend).
-
-**Environment variable** (all apps):
+Both active apps communicate with the Ajoti backend REST API.
 
 ```bash
-VITE_API_BASE_URL=https://api.ajoti.com   # production
-VITE_API_BASE_URL=http://localhost:3001   # local dev
+VITE_API_BASE_URL=http://localhost:3001
 ```
 
-**Notes**:
-- All API calls are centralised in `src/utils/api.ts` in each app
-- JWT tokens are stored in `localStorage` and attached as `Authorization: Bearer <token>` headers
-- Token refresh is handled automatically in the API utility
+Use the environment-specific API domain for staging and production.
+
+### API client organisation
+
+API requests are no longer expected to live in one oversized `api.ts` file.
+
+- both apps use a shared API-client/session-refresh foundation
+- domain-specific request modules live under each app's `src/utils/api/` area
+- compatibility barrel exports may remain in `src/utils/api.ts`
+- member-safe customer screens must not call organiser/staff-only endpoints
+- super-admin/staff APIs remain in the super-admin application
+
+JWT access/refresh handling remains centralised through the shared client infrastructure.
 
 ---
 
@@ -42,63 +41,85 @@ VITE_API_BASE_URL=http://localhost:3001   # local dev
 
 ### Retired pending secure integration
 
-The retired `apps/user` UI exposed a Google button, but its implementation decoded the
-Google credential locally without exchanging it for an Ajoti access/refresh-token session.
-It is intentionally not present in the canonical customer app. Reintroducing it requires a
-server-validated `POST /api/auth/google` exchange and the normal Ajoti role checks.
+The old browser-only Google credential decode was not retained during customer-app consolidation because it did not establish a valid Ajoti access/refresh-token session.
+
+Future Google sign-in requires a server-validated Ajoti auth exchange and the normal role checks.
 
 ---
 
-## 3. Mono Prove Widget
+## 3. Mono Prove ✅
 
-### Customer App ✅
+Purpose: customer KYC verification.
 
-**Purpose**: In-app KYC identity verification (BVN/NIN). The Mono Prove widget is loaded via a `<script>` tag and opened with a session token obtained from the backend.
+The frontend requests a Prove session from the backend; provider secrets remain on the backend.
 
-**Setup**: No frontend API key needed - the backend initiates the session and returns a `sessionToken`. The frontend opens the widget with that token.
+Typical flow:
 
-**How it works**:
-1. User taps "Verify Identity" → frontend calls `POST /api/kyc/prove/session`
-2. Backend returns `{ sessionToken, monoPublicKey }`
-3. Frontend opens the Mono Prove widget with those values
-4. User completes verification → Mono sends a webhook to the backend
-5. Backend updates KYC status → frontend polls or receives a notification
+1. customer starts identity verification
+2. frontend requests a Prove session from Ajoti backend
+3. backend returns session/widget values
+4. customer completes provider flow
+5. Mono webhook updates backend state
+6. frontend reflects the resulting KYC status
 
-**Notes**:
-- The Mono Prove script is loaded lazily when the KYC page mounts
-- No `VITE_MONO_*` env vars are needed in the frontend
+No long-lived Mono secret should be placed in Vite environment variables.
 
 ---
 
-## 4. Hosting - Dokploy / Static
+## 4. Target Savings ✅
 
-### Production ✅
+Target Savings uses the Ajoti backend only; there is no separate third-party frontend integration.
 
-**Purpose**: Each app's `dist/` folder is served as a static site on its subdomain.
+Current frontend behaviour includes:
+
+- My Savings view
+- Discover Groups for public group targets
+- rule/review step before joining a public group
+- shareable Ajoti links for private groups rather than raw invite tokens
+- visible API/contribution errors
+- manual contributions only; no auto-debit
+- maturity/lock messaging
+
+The invite token remains internal to the generated URL and should not be exposed as something the user needs to understand or manually enter.
+
+---
+
+## 5. Hosting / static deployment ✅
+
+Each active app builds to static assets and must be configured with the correct API URL at build time.
+
+Current intended domains:
 
 | App | Domain |
-|-----|--------|
+| --- | --- |
 | Customer | `admin.ajoti.com` |
 | Super Admin | `super-admin.ajoti.com` |
 
-**Deployment**: Each active app is built with `pnpm --filter <app> build` and the output
-(`dist/`) is served by Nginx (configured in Dokploy). Configure `user.ajoti.com` as an
-HTTP redirect to `https://admin.ajoti.com` before removing it from backend CORS.
+If `user.ajoti.com` remains reachable during the migration period, it should redirect to the canonical customer app rather than host a separate implementation.
+
+Build commands:
+
+```bash
+pnpm build:admin
+pnpm build:super-admin
+```
+
+A real build should be run before promotion; see `AGENTS.md` for the `.tsbuildinfo`/incremental TypeScript caveat.
 
 ---
 
-## 5. Environment Configuration
+## 6. Environment configuration
 
-### Development
+### Local
 
-Create `.env.local` in each app directory (these are gitignored):
+`apps/admin/.env.local`:
 
-**`apps/admin/.env.local`**:
 ```bash
 VITE_API_BASE_URL=http://localhost:3001
 ```
 
-**`apps/super-admin/.env.local`**:
+`apps/super-admin/.env.local`:
+
 ```bash
 VITE_API_BASE_URL=http://localhost:3001
 ```
@@ -115,54 +136,78 @@ VITE_API_BASE_URL=https://api-staging.ajoti.com
 VITE_API_BASE_URL=https://api.ajoti.com
 ```
 
+Vite environment values are compiled into the build. Changing them requires a rebuild/redeploy.
+
 ---
 
-## 6. Build & Deployment Checklist
+## 7. Sentry / frontend observability 🟡
 
-### Before building
+Frontend Sentry is not active yet.
 
-- [ ] `VITE_API_BASE_URL` points to the correct environment's API
-- [ ] No hardcoded `localhost` URLs in `api.ts` files
-- [ ] No `console.log` statements with sensitive data
+When enabled, use separate projects/DSNs for:
 
-### Build
+- customer frontend
+- super-admin frontend
+- backend API (configured in the backend repository)
+
+Keep staging and production environments distinguishable, start with conservative tracing, and verify a controlled test event before production activation.
+
+Do not add Sentry dependencies without updating the workspace lockfile normally.
+
+---
+
+## 8. Build and deployment checklist
+
+Before build:
+
+- [ ] current branch is the intended deployment branch
+- [ ] `VITE_API_BASE_URL` points to the correct environment
+- [ ] no hardcoded localhost API URLs
+- [ ] no sensitive debug logging
+- [ ] customer member screens use member-safe endpoints
+- [ ] organiser and staff routes retain their guards
+
+Build:
 
 ```bash
-pnpm --filter ajoti-admin build
-pnpm --filter ajoti-super-admin build
+pnpm build:admin
+pnpm build:super-admin
 ```
 
-### After deploying
+After staging deployment:
 
-- [ ] `user.ajoti.com` redirects to `admin.ajoti.com`
-- [ ] `admin.ajoti.com` accepts MEMBER and CIRCLE_ADMIN accounts
-- [ ] `super-admin.ajoti.com` loads and can log in as superadmin
-- [ ] `VITE_API_BASE_URL` is reachable from the browser (no CORS errors)
-- [ ] KYC widget opens correctly
+- [ ] MEMBER can sign into the canonical customer app
+- [ ] CIRCLE_ADMIN can sign in and receives organiser capabilities
+- [ ] staff/super-admin can sign into the internal app
+- [ ] wallet/transactions load without CORS errors
+- [ ] Target Savings individual contribution works
+- [ ] Target Savings public discovery/join works
+- [ ] private Target Savings invite link works for another account
+- [ ] Target Savings contribution errors are visible in the UI
+- [ ] super-admin Target Savings oversight loads
+- [ ] KYC provider flow opens correctly where enabled
+- [ ] `user.ajoti.com` redirects to the canonical customer domain if still in use
 
 ---
 
-## 7. Troubleshooting
+## 9. Troubleshooting
 
-### CORS error on API calls
+### CORS errors
 
-- During the domain transition, keep both customer origins in backend `CORS_ORIGIN`:
-  ```
-  CORS_ORIGIN=https://user.ajoti.com,https://admin.ajoti.com,https://super-admin.ajoti.com
-  ```
+Confirm the backend `CORS_ORIGIN` includes the currently deployed customer and super-admin origins. During a domain migration, retain legacy origin support only as long as required.
 
-### API calls failing in production but working locally
+### API works locally but not after deploy
 
-- Confirm `VITE_API_BASE_URL` is set to the production backend URL in Dokploy's environment variable settings
-- Vite bakes env vars in at build time - rebuilding after changing the variable is required
+Confirm `VITE_API_BASE_URL` was present during the actual Vite build. Updating an environment variable after build without rebuilding will not update the bundled URL.
 
-### KYC widget doesn't open
+### Private Target Savings invite does not survive authentication
 
-- The Mono Prove script requires a valid session token from the backend
-- Check that the backend's `MONO_SECRET_KEY` is a live key (not a test key) in production
-- Check browser console for script load errors
+The invite link carries its join context in the customer URL. If authentication redirects strip query state before the user reaches Target Savings, preserve/restore the pending redirect through login/signup before considering the invite flow complete.
 
-### White screen after deploy
+### White screen after deployment
 
-- Run `pnpm --filter <app> build` locally to confirm the build succeeds
-- Check Dokploy build logs for TypeScript or import errors
+Run a clean production build locally and inspect the deployment logs for TypeScript/import failures. Clear stale `.tsbuildinfo` files when validating broad/shared utility changes.
+
+### KYC widget does not open
+
+Confirm the backend has valid Mono credentials and returns a valid session. Provider secrets should not be moved into the frontend as a workaround.
