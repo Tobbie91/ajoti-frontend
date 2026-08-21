@@ -27,7 +27,7 @@ const mainLinks: NavLink_[] = [
 
 const savingsChildren = [
   { label: 'Fixed Savings', icon: IconChartLine, path: '/savings/FixedSavings', comingSoon: true },
-  { label: 'Target Savings', icon: IconTarget, path: '/savings/TargetSavings', comingSoon: true },
+  { label: 'Target Savings', icon: IconTarget, path: '/savings/TargetSavings', comingSoon: false },
 ]
 
 const bottomLinks: NavLink_[] = [
