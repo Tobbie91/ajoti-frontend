@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Alert, Button, Card, Group, PasswordInput, Text, TextInput } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -93,7 +93,7 @@ export function Login() {
                 {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">{error}</Alert>}
                 <TextInput label="Email" placeholder="you@example.com" radius="md" value={email}
                   onChange={(e) => setEmail(e.currentTarget.value)} styles={{ input: { borderColor: '#BFEBD1' } }} />
-                <PasswordInput label="Password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" radius="md" value={password}
+                <PasswordInput label="Password" placeholder="••••••••" radius="md" value={password}
                   onChange={(e) => setPassword(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   styles={{ input: { borderColor: '#BFEBD1' } }} />
                 <Group justify="flex-end"><Text component="button" type="button" fz="xs" c="#0B6B55" onClick={() => setForgotOpen(true)}>Forgot password?</Text></Group>
