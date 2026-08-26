@@ -95,6 +95,24 @@ export function Dashboard() {
         </Text>
       </Box>
 
+      <Paper withBorder p="lg" radius="md">
+        <Group justify="space-between" align="center" wrap="wrap" gap="md">
+          <Box>
+            <Text fw={700} fz="lg">Create a new ajo group</Text>
+            <Text fz="sm" c="dimmed">Start a group directly from your dashboard.</Text>
+          </Box>
+          <Button
+            component={Link}
+            to="/create-group"
+            size="md"
+            leftSection={<IconPlus size={18} />}
+            style={{ background: PRIMARY }}
+          >
+            Create Group
+          </Button>
+        </Group>
+      </Paper>
+
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <StatsCard
           title="Total Groups"
