@@ -28,6 +28,14 @@ function KycPageGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function MemberHomeRoute({ children }: { children: React.ReactNode }) {
+  const role = getTokenRole(localStorage.getItem('access_token'))
+  if (role === 'CIRCLE_ADMIN') {
+    return <Navigate to="/dashboard" replace />
+  }
+  return <>{children}</>
+}
+
 function HomeRedirect() {
   const token = localStorage.getItem('access_token')
   return <Navigate to={token ? defaultAuthenticatedPath() : '/login'} replace />
@@ -46,7 +54,7 @@ function App() {
         <Route path="/rosca/invite/:token" element={<InviteAccept />} />
 
         <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-          <Route path="/home" element={<Home />} />
+          <Route path="/home" element={<MemberHomeRoute><Home /></MemberHomeRoute>} />
           <Route path="/dashboard" element={<CircleAdminRoute><Dashboard /></CircleAdminRoute>} />
           <Route path="/create-group" element={<CircleAdminRoute><CreateGroup /></CircleAdminRoute>} />
           <Route path="/manage-join-request" element={<CircleAdminRoute><ManageJoinRequest /></CircleAdminRoute>} />
