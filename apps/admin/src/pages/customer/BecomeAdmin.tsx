@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, Checkbox, Loader } from "@mantine/core";
 import { IconArrowLeft, IconCircleCheck } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { requestAdminAccess, ApiError } from "@/utils/api";
+import { requestAdminAccess, getKycStatus, ApiError } from "@/utils/api";
 
-const VERIFICATION_ITEMS = [
-  "Completed KYC Level 1",
+const BASE_VERIFICATION_ITEMS = [
   "Active Ajoti member account",
   "Agreement to ajo group policies",
 ];
@@ -16,10 +15,23 @@ export function BecomeAdmin() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [sessionRefreshed, setSessionRefreshed] = useState(false);
+  const [kycLevel, setKycLevel] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    getKycStatus()
+      .then((kyc) => setKycLevel(kyc.kycLevel ?? 0))
+      .catch(() => setKycLevel(null));
+  }, []);
+
+  const verificationItems = [
+    ...(kycLevel !== null && kycLevel < 1 ? ["Complete KYC Level 1"] : []),
+    ...BASE_VERIFICATION_ITEMS,
+  ];
+  const kycReady = kycLevel === null || kycLevel >= 1;
+
   async function handleSubmit() {
-    if (!agreed || submitting) return;
+    if (!agreed || submitting || !kycReady) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -40,7 +52,6 @@ export function BecomeAdmin() {
   return (
     <div className="mx-auto w-full max-w-[680px] px-6 py-6">
       <div className="flex flex-col gap-6">
-        {/* Back button + Title */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/rosca")}
@@ -53,7 +64,6 @@ export function BecomeAdmin() {
           </Text>
         </div>
 
-        {/* Application Section */}
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
           <Text fw={700} className="text-[16px] text-[#0F172A]">
             Admin Access
@@ -81,14 +91,13 @@ export function BecomeAdmin() {
           />
         </div>
 
-        {/* Verification Requirements */}
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
           <Text fw={700} className="text-[16px] text-[#0F172A]">
             Verification Requirements
           </Text>
 
           <div className="mt-5 flex flex-col gap-4">
-            {VERIFICATION_ITEMS.map((item) => (
+            {verificationItems.map((item) => (
               <div key={item} className="flex items-center gap-3">
                 <IconCircleCheck size={22} color="#02A36E" />
                 <Text fw={500} className="text-[13px] text-[#374151]">
@@ -97,6 +106,15 @@ export function BecomeAdmin() {
               </div>
             ))}
           </div>
+
+          {kycLevel !== null && kycLevel < 1 && (
+            <button
+              onClick={() => navigate("/kyc")}
+              className="mt-5 cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
+            >
+              Complete KYC Level 1
+            </button>
+          )}
         </div>
 
         {submitted ? (
@@ -125,10 +143,10 @@ export function BecomeAdmin() {
               <Text className="text-[13px] text-[#EF4444]">{error}</Text>
             )}
             <button
-              disabled={!agreed || submitting}
+              disabled={!agreed || submitting || !kycReady}
               onClick={handleSubmit}
               className={`flex w-full items-center justify-center gap-2 rounded-lg py-3.5 text-[14px] font-semibold text-white ${
-                agreed && !submitting
+                agreed && !submitting && kycReady
                   ? "cursor-pointer bg-[#02A36E]"
                   : "cursor-not-allowed bg-[#9CA3AF]"
               }`}
