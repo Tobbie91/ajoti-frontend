@@ -3,3 +3,9 @@
   to = "https://app.ajoti.com/:splat"
   status = 301
   force = true
+
+[[redirects]]
+  from = "https://user.ajoti.com/*"
+  to = "https://app.ajoti.com/:splat"
+  status = 301
+  force = true
