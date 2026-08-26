@@ -40,8 +40,8 @@ export function OnboardingFlow({
   identityVerified?: boolean;
 }) {
   const navigate = useNavigate();
-  // Existing users who already passed Mono keep the legacy NOK-completion path.
-  // New users collect identity details, then NOK, and only then open Mono.
+  // Existing users who already passed the previous provider keep the legacy NOK-completion path.
+  // New users collect identity details, then NOK, and only then open Dojah.
   const [step, setStep] = useState<OnboardingStep>(identityVerified ? 2 : 1);
 
   const [nin, setNin] = useState("");
@@ -84,7 +84,7 @@ export function OnboardingFlow({
 
     try {
       if (identityVerified) {
-        // Backwards compatibility for sessions that completed Mono before this flow changed.
+        // Backwards compatibility for sessions that completed identity verification before this flow changed.
         await submitNok(payload);
         onComplete();
         return;
@@ -361,9 +361,9 @@ export function OnboardingFlow({
 
             <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
               <Text fw={400} className="text-[13px] leading-[1.6] text-[#1E40AF]">
-                A secure Mono verification window will open. Complete every step,
-                including the selfie check, before closing it. Use a well-lit area
-                and face the camera directly.
+                A secure Dojah verification window will open. Complete every step,
+                including the liveness and selfie checks configured for this staging flow,
+                before closing it. Use a well-lit area and face the camera directly.
               </Text>
             </div>
 
@@ -372,7 +372,7 @@ export function OnboardingFlow({
               onChange={(e) => setConfirmed(e.currentTarget.checked)}
               label={
                 <Text fw={400} className="text-[12px] leading-normal text-[#374151]">
-                  I'm ready to complete the face verification now and will finish it before leaving the Mono window.
+                  I'm ready to complete the face verification now and will finish it before leaving the Dojah window.
                 </Text>
               }
               styles={{ input: { borderColor: "#D1D5DB" } }}
