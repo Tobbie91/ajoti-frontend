@@ -56,9 +56,6 @@ export function OnboardingFlow({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const storedUser = localStorage.getItem("user");
-  const userProfile = storedUser ? JSON.parse(storedUser) : null;
-
   const progressValue = (step / 3) * 100;
 
   function identityReady() {
@@ -103,14 +100,9 @@ export function OnboardingFlow({
     setError(null);
     setInitiating(true);
     try {
-      const p = userProfile ?? {};
       const result = await proveInitiate({
         nin: nin.trim(),
         bvn: bvn.trim(),
-        firstName: p.firstName || p.firstname || "",
-        lastName: p.lastName || p.lastname || "",
-        phone: p.phone || p.phoneNumber || "",
-        ...(p.email ? { email: p.email } : {}),
       });
 
       if (result.monoUrl) {

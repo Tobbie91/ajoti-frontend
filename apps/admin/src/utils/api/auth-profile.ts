@@ -150,10 +150,6 @@ export function resubmitKyc(): Promise<KycStatus> {
 export interface ProveInitiatePayload {
   nin?: string;
   bvn?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  email?: string;
 }
 
 export function proveInitiate(
