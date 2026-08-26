@@ -248,9 +248,9 @@ export function OnboardingFlow({
                 fw={400}
                 className="text-[13px] leading-[1.6] text-[#1E40AF]"
               >
-                After submitting, a secure Mono identity verification window
-                will open. Complete the short liveness check there - it takes
-                under a minute.
+                A secure Mono verification window will open. Please complete
+                every step, including the selfie check, before closing it. For
+                the best result, use a well-lit area and face the camera directly.
               </Text>
             </div>
 
@@ -316,8 +316,8 @@ export function OnboardingFlow({
                   fw={400}
                   className="text-[12px] leading-normal text-[#374151]"
                 >
-                  I'm ready to complete this now - I understand starting the
-                  check can't be refunded if I don't finish it.
+                  I'm ready to complete identity verification now and will
+                  finish the verification before leaving the Mono window.
                 </Text>
               }
               styles={{ input: { borderColor: "#D1D5DB" } }}
