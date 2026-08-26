@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Paper, Text, Group, TextInput, Badge, Box, ActionIcon, Loader } from '@mantine/core'
 import { IconSearch, IconAdjustmentsHorizontal } from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
 import { listAllRoscaCircles, type RoscaCircle } from '@/utils/api'
 
 interface RoscaGroup {
+  id: string
   name: string
   status: 'Active' | 'Pending' | 'Completed'
   members: string
@@ -18,6 +20,7 @@ function mapCircle(c: RoscaCircle): RoscaGroup {
   const status: RoscaGroup['status'] =
     s === 'ACTIVE' || s === 'STARTED' ? 'Active' : s === 'COMPLETED' ? 'Completed' : 'Pending'
   return {
+    id: c.id,
     name: c.name || 'Unnamed',
     status,
     members: `${filled}/${total}`,
@@ -47,15 +50,16 @@ export function GroupTable() {
     listAllRoscaCircles()
       .then((res) => {
         const circles = Array.isArray(res) ? res : ((res as Record<string, unknown>)?.data ?? (res as Record<string, unknown>)?.circles ?? []) as RoscaCircle[]
-        setGroups(circles.slice(0, 5).map(mapCircle))
+        setGroups(circles.map(mapCircle))
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
+  const filteredGroups = groups.filter((g) => g.name.toLowerCase().includes(search.toLowerCase()))
+
   return (
     <Paper radius="md" style={{ border: '1px solid #e9ecef', overflow: 'hidden' }}>
-      {/* Header */}
       <Box px="lg" py="md" style={{ borderBottom: '1px solid #e9ecef' }}>
         <Group justify="space-between" align="center" mb="sm">
           <Text fw={700} fz="md">
@@ -79,7 +83,6 @@ export function GroupTable() {
         </Group>
       </Box>
 
-      {/* Table header */}
       <Box
         px="lg"
         py="xs"
@@ -92,57 +95,64 @@ export function GroupTable() {
         ))}
       </Box>
 
-      {/* Body */}
       {loading ? (
         <Box py="xl" style={{ display: 'flex', justifyContent: 'center' }}>
           <Loader size="sm" color="#0b6b55" />
         </Box>
-      ) : groups.length === 0 ? (
+      ) : filteredGroups.length === 0 ? (
         <Box py="xl" style={{ textAlign: 'center' }}>
           <Text fz="sm" c="dimmed">No groups yet</Text>
         </Box>
       ) : (
-        groups.filter((g) => g.name.toLowerCase().includes(search.toLowerCase())).map((group, i) => (
-          <Box
-            key={group.name}
-            px="lg"
-            py="sm"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1fr',
-              alignItems: 'center',
-              background: i % 2 === 0 ? 'white' : '#fafafa',
-              borderBottom: i < groups.length - 1 ? '1px solid #f1f3f5' : 'none',
-            }}
-          >
-            <Text fz="sm" fw={500}>
-              {group.name}
-            </Text>
-            <Box>
-              <Badge
-                size="sm"
-                radius="sm"
-                style={{
-                  background: statusBg[group.status],
-                  color: statusColors[group.status],
-                  border: 'none',
-                  fontWeight: 600,
-                }}
+        <Box style={{ maxHeight: 420, overflowY: 'auto' }}>
+          {filteredGroups.map((group, i) => (
+            <Box
+              key={group.id}
+              px="lg"
+              py="sm"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1fr',
+                alignItems: 'center',
+                background: i % 2 === 0 ? 'white' : '#fafafa',
+                borderBottom: i < filteredGroups.length - 1 ? '1px solid #f1f3f5' : 'none',
+              }}
+            >
+              <Text
+                component={Link}
+                to={`/rosca/groups/${group.id}`}
+                fz="sm"
+                fw={600}
+                style={{ color: '#0b6b55', textDecoration: 'none' }}
               >
-                {group.status}
-              </Badge>
+                {group.name}
+              </Text>
+              <Box>
+                <Badge
+                  size="sm"
+                  radius="sm"
+                  style={{
+                    background: statusBg[group.status],
+                    color: statusColors[group.status],
+                    border: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  {group.status}
+                </Badge>
+              </Box>
+              <Text fz="sm" c="dimmed">
+                {group.members}
+              </Text>
+              <Text fz="sm" c="dimmed">
+                {group.nextPayout}
+              </Text>
+              <Text fz="sm" c="dimmed">
+                {group.cycle}
+              </Text>
             </Box>
-            <Text fz="sm" c="dimmed">
-              {group.members}
-            </Text>
-            <Text fz="sm" c="dimmed">
-              {group.nextPayout}
-            </Text>
-            <Text fz="sm" c="dimmed">
-              {group.cycle}
-            </Text>
-          </Box>
-        ))
+          ))}
+        </Box>
       )}
     </Paper>
   )
