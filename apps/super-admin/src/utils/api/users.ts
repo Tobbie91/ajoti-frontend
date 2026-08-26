@@ -8,6 +8,8 @@ import {
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
+export type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED" | "FROZEN" | "CLOSED";
+
 export interface SuperadminUserRow {
   id: string;
   firstName: string;
@@ -15,7 +17,7 @@ export interface SuperadminUserRow {
   email: string;
   phone: string;
   role: string;
-  status: string;
+  status: UserStatus;
   isVerified: boolean;
   createdAt: string;
   suspendedAt: string | null;
@@ -35,7 +37,7 @@ export function listUsers(params: {
   page?: number;
   limit?: number;
   search?: string;
-  status?: string;
+  status?: UserStatus;
   role?: string;
   kycStatus?: string;
   registeredFrom?: string;
@@ -50,8 +52,25 @@ export function listUsers(params: {
   return authRequest(`/api/superadmin/users?${q}`, { method: "GET" });
 }
 
+export interface SuperadminUserDetailUser extends Record<string, unknown> {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: string;
+  status: UserStatus;
+  closedAt: string | null;
+  isVerified: boolean;
+  createdAt: string;
+  suspendedAt: string | null;
+  suspensionReason: string | null;
+  adminRequestedAt: string | null;
+  kyc: { status: string; userId?: string } | null;
+}
+
 export interface SuperadminUserDetail {
-  user: Record<string, unknown>;
+  user: SuperadminUserDetailUser;
   wallet: {
     id: string;
     status: string;
@@ -69,7 +88,7 @@ export function getUserDetail(userId: string): Promise<SuperadminUserDetail> {
 
 export function updateUserStatus(
   userId: string,
-  status: "ACTIVE" | "SUSPENDED" | "BANNED",
+  status: Exclude<UserStatus, "FROZEN" | "CLOSED">,
   reason?: string,
 ): Promise<{ success: boolean; data: unknown }> {
   return authRequest(`/api/superadmin/users/${userId}/status`, {

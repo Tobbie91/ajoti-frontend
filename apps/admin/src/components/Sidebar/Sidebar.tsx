@@ -29,9 +29,9 @@ export function Sidebar({ onClose }: SidebarProps) {
   return (
     <Box h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
       <Stack gap={2} px="xs" py="md" style={{ flex: 1 }}>
-        <NavLink component={RouterNavLink} to="/home" label="Home"
+        {!admin && <NavLink component={RouterNavLink} to="/home" label="Home"
           leftSection={<IconHome2 size={19} stroke={1.5} />} active={isActive('/home')} onClick={onClose}
-          styles={commonStyle(isActive('/home'))} />
+          styles={commonStyle(isActive('/home'))} />}
         {admin && <NavLink component={RouterNavLink} to="/dashboard" label="Dashboard"
           leftSection={<IconLayoutDashboard size={19} stroke={1.5} />} active={location.pathname === '/dashboard'} onClick={onClose}
           styles={commonStyle(location.pathname === '/dashboard')} />}

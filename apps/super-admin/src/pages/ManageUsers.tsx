@@ -40,6 +40,7 @@ import {
   rejectAdminRequest,
   type SuperadminUserRow,
   type SuperadminUserDetail,
+  type UserStatus,
 } from '@/utils/api'
 import { getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 import { SortableTh } from '@/components/SortableTh'
@@ -50,6 +51,15 @@ const STATUS_COLOR: Record<string, string> = {
   SUSPENDED: 'yellow',
   BANNED: 'red',
   FROZEN: 'orange',
+  CLOSED: 'gray',
+}
+
+const STATUS_LABEL: Record<UserStatus, string> = {
+  ACTIVE: 'Active',
+  SUSPENDED: 'Suspended',
+  BANNED: 'Banned',
+  FROZEN: 'Frozen',
+  CLOSED: 'Closed',
 }
 
 const KYC_COLOR: Record<string, string> = {
@@ -79,7 +89,7 @@ function UserDetailBody({
 }: {
   detail: SuperadminUserDetail
   actionLoading: boolean
-  currentStatus: string
+  currentStatus: UserStatus
   currentRole: string
   onReactivate: () => void
   onUnfreeze: () => void
@@ -88,11 +98,12 @@ function UserDetailBody({
   onOpenApproveAdmin: () => void
   onOpenRejectAdmin: () => void
 }) {
-  const user = detail.user as Record<string, unknown>
+  const user = detail.user
   const wallet = detail.wallet
   const roscaCount = detail.roscaParticipation.length
   const debtCount = detail.outstandingDebts.length
   const kyc = user.kyc as { status: string; userId?: string } | null
+  const isClosed = currentStatus === 'CLOSED'
 
   return (
     <Stack gap="md">
@@ -109,11 +120,20 @@ function UserDetailBody({
       <SimpleGrid cols={2} spacing="xs">
         <InfoItem label="Phone" value={(user.phone as string) ?? '-'} />
         <InfoItem label="Role" value={currentRole} />
-        <InfoItem label="Status" value={<Badge color={STATUS_COLOR[currentStatus] ?? 'gray'} variant="light" size="sm">{currentStatus}</Badge>} />
+        <InfoItem label="Account status" value={<Badge color={STATUS_COLOR[currentStatus] ?? 'gray'} variant="light" size="sm">{STATUS_LABEL[currentStatus]}</Badge>} />
         <InfoItem label="KYC" value={<Badge color={KYC_COLOR[kyc?.status ?? 'NOT_SUBMITTED'] ?? 'gray'} variant="light" size="sm">{kyc?.status ?? 'NOT_SUBMITTED'}</Badge>} />
         <InfoItem label="Joined" value={user.createdAt ? new Date(user.createdAt as string).toLocaleDateString('en-NG') : '-'} />
         <InfoItem label="Verified" value={(user.isVerified as boolean) ? 'Yes' : 'No'} />
+        {isClosed && <InfoItem label="Closed" value={user.closedAt ? new Date(user.closedAt).toLocaleString('en-NG') : '-'} />}
       </SimpleGrid>
+
+      {isClosed && (
+        <Alert color="gray" radius="md" variant="light" title="Closed account — read only">
+          <Text fz="sm">
+            Personal information has been anonymised. Historical financial and audit records are retained for support and compliance.
+          </Text>
+        </Alert>
+      )}
 
       {kyc && (
         <Button
@@ -164,7 +184,7 @@ function UserDetailBody({
 
       <Divider />
 
-      {(user.adminRequestedAt as string | null) && hasPermission(getStaffRoleFromStorage(), 'MANAGE_ADMIN_ACCOUNTS') && (
+      {!isClosed && (user.adminRequestedAt as string | null) && hasPermission(getStaffRoleFromStorage(), 'MANAGE_ADMIN_ACCOUNTS') && (
         <Alert color="orange" radius="md" variant="light" title="Pending Admin Request">
           <Text fz="xs">Requested on {new Date(user.adminRequestedAt as string).toLocaleDateString('en-NG')}</Text>
           <Group mt="xs" gap="xs">
@@ -175,6 +195,7 @@ function UserDetailBody({
       )}
 
       {(() => {
+        if (isClosed) return null
         const staffRole = getStaffRoleFromStorage()
         const canSuspendAccount = hasPermission(staffRole, 'SUSPEND_ACCOUNT')
         const canManageAdminAccounts = hasPermission(staffRole, 'MANAGE_ADMIN_ACCOUNTS')
@@ -238,7 +259,7 @@ function UserDetailDrawer({ userId, opened, onClose, onStatusChange }: {
       .finally(() => setLoading(false))
   }, [userId, opened])
 
-  async function handleStatus(status: 'ACTIVE' | 'SUSPENDED' | 'BANNED', reasonText?: string) {
+  async function handleStatus(status: Exclude<UserStatus, 'FROZEN' | 'CLOSED'>, reasonText?: string) {
     if (!userId) return
     setActionLoading(true)
     try {
@@ -272,8 +293,8 @@ function UserDetailDrawer({ userId, opened, onClose, onStatusChange }: {
     finally { setActionLoading(false) }
   }
 
-  const user = detail?.user as Record<string, unknown> | undefined
-  const currentStatus = (user?.status as string) ?? ''
+  const user = detail?.user
+  const currentStatus = (user?.status as UserStatus) ?? 'ACTIVE'
   const currentRole = (user?.role as string) ?? ''
 
   return (
@@ -353,7 +374,7 @@ export function ManageUsers() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<UserStatus | null>(null)
   const [kycFilter, setKycFilter] = useState<string | null>(null)
   const [pendingAdminFilter, setPendingAdminFilter] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -414,7 +435,15 @@ export function ManageUsers() {
       <Group gap="sm" wrap="wrap">
         <TextInput placeholder="Search by name, email or phone" leftSection={<IconSearch size={16} />} value={search} onChange={(e) => { setSearch(e.currentTarget.value); setPage(1) }} w={280} size="sm" />
         <Select placeholder="Role" data={[{ value: 'MEMBER', label: 'Member' }, { value: 'CIRCLE_ADMIN', label: 'Circle Admin' }]} value={roleFilter} onChange={(v) => { setRoleFilter(v); setPage(1) }} size="sm" w={140} clearable />
-        <Select placeholder="Status" data={['ACTIVE', 'SUSPENDED', 'BANNED', 'FROZEN']} value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1) }} size="sm" w={140} clearable />
+        <Select
+          placeholder="Status"
+          data={(Object.entries(STATUS_LABEL) as [UserStatus, string][]).map(([value, label]) => ({ value, label }))}
+          value={statusFilter}
+          onChange={(v) => { setStatusFilter(v as UserStatus | null); setPage(1) }}
+          size="sm"
+          w={140}
+          clearable
+        />
         <Select placeholder="KYC Status" data={['NOT_SUBMITTED', 'PENDING', 'APPROVED', 'REJECTED']} value={kycFilter} onChange={(v) => { setKycFilter(v); setPage(1) }} size="sm" w={165} clearable />
         <Button variant={pendingAdminFilter ? 'filled' : 'light'} color="orange" size="sm" onClick={() => { setPendingAdminFilter((v) => !v); setPage(1) }}>Pending Admin Requests</Button>
         {hasFilters && <Button variant="subtle" size="sm" color="gray" onClick={handleFiltersReset}>Clear filters</Button>}
@@ -453,7 +482,7 @@ export function ManageUsers() {
                     <Table.Td><Badge variant="light" size="sm" color={user.role === 'STAFF' ? 'violet' : user.role === 'CIRCLE_ADMIN' ? 'blue' : 'gray'}>{user.role}</Badge></Table.Td>
                     <Table.Td><Badge variant="light" size="sm" color={KYC_COLOR[user.kyc?.status ?? 'NOT_SUBMITTED'] ?? 'gray'}>{user.kyc?.status ?? 'NOT_SUBMITTED'}</Badge></Table.Td>
                     <Table.Td><Text fz="sm">{user._count.roscaMemberships}</Text></Table.Td>
-                    <Table.Td><Badge color={STATUS_COLOR[user.status] ?? 'gray'} variant="filled" size="sm" radius="sm">{user.status}</Badge></Table.Td>
+                    <Table.Td><Badge color={STATUS_COLOR[user.status] ?? 'gray'} variant="filled" size="sm" radius="sm">{STATUS_LABEL[user.status]}</Badge></Table.Td>
                     <Table.Td onClick={(e) => e.stopPropagation()}>
                       <Group gap={2} wrap="nowrap">
                         <ActionIcon variant="subtle" color="dark" onClick={() => openUserDetail(user.id)} title="View profile"><IconEye size={18} /></ActionIcon>
