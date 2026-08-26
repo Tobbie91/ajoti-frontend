@@ -38,7 +38,7 @@ const PROVE_PENDING_STEPS = new Set([
   "PROVE_PENDING_L3",
 ]);
 
-// ── Upgrade section (Level 2 or Level 3 via Mono Prove) ──────────────────────
+// ── Upgrade section (Level 2 or Level 3 via external identity provider) ──────
 
 export function UpgradeSection({
   targetLevel,
@@ -119,7 +119,6 @@ export function UpgradeSection({
         </Alert>
       )}
 
-      {/* Info card */}
       <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
         <div className="flex items-center gap-2 mb-2">
           <IconLock size={16} color="#2563EB" />
@@ -157,11 +156,11 @@ export function UpgradeSection({
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-4">
         <Text fw={400} className="text-[14px] leading-[1.6] text-[#6B7280]">
           To upgrade to Level {targetLevel}, you'll complete a quick identity
-          verification powered by Mono. You'll need your {docDescription}.
+          verification. You'll need your {docDescription}.
         </Text>
         <Text fw={400} className="text-[13px] leading-[1.6] text-[#9CA3AF]">
-          The verification widget will open in a new tab. Return to this page
-          after completing it - your status will update automatically.
+          The verification window will open in a new tab. Return to this page
+          after completing it - your status will update once the result is confirmed.
         </Text>
 
         <Checkbox
@@ -172,8 +171,7 @@ export function UpgradeSection({
               fw={400}
               className="text-[12px] leading-normal text-[#374151]"
             >
-              I'm ready to complete this now - I understand starting the check
-              can't be refunded if I don't finish it.
+              I'm ready to complete this verification now.
             </Text>
           }
           styles={{ input: { borderColor: "#D1D5DB" } }}
@@ -197,8 +195,9 @@ export function UpgradeSection({
   );
 }
 
-// ── Prove pending screen ─────────────────────────────────────────────────────
-// Shown after user opens Mono widget (any level). Polls until step leaves PROVE_PENDING*.
+// ── Provider pending screen ──────────────────────────────────────────────────
+// Shown after user opens the identity provider window (any level). Polls until
+// the backend KYC step leaves PROVE_PENDING*.
 
 export function ProvePendingScreen({
   onVerified,
@@ -252,8 +251,9 @@ export function ProvePendingScreen({
           fw={400}
           className="mb-6 text-[14px] leading-[1.6] text-[#6B7280]"
         >
-          Complete the identity check in the Mono window you just opened. This
-          page will update automatically once your verification is confirmed.
+          Complete the identity check in the Dojah window you just opened. For
+          this staging test, the result can also be reviewed and approved by an
+          administrator while we validate the provider integration.
         </Text>
         <Loader color="#02A36E" size="sm" className="mx-auto" />
         <Text fw={400} className="mt-4 text-[12px] text-[#9CA3AF]">
