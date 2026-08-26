@@ -130,6 +130,9 @@ export interface KycStatus {
   kycLevel: number; // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
   rejectionReason?: string | null;
   verificationData?: Record<string, unknown> | null;
+  nextOfKinName?: string;
+  nextOfKinRelationship?: string;
+  nextOfKinPhone?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -168,9 +171,14 @@ export interface SubmitNokPayload {
   nextOfKinPhone: string;
 }
 
-export function submitNok(
-  payload: SubmitNokPayload,
-): Promise<{ message: string }> {
+export function preSubmitNok(payload: SubmitNokPayload): Promise<KycStatus> {
+  return authRequest("/api/kyc/pre-submit-nok", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitNok(payload: SubmitNokPayload): Promise<KycStatus> {
   return authRequest("/api/kyc/submit-nok", {
     method: "POST",
     body: JSON.stringify(payload),

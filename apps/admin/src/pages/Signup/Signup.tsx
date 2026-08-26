@@ -15,6 +15,17 @@ import { IconAlertCircle } from "@tabler/icons-react";
 import { register } from "@/utils/api";
 import { PhoneInputField } from "@/components";
 
+const MINIMUM_REGISTRATION_AGE = 18;
+
+function latestAllowedDob() {
+    const today = new Date();
+    return new Date(
+        today.getFullYear() - MINIMUM_REGISTRATION_AGE,
+        today.getMonth(),
+        today.getDate(),
+    );
+}
+
 export function Signup() {
     const navigate = useNavigate();
 
@@ -38,6 +49,10 @@ export function Signup() {
             !dob
         ) {
             setError("Please fill in all fields.");
+            return;
+        }
+        if (dob > latestAllowedDob()) {
+            setError(`You must be at least ${MINIMUM_REGISTRATION_AGE} years old to register.`);
             return;
         }
         setError(null);
@@ -222,7 +237,7 @@ export function Signup() {
                                     placeholder="DD/MM/YYYY"
                                     radius="md"
                                     valueFormat="DD/MM/YYYY"
-                                    maxDate={new Date()}
+                                    maxDate={latestAllowedDob()}
                                     value={dob}
                                     onChange={(value) =>
                                         setDob(value ? new Date(value) : null)

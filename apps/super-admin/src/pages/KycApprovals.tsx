@@ -38,11 +38,17 @@ import {
   IconChevronDown,
   IconChevronUp,
 } from '@tabler/icons-react'
-import { listKycQueue, approveKyc, rejectKyc, overrideKycLevel, getProviderIdentity, type KycQueueRow } from '@/utils/api'
+import {
+  listKycQueue,
+  getKycDetail,
+  approveKyc,
+  rejectKyc,
+  overrideKycLevel,
+  getProviderIdentity,
+  type KycQueueRow,
+} from '@/utils/api'
 import { SortableTh } from '@/components/SortableTh'
 import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_TAB = ['PENDING', 'APPROVED', 'REJECTED'] as const
 type KycStatusTab = typeof STATUS_TAB[number]
@@ -66,7 +72,11 @@ function fmt(iso: string | null) {
   })
 }
 
-// ── Mono Verification Card ────────────────────────────────────────────────────
+function pendingLabel(record: KycQueueRow) {
+  if (record.providerStatus === 'ambiguous') return { label: 'Needs review', color: 'orange' }
+  if (record.step?.startsWith('PROVE_PENDING')) return { label: 'Waiting for Mono', color: 'blue' }
+  return { label: 'Needs review', color: 'orange' }
+}
 
 function RawDataToggle({ data }: { data: Record<string, unknown> }) {
   const [opened, { toggle }] = useDisclosure(false)
@@ -103,7 +113,6 @@ function VerificationDataCard({ data }: { data: Record<string, unknown> }) {
   const createdAt = inner?.created_at as string | undefined
   const liveMode = inner?.live_mode as boolean | undefined
 
-  // Unrecognised shape - nothing sensible to summarise, so raw data is the primary view.
   if (!status && !kycLevel && !customer) {
     return (
       <ScrollArea h={220} type="auto">
@@ -127,12 +136,8 @@ function VerificationDataCard({ data }: { data: Record<string, unknown> }) {
             {kycLevel.replace('_', ' ').toUpperCase()}
           </Badge>
         )}
-        {liveMode === false && (
-          <Badge color="gray" variant="outline" size="sm">Sandbox</Badge>
-        )}
-        {liveMode === true && (
-          <Badge color="teal" variant="outline" size="sm">Live</Badge>
-        )}
+        {liveMode === false && <Badge color="gray" variant="outline" size="sm">Sandbox</Badge>}
+        {liveMode === true && <Badge color="teal" variant="outline" size="sm">Live</Badge>}
       </Group>
       {event && <Text fz="xs" c="dimmed">{event}</Text>}
       <SimpleGrid cols={2} spacing="xs">
@@ -146,8 +151,6 @@ function VerificationDataCard({ data }: { data: Record<string, unknown> }) {
     </Stack>
   )
 }
-
-// ── KYC Detail Drawer ────────────────────────────────────────────────────────
 
 function KycDetailDrawer({
   record,
@@ -169,6 +172,11 @@ function KycDetailDrawer({
   const [monoFetchLoading, setMonoFetchLoading] = useState(false)
   const [monoFetchError, setMonoFetchError] = useState<string | null>(null)
   const [monoLiveData, setMonoLiveData] = useState<Record<string, unknown> | null>(null)
+
+  useEffect(() => {
+    setMonoLiveData(null)
+    setMonoFetchError(null)
+  }, [record?.userId])
 
   async function handleOverride() {
     if (!record || overrideLevel === '') return
@@ -235,14 +243,7 @@ function KycDetailDrawer({
 
   return (
     <>
-      <Drawer
-        opened={opened}
-        onClose={onClose}
-        title={<Text fw={600}>KYC Review</Text>}
-        position="right"
-        size="lg"
-        padding="lg"
-      >
+      <Drawer opened={opened} onClose={onClose} title={<Text fw={600}>KYC Review</Text>} position="right" size="lg" padding="lg">
         {!record ? null : (
           <Stack gap="md">
             {actionError && (
@@ -251,22 +252,15 @@ function KycDetailDrawer({
               </Alert>
             )}
 
-            {/* Applicant */}
             <Group gap="xs">
-              <ThemeIcon size={48} radius="xl" variant="light" color="primary">
-                <IconUser size={24} stroke={1.5} />
-              </ThemeIcon>
+              <ThemeIcon size={48} radius="xl" variant="light" color="primary"><IconUser size={24} stroke={1.5} /></ThemeIcon>
               <Stack gap={2}>
                 <Text fw={600} fz="lg">{u?.firstName} {u?.lastName}</Text>
                 <Text fz="sm" c="dimmed">{u?.email}</Text>
               </Stack>
               <Group ml="auto" gap="xs">
-                <Badge color="blue" variant="light">
-                  Level {record.kycLevel}
-                </Badge>
-                <Badge color={STATUS_COLOR[record.status] ?? 'gray'} variant="light">
-                  {record.status}
-                </Badge>
+                <Badge color="blue" variant="light">Level {record.kycLevel}</Badge>
+                <Badge color={STATUS_COLOR[record.status] ?? 'gray'} variant="light">{record.status}</Badge>
               </Group>
             </Group>
 
@@ -279,13 +273,9 @@ function KycDetailDrawer({
               <InfoRow label="Step" value={record.step ?? '-'} />
               <InfoRow label="Mono Status" value={record.providerStatus ?? '-'} />
               <InfoRow label="Reviewed" value={record.reviewedAt ? fmt(record.reviewedAt) : '-'} />
-              <InfoRow
-                label="Approval Source"
-                value={record.approvalSource ? APPROVAL_SOURCE_LABEL[record.approvalSource] ?? record.approvalSource : '-'}
-              />
+              <InfoRow label="Approval Source" value={record.approvalSource ? APPROVAL_SOURCE_LABEL[record.approvalSource] ?? record.approvalSource : '-'} />
             </SimpleGrid>
 
-            {/* Next of kin */}
             {record.nextOfKinName && (
               <>
                 <Divider label="Next of Kin" labelPosition="left" />
@@ -297,46 +287,21 @@ function KycDetailDrawer({
               </>
             )}
 
-            {/* Address */}
             {record.address && (
               <>
                 <Divider label="Address" labelPosition="left" />
-                <Text fz="sm">
-                  {[record.address, record.city, record.lga, record.state, record.country]
-                    .filter(Boolean)
-                    .join(', ')}
-                </Text>
+                <Text fz="sm">{[record.address, record.city, record.lga, record.state, record.country].filter(Boolean).join(', ')}</Text>
               </>
             )}
 
-            {/* Mono Verification Data */}
-            <Divider
-              label={
-                <Group gap={4}>
-                  <IconShieldCheck size={14} />
-                  <Text fz="xs">Mono Prove Verification</Text>
-                </Group>
-              }
-              labelPosition="left"
-            />
+            <Divider label={<Group gap={4}><IconShieldCheck size={14} /><Text fz="xs">Mono Prove Verification</Text></Group>} labelPosition="left" />
             <Group justify="space-between" align="center" mb={4}>
               <Text fz="xs" c="dimmed">Stored snapshot</Text>
-              <Button
-                size="xs"
-                variant="subtle"
-                color="blue"
-                leftSection={<IconRefresh size={12} />}
-                loading={monoFetchLoading}
-                onClick={handleMonoRefetch}
-              >
+              <Button size="xs" variant="subtle" color="blue" leftSection={<IconRefresh size={12} />} loading={monoFetchLoading} onClick={handleMonoRefetch}>
                 Re-fetch from Mono
               </Button>
             </Group>
-            {monoFetchError && (
-              <Alert color="red" radius="md" variant="light" mb={4}>
-                <Text fz="xs">{monoFetchError}</Text>
-              </Alert>
-            )}
+            {monoFetchError && <Alert color="red" radius="md" variant="light" mb={4}><Text fz="xs">{monoFetchError}</Text></Alert>}
             {monoLiveData ? (
               <VerificationDataCard data={monoLiveData} />
             ) : record.verificationData ? (
@@ -352,34 +317,16 @@ function KycDetailDrawer({
               </Alert>
             )}
 
-            {/* Actions */}
             {record.status === 'PENDING' && (
               <>
                 <Divider />
                 <Group>
-                  <Button
-                    flex={1}
-                    color="green"
-                    leftSection={<IconCheck size={16} />}
-                    loading={actionLoading}
-                    onClick={handleApprove}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    flex={1}
-                    color="red"
-                    variant="light"
-                    leftSection={<IconX size={16} />}
-                    onClick={openReject}
-                  >
-                    Reject
-                  </Button>
+                  <Button flex={1} color="green" leftSection={<IconCheck size={16} />} loading={actionLoading} onClick={handleApprove}>Approve</Button>
+                  <Button flex={1} color="red" variant="light" leftSection={<IconX size={16} />} onClick={openReject}>Reject</Button>
                 </Group>
               </>
             )}
 
-            {/* Manual override */}
             <Divider label="Manual Override" labelPosition="left" />
             <Stack gap="xs">
               <Text fz="xs" c="dimmed">Force-set KYC level regardless of current state.</Text>
@@ -396,13 +343,7 @@ function KycDetailDrawer({
                   disabled={overrideLoading}
                   size="xs"
                 />
-                <Button
-                  size="xs"
-                  color="orange"
-                  loading={overrideLoading}
-                  disabled={overrideLevel === '' || overrideLevel === String(record.kycLevel)}
-                  onClick={handleOverride}
-                >
+                <Button size="xs" color="orange" loading={overrideLoading} disabled={overrideLevel === '' || overrideLevel === String(record.kycLevel)} onClick={handleOverride}>
                   Set Level
                 </Button>
               </Group>
@@ -413,26 +354,11 @@ function KycDetailDrawer({
 
       <Modal opened={rejectModal} onClose={closeReject} title="Reject KYC" size="sm">
         <Stack gap="md">
-          <Text fz="sm" c="dimmed">
-            Provide a reason. The user will see this and can resubmit their documents.
-          </Text>
-          <Textarea
-            placeholder="e.g. Selfie does not match government ID..."
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.currentTarget.value)}
-            rows={4}
-            autosize
-          />
+          <Text fz="sm" c="dimmed">Provide a reason. The user will see this and can resubmit their documents.</Text>
+          <Textarea placeholder="e.g. Selfie does not match government ID..." value={rejectionReason} onChange={(e) => setRejectionReason(e.currentTarget.value)} rows={4} autosize />
           <Group justify="flex-end">
             <Button variant="default" onClick={closeReject}>Cancel</Button>
-            <Button
-              color="red"
-              loading={actionLoading}
-              disabled={!rejectionReason.trim()}
-              onClick={handleReject}
-            >
-              Confirm Rejection
-            </Button>
+            <Button color="red" loading={actionLoading} disabled={!rejectionReason.trim()} onClick={handleReject}>Confirm Rejection</Button>
           </Group>
         </Stack>
       </Modal>
@@ -441,15 +367,8 @@ function KycDetailDrawer({
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <Stack gap={2}>
-      <Text fz="xs" c="dimmed">{label}</Text>
-      <Text fz="sm" fw={500}>{value || '-'}</Text>
-    </Stack>
-  )
+  return <Stack gap={2}><Text fz="xs" c="dimmed">{label}</Text><Text fz="sm" fw={500}>{value || '-'}</Text></Stack>
 }
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 20
 
@@ -461,13 +380,12 @@ export function KycApprovals() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const [selected, setSelected] = useState<KycQueueRow | null>(null)
   const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false)
+  const directUserLoaded = useRef(false)
 
   type KycSortKey = 'name' | 'email' | 'submittedAt' | 'kycLevel' | 'status'
   const { sort, toggleSort } = useSortState<KycSortKey>()
@@ -489,15 +407,10 @@ export function KycApprovals() {
     setError(null)
     listKycQueue({ page, limit: PAGE_SIZE, status: activeTab })
       .then((res) => {
-        // Client-side search filter (search not supported server-side on KYC endpoint)
         const filtered = debouncedSearch
           ? res.data.filter((r) => {
               const q = debouncedSearch.toLowerCase()
-              return (
-                r.user.firstName.toLowerCase().includes(q) ||
-                r.user.lastName.toLowerCase().includes(q) ||
-                r.user.email.toLowerCase().includes(q)
-              )
+              return r.user.firstName.toLowerCase().includes(q) || r.user.lastName.toLowerCase().includes(q) || r.user.email.toLowerCase().includes(q)
             })
           : res.data
         setRecords(filtered)
@@ -512,6 +425,21 @@ export function KycApprovals() {
     fetchRecords()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, activeTab, debouncedSearch])
+
+  useEffect(() => {
+    if (directUserLoaded.current) return
+    const userId = new URLSearchParams(window.location.search).get('userId')
+    if (!userId) return
+    directUserLoaded.current = true
+    getKycDetail(userId)
+      .then((record) => {
+        const typed = record as unknown as KycQueueRow
+        setSelected(typed)
+        setActiveTab((typed.status as KycStatusTab) || 'PENDING')
+        openDrawer()
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load KYC record'))
+  }, [openDrawer])
 
   function handleTabChange(tab: string | null) {
     if (!tab) return
@@ -534,133 +462,77 @@ export function KycApprovals() {
 
       <Tabs value={activeTab} onChange={handleTabChange}>
         <Tabs.List>
-          {STATUS_TAB.map((s) => (
-            <Tabs.Tab
-              key={s}
-              value={s}
-              color={STATUS_COLOR[s]}
-            >
-              {s.charAt(0) + s.slice(1).toLowerCase()}
-            </Tabs.Tab>
-          ))}
+          {STATUS_TAB.map((s) => <Tabs.Tab key={s} value={s} color={STATUS_COLOR[s]}>{s.charAt(0) + s.slice(1).toLowerCase()}</Tabs.Tab>)}
         </Tabs.List>
       </Tabs>
 
       {activeTab === 'PENDING' && (
         <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light" radius="md">
-          Most KYC levels now auto-approve on Mono verification. This queue only shows records
-          auto-approval couldn't resolve - ambiguous verification results and legacy submissions
-          from before auto-approval - for manual review.
+          All pending KYC records are shown here. “Waiting for Mono” means the provider session is still unresolved; “Needs review” means staff attention may be required.
         </Alert>
       )}
 
-      <TextInput
-        placeholder="Filter by name or email..."
-        leftSection={<IconSearch size={16} />}
-        value={search}
-        onChange={(e) => { setSearch(e.currentTarget.value); setPage(1) }}
-        w={280}
-        size="sm"
-      />
+      <TextInput placeholder="Filter by name or email..." leftSection={<IconSearch size={16} />} value={search} onChange={(e) => { setSearch(e.currentTarget.value); setPage(1) }} w={280} size="sm" />
 
-      {error && (
-        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">{error}</Alert>
-      )}
+      {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">{error}</Alert>}
 
       <Card withBorder p={0} radius="md">
         <Table.ScrollContainer minWidth={1150}>
-        <Table verticalSpacing="sm" horizontalSpacing="md" layout="fixed">
-          <Table.Thead>
-            <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
-              <Table.Th style={{ color: 'white' }} w={44}>#</Table.Th>
-              <SortableTh label="Name" sortKey="name" sort={sort} onSort={toggleSort} width={180} />
-              <SortableTh label="Email" sortKey="email" sort={sort} onSort={toggleSort} width={230} />
-              <Table.Th style={{ color: 'white' }} w={140}>Phone</Table.Th>
-              <SortableTh label="Submitted" sortKey="submittedAt" sort={sort} onSort={toggleSort} width={140} />
-              <SortableTh label="Level" sortKey="kycLevel" sort={sort} onSort={toggleSort} width={110} />
-              <Table.Th style={{ color: 'white' }} w={150}>Step</Table.Th>
-              <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={140} />
-              <Table.Th style={{ color: 'white' }} w={60} />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <Table.Tr key={i}>
-                  {Array.from({ length: 9 }).map((__, j) => (
-                    <Table.Td key={j}><Skeleton h={20} radius="sm" /></Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
-            ) : records.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={9}>
-                  <Text ta="center" py="xl" c="dimmed">
-                    {search ? 'No records match your search' : `No ${activeTab.toLowerCase()} KYC submissions`}
-                  </Text>
-                </Table.Td>
+          <Table verticalSpacing="sm" horizontalSpacing="md" layout="fixed">
+            <Table.Thead>
+              <Table.Tr style={{ backgroundColor: '#0B6B55' }}>
+                <Table.Th style={{ color: 'white' }} w={44}>#</Table.Th>
+                <SortableTh label="Name" sortKey="name" sort={sort} onSort={toggleSort} width={180} />
+                <SortableTh label="Email" sortKey="email" sort={sort} onSort={toggleSort} width={230} />
+                <Table.Th style={{ color: 'white' }} w={140}>Phone</Table.Th>
+                <SortableTh label="Submitted" sortKey="submittedAt" sort={sort} onSort={toggleSort} width={140} />
+                <SortableTh label="Level" sortKey="kycLevel" sort={sort} onSort={toggleSort} width={110} />
+                <Table.Th style={{ color: 'white' }} w={160}>Step</Table.Th>
+                <SortableTh label="Status" sortKey="status" sort={sort} onSort={toggleSort} width={150} />
+                <Table.Th style={{ color: 'white' }} w={60} />
               </Table.Tr>
-            ) : (
-              sortedRecords.map((r, i) => (
-                <Table.Tr key={r.id}>
-                  <Table.Td>
-                    <Text fz="sm" c="dimmed">{rowNumber(page, PAGE_SIZE, i)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm" fw={500}>{r.user.firstName} {r.user.lastName}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm" c="dimmed">{r.user.email}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm">{r.user.phone ?? '-'}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="sm">{fmt(r.submittedAt)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge size="xs" variant="light" color="blue">
-                      Level {r.kycLevel}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz="xs" c="dimmed">{r.step}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={STATUS_COLOR[r.status] ?? 'gray'} variant="filled" size="sm" radius="sm">
-                      {r.status}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <ActionIcon variant="subtle" color="primary" onClick={() => openDetail(r)}>
-                      <IconEye size={18} stroke={1.5} />
-                    </ActionIcon>
-                  </Table.Td>
-                </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <Table.Tr key={i}>{Array.from({ length: 9 }).map((__, j) => <Table.Td key={j}><Skeleton h={20} radius="sm" /></Table.Td>)}</Table.Tr>
+                ))
+              ) : records.length === 0 ? (
+                <Table.Tr><Table.Td colSpan={9}><Text ta="center" py="xl" c="dimmed">{search ? 'No records match your search' : `No ${activeTab.toLowerCase()} KYC submissions`}</Text></Table.Td></Table.Tr>
+              ) : (
+                sortedRecords.map((r, i) => {
+                  const pending = pendingLabel(r)
+                  return (
+                    <Table.Tr key={r.id}>
+                      <Table.Td><Text fz="sm" c="dimmed">{rowNumber(page, PAGE_SIZE, i)}</Text></Table.Td>
+                      <Table.Td><Text fz="sm" fw={500}>{r.user.firstName} {r.user.lastName}</Text></Table.Td>
+                      <Table.Td><Text fz="sm" c="dimmed">{r.user.email}</Text></Table.Td>
+                      <Table.Td><Text fz="sm">{r.user.phone ?? '-'}</Text></Table.Td>
+                      <Table.Td><Text fz="sm">{fmt(r.submittedAt)}</Text></Table.Td>
+                      <Table.Td><Badge size="xs" variant="light" color="blue">Level {r.kycLevel}</Badge></Table.Td>
+                      <Table.Td>
+                        <Stack gap={3}>
+                          <Text fz="xs" c="dimmed">{r.step}</Text>
+                          {r.status === 'PENDING' && <Badge size="xs" variant="light" color={pending.color}>{pending.label}</Badge>}
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td><Badge color={STATUS_COLOR[r.status] ?? 'gray'} variant="filled" size="sm" radius="sm">{r.status}</Badge></Table.Td>
+                      <Table.Td><ActionIcon variant="subtle" color="primary" onClick={() => openDetail(r)}><IconEye size={18} stroke={1.5} /></ActionIcon></Table.Td>
+                    </Table.Tr>
+                  )
+                })
+              )}
+            </Table.Tbody>
+          </Table>
         </Table.ScrollContainer>
       </Card>
 
       <Group justify="space-between">
-        <Text fz="sm" c="dimmed">
-          {total > 0
-            ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}`
-            : 'No records'}
-        </Text>
-        {totalPages > 1 && (
-          <Pagination total={totalPages} value={page} onChange={setPage} size="sm" color="primary" />
-        )}
+        <Text fz="sm" c="dimmed">{total > 0 ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}` : 'No records'}</Text>
+        {totalPages > 1 && <Pagination total={totalPages} value={page} onChange={setPage} size="sm" color="primary" />}
       </Group>
 
-      <KycDetailDrawer
-        record={selected}
-        opened={drawerOpened}
-        onClose={closeDrawer}
-        onAction={fetchRecords}
-      />
+      <KycDetailDrawer record={selected} opened={drawerOpened} onClose={closeDrawer} onAction={fetchRecords} />
     </Stack>
   )
 }
