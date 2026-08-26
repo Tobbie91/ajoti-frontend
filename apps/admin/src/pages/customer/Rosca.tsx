@@ -46,6 +46,9 @@ interface RoscaGroup {
   slots: string;
   status: GroupStatus;
   admin: string;
+  hasInvite: boolean;
+  canViewDetails: boolean;
+  isRequestingUserAdmin: boolean;
 }
 
 interface JoinedGroup {
@@ -112,6 +115,9 @@ export function Rosca() {
               ? "Invite Only"
               : "Open") as GroupStatus,
             admin: adminName,
+            hasInvite: c.hasInvite ?? false,
+            canViewDetails: c.canViewDetails ?? c.visibility !== "PRIVATE",
+            isRequestingUserAdmin: c.isRequestingUserAdmin ?? false,
           };
         });
         setGroups(mapped);
@@ -326,7 +332,7 @@ export function Rosca() {
                 Become an ajo admin
               </Text>
               <Text size="xs" className="text-[#6B7280]">
-                Complete Level 1 verification, then activate access to manage your own group.
+                Activate admin access to create and manage your own group.
               </Text>
             </div>
             <button
@@ -513,11 +519,23 @@ export function Rosca() {
               </div>
             ) : displayed.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {displayed.map((group) => (
-                  <div
+                {displayed.map((group) => {
+                  const openGroup = () => {
+                    if (group.canViewDetails || group.isRequestingUserAdmin) {
+                      navigate(`/rosca/${group.id}`);
+                    } else if (group.hasInvite) {
+                      navigate("/rosca/invites");
+                    }
+                  };
+                  const hasAction =
+                    group.canViewDetails ||
+                    group.isRequestingUserAdmin ||
+                    group.hasInvite;
+
+                  return <div
                     key={group.id}
-                    onClick={() => navigate(`/rosca/${group.id}`)}
-                    className="flex cursor-pointer flex-col overflow-hidden rounded-2xl shadow-sm transition-shadow hover:shadow-md"
+                    onClick={hasAction ? openGroup : undefined}
+                    className={`flex flex-col overflow-hidden rounded-2xl shadow-sm transition-shadow ${hasAction ? "cursor-pointer hover:shadow-md" : "cursor-default"}`}
                     style={{ backgroundColor: "rgba(0, 200, 83, 0.3)" }}
                   >
                     {/* Card body */}
@@ -591,15 +609,22 @@ export function Rosca() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/rosca/${group.id}`);
+                          openGroup();
                         }}
-                        className="rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold text-[#0F172A] shadow-sm"
+                        disabled={!hasAction}
+                        className={`rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold shadow-sm ${hasAction ? "cursor-pointer text-[#0F172A]" : "cursor-not-allowed text-[#6B7280]"}`}
                       >
-                        {group.status === "Open" ? "Join" : "View"}
+                        {group.status === "Open"
+                          ? "View & Join"
+                          : group.canViewDetails || group.isRequestingUserAdmin
+                            ? "View"
+                            : group.hasInvite
+                              ? "View Invitation"
+                              : "Invite Only"}
                       </button>
                     </div>
-                  </div>
-                ))}
+                  </div>;
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-16">
