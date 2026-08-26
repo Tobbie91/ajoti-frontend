@@ -72,9 +72,6 @@ export function Kyc() {
         }
       }
 
-      // New Level 1 flow collects NOK before Mono. Mono still moves successful
-      // legacy/new Level 1 sessions to NOK_REQUIRED, so if NOK is already stored
-      // we finalise it immediately without asking the user to enter it twice.
       if (
         kyc.kycLevel === 0 &&
         kyc.step === "NOK_REQUIRED" &&
@@ -123,6 +120,22 @@ export function Kyc() {
     }
     loadStatus();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (view !== "prove-pending") return;
+
+    const refreshOnReturn = () => {
+      if (!document.hidden) void loadStatus();
+    };
+
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (view === "loading") {
     return (
