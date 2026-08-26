@@ -20,6 +20,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const location = useLocation()
   const admin = isCircleAdmin()
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/')
+  const ajoActive = location.pathname === '/rosca' || /^\/rosca\/(requests|invites|invite\/|[^/]+(?:\/join|\/summary|\/activities)?$)/.test(location.pathname)
   const commonStyle = (active: boolean) => ({ root: { borderRadius: 8, fontWeight: active ? 600 : 400 } })
 
   return (
@@ -46,8 +47,8 @@ export function Sidebar({ onClose }: SidebarProps) {
         ))}
 
         <NavLink component={RouterNavLink} to="/rosca" label="Ajo"
-          leftSection={<IconUsers size={19} stroke={1.5} />} active={location.pathname === '/rosca' || /^\/rosca\/(requests|invites|invite\/|[^/]+(?:\/join|\/summary|\/activities)?$)/.test(location.pathname)} onClick={onClose}
-          styles={commonStyle(location.pathname === '/rosca')} />
+          leftSection={<IconUsers size={19} stroke={1.5} />} active={ajoActive} onClick={onClose}
+          styles={commonStyle(ajoActive)} />
         <NavLink component={RouterNavLink} to="/target-savings" label="Target Savings"
           leftSection={<IconTargetArrow size={19} stroke={1.5} />} active={isActive('/target-savings')} onClick={onClose}
           styles={commonStyle(isActive('/target-savings'))} />
