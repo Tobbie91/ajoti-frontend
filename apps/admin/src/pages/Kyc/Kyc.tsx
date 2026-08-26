@@ -2,28 +2,7 @@ import { PendingReviewScreen, FullyVerifiedScreen } from "./KycStatusSections";
 import { ProvePendingScreen, UpgradePage } from "./KycUpgradeSections";
 import { OnboardingFlow, OnboardingDoneScreen } from "./KycOnboardingSections";
 import { useState, useEffect } from "react";
-import {
-  Text,
-  TextInput,
-  Progress,
-  Alert,
-  Loader,
-  Badge,
-  Checkbox,
-} from "@mantine/core";
-import {
-  IconArrowLeft,
-  IconCheck,
-  IconUser,
-  IconPhone,
-  IconShieldCheck,
-  IconAlertCircle,
-  IconLock,
-  IconArrowRight,
-  IconClock,
-  IconFingerprint,
-} from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { Loader } from "@mantine/core";
 import {
   proveInitiate,
   submitNok,
@@ -31,24 +10,19 @@ import {
   resubmitKyc,
   type KycStatus,
 } from "@/utils/api";
-import { PhoneInputField } from "@/components";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type OnboardingStep = 1 | 2; // Prove (NIN+BVN) → NOK
 
 type PageView =
   | "loading"
-  | "onboarding" // Level 0: Prove widget → NOK flow
-  | "prove-pending" // Mono widget opened, waiting for webhook (any level)
-  | "onboarding-done" // Just completed Level 1 (auto-approved)
-  | "upgrade-l2" // Level 1 approved, ready to upgrade
-  | "pending-l2" // Level 2 under superadmin review
-  | "rejected-l2" // Level 2 rejected
-  | "upgrade-l3" // Level 2 approved, ready to upgrade
-  | "pending-l3" // Level 3 under superadmin review
-  | "rejected-l3" // Level 3 rejected
-  | "fully-verified"; // Level 3 approved
+  | "onboarding"
+  | "prove-pending"
+  | "onboarding-done"
+  | "upgrade-l2"
+  | "pending-l2"
+  | "rejected-l2"
+  | "upgrade-l3"
+  | "pending-l3"
+  | "rejected-l3"
+  | "fully-verified";
 
 const PROVE_PENDING_STEPS = new Set([
   "PROVE_PENDING",
@@ -75,14 +49,11 @@ function resolveView(kyc: KycStatus | null): PageView {
     return "upgrade-l3";
   }
 
-  // kycLevel === 1
   if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
   if (step === "PHOTO_REQUIRED" && status === "REJECTED") return "rejected-l2";
   if (step === "PHOTO_REQUIRED") return "pending-l2";
   return "upgrade-l2";
 }
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 
 export function Kyc() {
   const [view, setView] = useState<PageView>("loading");
@@ -90,21 +61,41 @@ export function Kyc() {
 
   async function loadStatus() {
     try {
-      const kyc = await getKycStatus();
-      setKycData(kyc);
+      let kyc = await getKycStatus();
+
       if (kyc.kycLevel === 0 && kyc.status === "REJECTED") {
         try {
-          await resubmitKyc();
+          kyc = await resubmitKyc();
         } catch {
-          /* ignore */
+          setView("onboarding");
+          return;
         }
-        setView("onboarding");
+      }
+
+      // New Level 1 flow collects NOK before Mono. Mono still moves successful
+      // legacy/new Level 1 sessions to NOK_REQUIRED, so if NOK is already stored
+      // we finalise it immediately without asking the user to enter it twice.
+      if (
+        kyc.kycLevel === 0 &&
+        kyc.step === "NOK_REQUIRED" &&
+        kyc.nextOfKinName &&
+        kyc.nextOfKinRelationship &&
+        kyc.nextOfKinPhone
+      ) {
+        kyc = await submitNok({
+          nextOfKinName: kyc.nextOfKinName,
+          nextOfKinRelationship: kyc.nextOfKinRelationship,
+          nextOfKinPhone: kyc.nextOfKinPhone,
+        });
+        setKycData(kyc);
+        sessionStorage.removeItem("kyc_widget_opened");
+        setView("onboarding-done");
         return;
       }
+
+      setKycData(kyc);
       const resolved = resolveView(kyc);
-      // Only show the pending screen if the widget was actually opened this session.
-      // Without this, navigating back to /kyc after calling initiate (but before opening
-      // the widget) lands on the blocking pending screen instead of the form.
+
       if (
         resolved === "prove-pending" &&
         sessionStorage.getItem("kyc_widget_opened") !== "true"
@@ -125,10 +116,6 @@ export function Kyc() {
   }
 
   useEffect(() => {
-    // Mono redirects back to /kyc?status=success&reason=... after widget completion.
-    // This can land in a new tab (since we open the widget with window.open), so
-    // sessionStorage won't carry the flag from the original tab. Set it here so
-    // loadStatus() correctly shows the pending screen instead of the form.
     const params = new URLSearchParams(window.location.search);
     if (params.get("status") === "success") {
       sessionStorage.setItem("kyc_widget_opened", "true");
@@ -151,11 +138,9 @@ export function Kyc() {
     async function handleRestart() {
       sessionStorage.removeItem("kyc_widget_opened");
       if (!isUpgrade) {
-        // Level 0: go back to onboarding form so user can re-enter NIN/BVN
         setView("onboarding");
         return;
       }
-      // Level upgrade: re-call initiate and reopen the widget
       try {
         const result = await proveInitiate({});
         if (result.monoUrl) {
@@ -163,7 +148,7 @@ export function Kyc() {
           window.open(result.monoUrl, "_blank", "noopener,noreferrer");
         }
       } catch {
-        /* ignore, stay on pending */
+        /* stay on pending */
       }
     }
 
@@ -226,7 +211,6 @@ export function Kyc() {
     return <FullyVerifiedScreen />;
   }
 
-  // upgrade-l2, upgrade-l3, rejected-l2, rejected-l3
   const kycLevel = kycData?.kycLevel ?? 1;
   const rejectionReason =
     view === "rejected-l2" || view === "rejected-l3"
