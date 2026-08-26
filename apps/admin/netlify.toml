@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "https://admin.ajoti.com/*"
+  to = "https://app.ajoti.com/:splat"
+  status = 301
+  force = true
