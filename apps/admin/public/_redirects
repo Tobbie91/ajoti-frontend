@@ -1,1 +1,4 @@
+https://admin.ajoti.com/*  https://app.ajoti.com/:splat  301!
+https://user.ajoti.com/*   https://app.ajoti.com/:splat  301!
+
 /*  /index.html  200
