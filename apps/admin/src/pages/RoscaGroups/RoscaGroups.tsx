@@ -16,7 +16,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core'
-import { IconChevronDown, IconMailPlus, IconSearch } from '@tabler/icons-react'
+import { IconArchive, IconChevronDown, IconMailPlus, IconSearch } from '@tabler/icons-react'
 import { InviteMemberModal } from '@/components/InviteMemberModal'
 import { listAllRoscaCircles, type RoscaCircle } from '@/utils/api'
 import {
@@ -88,6 +88,7 @@ const statusBackground: Record<GroupDisplayStatus, string> = {
 export function RoscaGroups() {
   const navigate = useNavigate()
   const [allGroups, setAllGroups] = useState<RoscaGroup[]>([])
+  const [archivedCount, setArchivedCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -102,7 +103,11 @@ export function RoscaGroups() {
           ? res
           : ((res as Record<string, unknown>)?.data ??
               (res as Record<string, unknown>)?.circles ?? []) as RoscaCircle[]
-        setAllGroups(circles.map(mapCircleToGroup))
+        const activeCircles = circles.filter(
+          (circle) => (circle.status ?? '').toUpperCase() !== 'CANCELLED',
+        )
+        setArchivedCount(circles.length - activeCircles.length)
+        setAllGroups(activeCircles.map(mapCircleToGroup))
       })
       .catch((err) => console.error('Failed to load ROSCA circles:', err))
       .finally(() => setLoading(false))
@@ -147,13 +152,23 @@ export function RoscaGroups() {
   return (
     <>
       <Stack gap="lg">
-        <Box>
-          <Text fz={22} fw={700} mb={2}>All Groups</Text>
-          <Text fz="sm" c="dimmed">
-            {allGroups.filter((group) => group.status === 'Active').length} active groups ·{' '}
-            {allGroups.filter((group) => group.status === 'Ready').length} ready to start
-          </Text>
-        </Box>
+        <Group justify="space-between" align="flex-start" wrap="wrap">
+          <Box>
+            <Text fz={22} fw={700} mb={2}>All Groups</Text>
+            <Text fz="sm" c="dimmed">
+              {allGroups.filter((group) => group.status === 'Active').length} active groups ·{' '}
+              {allGroups.filter((group) => group.status === 'Ready').length} ready to start
+            </Text>
+          </Box>
+          <Button
+            variant="light"
+            color="gray"
+            leftSection={<IconArchive size={16} />}
+            onClick={() => navigate('/rosca/groups/archive')}
+          >
+            Archive{archivedCount > 0 ? ` (${archivedCount})` : ''}
+          </Button>
+        </Group>
 
         <Group gap="sm" align="end" wrap="wrap">
           <TextInput
