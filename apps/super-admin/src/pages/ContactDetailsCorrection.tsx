@@ -4,9 +4,26 @@ import { IconAlertCircle, IconCheck } from '@tabler/icons-react'
 import { getUserDetail, listUsers } from '@/utils/api'
 import { updateUserContactDetails } from '@/utils/contact-details-api'
 
+const MINIMUM_USER_AGE = 18
+
+function latestAllowedDob() {
+  const today = new Date()
+  const max = new Date(today.getFullYear() - MINIMUM_USER_AGE, today.getMonth(), today.getDate())
+  return [max.getFullYear(), String(max.getMonth() + 1).padStart(2, '0'), String(max.getDate()).padStart(2, '0')].join('-')
+}
+
+function toDateOnly(value: unknown) {
+  if (!value) return ''
+  const text = String(value)
+  return text.length >= 10 ? text.slice(0, 10) : text
+}
+
 export function ContactDetailsCorrection() {
   const [lookupEmail, setLookupEmail] = useState('')
   const [userId, setUserId] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [dob, setDob] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
@@ -23,6 +40,9 @@ export function ContactDetailsCorrection() {
   function clearLoadedUser() {
     setUserId('')
     setName('')
+    setFirstName('')
+    setLastName('')
+    setDob('')
     setEmail('')
     setPhone('')
     setAddress('')
@@ -42,9 +62,6 @@ export function ContactDetailsCorrection() {
     clearLoadedUser()
 
     try {
-      // Support staff know the user's email, not the internal UUID. Use the
-      // existing user-directory search to resolve the exact account, then keep
-      // the UUID internal for the detail/update APIs.
       const results = await listUsers({ search: searchEmail, limit: 20 })
       const exactMatches = results.data.filter(
         (user) => user.email.trim().toLowerCase() === searchEmail,
@@ -64,9 +81,14 @@ export function ContactDetailsCorrection() {
       const detail = await getUserDetail(resolvedUserId)
       const user = detail.user as Record<string, unknown>
       const kyc = (user.kyc ?? {}) as Record<string, unknown>
+      const loadedFirstName = (user.firstName as string) ?? ''
+      const loadedLastName = (user.lastName as string) ?? ''
 
       setUserId(resolvedUserId)
-      setName(`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim())
+      setFirstName(loadedFirstName)
+      setLastName(loadedLastName)
+      setName(`${loadedFirstName} ${loadedLastName}`.trim())
+      setDob(toDateOnly(user.dob))
       setEmail((user.email as string) ?? '')
       setPhone((user.phone as string) ?? '')
       setAddress((kyc.address as string) ?? '')
@@ -85,6 +107,15 @@ export function ContactDetailsCorrection() {
     if (reason.trim().length < 5) {
       return setError('Add the support/verification reason before saving.')
     }
+    if (!firstName.trim() || !lastName.trim()) {
+      return setError('First name and last name are required.')
+    }
+    if (!dob) {
+      return setError('Date of birth is required.')
+    }
+    if (dob > latestAllowedDob()) {
+      return setError(`The corrected date of birth must make the user at least ${MINIMUM_USER_AGE} years old.`)
+    }
 
     setSaving(true)
     setError('')
@@ -92,6 +123,9 @@ export function ContactDetailsCorrection() {
 
     try {
       await updateUserContactDetails(userId, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        dob,
         email: email.trim(),
         phone: phone.trim(),
         address: address.trim(),
@@ -100,11 +134,12 @@ export function ContactDetailsCorrection() {
         lga: lga.trim(),
         reason: reason.trim(),
       })
-      setSuccess('Contact details updated and recorded in the audit trail.')
+      setName(`${firstName.trim()} ${lastName.trim()}`)
+      setSuccess('User details updated and recorded in the audit trail.')
       setLookupEmail(email.trim())
       setReason('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to update contact details')
+      setError(e instanceof Error ? e.message : 'Unable to update user details')
     } finally {
       setSaving(false)
     }
@@ -113,9 +148,9 @@ export function ContactDetailsCorrection() {
   return (
     <Stack gap="lg" maw={760} mx="auto">
       <div>
-        <Title order={2}>Contact Detail Correction</Title>
+        <Title order={2}>Verified User Detail Correction</Title>
         <Text c="dimmed" fz="sm" mt={4}>
-          For verified support requests only. Every change requires a reason and is audited.
+          For verified support requests only. Identity and contact corrections require a reason and are audited.
         </Text>
       </div>
 
@@ -160,6 +195,21 @@ export function ContactDetailsCorrection() {
 
           {name && (
             <>
+              <Text fw={600} fz="sm">Identity details</Text>
+              <Group grow align="flex-start">
+                <TextInput label="First name" value={firstName} onChange={(e) => setFirstName(e.currentTarget.value)} />
+                <TextInput label="Last name" value={lastName} onChange={(e) => setLastName(e.currentTarget.value)} />
+              </Group>
+              <TextInput
+                label="Date of birth"
+                type="date"
+                max={latestAllowedDob()}
+                description="User must be at least 18 years old"
+                value={dob}
+                onChange={(e) => setDob(e.currentTarget.value)}
+              />
+
+              <Text fw={600} fz="sm" mt="xs">Contact details</Text>
               <TextInput label="Email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
               <TextInput
                 label="Phone"
