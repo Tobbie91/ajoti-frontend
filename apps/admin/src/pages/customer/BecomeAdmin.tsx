@@ -4,11 +4,6 @@ import { IconArrowLeft, IconCircleCheck } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { requestAdminAccess, getKycStatus, ApiError } from "@/utils/api";
 
-const BASE_VERIFICATION_ITEMS = [
-  "Active Ajoti member account",
-  "Agreement to ajo group policies",
-];
-
 export function BecomeAdmin() {
   const navigate = useNavigate();
   const [agreed, setAgreed] = useState(false);
@@ -24,11 +19,13 @@ export function BecomeAdmin() {
       .catch(() => setKycLevel(null));
   }, []);
 
+  const kycReady = kycLevel !== null && kycLevel >= 1;
   const verificationItems = [
-    ...(kycLevel !== null && kycLevel < 1 ? ["Complete KYC Level 1"] : []),
-    ...BASE_VERIFICATION_ITEMS,
+    { label: "Complete KYC Level 1", complete: kycReady },
+    { label: "Active Ajoti member account", complete: true },
+    { label: "Agreement to ajo group policies", complete: agreed },
   ];
-  const kycReady = kycLevel === null || kycLevel >= 1;
+  const pendingCount = verificationItems.filter((item) => !item.complete).length;
 
   async function handleSubmit() {
     if (!agreed || submitting || !kycReady) return;
@@ -98,22 +95,51 @@ export function BecomeAdmin() {
 
           <div className="mt-5 flex flex-col gap-4">
             {verificationItems.map((item) => (
-              <div key={item} className="flex items-center gap-3">
-                <IconCircleCheck size={22} color="#02A36E" />
-                <Text fw={500} className="text-[13px] text-[#374151]">
-                  {item}
+              <div key={item.label} className="flex items-center gap-3">
+                {item.complete ? (
+                  <IconCircleCheck size={22} color="#02A36E" />
+                ) : (
+                  <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[#9CA3AF] text-[10px] font-bold text-[#9CA3AF]">
+                    ···
+                  </span>
+                )}
+                <Text
+                  fw={500}
+                  className={
+                    item.complete
+                      ? "text-[13px] text-[#374151]"
+                      : "text-[13px] text-[#4B5563]"
+                  }
+                >
+                  {item.label}
                 </Text>
               </div>
             ))}
           </div>
 
-          {kycLevel !== null && kycLevel < 1 && (
-            <button
-              onClick={() => navigate("/kyc")}
-              className="mt-5 cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
-            >
-              Complete KYC Level 1
-            </button>
+          {pendingCount > 0 && (
+            <div className="mt-6 border-t border-[#E5E7EB] pt-5">
+              <Text className="text-[13px] text-[#6B7280]">
+                {pendingCount} {pendingCount === 1 ? "requirement" : "requirements"} pending to activate access.
+              </Text>
+
+              {kycLevel === null ? (
+                <Text className="mt-3 text-[12px] text-[#6B7280]">
+                  Checking your KYC status...
+                </Text>
+              ) : !kycReady ? (
+                <button
+                  onClick={() => navigate("/kyc")}
+                  className="mt-3 cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
+                >
+                  Complete KYC Level 1 →
+                </button>
+              ) : !agreed ? (
+                <Text className="mt-3 text-[12px] text-[#6B7280]">
+                  Agree to the ajo group policies above to continue.
+                </Text>
+              ) : null}
+            </div>
           )}
         </div>
 
