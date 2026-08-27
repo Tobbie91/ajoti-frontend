@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, TextInput, Progress, Alert, Checkbox } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import {
+  getUserProfile,
   proveInitiate,
   preSubmitNok,
   submitNok,
@@ -54,9 +55,16 @@ export function OnboardingFlow({
   const [kinFullName, setKinFullName] = useState("");
   const [kinRelationship, setKinRelationship] = useState("");
   const [kinPhone, setKinPhone] = useState("");
+  const [registeredPhone, setRegisteredPhone] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    getUserProfile()
+      .then((profile) => setRegisteredPhone(profile.phone?.trim() ?? ""))
+      .catch(() => setRegisteredPhone(""));
+  }, []);
 
   const progressValue = (step / 3) * 100;
 
@@ -66,9 +74,12 @@ export function OnboardingFlow({
 
   const normalizedKinName = kinFullName.trim().replace(/\s+/g, " ");
   const normalizedRelationship = kinRelationship.trim().replace(/\s+/g, " ");
+  const normalizedKinPhone = kinPhone.trim();
   const kinNameValid = normalizedKinName.length >= 2 && normalizedKinName.length <= 100 && PERSON_TEXT_REGEX.test(normalizedKinName);
   const relationshipValid = normalizedRelationship.length >= 2 && normalizedRelationship.length <= 50 && PERSON_TEXT_REGEX.test(normalizedRelationship);
-  const phoneValid = CANONICAL_PHONE_REGEX.test(kinPhone.trim());
+  const phoneFormatValid = CANONICAL_PHONE_REGEX.test(normalizedKinPhone);
+  const phoneMatchesUser = registeredPhone !== "" && normalizedKinPhone === registeredPhone;
+  const phoneValid = phoneFormatValid && !phoneMatchesUser;
 
   function nokReady() {
     return kinNameValid && relationshipValid && phoneValid;
@@ -84,7 +95,7 @@ export function OnboardingFlow({
     const payload = {
       nextOfKinName: normalizedKinName,
       nextOfKinRelationship: normalizedRelationship,
-      nextOfKinPhone: kinPhone.trim(),
+      nextOfKinPhone: normalizedKinPhone,
     };
 
     try {
@@ -123,7 +134,7 @@ export function OnboardingFlow({
         await submitNok({
           nextOfKinName: normalizedKinName,
           nextOfKinRelationship: normalizedRelationship,
-          nextOfKinPhone: kinPhone.trim(),
+          nextOfKinPhone: normalizedKinPhone,
         });
         onComplete();
       }
@@ -330,11 +341,15 @@ export function OnboardingFlow({
                   required
                   styles={inputStyles}
                 />
-                {kinPhone.length > 0 && !phoneValid && (
+                {kinPhone.length > 0 && phoneMatchesUser ? (
+                  <Text fz="xs" c="red" mt={4}>
+                    Your Next of Kin must use a different phone number from your Ajoti account.
+                  </Text>
+                ) : kinPhone.length > 0 && !phoneFormatValid ? (
                   <Text fz="xs" c="red" mt={4}>
                     Enter a complete valid international phone number.
                   </Text>
-                )}
+                ) : null}
               </div>
             </div>
 
