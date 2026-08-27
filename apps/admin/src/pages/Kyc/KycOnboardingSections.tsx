@@ -27,6 +27,8 @@ const inputStyles = {
 };
 
 const ONBOARDING_LABELS = ["Identity", "Next of Kin", "Face Check"];
+const PERSON_TEXT_REGEX = /^[a-zA-Z\s'\-]+$/;
+const CANONICAL_PHONE_REGEX = /^\+(?!2340)[1-9]\d{6,13}$/;
 
 export function OnboardingFlow({
   rejectionReason,
@@ -62,20 +64,26 @@ export function OnboardingFlow({
     return nin.length === 11 && bvn.length === 11;
   }
 
+  const normalizedKinName = kinFullName.trim().replace(/\s+/g, " ");
+  const normalizedRelationship = kinRelationship.trim().replace(/\s+/g, " ");
+  const kinNameValid = normalizedKinName.length >= 2 && normalizedKinName.length <= 100 && PERSON_TEXT_REGEX.test(normalizedKinName);
+  const relationshipValid = normalizedRelationship.length >= 2 && normalizedRelationship.length <= 50 && PERSON_TEXT_REGEX.test(normalizedRelationship);
+  const phoneValid = CANONICAL_PHONE_REGEX.test(kinPhone.trim());
+
   function nokReady() {
-    return (
-      kinFullName.trim() !== "" &&
-      kinPhone.replace(/\D/g, "").length >= 9 &&
-      kinRelationship.trim() !== ""
-    );
+    return kinNameValid && relationshipValid && phoneValid;
   }
 
   async function handleSubmitNok() {
     setError(null);
+    if (!nokReady()) {
+      setError("Please correct the highlighted Next of Kin details before continuing.");
+      return;
+    }
     setSubmitting(true);
     const payload = {
-      nextOfKinName: kinFullName.trim(),
-      nextOfKinRelationship: kinRelationship.trim(),
+      nextOfKinName: normalizedKinName,
+      nextOfKinRelationship: normalizedRelationship,
       nextOfKinPhone: kinPhone.trim(),
     };
 
@@ -113,8 +121,8 @@ export function OnboardingFlow({
         // Non-production test bypass still lands on NOK_REQUIRED. The NOK data is
         // already stored, so submitting the same values completes Level 1.
         await submitNok({
-          nextOfKinName: kinFullName.trim(),
-          nextOfKinRelationship: kinRelationship.trim(),
+          nextOfKinName: normalizedKinName,
+          nextOfKinRelationship: normalizedRelationship,
           nextOfKinPhone: kinPhone.trim(),
         });
         onComplete();
@@ -298,7 +306,9 @@ export function OnboardingFlow({
                 radius="md"
                 value={kinFullName}
                 onChange={(e) => setKinFullName(e.currentTarget.value)}
+                error={kinFullName.length > 0 && !kinNameValid ? "Enter a valid name using letters, spaces, hyphens or apostrophes." : undefined}
                 styles={inputStyles}
+                maxLength={100}
                 required
               />
               <TextInput
@@ -307,16 +317,25 @@ export function OnboardingFlow({
                 radius="md"
                 value={kinRelationship}
                 onChange={(e) => setKinRelationship(e.currentTarget.value)}
+                error={kinRelationship.length > 0 && !relationshipValid ? "Enter a valid relationship using letters only." : undefined}
                 styles={inputStyles}
+                maxLength={50}
                 required
               />
-              <PhoneInputField
-                value={kinPhone}
-                onChange={setKinPhone}
-                label="Phone Number"
-                required
-                styles={inputStyles}
-              />
+              <div>
+                <PhoneInputField
+                  value={kinPhone}
+                  onChange={setKinPhone}
+                  label="Phone Number"
+                  required
+                  styles={inputStyles}
+                />
+                {kinPhone.length > 0 && !phoneValid && (
+                  <Text fz="xs" c="red" mt={4}>
+                    Enter a complete valid international phone number.
+                  </Text>
+                )}
+              </div>
             </div>
 
             <button
