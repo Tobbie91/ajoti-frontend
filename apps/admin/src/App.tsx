@@ -7,7 +7,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { CircleAdminRoute } from '@/components/CircleAdminRoute'
 import { defaultAuthenticatedPath, getTokenRole } from '@/utils/auth-role'
 import {
-  Dashboard, CreateGroup, ManageJoinRequest, RoscaGroups, GroupDetail, EditGroup,
+  Dashboard, CreateGroup, ManageJoinRequest, RoscaGroups, RoscaArchive, GroupDetail, EditGroup,
   Loans, MyDebts, MyWallet, FundWallet, WithdrawFunds, Transactions, Login, VerifyOtp,
   Kyc, MyProfile, FundWalletCallback, SetPin, Messages, Support, SupportTicket, Maintenance,
   TargetSavings,
@@ -59,6 +59,7 @@ function App() {
           <Route path="/create-group" element={<CircleAdminRoute><CreateGroup /></CircleAdminRoute>} />
           <Route path="/manage-join-request" element={<CircleAdminRoute><ManageJoinRequest /></CircleAdminRoute>} />
           <Route path="/rosca/groups" element={<CircleAdminRoute><RoscaGroups /></CircleAdminRoute>} />
+          <Route path="/rosca/groups/archive" element={<CircleAdminRoute><RoscaArchive /></CircleAdminRoute>} />
           <Route path="/rosca/groups/:id" element={<CircleAdminRoute><GroupDetail /></CircleAdminRoute>} />
           <Route path="/rosca/groups/:id/edit" element={<CircleAdminRoute><EditGroup /></CircleAdminRoute>} />
           <Route path="/rosca" element={<Rosca />} />
