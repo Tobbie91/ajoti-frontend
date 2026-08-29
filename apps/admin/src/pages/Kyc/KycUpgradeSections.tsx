@@ -210,17 +210,19 @@ export function ProvePendingScreen({
   awaitingReview: boolean;
 }) {
   const navigate = useNavigate();
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
 
   useEffect(() => {
     async function check() {
       if (document.hidden) return;
       try {
         const kyc = await getKycStatus();
+        setConsecutiveErrors(0);
         if (!kyc.step || !PROVE_PENDING_STEPS.has(kyc.step)) {
           onVerified();
         }
       } catch {
-        /* ignore */
+        setConsecutiveErrors((count) => count + 1);
       }
     }
 
@@ -262,6 +264,17 @@ export function ProvePendingScreen({
               ? "Your Mono session is still active. Continue the existing verification—starting another session is not necessary."
               : "Your verification is being processed by Mono. This page will update automatically when a final result arrives."}
         </Text>
+        {consecutiveErrors >= 3 && (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            color="yellow"
+            radius="md"
+            className="mb-4 text-left"
+          >
+            We cannot refresh your verification status right now. Check your connection, then use
+            Check Status below. Your verification progress has not been reset.
+          </Alert>
+        )}
         {!awaitingReview && (
           <Loader color="#02A36E" size="sm" className="mx-auto" />
         )}

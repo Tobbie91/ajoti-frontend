@@ -3,12 +3,7 @@ import { ProvePendingScreen, UpgradePage } from "./KycUpgradeSections";
 import { OnboardingFlow, OnboardingDoneScreen } from "./KycOnboardingSections";
 import { useCallback, useEffect, useState } from "react";
 import { Loader } from "@mantine/core";
-import {
-  submitNok,
-  getKycStatus,
-  resubmitKyc,
-  type KycStatus,
-} from "@/utils/api";
+import { getKycStatus, resubmitKyc, type KycStatus } from "@/utils/api";
 
 type PageView =
   | "loading"
@@ -68,24 +63,7 @@ export function Kyc() {
   const loadStatus = useCallback(async () => {
     try {
       setLoadError(null);
-      let kyc = await getKycStatus();
-
-      if (
-        kyc.kycLevel === 0 &&
-        kyc.step === "NOK_REQUIRED" &&
-        kyc.nextOfKinName &&
-        kyc.nextOfKinRelationship &&
-        kyc.nextOfKinPhone
-      ) {
-        kyc = await submitNok({
-          nextOfKinName: kyc.nextOfKinName,
-          nextOfKinRelationship: kyc.nextOfKinRelationship,
-          nextOfKinPhone: kyc.nextOfKinPhone,
-        });
-        setKycData(kyc);
-        setView("onboarding-done");
-        return;
-      }
+      const kyc = await getKycStatus();
 
       setKycData(kyc);
       setView(resolveView(kyc));
