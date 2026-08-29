@@ -9,6 +9,7 @@ import {
   getUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
+  getUserProfile,
   type AppNotification,
 } from '@/utils/api'
 
@@ -168,6 +169,32 @@ export function Header({ opened, onToggle }: HeaderProps) {
     [storedUser.firstName, storedUser.lastName].filter(Boolean).join(' ') || 'My account'
   )
   const initials = fullName.charAt(0).toUpperCase()
+
+  useEffect(() => {
+    let active = true
+    getUserProfile()
+      .then((profile) => {
+        if (!active) return
+        const canonicalName = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim()
+        if (!canonicalName) return
+
+        setFullName(canonicalName)
+        const currentUser = JSON.parse(localStorage.getItem('user') ?? '{}')
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            ...currentUser,
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+          }),
+        )
+      })
+      .catch(() => {})
+
+    return () => {
+      active = false
+    }
+  }, [])
 
 
   return (

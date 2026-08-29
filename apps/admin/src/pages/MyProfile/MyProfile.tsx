@@ -494,6 +494,14 @@ export function MyProfile() {
                 </div>
             </div>
 
+            <button
+                onClick={handleLogout}
+                className="mb-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#D1D5DB] bg-white py-3.5 text-[14px] font-semibold text-[#374151] hover:bg-[#F9FAFB]"
+            >
+                <IconLogout size={18} />
+                Log Out
+            </button>
+
             <div className="mb-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
                 <Text fw={700} className="mb-5 text-[15px] text-[#0F172A]">Personal Information</Text>
                 <div className="flex flex-col gap-4">
@@ -629,15 +637,6 @@ export function MyProfile() {
                     <IconChevronRight size={16} color="#9CA3AF" />
                 </button>
             </div>
-
-            {/* Session action is deliberately separated from account state/destructive actions. */}
-            <button
-                onClick={handleLogout}
-                className="mb-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#D1D5DB] bg-white py-3.5 text-[14px] font-semibold text-[#374151] hover:bg-[#F9FAFB]"
-            >
-                <IconLogout size={18} />
-                Log Out
-            </button>
 
             <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
                 <div className="mb-4 flex items-center justify-between">

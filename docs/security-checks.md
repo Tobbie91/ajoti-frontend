@@ -26,4 +26,4 @@ Review direct versus transitive ownership, runtime reachability, and fix availab
 
 OWASP ZAP is excluded from the default workflow because it requires a safe running target. A future baseline scan may target a disposable localhost environment or explicitly approved staging environment, never production.
 
-For GitHub Actions, use separate dependency, Semgrep, and Gitleaks jobs; pin actions by commit SHA, use read-only permissions, and upload JSON/SARIF artifacts.
+`.github/workflows/security.yml` provides separate dependency, Semgrep, and Gitleaks jobs for pull requests and pushes to `dev`, `staging`, and `main`. Actions are pinned to commit SHAs and workflow permissions are read-only.
