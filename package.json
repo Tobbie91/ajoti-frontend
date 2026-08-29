@@ -7,6 +7,14 @@
     },
     "scripts": {
         "build:admin": "pnpm --filter ajoti-admin build",
-        "build:super-admin": "pnpm --filter ajoti-super-admin build"
+        "build:super-admin": "pnpm --filter ajoti-super-admin build",
+        "lint": "corepack pnpm --recursive --if-present lint",
+        "security:cve": "corepack pnpm audit --audit-level=high",
+        "security:cve:json": "corepack pnpm audit --json",
+        "security:sast": "semgrep scan --config .semgrep.yml --error",
+        "security:sast:json": "semgrep scan --config .semgrep.yml --json --output security-semgrep.json",
+        "security:secrets": "gitleaks git . --config .gitleaks.toml --redact --no-banner",
+        "security:secrets:json": "gitleaks git . --config .gitleaks.toml --redact --report-format json --report-path security-gitleaks.json --no-banner",
+        "security:all": "corepack pnpm security:cve && corepack pnpm security:sast && corepack pnpm security:secrets"
     }
 }
