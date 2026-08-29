@@ -1,0 +1,12 @@
+# Do not add suppressions without an entry. Dates use YYYY-MM-DD.
+accepted_risks: []
+# Example fields:
+# - id: CVE-YYYY-NNNN
+#   component: package@version
+#   severity: high
+#   direct_dependency: false
+#   owner: security@example.com
+#   justification: "Why the finding is not currently exploitable or fixable"
+#   compensating_controls: "Controls that reduce likelihood or impact"
+#   accepted_on: YYYY-MM-DD
+#   expires_on: YYYY-MM-DD

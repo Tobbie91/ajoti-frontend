@@ -1,0 +1,19 @@
+title = "Ajoti frontend secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated, dependency, test-fixture, and example configuration paths"
+paths = [
+  '''(^|/)(node_modules|dist|dist-ssr|build|coverage|\.vite)(/|$)''',
+  '''(^|/)(fixtures|__fixtures__)(/|$)''',
+  '''(^|/).*\.(spec|test)\.(ts|tsx)$''',
+  '''(^|/)\.env\.example$''',
+]
+
+[[allowlists]]
+description = "Obvious documentation placeholders"
+regexes = [
+  '''(?i)(example|placeholder|replace[-_ ]?me|your[-_ ][a-z0-9_-]+|test[-_ ]?(secret|token|key))''',
+]
