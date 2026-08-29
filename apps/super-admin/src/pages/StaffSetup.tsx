@@ -13,7 +13,10 @@ import {
 import { IconAlertCircle, IconCheck } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { staffSetup } from '@/utils/api'
+import { ApiError, staffSetup } from '@/utils/api'
+import { PhoneInputField, isAdultDob, parseCalendarDate, validatePersonName, validatePhone } from '@ajoti/shared'
+
+type StaffSetupField = 'firstName' | 'lastName' | 'dob' | 'gender' | 'phone' | 'password' | 'confirmPassword'
 
 export function StaffSetup() {
   const [searchParams] = useSearchParams()
@@ -32,26 +35,40 @@ export function StaffSetup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [touched, setTouched] = useState<Partial<Record<StaffSetupField, boolean>>>({})
+  const [serverErrors, setServerErrors] = useState<Partial<Record<StaffSetupField, string>>>({})
 
   function set(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
+    setServerErrors((current) => {
+      const next = { ...current }
+      delete next[field as StaffSetupField]
+      return next
+    })
   }
 
-  function validate(): string | null {
-    if (!token) return 'Missing invite token. Please use the link from your invite email.'
-    if (!form.firstName.trim()) return 'First name is required.'
-    if (!form.lastName.trim()) return 'Last name is required.'
-    if (!form.dob) return 'Date of birth is required.'
-    if (!form.gender) return 'Gender is required.'
-    if (!form.phone.trim()) return 'Phone number is required.'
-    if (form.password.length < 8) return 'Password must be at least 8 characters.'
-    if (form.password !== form.confirmPassword) return 'Passwords do not match.'
-    return null
+  function validationErrors(): Partial<Record<StaffSetupField, string>> {
+    const dob = parseCalendarDate(form.dob)
+    return {
+      firstName: validatePersonName(form.firstName, 'First name'),
+      lastName: validatePersonName(form.lastName, 'Last name'),
+      dob: !form.dob ? 'Date of birth is required.' : !dob || !isAdultDob(dob) ? 'Staff must be at least 18 years old.' : undefined,
+      gender: !form.gender ? 'Gender is required.' : undefined,
+      phone: validatePhone(form.phone),
+      password: form.password.length < 8 || form.password.length > 20 ? 'Password must be between 8 and 20 characters.' : undefined,
+      confirmPassword: !form.confirmPassword ? 'Please repeat the password.' : form.password !== form.confirmPassword ? 'Passwords do not match.' : undefined,
+      ...serverErrors,
+    }
   }
+
+  const errors = validationErrors()
+  const fieldError = (field: StaffSetupField) => touched[field] || submitted ? errors[field] : undefined
 
   async function handleSubmit() {
-    const validationError = validate()
-    if (validationError) { setError(validationError); return }
+    setSubmitted(true)
+    const validationMessages = Object.values(errors).filter(Boolean)
+    if (validationMessages.length) { setError(validationMessages.join(' ')); return }
 
     setLoading(true)
     setError('')
@@ -85,7 +102,12 @@ export function StaffSetup() {
       setDone(true)
       setTimeout(() => navigate('/'), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Setup failed. Please try again.')
+      if (e instanceof ApiError) {
+        setServerErrors(Object.fromEntries(Object.entries(e.fieldErrors).map(([field, messages]) => [field, messages.join(' ')])))
+        setError(e.messages.join(' '))
+      } else {
+        setError(e instanceof Error ? e.message : 'Setup failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -134,6 +156,8 @@ export function StaffSetup() {
               placeholder="Jane"
               value={form.firstName}
               onChange={(e) => set('firstName', e.currentTarget.value)}
+              onBlur={() => setTouched((current) => ({ ...current, firstName: true }))}
+              error={fieldError('firstName')}
               required
             />
             <TextInput
@@ -141,6 +165,8 @@ export function StaffSetup() {
               placeholder="Smith"
               value={form.lastName}
               onChange={(e) => set('lastName', e.currentTarget.value)}
+              onBlur={() => setTouched((current) => ({ ...current, lastName: true }))}
+              error={fieldError('lastName')}
               required
             />
           </Group>
@@ -151,6 +177,8 @@ export function StaffSetup() {
             placeholder="1990-01-15"
             value={form.dob}
             onChange={(e) => set('dob', e.currentTarget.value)}
+            onBlur={() => setTouched((current) => ({ ...current, dob: true }))}
+            error={fieldError('dob')}
             required
           />
 
@@ -163,15 +191,16 @@ export function StaffSetup() {
             ]}
             value={form.gender || null}
             onChange={(v) => set('gender', v ?? '')}
+            error={fieldError('gender')}
             required
           />
 
-          <TextInput
+          <PhoneInputField
             label="Phone number"
-            description="International format, e.g. +2348012345678"
-            placeholder="+2348012345678"
             value={form.phone}
-            onChange={(e) => set('phone', e.currentTarget.value)}
+            onChange={(value) => set('phone', value)}
+            onBlur={() => setTouched((current) => ({ ...current, phone: true }))}
+            error={fieldError('phone')}
             required
           />
 
@@ -181,6 +210,8 @@ export function StaffSetup() {
             placeholder="Create a strong password"
             value={form.password}
             onChange={(e) => set('password', e.currentTarget.value)}
+            onBlur={() => setTouched((current) => ({ ...current, password: true }))}
+            error={fieldError('password')}
             required
           />
 
@@ -189,6 +220,8 @@ export function StaffSetup() {
             placeholder="Repeat your password"
             value={form.confirmPassword}
             onChange={(e) => set('confirmPassword', e.currentTarget.value)}
+            onBlur={() => setTouched((current) => ({ ...current, confirmPassword: true }))}
+            error={fieldError('confirmPassword')}
             required
           />
 

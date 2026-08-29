@@ -39,6 +39,7 @@ interface GroupData {
   admin: string;
   adminBio: string;
   completionRate: string;
+  isCurrentUserAdmin: boolean;
 }
 
 interface ScheduleRow {
@@ -146,6 +147,7 @@ export function GroupDetails() {
               (circle as Record<string, unknown>).adminBio ?? "",
             ),
             completionRate: `${(circle as Record<string, unknown>).completionRate ?? 0}%`,
+            isCurrentUserAdmin: circle.isRequestingUserAdmin ?? false,
           });
         }
         setSchedule(
@@ -191,6 +193,7 @@ export function GroupDetails() {
   }
 
   const isInviteOnly = group.status === "Invite Only";
+  const isCurrentUserAdmin = group.isCurrentUserAdmin;
   const isMember =
     membersLoaded && members.some((m) => m.userId === currentUserId);
   const canLeave =
@@ -297,7 +300,7 @@ export function GroupDetails() {
           )}
         </div>
 
-        {/* Invite-Only Notice */}
+        {/* Private Group Notice */}
         {isInviteOnly && (
           <div className="flex items-start gap-3 rounded-xl border border-[#FBBF24] bg-[#FFFBEB] px-5 py-4">
             <IconLock
@@ -307,10 +310,10 @@ export function GroupDetails() {
             />
             <div>
               <Text fw={600} className="text-[14px] text-[#92400E]">
-                This group is private and requires an invite to join.
+                This is a private group.
               </Text>
               <Text fw={500} className="mt-0.5 text-[13px] text-[#B45309]">
-                Contact the admin for access.
+                Join requests are reviewed and approved or rejected by the group admin.
               </Text>
             </div>
           </div>
@@ -429,7 +432,7 @@ export function GroupDetails() {
         </div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_280px_280px] md:gap-5">
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_280px] md:gap-5">
           {/* Payout Timeline */}
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">
@@ -483,7 +486,14 @@ export function GroupDetails() {
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-4">
-            {isMember ? (
+            {isCurrentUserAdmin ? (
+              <button
+                onClick={() => navigate(`/rosca/groups/${id}`)}
+                className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
+              >
+                Manage Group
+              </button>
+            ) : isMember ? (
               <button
                 onClick={() => navigate(`/rosca/${id}/activities`)}
                 className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
@@ -542,27 +552,11 @@ export function GroupDetails() {
                 </div>
               </div>
             )}
-            {!isMember && (
+            {!isMember && !isCurrentUserAdmin && (
               <button className="w-full cursor-pointer rounded-xl border-2 border-[#EF4444] py-4 text-[15px] font-semibold text-[#EF4444]">
                 Report Group
               </button>
             )}
-          </div>
-
-          {/* Promo Card */}
-          <div className="rounded-2xl bg-[#FCBC00] p-6">
-            <Text fw={700} className="text-[18px] leading-snug text-white">
-              Want easy PAYOUT in your first cycle?
-            </Text>
-            <Text
-              fw={400}
-              className="mt-2 text-[13px] leading-relaxed text-white/90"
-            >
-              Bid for the first slot and get your payout early.
-            </Text>
-            <button className="mt-4 cursor-pointer rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold text-[#FCBC00]">
-              Try Now
-            </button>
           </div>
         </div>
       </div>

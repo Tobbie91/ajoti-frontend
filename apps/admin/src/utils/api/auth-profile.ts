@@ -129,6 +129,8 @@ export interface KycStatus {
   step?: string;
   kycLevel: number; // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
   rejectionReason?: string | null;
+  providerStatus?: string | null;
+  monoUrl?: string | null;
   verificationData?: Record<string, unknown> | null;
   nextOfKinName?: string;
   nextOfKinRelationship?: string;
@@ -150,10 +152,6 @@ export function resubmitKyc(): Promise<KycStatus> {
 export interface ProveInitiatePayload {
   nin?: string;
   bvn?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  email?: string;
 }
 
 export function proveInitiate(

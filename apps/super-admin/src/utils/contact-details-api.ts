@@ -7,6 +7,9 @@ const client = createApiClient({
 })
 
 export interface ContactDetailsUpdate {
+  firstName?: string
+  lastName?: string
+  dob?: string
   email?: string
   phone?: string
   address?: string

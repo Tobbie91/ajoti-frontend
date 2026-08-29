@@ -85,6 +85,24 @@ export function Home() {
           onFundWallet={() => navigate("/create-wallet")}
           onTransfer={() => navigate("/withdraw")}
         />
+
+        <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-[#043F32] to-[#02A36E] p-6 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-8">
+          <div>
+            <Text fw={700} className="text-[20px] sm:text-[24px] text-white">
+              Ready to run your own ajo?
+            </Text>
+            <Text size="sm" className="mt-1 max-w-[620px] text-white/85">
+              Become an Ajo Admin to create groups, invite members and manage contributions from one place.
+            </Text>
+          </div>
+          <button
+            onClick={() => navigate("/rosca/become-admin")}
+            className="w-full cursor-pointer rounded-xl bg-white px-6 py-3.5 text-[14px] font-semibold text-[#026A4B] shadow-sm sm:w-auto"
+          >
+            Become an Ajo Admin
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
           <SummaryCard
             title="Total Balance"

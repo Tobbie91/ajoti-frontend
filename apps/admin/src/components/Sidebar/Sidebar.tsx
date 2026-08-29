@@ -1,15 +1,14 @@
-import { useState } from 'react'
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom'
 import { NavLink, Stack, Box, Divider } from '@mantine/core'
 import {
-  IconLayoutDashboard, IconTopologyRing, IconWallet, IconCash, IconAlertTriangle,
+  IconLayoutDashboard, IconWallet, IconCash, IconAlertTriangle,
   IconUserCircle, IconUserCheck, IconCirclePlus, IconUsers, IconMessageCircle, IconHeadset,
   IconTargetArrow,
   IconHome2, IconReceipt2,
 } from '@tabler/icons-react'
 import { isCircleAdmin } from '@/utils/auth-role'
 
-const roscaChildren = [
+const adminRoscaLinks = [
   { label: 'Groups', path: '/rosca/groups', icon: IconUsers },
   { label: 'Create Group', path: '/create-group', icon: IconCirclePlus },
   { label: 'Join Requests', path: '/manage-join-request', icon: IconUserCheck },
@@ -20,10 +19,8 @@ interface SidebarProps { onClose?: () => void }
 export function Sidebar({ onClose }: SidebarProps) {
   const location = useLocation()
   const admin = isCircleAdmin()
-  const roscaPaths = ['/rosca', '/create-group', '/manage-join-request']
-  const isRoscaSection = roscaPaths.some((p) => location.pathname.startsWith(p))
-  const [roscaOpened, setRoscaOpened] = useState(isRoscaSection)
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/')
+  const ajoActive = location.pathname === '/rosca' || /^\/rosca\/(requests|invites|invite\/|[^/]+(?:\/join|\/summary|\/activities)?$)/.test(location.pathname)
   const commonStyle = (active: boolean) => ({ root: { borderRadius: 8, fontWeight: active ? 600 : 400 } })
 
   return (
@@ -36,17 +33,22 @@ export function Sidebar({ onClose }: SidebarProps) {
           leftSection={<IconLayoutDashboard size={19} stroke={1.5} />} active={location.pathname === '/dashboard'} onClick={onClose}
           styles={commonStyle(location.pathname === '/dashboard')} />}
 
-        {admin && <NavLink label="Ajo Management" leftSection={<IconTopologyRing size={19} stroke={1.5} />}
-          childrenOffset={24} opened={roscaOpened} onChange={() => setRoscaOpened((o) => !o)} active={isRoscaSection}
-          styles={{ root: { borderRadius: 8 } }}>
-          {roscaChildren.map((child) => <NavLink key={child.path} component={RouterNavLink} to={child.path} label={child.label}
-            leftSection={<child.icon size={15} stroke={1.5} />} active={isActive(child.path)} onClick={onClose}
-            styles={{ root: { borderRadius: 8 } }} />)}
-        </NavLink>}
+        {admin && adminRoscaLinks.map((item) => (
+          <NavLink
+            key={item.path}
+            component={RouterNavLink}
+            to={item.path}
+            label={item.label}
+            leftSection={<item.icon size={19} stroke={1.5} />}
+            active={isActive(item.path)}
+            onClick={onClose}
+            styles={commonStyle(isActive(item.path))}
+          />
+        ))}
 
         <NavLink component={RouterNavLink} to="/rosca" label="Ajo"
-          leftSection={<IconUsers size={19} stroke={1.5} />} active={location.pathname === '/rosca' || /^\/rosca\/(requests|invites|invite\/|[^/]+(?:\/join|\/summary|\/activities)?$)/.test(location.pathname)} onClick={onClose}
-          styles={commonStyle(location.pathname === '/rosca')} />
+          leftSection={<IconUsers size={19} stroke={1.5} />} active={ajoActive} onClick={onClose}
+          styles={commonStyle(ajoActive)} />
         <NavLink component={RouterNavLink} to="/target-savings" label="Target Savings"
           leftSection={<IconTargetArrow size={19} stroke={1.5} />} active={isActive('/target-savings')} onClick={onClose}
           styles={commonStyle(isActive('/target-savings'))} />

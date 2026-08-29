@@ -10,12 +10,10 @@ import {
   IconFingerprint,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import {
-  proveInitiate,
-  preSubmitNok,
-  submitNok,
-} from "@/utils/api";
+import { proveInitiate, preSubmitNok, submitNok } from "@/utils/api";
+import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
+import { normalizePhoneForComparison, PERSON_NAME_REGEX, validatePhone } from "@ajoti/shared";
 
 import { LimitCard, VerificationDataCard } from "./KycStatusSections";
 
@@ -27,73 +25,96 @@ const inputStyles = {
 };
 
 const ONBOARDING_LABELS = ["Identity", "Next of Kin", "Face Check"];
-
 export function OnboardingFlow({
   rejectionReason,
   onComplete,
-  onProvePending,
   identityVerified = false,
 }: {
   rejectionReason?: string | null;
   onComplete: () => void;
-  onProvePending: () => void;
   identityVerified?: boolean;
 }) {
   const navigate = useNavigate();
-  // Existing users who already passed the previous provider keep the legacy NOK-completion path.
-  // New users collect identity details, then NOK, and only then open Dojah.
   const [step, setStep] = useState<OnboardingStep>(identityVerified ? 2 : 1);
-
   const [nin, setNin] = useState("");
   const [bvn, setBvn] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [initiating, setInitiating] = useState(false);
-
   const [kinFullName, setKinFullName] = useState("");
   const [kinRelationship, setKinRelationship] = useState("");
   const [kinPhone, setKinPhone] = useState("");
-
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [identityAttempted, setIdentityAttempted] = useState(false);
+  const [nokAttempted, setNokAttempted] = useState(false);
+  const [kinPhoneServerError, setKinPhoneServerError] = useState<string>();
 
-  const storedUser = localStorage.getItem("user");
-  const userProfile = storedUser ? JSON.parse(storedUser) : null;
+  const [accountPhone] = useState(() => {
+    try {
+      return (JSON.parse(localStorage.getItem("user") ?? "{}") as { phone?: string }).phone;
+    } catch {
+      return undefined;
+    }
+  });
 
   const progressValue = (step / 3) * 100;
-
   function identityReady() {
     return nin.length === 11 && bvn.length === 11;
   }
-
+  const normalizedKinName = kinFullName.trim().replace(/\s+/g, " ");
+  const normalizedRelationship = kinRelationship.trim().replace(/\s+/g, " ");
+  const kinNameValid =
+    normalizedKinName.length >= 2 &&
+    normalizedKinName.length <= 100 &&
+    PERSON_NAME_REGEX.test(normalizedKinName);
+  const relationshipValid =
+    normalizedRelationship.length >= 2 &&
+    normalizedRelationship.length <= 50 &&
+    PERSON_NAME_REGEX.test(normalizedRelationship);
+  const phoneError =
+    validatePhone(kinPhone.trim()) ??
+    (accountPhone &&
+    normalizePhoneForComparison(accountPhone) === normalizePhoneForComparison(kinPhone)
+      ? "Use a different number from your Ajoti account."
+      : undefined) ??
+    kinPhoneServerError;
+  const phoneValid = !phoneError;
   function nokReady() {
-    return (
-      kinFullName.trim() !== "" &&
-      kinPhone.replace(/\D/g, "").length >= 9 &&
-      kinRelationship.trim() !== ""
-    );
+    return kinNameValid && relationshipValid && phoneValid;
   }
 
   async function handleSubmitNok() {
+    setNokAttempted(true);
     setError(null);
+    if (!nokReady()) {
+      setError(
+        "Please correct the highlighted Next of Kin details before continuing.",
+      );
+      return;
+    }
     setSubmitting(true);
     const payload = {
-      nextOfKinName: kinFullName.trim(),
-      nextOfKinRelationship: kinRelationship.trim(),
+      nextOfKinName: normalizedKinName,
+      nextOfKinRelationship: normalizedRelationship,
       nextOfKinPhone: kinPhone.trim(),
     };
-
     try {
       if (identityVerified) {
-        // Backwards compatibility for sessions that completed identity verification before this flow changed.
         await submitNok(payload);
         onComplete();
         return;
       }
-
       await preSubmitNok(payload);
       setStep(3);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save Next of Kin. Please try again.");
+      if (err instanceof ApiError && err.fieldErrors.nextOfKinPhone?.length) {
+        setKinPhoneServerError(err.fieldErrors.nextOfKinPhone.join(" "));
+      }
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save Next of Kin. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -103,26 +124,14 @@ export function OnboardingFlow({
     setError(null);
     setInitiating(true);
     try {
-      const p = userProfile ?? {};
-      const result = await proveInitiate({
-        nin: nin.trim(),
-        bvn: bvn.trim(),
-        firstName: p.firstName || p.firstname || "",
-        lastName: p.lastName || p.lastname || "",
-        phone: p.phone || p.phoneNumber || "",
-        ...(p.email ? { email: p.email } : {}),
-      });
-
+      const result = await proveInitiate({ nin: nin.trim(), bvn: bvn.trim() });
       if (result.monoUrl) {
-        sessionStorage.setItem("kyc_widget_opened", "true");
-        window.open(result.monoUrl, "_blank", "noopener,noreferrer");
-        onProvePending();
+        window.location.assign(result.monoUrl);
+        return;
       } else {
-        // Non-production test bypass still lands on NOK_REQUIRED. The NOK data is
-        // already stored, so submitting the same values completes Level 1.
         await submitNok({
-          nextOfKinName: kinFullName.trim(),
-          nextOfKinRelationship: kinRelationship.trim(),
+          nextOfKinName: normalizedKinName,
+          nextOfKinRelationship: normalizedRelationship,
           nextOfKinPhone: kinPhone.trim(),
         });
         onComplete();
@@ -136,6 +145,16 @@ export function OnboardingFlow({
     } finally {
       setInitiating(false);
     }
+  }
+
+  function handleIdentityContinue() {
+    setIdentityAttempted(true);
+    if (!identityReady()) {
+      setError("NIN and BVN must each contain exactly 11 digits.");
+      return;
+    }
+    setError(null);
+    setStep(2);
   }
 
   return (
@@ -163,10 +182,14 @@ export function OnboardingFlow({
           <div className="w-[34px]" />
         </div>
         <div className="mx-auto max-w-[600px] px-6 pb-4">
-          <Progress value={progressValue} size="sm" radius="xl" color="#02A36E" />
+          <Progress
+            value={progressValue}
+            size="sm"
+            radius="xl"
+            color="#02A36E"
+          />
         </div>
       </div>
-
       <div className="mx-auto max-w-[600px] px-6 py-8">
         {rejectionReason && (
           <Alert
@@ -179,7 +202,6 @@ export function OnboardingFlow({
             {rejectionReason}
           </Alert>
         )}
-
         <div className="mb-8 flex items-center justify-center gap-8 sm:gap-12">
           {ONBOARDING_LABELS.map((label, i) => {
             const n = i + 1;
@@ -188,13 +210,7 @@ export function OnboardingFlow({
             return (
               <div key={label} className="flex flex-col items-center gap-2">
                 <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold ${
-                    isDone
-                      ? "bg-[#02A36E] text-white"
-                      : isActive
-                        ? "border-2 border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]"
-                        : "border-2 border-[#E5E7EB] bg-white text-[#9CA3AF]"
-                  }`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold ${isDone ? "bg-[#02A36E] text-white" : isActive ? "border-2 border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]" : "border-2 border-[#E5E7EB] bg-white text-[#9CA3AF]"}`}
                 >
                   {isDone ? <IconCheck size={16} /> : n}
                 </div>
@@ -208,7 +224,6 @@ export function OnboardingFlow({
             );
           })}
         </div>
-
         {error && (
           <Alert
             icon={<IconAlertCircle size={16} />}
@@ -222,7 +237,6 @@ export function OnboardingFlow({
             {error}
           </Alert>
         )}
-
         {step === 1 && (
           <div className="flex flex-col gap-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="flex items-center gap-3">
@@ -230,61 +244,78 @@ export function OnboardingFlow({
                 <IconShieldCheck size={20} color="#3B82F6" />
               </div>
               <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">Identity Details</Text>
+                <Text fw={700} className="text-[16px] text-[#0F172A]">
+                  Identity Details
+                </Text>
                 <Text fw={400} className="text-[13px] text-[#6B7280]">
-                  Enter your NIN and BVN. We will verify them after your Next of Kin details.
+                  Enter your NIN and BVN. We will verify them after your Next of
+                  Kin details.
                 </Text>
               </div>
             </div>
-
             <TextInput
               label="National Identification Number (NIN)"
               placeholder="11-digit NIN"
               radius="md"
               value={nin}
-              onChange={(e) => setNin(e.currentTarget.value.replace(/\D/g, "").slice(0, 11))}
+              onChange={(e) =>
+                setNin(e.currentTarget.value.replace(/\D/g, "").slice(0, 11))
+              }
               styles={inputStyles}
               maxLength={11}
+              error={identityAttempted && nin.length !== 11 ? "NIN must contain exactly 11 digits." : undefined}
+              description={`${nin.length}/11 digits`}
               required
-              rightSection={nin.length === 11 ? <IconCheck size={16} color="#02A36E" /> : null}
+              rightSection={
+                nin.length === 11 ? (
+                  <IconCheck size={16} color="#02A36E" />
+                ) : null
+              }
             />
-
             <TextInput
               label="Bank Verification Number (BVN)"
               placeholder="11-digit BVN"
               radius="md"
               value={bvn}
-              onChange={(e) => setBvn(e.currentTarget.value.replace(/\D/g, "").slice(0, 11))}
+              onChange={(e) =>
+                setBvn(e.currentTarget.value.replace(/\D/g, "").slice(0, 11))
+              }
               styles={inputStyles}
               maxLength={11}
+              error={identityAttempted && bvn.length !== 11 ? "BVN must contain exactly 11 digits." : undefined}
+              description={`${bvn.length}/11 digits`}
               required
-              rightSection={bvn.length === 11 ? <IconCheck size={16} color="#02A36E" /> : null}
+              rightSection={
+                bvn.length === 11 ? (
+                  <IconCheck size={16} color="#02A36E" />
+                ) : null
+              }
             />
-
             <div className="flex flex-col gap-1 rounded-xl bg-[#F9FAFB] p-4">
-              <Text fw={500} className="text-[12px] text-[#374151]">Where to find these?</Text>
-              <Text fw={400} className="text-[12px] leading-[1.6] text-[#6B7280]">
+              <Text fw={500} className="text-[12px] text-[#374151]">
+                Where to find these?
+              </Text>
+              <Text
+                fw={400}
+                className="text-[12px] leading-[1.6] text-[#6B7280]"
+              >
                 <strong>NIN:</strong> on your National ID card or dial *346#
               </Text>
-              <Text fw={400} className="text-[12px] leading-[1.6] text-[#6B7280]">
+              <Text
+                fw={400}
+                className="text-[12px] leading-[1.6] text-[#6B7280]"
+              >
                 <strong>BVN:</strong> dial *565*0# or check your bank app
               </Text>
             </div>
-
             <button
-              onClick={() => setStep(2)}
-              disabled={!identityReady()}
-              className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-                identityReady()
-                  ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]"
-                  : "cursor-not-allowed bg-[#9CA3AF]"
-              }`}
+              onClick={handleIdentityContinue}
+              className="w-full cursor-pointer rounded-xl bg-[#02A36E] px-6 py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
             >
               Continue to Next of Kin
             </button>
           </div>
         )}
-
         {step === 2 && (
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="mb-6 flex items-center gap-3">
@@ -292,13 +323,14 @@ export function OnboardingFlow({
                 <IconUser size={20} color="#D97706" />
               </div>
               <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">Next of Kin</Text>
+                <Text fw={700} className="text-[16px] text-[#0F172A]">
+                  Next of Kin
+                </Text>
                 <Text fw={400} className="text-[13px] text-[#6B7280]">
                   Provide details of your next of kin before the face check.
                 </Text>
               </div>
             </div>
-
             <div className="flex flex-col gap-4">
               <TextInput
                 label="Full Name"
@@ -306,7 +338,13 @@ export function OnboardingFlow({
                 radius="md"
                 value={kinFullName}
                 onChange={(e) => setKinFullName(e.currentTarget.value)}
+                error={
+                  (nokAttempted || kinFullName.length > 0) && !kinNameValid
+                    ? "Enter a valid name using letters, spaces, hyphens or apostrophes."
+                    : undefined
+                }
                 styles={inputStyles}
+                maxLength={100}
                 required
               />
               <TextInput
@@ -315,26 +353,30 @@ export function OnboardingFlow({
                 radius="md"
                 value={kinRelationship}
                 onChange={(e) => setKinRelationship(e.currentTarget.value)}
+                error={
+                  (nokAttempted || kinRelationship.length > 0) && !relationshipValid
+                    ? "Enter a valid relationship using letters only."
+                    : undefined
+                }
                 styles={inputStyles}
+                maxLength={50}
                 required
               />
-              <PhoneInputField
-                value={kinPhone}
-                onChange={setKinPhone}
-                label="Phone Number"
-                required
-                styles={inputStyles}
-              />
+              <div>
+                <PhoneInputField
+                  value={kinPhone}
+                  onChange={(value) => { setKinPhone(value); setKinPhoneServerError(undefined); }}
+                  label="Phone Number"
+                  required
+                  styles={inputStyles}
+                  error={nokAttempted || kinPhone.length > 0 ? phoneError : undefined}
+                />
+              </div>
             </div>
-
             <button
               onClick={handleSubmitNok}
-              disabled={!nokReady() || submitting}
-              className={`mt-6 w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-                nokReady() && !submitting
-                  ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]"
-                  : "cursor-not-allowed bg-[#9CA3AF]"
-              }`}
+              disabled={submitting}
+              className={`mt-6 w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${!submitting ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
             >
               {submitting
                 ? "Saving..."
@@ -344,7 +386,6 @@ export function OnboardingFlow({
             </button>
           </div>
         )}
-
         {step === 3 && !identityVerified && (
           <div className="flex flex-col gap-5 rounded-2xl border border-[#E5E7EB] bg-white p-6">
             <div className="flex items-center gap-3">
@@ -352,42 +393,46 @@ export function OnboardingFlow({
                 <IconFingerprint size={20} color="#02A36E" />
               </div>
               <div>
-                <Text fw={700} className="text-[16px] text-[#0F172A]">Face Verification</Text>
+                <Text fw={700} className="text-[16px] text-[#0F172A]">
+                  Face Verification
+                </Text>
                 <Text fw={400} className="text-[13px] text-[#6B7280]">
                   One final identity check to complete Level 1.
                 </Text>
               </div>
             </div>
-
             <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
-              <Text fw={400} className="text-[13px] leading-[1.6] text-[#1E40AF]">
-                A secure Dojah verification window will open. Complete every step,
-                including the liveness and selfie checks configured for this staging flow,
-                before closing it. Use a well-lit area and face the camera directly.
+              <Text
+                fw={400}
+                className="text-[13px] leading-[1.6] text-[#1E40AF]"
+              >
+                A secure Mono verification window will open. Complete every
+                step, including the selfie check, before closing it. Use a
+                well-lit area and face the camera directly.
               </Text>
             </div>
-
             <Checkbox
               checked={confirmed}
               onChange={(e) => setConfirmed(e.currentTarget.checked)}
               label={
-                <Text fw={400} className="text-[12px] leading-normal text-[#374151]">
-                  I'm ready to complete the face verification now and will finish it before leaving the Dojah window.
+                <Text
+                  fw={400}
+                  className="text-[12px] leading-normal text-[#374151]"
+                >
+                  I'm ready to complete the face verification now and will
+                  finish it before leaving the Mono window.
                 </Text>
               }
               styles={{ input: { borderColor: "#D1D5DB" } }}
             />
-
             <button
               onClick={handleProveInitiate}
               disabled={!confirmed || initiating}
-              className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-                confirmed && !initiating
-                  ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]"
-                  : "cursor-not-allowed bg-[#9CA3AF]"
-              }`}
+              className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${confirmed && !initiating ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
             >
-              {initiating ? "Opening verification..." : "Start Face Verification"}
+              {initiating
+                ? "Opening verification..."
+                : "Start Face Verification"}
             </button>
           </div>
         )}
@@ -422,8 +467,12 @@ export function OnboardingDoneScreen({
         <Text fw={700} className="mb-2 text-[20px] text-[#0F172A]">
           Level 1 Verified!
         </Text>
-        <Text fw={400} className="mb-6 text-[14px] leading-[1.6] text-[#6B7280]">
-          Your basic identity has been verified. You can now send and receive money on Ajoti.
+        <Text
+          fw={400}
+          className="mb-6 text-[14px] leading-[1.6] text-[#6B7280]"
+        >
+          Your basic identity has been verified. You can now send and receive
+          money on Ajoti.
         </Text>
         <LimitCard level={1} />
         <VerificationDataCard data={verificationData} />
@@ -432,8 +481,7 @@ export function OnboardingDoneScreen({
             onClick={onContinue}
             className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#02A36E] px-6 py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
           >
-            Upgrade to Level 2
-            <IconArrowRight size={16} />
+            Upgrade to Level 2<IconArrowRight size={16} />
           </button>
           <button
             onClick={() => navigate("/home")}

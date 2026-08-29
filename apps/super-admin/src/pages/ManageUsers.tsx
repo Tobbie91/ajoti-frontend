@@ -104,6 +104,7 @@ function UserDetailBody({
   const debtCount = detail.outstandingDebts.length
   const kyc = user.kyc as { status: string; userId?: string } | null
   const isClosed = currentStatus === 'CLOSED'
+  const canManageKyc = hasPermission(getStaffRoleFromStorage(), 'MANAGE_KYC')
 
   return (
     <Stack gap="md">
@@ -135,7 +136,7 @@ function UserDetailBody({
         </Alert>
       )}
 
-      {kyc && (
+      {kyc && canManageKyc && (
         <Button
           fullWidth
           variant="light"
@@ -366,6 +367,7 @@ function InfoItem({ label, value }: { label: string; value: ReactNode }) {
 const PAGE_SIZE = 20
 
 export function ManageUsers() {
+  const canManageKyc = hasPermission(getStaffRoleFromStorage(), 'MANAGE_KYC')
   const [users, setUsers] = useState<SuperadminUserRow[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -486,7 +488,7 @@ export function ManageUsers() {
                     <Table.Td onClick={(e) => e.stopPropagation()}>
                       <Group gap={2} wrap="nowrap">
                         <ActionIcon variant="subtle" color="dark" onClick={() => openUserDetail(user.id)} title="View profile"><IconEye size={18} /></ActionIcon>
-                        {user.kyc && (
+                        {user.kyc && canManageKyc && (
                           <ActionIcon variant="subtle" color="teal" onClick={() => window.location.assign(`/kyc-approvals?userId=${encodeURIComponent(user.id)}`)} title="View KYC">
                             <IconShieldCheck size={18} />
                           </ActionIcon>

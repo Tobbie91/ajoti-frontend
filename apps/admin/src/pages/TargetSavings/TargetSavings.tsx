@@ -35,6 +35,8 @@ import {
   joinTargetSavings,
   type TargetSavingsPlan,
 } from "@/utils/targetSavingsApi";
+import { getKycStatus } from "@/utils/api";
+import { useNavigate } from "react-router-dom";
 
 const toNaira = (k: string) => Number(k || 0) / 100;
 const money = (k: string) =>
@@ -86,6 +88,7 @@ function GroupRules({ plan }: { plan?: TargetSavingsPlan | null }) {
 }
 
 export function TargetSavings() {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState<TargetSavingsPlan[]>([]);
   const [pub, setPub] = useState<TargetSavingsPlan[]>([]);
   const [view, setView] = useState<"MINE" | "DISCOVER">("MINE");
@@ -97,6 +100,7 @@ export function TargetSavings() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
   const [privateInvite, setPrivateInvite] = useState<{ id: string; token: string } | null>(null);
+  const [kycLevel, setKycLevel] = useState<number | null>(null);
   const [form, setForm] = useState({
     type: "INDIVIDUAL",
     name: "",
@@ -131,12 +135,17 @@ export function TargetSavings() {
 
   useEffect(() => {
     load().catch(() => {});
+    getKycStatus()
+      .then((kyc) => setKycLevel(kyc.kycLevel ?? 0))
+      .catch(() => setKycLevel(0));
 
     const params = new URLSearchParams(window.location.search);
     const id = params.get("targetInviteId");
     const token = params.get("targetInviteToken");
     if (id && token) setPrivateInvite({ id, token });
   }, []);
+
+  const kycReady = (kycLevel ?? 0) >= 1;
 
   const clearInviteFromUrl = () => {
     const url = new URL(window.location.href);
@@ -226,10 +235,17 @@ export function TargetSavings() {
           <Title order={2}>Target Savings</Title>
           <Text c="dimmed">Save towards your own goal or stay accountable with a group.</Text>
         </div>
-        <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
+        <Button leftSection={<IconPlus size={16} />} onClick={openCreate} disabled={!kycReady}>
           New target
         </Button>
       </Group>
+
+      {kycLevel !== null && !kycReady && (
+        <Alert mb="lg" color="yellow" icon={<IconInfoCircle size={18} />} title="Complete KYC Level 1 to use Target Savings">
+          You can browse groups and view existing memberships, but you cannot create, join, or contribute until verification is complete.
+          <Button ml="sm" size="xs" variant="light" onClick={() => navigate("/kyc")}>Complete KYC</Button>
+        </Alert>
+      )}
 
       <SegmentedControl
         mb="lg"
@@ -252,7 +268,7 @@ export function TargetSavings() {
           )}
 
           {plans.map((p) => (
-            <TargetCard key={p.id} plan={p} onChanged={load} />
+            <TargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} />
           ))}
         </Stack>
       ) : (
@@ -299,11 +315,17 @@ export function TargetSavings() {
           <Alert icon={<IconInfoCircle size={18} />} color="blue" title="Review before joining">
             Joining adds this group to My Savings and gives you the same personal target and maturity date as other members.
           </Alert>
+          {!kycReady && (
+            <Alert color="yellow" title="KYC Level 1 required">
+              Complete identity verification before joining this group.
+              <Button ml="sm" size="xs" variant="light" onClick={() => navigate("/kyc")}>Complete KYC</Button>
+            </Alert>
+          )}
           <GroupRules plan={joinPlan} />
           {joinError && <Alert color="red">{joinError}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setJoinPlan(null)}>Cancel</Button>
-            <Button loading={joining} onClick={joinPublic}>Join group</Button>
+            <Button loading={joining} disabled={!kycReady} onClick={joinPublic}>Join group</Button>
           </Group>
         </Stack>
       </Modal>
@@ -318,11 +340,17 @@ export function TargetSavings() {
           <Alert icon={<IconInfoCircle size={18} />} color="blue">
             This is a private Target Savings invitation. Review the rules before joining.
           </Alert>
+          {!kycReady && (
+            <Alert color="yellow" title="KYC Level 1 required">
+              Complete identity verification before accepting this invitation.
+              <Button ml="sm" size="xs" variant="light" onClick={() => navigate("/kyc")}>Complete KYC</Button>
+            </Alert>
+          )}
           <GroupRules />
           {joinError && <Alert color="red">{joinError}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => { setPrivateInvite(null); clearInviteFromUrl(); }}>Not now</Button>
-            <Button loading={joining} onClick={joinPrivate}>Join private group</Button>
+            <Button loading={joining} disabled={!kycReady} onClick={joinPrivate}>Join private group</Button>
           </Group>
         </Stack>
       </Modal>
@@ -434,7 +462,7 @@ export function TargetSavings() {
   );
 }
 
-function TargetCard({ plan, onChanged }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown> }) {
+function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean }) {
   const mine = plan.myMembership;
   const plannedAmount = toNaira(plan.contributionAmountKobo);
   const remaining = toNaira(mine?.remainingAmountKobo ?? "0");
@@ -450,7 +478,8 @@ function TargetCard({ plan, onChanged }: { plan: TargetSavingsPlan; onChanged: (
 
   const maturityReached = new Date(plan.maturityDate).getTime() <= Date.now();
   const targetReached = !mine || Number(mine.remainingAmountKobo) <= 0;
-  const canContribute = plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached;
+  const contributionAvailable = plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached;
+  const canContribute = contributionAvailable && kycReady;
   const organiser = plan.members.find((member) => member.userId === plan.ownerId);
 
   const inviteUrl = plan.inviteToken
@@ -514,6 +543,9 @@ function TargetCard({ plan, onChanged }: { plan: TargetSavingsPlan; onChanged: (
       )}
       {maturityReached && plan.status === "ACTIVE" && (
         <Alert mt="md" color="blue" title="Maturity reached">Contributions are closed. Your saved amount is being released to your Ajoti wallet.</Alert>
+      )}
+      {contributionAvailable && !kycReady && (
+        <Alert mt="md" color="yellow">Complete KYC Level 1 before contributing to this target.</Alert>
       )}
 
       {canContribute && (

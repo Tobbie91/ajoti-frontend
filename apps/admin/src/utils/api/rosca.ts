@@ -30,7 +30,13 @@ export interface RoscaCircle {
   admin: {
     firstName: string;
     lastName: string;
+    email?: string;
   };
+  isRequestingUserAdmin?: boolean;
+  hasInvite?: boolean;
+  canViewDetails?: boolean;
+  discoveryAccess?: "OPEN" | "INVITE_ONLY";
+  isReadyToStart?: boolean;
   members?: CircleMember[];
   [key: string]: unknown;
 }
