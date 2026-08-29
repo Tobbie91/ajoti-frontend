@@ -3,7 +3,7 @@ import { NavLink as RouterNavLink, useLocation } from 'react-router-dom'
 import { NavLink, Stack, Text, Box, Badge, ScrollArea } from '@mantine/core'
 import {
   IconLayoutDashboard, IconUsers, IconTopologyRing, IconPigMoney, IconChartLine, IconTarget,
-  IconReceipt, IconSettings, IconShieldCheck, IconAward, IconTestPipe, IconWallet, IconHeadset,
+  IconReceipt, IconSettings, IconShieldCheck, IconAward, IconWallet, IconHeadset,
   IconUsersGroup, IconBuildingBank, IconCoin, IconFileInvoice, IconAddressBook,
 } from '@tabler/icons-react'
 import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
@@ -20,7 +20,6 @@ const mainLinks: NavLink_[] = [
   { label: 'Loans', icon: IconCoin, path: '/loans', permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Debts', icon: IconFileInvoice, path: '/debts', permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Trust Scores', icon: IconAward, path: '/trust-scores', permission: null },
-  { label: 'Simulations', icon: IconTestPipe, path: '/simulations', permission: 'MANAGE_CIRCLES' },
   { label: 'Support', icon: IconHeadset, path: '/support', permission: 'MANAGE_TICKETS' },
   { label: 'Contact Corrections', icon: IconAddressBook, path: '/support/contact-details', permission: 'EDIT_USER_CONTACT_DETAILS' },
 ]
