@@ -11,7 +11,9 @@ import {
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { proveInitiate, preSubmitNok, submitNok } from "@/utils/api";
+import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
+import { normalizePhoneForComparison, PERSON_NAME_REGEX, validatePhone } from "@ajoti/shared";
 
 import { LimitCard, VerificationDataCard } from "./KycStatusSections";
 
@@ -23,9 +25,6 @@ const inputStyles = {
 };
 
 const ONBOARDING_LABELS = ["Identity", "Next of Kin", "Face Check"];
-const PERSON_TEXT_REGEX = /^[a-zA-Z\s'-]+$/;
-const CANONICAL_PHONE_REGEX = /^\+(?!2340)[1-9]\d{6,13}$/;
-
 export function OnboardingFlow({
   rejectionReason,
   onComplete,
@@ -46,6 +45,17 @@ export function OnboardingFlow({
   const [kinPhone, setKinPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [identityAttempted, setIdentityAttempted] = useState(false);
+  const [nokAttempted, setNokAttempted] = useState(false);
+  const [kinPhoneServerError, setKinPhoneServerError] = useState<string>();
+
+  const [accountPhone] = useState(() => {
+    try {
+      return (JSON.parse(localStorage.getItem("user") ?? "{}") as { phone?: string }).phone;
+    } catch {
+      return undefined;
+    }
+  });
 
   const progressValue = (step / 3) * 100;
   function identityReady() {
@@ -56,17 +66,25 @@ export function OnboardingFlow({
   const kinNameValid =
     normalizedKinName.length >= 2 &&
     normalizedKinName.length <= 100 &&
-    PERSON_TEXT_REGEX.test(normalizedKinName);
+    PERSON_NAME_REGEX.test(normalizedKinName);
   const relationshipValid =
     normalizedRelationship.length >= 2 &&
     normalizedRelationship.length <= 50 &&
-    PERSON_TEXT_REGEX.test(normalizedRelationship);
-  const phoneValid = CANONICAL_PHONE_REGEX.test(kinPhone.trim());
+    PERSON_NAME_REGEX.test(normalizedRelationship);
+  const phoneError =
+    validatePhone(kinPhone.trim()) ??
+    (accountPhone &&
+    normalizePhoneForComparison(accountPhone) === normalizePhoneForComparison(kinPhone)
+      ? "Use a different number from your Ajoti account."
+      : undefined) ??
+    kinPhoneServerError;
+  const phoneValid = !phoneError;
   function nokReady() {
     return kinNameValid && relationshipValid && phoneValid;
   }
 
   async function handleSubmitNok() {
+    setNokAttempted(true);
     setError(null);
     if (!nokReady()) {
       setError(
@@ -89,6 +107,9 @@ export function OnboardingFlow({
       await preSubmitNok(payload);
       setStep(3);
     } catch (err) {
+      if (err instanceof ApiError && err.fieldErrors.nextOfKinPhone?.length) {
+        setKinPhoneServerError(err.fieldErrors.nextOfKinPhone.join(" "));
+      }
       setError(
         err instanceof Error
           ? err.message
@@ -124,6 +145,16 @@ export function OnboardingFlow({
     } finally {
       setInitiating(false);
     }
+  }
+
+  function handleIdentityContinue() {
+    setIdentityAttempted(true);
+    if (!identityReady()) {
+      setError("NIN and BVN must each contain exactly 11 digits.");
+      return;
+    }
+    setError(null);
+    setStep(2);
   }
 
   return (
@@ -232,6 +263,8 @@ export function OnboardingFlow({
               }
               styles={inputStyles}
               maxLength={11}
+              error={identityAttempted && nin.length !== 11 ? "NIN must contain exactly 11 digits." : undefined}
+              description={`${nin.length}/11 digits`}
               required
               rightSection={
                 nin.length === 11 ? (
@@ -249,6 +282,8 @@ export function OnboardingFlow({
               }
               styles={inputStyles}
               maxLength={11}
+              error={identityAttempted && bvn.length !== 11 ? "BVN must contain exactly 11 digits." : undefined}
+              description={`${bvn.length}/11 digits`}
               required
               rightSection={
                 bvn.length === 11 ? (
@@ -274,9 +309,8 @@ export function OnboardingFlow({
               </Text>
             </div>
             <button
-              onClick={() => setStep(2)}
-              disabled={!identityReady()}
-              className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${identityReady() ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
+              onClick={handleIdentityContinue}
+              className="w-full cursor-pointer rounded-xl bg-[#02A36E] px-6 py-3.5 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
             >
               Continue to Next of Kin
             </button>
@@ -305,7 +339,7 @@ export function OnboardingFlow({
                 value={kinFullName}
                 onChange={(e) => setKinFullName(e.currentTarget.value)}
                 error={
-                  kinFullName.length > 0 && !kinNameValid
+                  (nokAttempted || kinFullName.length > 0) && !kinNameValid
                     ? "Enter a valid name using letters, spaces, hyphens or apostrophes."
                     : undefined
                 }
@@ -320,7 +354,7 @@ export function OnboardingFlow({
                 value={kinRelationship}
                 onChange={(e) => setKinRelationship(e.currentTarget.value)}
                 error={
-                  kinRelationship.length > 0 && !relationshipValid
+                  (nokAttempted || kinRelationship.length > 0) && !relationshipValid
                     ? "Enter a valid relationship using letters only."
                     : undefined
                 }
@@ -331,22 +365,18 @@ export function OnboardingFlow({
               <div>
                 <PhoneInputField
                   value={kinPhone}
-                  onChange={setKinPhone}
+                  onChange={(value) => { setKinPhone(value); setKinPhoneServerError(undefined); }}
                   label="Phone Number"
                   required
                   styles={inputStyles}
+                  error={nokAttempted || kinPhone.length > 0 ? phoneError : undefined}
                 />
-                {kinPhone.length > 0 && !phoneValid && (
-                  <Text fz="xs" c="red" mt={4}>
-                    Enter a complete valid international phone number.
-                  </Text>
-                )}
               </div>
             </div>
             <button
               onClick={handleSubmitNok}
-              disabled={!nokReady() || submitting}
-              className={`mt-6 w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${nokReady() && !submitting ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
+              disabled={submitting}
+              className={`mt-6 w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${!submitting ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
             >
               {submitting
                 ? "Saving..."

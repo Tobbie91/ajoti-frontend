@@ -34,7 +34,9 @@ import {
   type StaffAdminRole,
   type StaffAuditLogRow,
   type PaginatedResponse,
+  ApiError,
 } from '@/utils/api'
+import { PhoneInputField, isAdultDob, parseCalendarDate, validatePersonName, validatePhone } from '@ajoti/shared'
 import { getStaffRoleFromStorage } from '@/utils/permissions'
 import { SortableTh } from '@/components/SortableTh'
 import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
@@ -181,6 +183,8 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [created, setCreated] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({})
   const clipboard = useClipboard({ timeout: 1500 })
 
   function reset() {
@@ -194,6 +198,8 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
     setTempPassword('')
     setError('')
     setCreated(false)
+    setSubmitted(false)
+    setServerFieldErrors({})
   }
 
   function handleClose() {
@@ -201,26 +207,59 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
     onClose()
   }
 
+  function clearServerField(field: string) {
+    setServerFieldErrors((current) => {
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }
+
   async function handleSubmit() {
-    if (!firstName || !lastName || !email || !role || !phone || !dob || !gender || !tempPassword) {
-      setError('All fields are required.')
-      return
-    }
-    if (tempPassword.length < 8 || tempPassword.length > 20) {
-      setError('Temporary password must be between 8 and 20 characters.')
+    setSubmitted(true)
+    const messages = Object.values(fieldErrors).filter(Boolean)
+    if (messages.length) {
+      setError(messages.join(' '))
       return
     }
     setLoading(true)
     setError('')
     try {
-      await createStaff({ firstName, lastName, email, staffRole: role, phone, dob, gender, tempPassword })
+      await createStaff({
+        firstName,
+        lastName,
+        email,
+        staffRole: role as StaffAdminRole,
+        phone,
+        dob,
+        gender: gender as 'MALE' | 'FEMALE',
+        tempPassword,
+      })
       setCreated(true)
       onSuccess()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to create account.')
+      if (e instanceof ApiError) {
+        setServerFieldErrors(Object.fromEntries(Object.entries(e.fieldErrors).map(([field, messages]) => [field, messages.join(' ')])))
+        setError(e.messages.join(' '))
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to create account.')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const parsedDob = parseCalendarDate(dob)
+  const fieldErrors: Record<string, string | undefined> = {
+    firstName: validatePersonName(firstName, 'First name'),
+    lastName: validatePersonName(lastName, 'Last name'),
+    email: !email.trim() ? 'Email is required.' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? 'Enter a valid email address.' : undefined,
+    staffRole: !role ? 'Role is required.' : undefined,
+    phone: validatePhone(phone),
+    dob: !dob ? 'Date of birth is required.' : !parsedDob || !isAdultDob(parsedDob) ? 'Staff must be at least 18 years old.' : undefined,
+    gender: !gender ? 'Gender is required.' : undefined,
+    tempPassword: tempPassword.length < 8 || tempPassword.length > 20 ? 'Temporary password must be between 8 and 20 characters.' : undefined,
+    ...serverFieldErrors,
   }
 
   return (
@@ -260,14 +299,16 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
                 label="First name"
                 placeholder="Jane"
                 value={firstName}
-                onChange={(e) => setFirstName(e.currentTarget.value)}
+                onChange={(e) => { setFirstName(e.currentTarget.value); clearServerField('firstName') }}
+                error={submitted ? fieldErrors.firstName : undefined}
                 required
               />
               <TextInput
                 label="Last name"
                 placeholder="Smith"
                 value={lastName}
-                onChange={(e) => setLastName(e.currentTarget.value)}
+                onChange={(e) => { setLastName(e.currentTarget.value); clearServerField('lastName') }}
+                error={submitted ? fieldErrors.lastName : undefined}
                 required
               />
             </Group>
@@ -275,22 +316,24 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
               label="Email address"
               placeholder="jane.smith@ajoti.com"
               value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
+              onChange={(e) => { setEmail(e.currentTarget.value); clearServerField('email') }}
+              error={submitted ? fieldErrors.email : undefined}
               required
             />
             <Group grow>
-              <TextInput
+              <PhoneInputField
                 label="Phone"
-                placeholder="+2348012345678"
                 value={phone}
-                onChange={(e) => setPhone(e.currentTarget.value)}
+                onChange={(value) => { setPhone(value); clearServerField('phone') }}
+                error={submitted ? fieldErrors.phone : undefined}
                 required
               />
               <TextInput
                 label="Date of birth"
                 placeholder="1990-01-01"
                 value={dob}
-                onChange={(e) => setDob(e.currentTarget.value)}
+                onChange={(e) => { setDob(e.currentTarget.value); clearServerField('dob') }}
+                error={submitted ? fieldErrors.dob : undefined}
                 required
               />
             </Group>
@@ -303,7 +346,8 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
                   { value: 'FEMALE', label: 'Female' },
                 ]}
                 value={gender}
-                onChange={(v) => setGender(v as 'MALE' | 'FEMALE')}
+                onChange={(v) => { setGender(v as 'MALE' | 'FEMALE'); clearServerField('gender') }}
+                error={submitted ? fieldErrors.gender : undefined}
                 required
               />
               <Select
@@ -311,7 +355,8 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
                 placeholder="Select a role"
                 data={ASSIGNABLE_ROLES}
                 value={role}
-                onChange={(v) => setRole(v as StaffAdminRole)}
+                onChange={(v) => { setRole(v as StaffAdminRole); clearServerField('staffRole') }}
+                error={submitted ? fieldErrors.staffRole : undefined}
                 required
               />
             </Group>
@@ -319,7 +364,8 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
               label="Temporary password"
               description="8–20 characters - they must change it at first login"
               value={tempPassword}
-              onChange={(e) => setTempPassword(e.currentTarget.value)}
+              onChange={(e) => { setTempPassword(e.currentTarget.value); clearServerField('tempPassword') }}
+              error={submitted ? fieldErrors.tempPassword : undefined}
               required
             />
             <Group justify="flex-end">

@@ -10,16 +10,25 @@ export class ApiError extends Error {
   readonly code?: number;
   readonly appCode?: string;
   readonly reference?: string;
+  readonly messages: string[];
+  readonly fieldErrors: Record<string, string[]>;
 
   constructor(
     message: string,
     code?: number,
-    metadata?: { appCode?: string; reference?: string },
+    metadata?: {
+      appCode?: string;
+      reference?: string;
+      messages?: string[];
+      fieldErrors?: Record<string, string[]>;
+    },
   ) {
     super(message);
     this.code = code;
     this.appCode = metadata?.appCode;
     this.reference = metadata?.reference;
+    this.messages = metadata?.messages ?? [message];
+    this.fieldErrors = metadata?.fieldErrors ?? {};
     this.name = "ApiError";
   }
 }
@@ -29,13 +38,22 @@ function apiErrorFromResponse(data: unknown, status: number): ApiError {
     message?: string | string[];
     code?: string;
     reference?: string;
+    fieldErrors?: Record<string, string | string[]>;
   };
-  const message = Array.isArray(payload.message)
-    ? payload.message[0]
-    : (payload.message ?? "Something went wrong");
-  return new ApiError(message, status, {
+  const messages = Array.isArray(payload.message)
+    ? payload.message
+    : [payload.message ?? "Something went wrong"];
+  const fieldErrors = Object.fromEntries(
+    Object.entries(payload.fieldErrors ?? {}).map(([field, value]) => [
+      field,
+      Array.isArray(value) ? value : [value],
+    ]),
+  );
+  return new ApiError(messages.join(' '), status, {
     appCode: payload.code,
     reference: payload.reference,
+    messages,
+    fieldErrors,
   });
 }
 
