@@ -457,10 +457,16 @@ export function OnboardingFlow({
 
 export function OnboardingDoneScreen({
   onContinue,
-  verificationData,
+  verificationSummary,
 }: {
   onContinue: () => void;
-  verificationData?: Record<string, unknown> | null;
+  verificationSummary?: {
+    name?: string;
+    phone?: string;
+    identityType?: string;
+    tier?: string;
+    verifiedAt?: string;
+  } | null;
 }) {
   const navigate = useNavigate();
   return (
@@ -489,7 +495,7 @@ export function OnboardingDoneScreen({
           money on Ajoti.
         </Text>
         <LimitCard level={1} />
-        <VerificationDataCard data={verificationData} />
+        <VerificationDataCard data={verificationSummary} />
         <div className="mt-6 flex flex-col gap-3">
           <button
             onClick={onContinue}

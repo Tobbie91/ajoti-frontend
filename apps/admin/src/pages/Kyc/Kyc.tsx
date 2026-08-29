@@ -13,6 +13,8 @@ import {
 type PageView =
   | "loading"
   | "onboarding"
+  | "rejected-l1"
+  | "error"
   | "prove-pending"
   | "onboarding-done"
   | "upgrade-l2"
@@ -35,6 +37,7 @@ function resolveView(kyc: KycStatus | null): PageView {
 
   if (kycLevel === 0) {
     if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
+    if (status === "REJECTED") return "rejected-l1";
     return "onboarding";
   }
 
@@ -42,6 +45,7 @@ function resolveView(kyc: KycStatus | null): PageView {
 
   if (kycLevel === 2) {
     if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
+    if (status === "REJECTED") return "rejected-l3";
     if (step === "PROOF_OF_ADDRESS_REQUIRED" && status === "REJECTED")
       return "rejected-l3";
     if (step === "PROOF_OF_ADDRESS_REQUIRED") return "pending-l3";
@@ -49,6 +53,7 @@ function resolveView(kyc: KycStatus | null): PageView {
   }
 
   if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
+  if (status === "REJECTED") return "rejected-l2";
   if (step === "PHOTO_REQUIRED" && status === "REJECTED") return "rejected-l2";
   if (step === "PHOTO_REQUIRED") return "pending-l2";
   return "upgrade-l2";
@@ -57,19 +62,13 @@ function resolveView(kyc: KycStatus | null): PageView {
 export function Kyc() {
   const [view, setView] = useState<PageView>("loading");
   const [kycData, setKycData] = useState<KycStatus | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
 
   const loadStatus = useCallback(async () => {
     try {
+      setLoadError(null);
       let kyc = await getKycStatus();
-
-      if (kyc.kycLevel === 0 && kyc.status === "REJECTED") {
-        try {
-          kyc = await resubmitKyc();
-        } catch {
-          setView("onboarding");
-          return;
-        }
-      }
 
       if (
         kyc.kycLevel === 0 &&
@@ -90,8 +89,9 @@ export function Kyc() {
 
       setKycData(kyc);
       setView(resolveView(kyc));
-    } catch {
-      setView("onboarding");
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to load your KYC status.");
+      setView("error");
     }
   }, []);
 
@@ -123,6 +123,62 @@ export function Kyc() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB]">
         <Loader color="#02A36E" size="md" />
+      </div>
+    );
+  }
+
+  if (view === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-6">
+        <div className="w-full max-w-[440px] rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center">
+          <h1 className="text-xl font-bold text-[#0F172A]">We couldn't load your verification</h1>
+          <p className="mt-3 text-sm text-[#6B7280]">
+            {loadError} Your saved progress has not been changed.
+          </p>
+          <button
+            onClick={() => void loadStatus()}
+            className="mt-6 w-full rounded-xl bg-[#02A36E] px-6 py-3 font-semibold text-white"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "rejected-l1") {
+    const restart = async () => {
+      setRestarting(true);
+      try {
+        const kyc = await resubmitKyc();
+        setKycData(kyc);
+        setView("onboarding");
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : "Unable to restart verification.");
+        setView("error");
+      } finally {
+        setRestarting(false);
+      }
+    };
+
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-6">
+        <div className="w-full max-w-[440px] rounded-2xl border border-red-200 bg-white p-8 text-center">
+          <h1 className="text-xl font-bold text-[#0F172A]">Verification unsuccessful</h1>
+          <p className="mt-3 text-sm text-[#6B7280]">
+            {kycData?.rejectionReason ?? "Your identity verification could not be completed."}
+          </p>
+          <p className="mt-2 text-xs text-[#9CA3AF]">
+            Restarting will clear the previous identity submission so you can enter it again.
+          </p>
+          <button
+            disabled={restarting}
+            onClick={() => void restart()}
+            className="mt-6 w-full rounded-xl bg-[#02A36E] px-6 py-3 font-semibold text-white disabled:bg-[#9CA3AF]"
+          >
+            {restarting ? "Preparing..." : "Try Verification Again"}
+          </button>
+        </div>
       </div>
     );
   }
@@ -159,7 +215,7 @@ export function Kyc() {
     return (
       <OnboardingDoneScreen
         onContinue={() => setView("upgrade-l2")}
-        verificationData={kycData?.verificationData}
+        verificationSummary={kycData?.verificationSummary}
       />
     );
   }
@@ -169,7 +225,7 @@ export function Kyc() {
       <PendingReviewScreen
         forLevel={2}
         onRefresh={loadStatus}
-        verificationData={kycData?.verificationData}
+        verificationData={kycData?.verificationSummary}
       />
     );
   }
@@ -179,7 +235,7 @@ export function Kyc() {
       <PendingReviewScreen
         forLevel={3}
         onRefresh={loadStatus}
-        verificationData={kycData?.verificationData}
+        verificationData={kycData?.verificationSummary}
       />
     );
   }

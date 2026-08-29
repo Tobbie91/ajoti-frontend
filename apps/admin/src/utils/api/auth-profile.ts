@@ -131,7 +131,13 @@ export interface KycStatus {
   rejectionReason?: string | null;
   providerStatus?: string | null;
   monoUrl?: string | null;
-  verificationData?: Record<string, unknown> | null;
+  verificationSummary?: {
+    name?: string;
+    phone?: string;
+    identityType?: string;
+    tier?: string;
+    verifiedAt?: string;
+  } | null;
   nextOfKinName?: string;
   nextOfKinRelationship?: string;
   nextOfKinPhone?: string;

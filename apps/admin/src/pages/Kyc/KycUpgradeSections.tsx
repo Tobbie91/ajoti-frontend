@@ -84,6 +84,7 @@ export function UpgradeSection({
     setError(null);
     setStarting(true);
     try {
+      if (rejectionReason) await resubmitKyc();
       // No payload needed - backend reads NIN/BVN from DB for level upgrades
       const result = await proveInitiate({});
 
