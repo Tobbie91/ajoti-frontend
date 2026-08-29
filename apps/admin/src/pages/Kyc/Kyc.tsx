@@ -1,10 +1,9 @@
 import { PendingReviewScreen, FullyVerifiedScreen } from "./KycStatusSections";
 import { ProvePendingScreen, UpgradePage } from "./KycUpgradeSections";
 import { OnboardingFlow, OnboardingDoneScreen } from "./KycOnboardingSections";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader } from "@mantine/core";
 import {
-  proveInitiate,
   submitNok,
   getKycStatus,
   resubmitKyc,
@@ -59,7 +58,7 @@ export function Kyc() {
   const [view, setView] = useState<PageView>("loading");
   const [kycData, setKycData] = useState<KycStatus | null>(null);
 
-  async function loadStatus() {
+  const loadStatus = useCallback(async () => {
     try {
       let kyc = await getKycStatus();
 
@@ -85,41 +84,24 @@ export function Kyc() {
           nextOfKinPhone: kyc.nextOfKinPhone,
         });
         setKycData(kyc);
-        sessionStorage.removeItem("kyc_widget_opened");
         setView("onboarding-done");
         return;
       }
 
       setKycData(kyc);
-      const resolved = resolveView(kyc);
-
-      if (
-        resolved === "prove-pending" &&
-        sessionStorage.getItem("kyc_widget_opened") !== "true"
-      ) {
-        setView(
-          kyc.kycLevel === 0
-            ? "onboarding"
-            : kyc.kycLevel === 1
-              ? "upgrade-l2"
-              : "upgrade-l3",
-        );
-        return;
-      }
-      setView(resolved);
+      setView(resolveView(kyc));
     } catch {
       setView("onboarding");
     }
-  }
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("status") === "success") {
-      sessionStorage.setItem("kyc_widget_opened", "true");
       window.history.replaceState({}, "", "/kyc");
     }
     loadStatus();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadStatus]);
 
   useEffect(() => {
     if (view !== "prove-pending") return;
@@ -135,7 +117,7 @@ export function Kyc() {
       window.removeEventListener("focus", refreshOnReturn);
       document.removeEventListener("visibilitychange", refreshOnReturn);
     };
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadStatus, view]);
 
   if (view === "loading") {
     return (
@@ -146,32 +128,15 @@ export function Kyc() {
   }
 
   if (view === "prove-pending") {
-    const isUpgrade = (kycData?.kycLevel ?? 0) >= 1;
-
-    async function handleRestart() {
-      sessionStorage.removeItem("kyc_widget_opened");
-      if (!isUpgrade) {
-        setView("onboarding");
-        return;
-      }
-      try {
-        const result = await proveInitiate({});
-        if (result.monoUrl) {
-          sessionStorage.setItem("kyc_widget_opened", "true");
-          window.open(result.monoUrl, "_blank", "noopener,noreferrer");
-        }
-      } catch {
-        /* stay on pending */
-      }
-    }
-
     return (
       <ProvePendingScreen
-        onVerified={() => {
-          sessionStorage.removeItem("kyc_widget_opened");
-          loadStatus();
-        }}
-        onRestart={handleRestart}
+        awaitingReview={kycData?.providerStatus === "ambiguous"}
+        onContinue={
+          kycData?.monoUrl
+            ? () => window.location.assign(kycData.monoUrl as string)
+            : undefined
+        }
+        onVerified={loadStatus}
       />
     );
   }
@@ -183,7 +148,6 @@ export function Kyc() {
           kycData?.kycLevel === 0 ? (kycData.rejectionReason ?? null) : null
         }
         onComplete={() => setView("onboarding-done")}
-        onProvePending={() => setView("prove-pending")}
         identityVerified={
           (kycData?.ninVerified && kycData?.bvnVerified) ?? false
         }

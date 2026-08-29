@@ -88,9 +88,8 @@ export function UpgradeSection({
       const result = await proveInitiate({});
 
       if (result.monoUrl) {
-        sessionStorage.setItem("kyc_widget_opened", "true");
-        window.open(result.monoUrl, "_blank", "noopener,noreferrer");
-        onProvePending();
+        window.location.assign(result.monoUrl);
+        return;
       } else {
         // Test bypass - skip widget
         onProvePending();
@@ -160,8 +159,8 @@ export function UpgradeSection({
           verification powered by Mono. You'll need your {docDescription}.
         </Text>
         <Text fw={400} className="text-[13px] leading-[1.6] text-[#9CA3AF]">
-          The verification widget will open in a new tab. Return to this page
-          after completing it - your status will update automatically.
+          You will continue securely to Mono and return here after completing
+          the check. Your status will update automatically.
         </Text>
 
         <Checkbox
@@ -202,10 +201,12 @@ export function UpgradeSection({
 
 export function ProvePendingScreen({
   onVerified,
-  onRestart,
+  onContinue,
+  awaitingReview,
 }: {
   onVerified: () => void;
-  onRestart: () => void;
+  onContinue?: () => void;
+  awaitingReview: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -246,25 +247,37 @@ export function ProvePendingScreen({
           <IconClock size={32} color="#3B82F6" />
         </div>
         <Text fw={700} className="mb-2 text-[20px] text-[#0F172A]">
-          Verification in Progress
+          {awaitingReview
+            ? "Verification Under Review"
+            : "Verification in Progress"}
         </Text>
         <Text
           fw={400}
           className="mb-6 text-[14px] leading-[1.6] text-[#6B7280]"
         >
-          Complete the identity check in the Mono window you just opened. This
-          page will update automatically once your verification is confirmed.
+          {awaitingReview
+            ? "Mono has received your identity check for manual review. You do not need to start again; this page will update when a final decision arrives."
+            : onContinue
+              ? "Your Mono session is still active. Continue the existing verification—starting another session is not necessary."
+              : "Your verification is being processed by Mono. This page will update automatically when a final result arrives."}
         </Text>
-        <Loader color="#02A36E" size="sm" className="mx-auto" />
-        <Text fw={400} className="mt-4 text-[12px] text-[#9CA3AF]">
-          Closed the window by mistake?{" "}
+        {!awaitingReview && (
+          <Loader color="#02A36E" size="sm" className="mx-auto" />
+        )}
+        {onContinue && !awaitingReview && (
           <button
-            onClick={onRestart}
-            className="cursor-pointer text-[#02A36E] underline"
+            onClick={onContinue}
+            className="mt-6 w-full cursor-pointer rounded-xl bg-[#02A36E] px-6 py-3 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
           >
-            Refresh to restart
+            Continue Verification
           </button>
-        </Text>
+        )}
+        <button
+          onClick={onVerified}
+          className="mt-3 w-full cursor-pointer rounded-xl border border-[#E5E7EB] bg-white px-6 py-3 text-[14px] font-semibold text-[#374151] hover:bg-[#F9FAFB]"
+        >
+          Check Status
+        </button>
       </div>
     </div>
   );
