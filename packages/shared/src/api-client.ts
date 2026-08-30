@@ -61,8 +61,6 @@ export interface ApiClientConfig {
   baseUrl: string;
   /** '' for the user app, 'admin_' / 'superadmin_' for the staff apps. */
   storagePrefix: string;
-  /** Internal application path used when the session cannot be refreshed. */
-  sessionExpiredRedirect: `/${string}`;
   /** Extra localStorage keys to clear on session expiry, beyond access/refresh/user. */
   extraSessionKeys?: string[];
 }
@@ -83,17 +81,10 @@ export function parseJsonSafely(res: Response): Promise<unknown> {
   });
 }
 
-function safeInternalRedirect(target: `/${string}`): string {
-  // Only same-origin absolute paths are valid. In particular, reject protocol-
-  // relative URLs (//evil.example) even though they satisfy the TypeScript shape.
-  return target.startsWith("//") ? "/login" : target;
-}
-
 export function createApiClient(config: ApiClientConfig): ApiClient {
   const {
     baseUrl,
     storagePrefix,
-    sessionExpiredRedirect,
     extraSessionKeys = [],
   } = config;
   const accessTokenKey = `${storagePrefix}access_token`;
@@ -159,10 +150,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     [accessTokenKey, refreshTokenKey, userKey, ...extraSessionKeys].forEach(
       (k) => localStorage.removeItem(k),
     );
-    const redirectTarget = safeInternalRedirect(sessionExpiredRedirect);
-    // nosemgrep: ajoti-frontend-window-location-input -- redirectTarget is constrained
-    // to a same-origin absolute path above and cannot be a protocol-relative URL.
-    window.location.href = redirectTarget;
+    window.location.replace("/login");
   }
 
   function authHeaders(token?: string): Record<string, string> {

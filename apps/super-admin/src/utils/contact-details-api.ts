@@ -3,7 +3,6 @@ import { createApiClient } from '@ajoti/shared'
 const client = createApiClient({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
   storagePrefix: 'superadmin_',
-  sessionExpiredRedirect: '/login',
 })
 
 export interface ContactDetailsUpdate {
