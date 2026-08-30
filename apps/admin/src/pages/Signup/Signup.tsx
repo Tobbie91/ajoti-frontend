@@ -9,7 +9,6 @@ import {
   Select,
   Alert,
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { Link, useNavigate } from "react-router-dom";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { register } from "@/utils/api";
@@ -19,15 +18,32 @@ import {
   formatCalendarDate,
   earliestReasonableDob,
   isAdultDob,
-  latestAdultDob,
   parseCalendarDate,
-  parseDisplayCalendarDate,
   validatePersonName,
   validatePhone,
 } from "@ajoti/shared";
 
 const MINIMUM_REGISTRATION_AGE = 18;
 const MAXIMUM_REGISTRATION_AGE = 120;
+const CURRENT_YEAR = new Date().getFullYear();
+const DOB_YEARS = Array.from(
+  { length: MAXIMUM_REGISTRATION_AGE - MINIMUM_REGISTRATION_AGE + 1 },
+  (_, index) => String(CURRENT_YEAR - MINIMUM_REGISTRATION_AGE - index),
+);
+const DOB_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+].map((label, index) => ({ value: String(index + 1), label }));
 
 type SignupField =
   | "firstName"
@@ -47,6 +63,9 @@ export function Signup() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState<Date | null>(null);
+  const [birthDay, setBirthDay] = useState<string | null>(null);
+  const [birthMonth, setBirthMonth] = useState<string | null>(null);
+  const [birthYear, setBirthYear] = useState<string | null>(null);
   const [gender, setGender] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,6 +75,7 @@ export function Signup() {
   );
   const [submitted, setSubmitted] = useState(false);
   const [serverFieldErrors, setServerFieldErrors] = useState<SignupErrors>({});
+  const dobStarted = Boolean(birthDay || birthMonth || birthYear);
 
   const fieldErrors: SignupErrors = {
     firstName: validatePersonName(firstName, "First name"),
@@ -67,7 +87,9 @@ export function Signup() {
         : undefined,
     phone: validatePhone(phone),
     dob: !dob
-      ? "Date of birth is required."
+      ? dobStarted
+        ? "Select a valid day, month, and year."
+        : "Date of birth is required."
       : dob < earliestReasonableDob(MAXIMUM_REGISTRATION_AGE)
         ? "Enter a valid date of birth."
         : !isAdultDob(dob, MINIMUM_REGISTRATION_AGE)
@@ -97,6 +119,38 @@ export function Signup() {
       return next;
     });
   }
+
+  function updateDobParts(
+    day: string | null,
+    month: string | null,
+    year: string | null,
+  ) {
+    let validDay = day;
+    if (month && year && day) {
+      const daysInMonth = new Date(Number(year), Number(month), 0).getDate();
+      if (Number(day) > daysInMonth) validDay = null;
+    }
+
+    setBirthDay(validDay);
+    setBirthMonth(month);
+    setBirthYear(year);
+    setDob(
+      validDay && month && year
+        ? parseCalendarDate(
+            `${year}-${month.padStart(2, "0")}-${validDay.padStart(2, "0")}`,
+          )
+        : null,
+    );
+    clearServerError("dob");
+  }
+
+  const daysInSelectedMonth =
+    birthMonth && birthYear
+      ? new Date(Number(birthYear), Number(birthMonth), 0).getDate()
+      : 31;
+  const dobDays = Array.from({ length: daysInSelectedMonth }, (_, index) =>
+    String(index + 1),
+  );
 
   async function handleSignup() {
     setSubmitted(true);
@@ -314,31 +368,59 @@ export function Signup() {
                   },
                 }}
               />
+              <div>
+                <Text component="label" size="sm" fw={500}>
+                  Date of birth <span className="text-red-500">*</span>
+                </Text>
+                <div className="mt-1 grid grid-cols-[0.8fr_1.3fr_1fr] gap-2">
+                  <Select
+                    aria-label="Birth day"
+                    placeholder="Day"
+                    data={dobDays}
+                    value={birthDay}
+                    onChange={(value) =>
+                      updateDobParts(value, birthMonth, birthYear)
+                    }
+                    onBlur={() => markTouched("dob")}
+                    radius="md"
+                    searchable
+                    allowDeselect={false}
+                  />
+                  <Select
+                    aria-label="Birth month"
+                    placeholder="Month"
+                    data={DOB_MONTHS}
+                    value={birthMonth}
+                    onChange={(value) =>
+                      updateDobParts(birthDay, value, birthYear)
+                    }
+                    onBlur={() => markTouched("dob")}
+                    radius="md"
+                    searchable
+                    allowDeselect={false}
+                  />
+                  <Select
+                    aria-label="Birth year"
+                    placeholder="Year"
+                    data={DOB_YEARS}
+                    value={birthYear}
+                    onChange={(value) =>
+                      updateDobParts(birthDay, birthMonth, value)
+                    }
+                    onBlur={() => markTouched("dob")}
+                    radius="md"
+                    searchable
+                    allowDeselect={false}
+                  />
+                </div>
+                {visibleError("dob") && (
+                  <Text size="xs" c="red" className="mt-1">
+                    {visibleError("dob")}
+                  </Text>
+                )}
+              </div>
+
               <Group grow gap="sm">
-                <DateInput
-                  label="Date of birth"
-                  placeholder="DD/MM/YYYY"
-                  radius="md"
-                  valueFormat="DD/MM/YYYY"
-                  defaultDate={latestAdultDob(MINIMUM_REGISTRATION_AGE)}
-                  minDate={earliestReasonableDob(MAXIMUM_REGISTRATION_AGE)}
-                  maxDate={latestAdultDob(MINIMUM_REGISTRATION_AGE)}
-                  value={dob}
-                  onChange={(value) => {
-                    setDob(value ? parseCalendarDate(value) : null);
-                    clearServerError("dob");
-                  }}
-                  onBlur={() => markTouched("dob")}
-                  error={visibleError("dob")}
-                  required
-                  dateParser={parseDisplayCalendarDate}
-                  styles={{
-                    input: {
-                      borderColor: "#BFEBD1",
-                      backgroundColor: "#FFFFFF",
-                    },
-                  }}
-                />
                 <Select
                   label="Gender"
                   placeholder="Select"
