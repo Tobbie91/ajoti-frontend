@@ -127,7 +127,7 @@ VITE_API_BASE_URL=http://localhost:3001
 ### Staging
 
 ```bash
-VITE_API_BASE_URL=https://api-staging.ajoti.com
+VITE_API_BASE_URL=https://staging-api.ajoti.com
 ```
 
 ### Production
