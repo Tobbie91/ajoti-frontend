@@ -1,13 +1,13 @@
 import { useState } from "react";
 import {
-    Button,
-    Card,
-    Group,
-    PasswordInput,
-    Text,
-    TextInput,
-    Select,
-    Alert,
+  Button,
+  Card,
+  Group,
+  PasswordInput,
+  Text,
+  TextInput,
+  Select,
+  Alert,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { Link, useNavigate } from "react-router-dom";
@@ -16,379 +16,399 @@ import { register } from "@/utils/api";
 import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
 import {
-    formatCalendarDate,
-    isAdultDob,
-    latestAdultDob,
-    validatePersonName,
-    validatePhone,
+  formatCalendarDate,
+  earliestReasonableDob,
+  isAdultDob,
+  latestAdultDob,
+  parseCalendarDate,
+  parseDisplayCalendarDate,
+  validatePersonName,
+  validatePhone,
 } from "@ajoti/shared";
 
 const MINIMUM_REGISTRATION_AGE = 18;
+const MAXIMUM_REGISTRATION_AGE = 120;
 
-type SignupField = "firstName" | "lastName" | "email" | "phone" | "dob" | "gender" | "password";
+type SignupField =
+  | "firstName"
+  | "lastName"
+  | "email"
+  | "phone"
+  | "dob"
+  | "gender"
+  | "password";
 type SignupErrors = Partial<Record<SignupField, string>>;
 
 export function Signup() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [email, setEmail] = useState("");
-    const [phone, setPhone] = useState("");
-    const [dob, setDob] = useState<Date | null>(null);
-    const [gender, setGender] = useState<string | null>(null);
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [touched, setTouched] = useState<Partial<Record<SignupField, boolean>>>({});
-    const [submitted, setSubmitted] = useState(false);
-    const [serverFieldErrors, setServerFieldErrors] = useState<SignupErrors>({});
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState<Date | null>(null);
+  const [gender, setGender] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Partial<Record<SignupField, boolean>>>(
+    {},
+  );
+  const [submitted, setSubmitted] = useState(false);
+  const [serverFieldErrors, setServerFieldErrors] = useState<SignupErrors>({});
 
-    const fieldErrors: SignupErrors = {
-        firstName: validatePersonName(firstName, "First name"),
-        lastName: validatePersonName(lastName, "Last name"),
-        email: !email.trim()
-            ? "Email is required."
-            : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-              ? "Enter a valid email address."
-              : undefined,
-        phone: validatePhone(phone),
-        dob: !dob
-            ? "Date of birth is required."
-            : !isAdultDob(dob, MINIMUM_REGISTRATION_AGE)
-              ? `You must be at least ${MINIMUM_REGISTRATION_AGE} years old.`
-              : undefined,
-        gender: !gender ? "Gender is required." : undefined,
-        password: !password
-            ? "Password is required."
-            : password.length < 8 || password.length > 20
-              ? "Password must be between 8 and 20 characters."
-              : undefined,
-        ...serverFieldErrors,
-    };
+  const fieldErrors: SignupErrors = {
+    firstName: validatePersonName(firstName, "First name"),
+    lastName: validatePersonName(lastName, "Last name"),
+    email: !email.trim()
+      ? "Email is required."
+      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+        ? "Enter a valid email address."
+        : undefined,
+    phone: validatePhone(phone),
+    dob: !dob
+      ? "Date of birth is required."
+      : dob < earliestReasonableDob(MAXIMUM_REGISTRATION_AGE)
+        ? "Enter a valid date of birth."
+        : !isAdultDob(dob, MINIMUM_REGISTRATION_AGE)
+          ? `You must be at least ${MINIMUM_REGISTRATION_AGE} years old.`
+          : undefined,
+    gender: !gender ? "Gender is required." : undefined,
+    password: !password
+      ? "Password is required."
+      : password.length < 8 || password.length > 20
+        ? "Password must be between 8 and 20 characters."
+        : undefined,
+    ...serverFieldErrors,
+  };
 
-    function visibleError(field: SignupField) {
-        return touched[field] || submitted ? fieldErrors[field] : undefined;
+  function visibleError(field: SignupField) {
+    return touched[field] || submitted ? fieldErrors[field] : undefined;
+  }
+
+  function markTouched(field: SignupField) {
+    setTouched((current) => ({ ...current, [field]: true }));
+  }
+
+  function clearServerError(field: SignupField) {
+    setServerFieldErrors((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  async function handleSignup() {
+    setSubmitted(true);
+    setServerFieldErrors({});
+    const currentErrors = Object.values(fieldErrors).filter(Boolean);
+    if (currentErrors.length > 0) {
+      setError(currentErrors.join(" "));
+      return;
     }
-
-    function markTouched(field: SignupField) {
-        setTouched((current) => ({ ...current, [field]: true }));
+    setError(null);
+    setLoading(true);
+    try {
+      const dobString = formatCalendarDate(dob!);
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone,
+        dob: dobString,
+        gender: gender!.toUpperCase() as "MALE" | "FEMALE",
+        password,
+      });
+      localStorage.setItem("verify_email", email.trim());
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phone,
+          dob: dobString,
+        }),
+      );
+      navigate("/verify-otp");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const mapped = Object.fromEntries(
+          Object.entries(err.fieldErrors)
+            .filter(([field]) =>
+              [
+                "firstName",
+                "lastName",
+                "email",
+                "phone",
+                "dob",
+                "gender",
+                "password",
+              ].includes(field),
+            )
+            .map(([field, messages]) => [field, messages.join(" ")]),
+        ) as SignupErrors;
+        setServerFieldErrors(mapped);
+        setError(err.messages.join(" "));
+      } else {
+        setError(err instanceof Error ? err.message : "Registration failed");
+      }
+    } finally {
+      setLoading(false);
     }
+  }
 
-    function clearServerError(field: SignupField) {
-        setServerFieldErrors((current) => {
-            const next = { ...current };
-            delete next[field];
-            return next;
-        });
-    }
-
-    async function handleSignup() {
-        setSubmitted(true);
-        setServerFieldErrors({});
-        const currentErrors = Object.values(fieldErrors).filter(Boolean);
-        if (currentErrors.length > 0) {
-            setError(currentErrors.join(" "));
-            return;
-        }
-        setError(null);
-        setLoading(true);
-        try {
-            const dobString = formatCalendarDate(dob!);
-            await register({
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                email: email.trim(),
-                phone,
-                dob: dobString,
-                gender: gender!.toUpperCase() as "MALE" | "FEMALE",
-                password,
-            });
-            localStorage.setItem("verify_email", email.trim());
-            localStorage.setItem(
-                "user",
-                JSON.stringify({
-                    firstName: firstName.trim(),
-                    lastName: lastName.trim(),
-                    email: email.trim(),
-                    phone,
-                    dob: dobString,
-                }),
-            );
-            navigate("/verify-otp");
-        } catch (err) {
-            if (err instanceof ApiError) {
-                const mapped = Object.fromEntries(
-                    Object.entries(err.fieldErrors)
-                        .filter(([field]) => ["firstName", "lastName", "email", "phone", "dob", "gender", "password"].includes(field))
-                        .map(([field, messages]) => [field, messages.join(" ")]),
-                ) as SignupErrors;
-                setServerFieldErrors(mapped);
-                setError(err.messages.join(" "));
-            } else {
-                setError(err instanceof Error ? err.message : "Registration failed");
-            }
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    return (
-        <div className="min-h-screen bg-[#F7FBF9]">
-            <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-2 lg:gap-10 lg:px-6 lg:py-12">
-                <div className="order-2 flex flex-col justify-between rounded-3xl bg-[#0B6B55] px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
-                    <div className="space-y-8">
-                        <div className="flex items-center justify-between">
-                            <Text fw={700} size="xl" className="tracking-wide">
-                                AJOTI
-                            </Text>
-                            <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs">
-                                One App
-                            </span>
-                        </div>
-
-                        <div className="space-y-4">
-                            <Text fw={700} size="xl">
-                                Start your Ajoti journey
-                            </Text>
-                            <Text size="sm" className="text-white/90">
-                                Create one account to save, join ajos, and work
-                                toward your goals with your community.
-                            </Text>
-                        </div>
-
-                        <div className="grid gap-3">
-                            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                                <Text fw={600} size="sm">
-                                    Save with confidence
-                                </Text>
-                                <Text size="xs" className="mt-1 text-white/80">
-                                    Build your savings habit and join trusted
-                                    groups from one place.
-                                </Text>
-                            </div>
-                            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                                <Text fw={600} size="sm">
-                                    Grow with your community
-                                </Text>
-                                <Text size="xs" className="mt-1 text-white/80">
-                                    Join trusted ajo groups and build toward
-                                    shared goals.
-                                </Text>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-8 flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm">
-                        <span>Already have an account?</span>
-                        <Link to="/login" className="font-semibold text-white">
-                            Log in
-                        </Link>
-                    </div>
-                </div>
-
-                <div className="order-1 flex items-center lg:order-2">
-                    <Card
-                        withBorder
-                        radius="xl"
-                        className="w-full border-[#E6F4EF] bg-white p-6 shadow-lg sm:p-8"
-                    >
-                        <div className="space-y-6">
-                            <div>
-                                <Text
-                                    fw={700}
-                                    size="lg"
-                                    className="text-[#0F172A]"
-                                >
-                                    Create your account
-                                </Text>
-                                <Text size="sm" className="text-[#6B7280]">
-                                    Save, join, and manage your money with Ajoti.
-                                </Text>
-                            </div>
-
-                            {error && (
-                                <Alert
-                                    icon={<IconAlertCircle size={16} />}
-                                    color="red"
-                                    radius="md"
-                                    variant="light"
-                                >
-                                    {error}
-                                </Alert>
-                            )}
-
-                            <Group grow gap="sm">
-                                <TextInput
-                                    label="First name"
-                                    placeholder="First name"
-                                    radius="md"
-                                    value={firstName}
-                                    onChange={(e) => { setFirstName(e.currentTarget.value); clearServerError("firstName"); }}
-                                    onBlur={() => markTouched("firstName")}
-                                    error={visibleError("firstName")}
-                                    required
-                                    styles={{
-                                        input: {
-                                            borderColor: "#BFEBD1",
-                                            backgroundColor: "#FFFFFF",
-                                        },
-                                    }}
-                                />
-                                <TextInput
-                                    label="Last name"
-                                    placeholder="Last name"
-                                    radius="md"
-                                    value={lastName}
-                                    onChange={(e) => { setLastName(e.currentTarget.value); clearServerError("lastName"); }}
-                                    onBlur={() => markTouched("lastName")}
-                                    error={visibleError("lastName")}
-                                    required
-                                    styles={{
-                                        input: {
-                                            borderColor: "#BFEBD1",
-                                            backgroundColor: "#FFFFFF",
-                                        },
-                                    }}
-                                />
-                            </Group>
-                            <TextInput
-                                label="Email"
-                                placeholder="you@example.com"
-                                radius="md"
-                                value={email}
-                                onChange={(e) => { setEmail(e.currentTarget.value); clearServerError("email"); }}
-                                onBlur={() => markTouched("email")}
-                                error={visibleError("email")}
-                                required
-                                styles={{
-                                    input: {
-                                        borderColor: "#BFEBD1",
-                                        backgroundColor: "#FFFFFF",
-                                    },
-                                }}
-                            />
-                            <PhoneInputField
-                                value={phone}
-                                onChange={(value) => { setPhone(value); clearServerError("phone"); }}
-                                label="Phone number"
-                                required
-                                onBlur={() => markTouched("phone")}
-                                error={visibleError("phone")}
-                                styles={{
-                                    input: {
-                                        borderColor: "#BFEBD1",
-                                        backgroundColor: "#FFFFFF",
-                                    },
-                                }}
-                            />
-                            <Group grow gap="sm">
-                                <DateInput
-                                    label="Date of birth"
-                                    placeholder="DD/MM/YYYY"
-                                    radius="md"
-                                    valueFormat="DD/MM/YYYY"
-                                    maxDate={latestAdultDob(MINIMUM_REGISTRATION_AGE)}
-                                    value={dob}
-                                    onChange={(value) => { setDob(value ? new Date(value) : null); clearServerError("dob"); }}
-                                    onBlur={() => markTouched("dob")}
-                                    error={visibleError("dob")}
-                                    required
-                                    dateParser={(input) => {
-                                        const [day, month, year] =
-                                            input.split("/");
-                                        if (
-                                            day &&
-                                            month &&
-                                            year &&
-                                            year.length === 4
-                                        ) {
-                                            return new Date(
-                                                Number(year),
-                                                Number(month) - 1,
-                                                Number(day),
-                                            );
-                                        }
-                                        return new Date(input);
-                                    }}
-                                    styles={{
-                                        input: {
-                                            borderColor: "#BFEBD1",
-                                            backgroundColor: "#FFFFFF",
-                                        },
-                                    }}
-                                />
-                                <Select
-                                    label="Gender"
-                                    placeholder="Select"
-                                    data={[
-                                        { value: "male", label: "Male" },
-                                        { value: "female", label: "Female" },
-                                    ]}
-                                    radius="md"
-                                    value={gender}
-                                    onChange={(value) => { setGender(value); clearServerError("gender"); markTouched("gender"); }}
-                                    error={visibleError("gender")}
-                                    required
-                                    styles={{
-                                        input: {
-                                            borderColor: "#BFEBD1",
-                                            backgroundColor: "#FFFFFF",
-                                        },
-                                    }}
-                                    allowDeselect={false}
-                                />
-                            </Group>
-
-                            <PasswordInput
-                                label="Password"
-                                radius="md"
-                                value={password}
-                                onChange={(e) => { setPassword(e.currentTarget.value); clearServerError("password"); }}
-                                onBlur={() => markTouched("password")}
-                                error={visibleError("password")}
-                                required
-                                styles={{
-                                    input: {
-                                        borderColor: "#BFEBD1",
-                                        backgroundColor: "#FFFFFF",
-                                    },
-                                }}
-                            />
-
-                            <Group
-                                justify="space-between"
-                                className="text-xs text-[#6B7280]"
-                            >
-                                <Text component="span">
-                                    Already have an account?
-                                </Text>
-                                <Link to="/login" className="text-[#0B6B55]">
-                                    Log in
-                                </Link>
-                            </Group>
-
-                            <Button
-                                fullWidth
-                                radius="md"
-                                className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
-                                onClick={handleSignup}
-                                loading={loading}
-                            >
-                                Create account
-                            </Button>
-
-                            <Text
-                                size="xs"
-                                className="text-center text-[#6B7280]"
-                            >
-                                By creating an account, you agree to our Terms
-                                and Privacy Policy.
-                            </Text>
-                        </div>
-                    </Card>
-                </div>
+  return (
+    <div className="min-h-screen bg-[#F7FBF9]">
+      <div className="mx-auto grid min-h-screen max-w-[1200px] grid-cols-1 gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-2 lg:gap-10 lg:px-6 lg:py-12">
+        <div className="order-2 flex flex-col justify-between rounded-3xl bg-[#0B6B55] px-6 py-8 text-white shadow-lg sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <Text fw={700} size="xl" className="tracking-wide">
+                AJOTI
+              </Text>
+              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs">
+                One App
+              </span>
             </div>
+
+            <div className="space-y-4">
+              <Text fw={700} size="xl">
+                Start your Ajoti journey
+              </Text>
+              <Text size="sm" className="text-white/90">
+                Create one account to save, join ajos, and work toward your
+                goals with your community.
+              </Text>
+            </div>
+
+            <div className="grid gap-3">
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                <Text fw={600} size="sm">
+                  Save with confidence
+                </Text>
+                <Text size="xs" className="mt-1 text-white/80">
+                  Build your savings habit and join trusted groups from one
+                  place.
+                </Text>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                <Text fw={600} size="sm">
+                  Grow with your community
+                </Text>
+                <Text size="xs" className="mt-1 text-white/80">
+                  Join trusted ajo groups and build toward shared goals.
+                </Text>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm">
+            <span>Already have an account?</span>
+            <Link to="/login" className="font-semibold text-white">
+              Log in
+            </Link>
+          </div>
         </div>
-    );
+
+        <div className="order-1 flex items-center lg:order-2">
+          <Card
+            withBorder
+            radius="xl"
+            className="w-full border-[#E6F4EF] bg-white p-6 shadow-lg sm:p-8"
+          >
+            <div className="space-y-6">
+              <div>
+                <Text fw={700} size="lg" className="text-[#0F172A]">
+                  Create your account
+                </Text>
+                <Text size="sm" className="text-[#6B7280]">
+                  Save, join, and manage your money with Ajoti.
+                </Text>
+              </div>
+
+              {error && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  radius="md"
+                  variant="light"
+                >
+                  {error}
+                </Alert>
+              )}
+
+              <Group grow gap="sm">
+                <TextInput
+                  label="First name"
+                  placeholder="First name"
+                  radius="md"
+                  value={firstName}
+                  onChange={(e) => {
+                    setFirstName(e.currentTarget.value);
+                    clearServerError("firstName");
+                  }}
+                  onBlur={() => markTouched("firstName")}
+                  error={visibleError("firstName")}
+                  required
+                  styles={{
+                    input: {
+                      borderColor: "#BFEBD1",
+                      backgroundColor: "#FFFFFF",
+                    },
+                  }}
+                />
+                <TextInput
+                  label="Last name"
+                  placeholder="Last name"
+                  radius="md"
+                  value={lastName}
+                  onChange={(e) => {
+                    setLastName(e.currentTarget.value);
+                    clearServerError("lastName");
+                  }}
+                  onBlur={() => markTouched("lastName")}
+                  error={visibleError("lastName")}
+                  required
+                  styles={{
+                    input: {
+                      borderColor: "#BFEBD1",
+                      backgroundColor: "#FFFFFF",
+                    },
+                  }}
+                />
+              </Group>
+              <TextInput
+                label="Email"
+                placeholder="you@example.com"
+                radius="md"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.currentTarget.value);
+                  clearServerError("email");
+                }}
+                onBlur={() => markTouched("email")}
+                error={visibleError("email")}
+                required
+                styles={{
+                  input: {
+                    borderColor: "#BFEBD1",
+                    backgroundColor: "#FFFFFF",
+                  },
+                }}
+              />
+              <PhoneInputField
+                value={phone}
+                onChange={(value) => {
+                  setPhone(value);
+                  clearServerError("phone");
+                }}
+                label="Phone number"
+                required
+                onBlur={() => markTouched("phone")}
+                error={visibleError("phone")}
+                styles={{
+                  input: {
+                    borderColor: "#BFEBD1",
+                    backgroundColor: "#FFFFFF",
+                  },
+                }}
+              />
+              <Group grow gap="sm">
+                <DateInput
+                  label="Date of birth"
+                  placeholder="DD/MM/YYYY"
+                  radius="md"
+                  valueFormat="DD/MM/YYYY"
+                  defaultDate={latestAdultDob(MINIMUM_REGISTRATION_AGE)}
+                  minDate={earliestReasonableDob(MAXIMUM_REGISTRATION_AGE)}
+                  maxDate={latestAdultDob(MINIMUM_REGISTRATION_AGE)}
+                  value={dob}
+                  onChange={(value) => {
+                    setDob(value ? parseCalendarDate(value) : null);
+                    clearServerError("dob");
+                  }}
+                  onBlur={() => markTouched("dob")}
+                  error={visibleError("dob")}
+                  required
+                  dateParser={parseDisplayCalendarDate}
+                  styles={{
+                    input: {
+                      borderColor: "#BFEBD1",
+                      backgroundColor: "#FFFFFF",
+                    },
+                  }}
+                />
+                <Select
+                  label="Gender"
+                  placeholder="Select"
+                  data={[
+                    { value: "male", label: "Male" },
+                    { value: "female", label: "Female" },
+                  ]}
+                  radius="md"
+                  value={gender}
+                  onChange={(value) => {
+                    setGender(value);
+                    clearServerError("gender");
+                    markTouched("gender");
+                  }}
+                  error={visibleError("gender")}
+                  required
+                  styles={{
+                    input: {
+                      borderColor: "#BFEBD1",
+                      backgroundColor: "#FFFFFF",
+                    },
+                  }}
+                  allowDeselect={false}
+                />
+              </Group>
+
+              <PasswordInput
+                label="Password"
+                radius="md"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.currentTarget.value);
+                  clearServerError("password");
+                }}
+                onBlur={() => markTouched("password")}
+                error={visibleError("password")}
+                required
+                styles={{
+                  input: {
+                    borderColor: "#BFEBD1",
+                    backgroundColor: "#FFFFFF",
+                  },
+                }}
+              />
+
+              <Group justify="space-between" className="text-xs text-[#6B7280]">
+                <Text component="span">Already have an account?</Text>
+                <Link to="/login" className="text-[#0B6B55]">
+                  Log in
+                </Link>
+              </Group>
+
+              <Button
+                fullWidth
+                radius="md"
+                className="bg-[#0B6B55] text-white hover:bg-[#095C49]"
+                onClick={handleSignup}
+                loading={loading}
+              >
+                Create account
+              </Button>
+
+              <Text size="xs" className="text-center text-[#6B7280]">
+                By creating an account, you agree to our Terms and Privacy
+                Policy.
+              </Text>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
 }
