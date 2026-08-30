@@ -34,3 +34,5 @@ Screenshot*.png
 security-semgrep.json
 security-gitleaks.json
 security-audit.json
+playwright-report/
+test-results/

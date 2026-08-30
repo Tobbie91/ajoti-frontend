@@ -90,9 +90,9 @@ Each active app builds to static assets and must be configured with the correct 
 
 Current intended domains:
 
-| App | Domain |
-| --- | --- |
-| Customer | `admin.ajoti.com` |
+| App         | Domain                  |
+| ----------- | ----------------------- |
+| Customer    | `admin.ajoti.com`       |
 | Super Admin | `super-admin.ajoti.com` |
 
 If `user.ajoti.com` remains reachable during the migration period, it should redirect to the canonical customer app rather than host a separate implementation.
@@ -127,7 +127,7 @@ VITE_API_BASE_URL=http://localhost:3001
 ### Staging
 
 ```bash
-VITE_API_BASE_URL=https://api-staging.ajoti.com
+VITE_API_BASE_URL=https://staging-api.ajoti.com
 ```
 
 ### Production

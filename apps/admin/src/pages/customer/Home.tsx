@@ -86,7 +86,7 @@ export function Home() {
           onTransfer={() => navigate("/withdraw")}
         />
 
-        <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-[#043F32] to-[#02A36E] p-6 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div className="hidden flex-col gap-4 rounded-2xl bg-gradient-to-r from-[#043F32] to-[#02A36E] p-6 text-white shadow-sm sm:flex sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div>
             <Text fw={700} className="text-[20px] sm:text-[24px] text-white">
               Ready to run your own ajo?
@@ -103,7 +103,36 @@ export function Home() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+        <Card withBorder radius="xl" className="border-[#DCEFE7] bg-white p-5 shadow-sm sm:hidden">
+          <div className="flex items-start justify-between">
+            <div>
+              <Text size="sm" c="dimmed">Total balance</Text>
+              <Text fw={700} fz={28} mt={2}>
+                {walletBalance ? (hidden ? "••••••" : money(walletBalance.total)) : "-"}
+              </Text>
+            </div>
+            <button
+              type="button"
+              onClick={toggle}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-[#0B6B55]"
+              aria-label={hidden ? "Show wallet balance" : "Hide wallet balance"}
+            >
+              {hidden ? "Show" : "Hide"}
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#EEF2F0] pt-4">
+            <div>
+              <Text size="xs" c="dimmed">Available</Text>
+              <Text fw={600}>{walletBalance ? (hidden ? "••••" : money(walletBalance.available)) : "-"}</Text>
+            </div>
+            <div>
+              <Text size="xs" c="dimmed">Reserved</Text>
+              <Text fw={600}>{walletBalance ? (hidden ? "••••" : money(walletBalance.reserved)) : "-"}</Text>
+            </div>
+          </div>
+        </Card>
+
+        <div className="hidden grid-cols-1 gap-4 sm:grid sm:grid-cols-3 sm:gap-5">
           <SummaryCard
             title="Total Balance"
             amount={walletBalance ? money(walletBalance.total) : "-"}
@@ -125,16 +154,9 @@ export function Home() {
             hidden={hidden}
           />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-          <TrustScoreCard
-            score={trustScore}
-            breakdown={trustData?.atiBreakdown ?? null}
-          />
-          <CreditScoreCard score={creditScore ?? 0} />
-        </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-7">
-            <div className="grid grid-cols-4 gap-3 sm:flex sm:gap-8">
+            <div className="hidden gap-3 sm:flex sm:gap-8">
               <IconButton
                 defaultIcon={addFunds}
                 pressedIcon={addFundsPressed}
@@ -170,7 +192,7 @@ export function Home() {
             </div>
             <div>
               <Text fw={500} fz={24} mb={16}>
-                Quick Access
+                What would you like to do?
               </Text>
               <div className="grid grid-cols-2 gap-4 sm:gap-5">
                 <QuickCard
@@ -269,6 +291,28 @@ export function Home() {
               recentTxns.map((tx) => <GroupTxStyled key={tx.id} tx={tx} />)
             )}
           </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+          <TrustScoreCard
+            score={trustScore}
+            breakdown={trustData?.atiBreakdown ?? null}
+          />
+          <CreditScoreCard score={creditScore ?? 0} />
+        </div>
+
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-4 py-4 sm:hidden">
+          <div>
+            <Text fw={600} size="sm">Want to run your own ajo?</Text>
+            <Text size="xs" c="dimmed">Create groups and manage contributions.</Text>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/rosca/become-admin")}
+            className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-[#0B6B55]"
+          >
+            Learn more
+          </button>
         </div>
       </div>
     </div>

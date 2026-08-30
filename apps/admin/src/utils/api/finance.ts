@@ -314,14 +314,11 @@ export async function applyForLoan(payload: {
 }
 
 export async function getLoanStatus(): Promise<Loan | null> {
-  try {
-    const res = await authRequest<{ data?: Loan } | Loan>("/api/loan/status", {
-      method: "GET",
-    });
-    return ("data" in res && res.data ? res.data : res) as Loan;
-  } catch {
-    return null;
-  }
+  const res = await authRequest<{ data?: Loan | null } | Loan>("/api/loan/status", {
+    method: "GET",
+  });
+  if ("data" in res) return (res as { data?: Loan | null }).data ?? null;
+  return res as Loan;
 }
 
 export async function getLoanHistory(): Promise<Loan[]> {

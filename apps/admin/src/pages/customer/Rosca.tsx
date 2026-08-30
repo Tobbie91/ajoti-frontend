@@ -14,7 +14,6 @@ import {
   IconMessageCircle,
   IconCalendar,
   IconCheck,
-  IconFilter,
   IconAlertTriangle,
   IconX,
   IconCircleCheck,
@@ -62,9 +61,9 @@ interface JoinedGroup {
   circleStatus: string;
 }
 
-const statusBadge: Record<GroupStatus, { bg: string }> = {
-  Open: { bg: "#02A36E" },
-  "Invite Only": { bg: "#F97316" },
+const statusBadge: Record<GroupStatus, { bg: string; color: string; border: string }> = {
+  Open: { bg: "#ECFDF5", color: "#047857", border: "#A7F3D0" },
+  "Invite Only": { bg: "#FFF7ED", color: "#C2410C", border: "#FED7AA" },
 };
 
 export function Rosca() {
@@ -267,7 +266,7 @@ export function Rosca() {
     <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6">
       <div className="flex flex-col gap-6">
         {/* Hero Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#02A36E] to-[#00C853] px-6 py-8 sm:px-10 sm:py-10 text-white">
+        <div className="relative hidden overflow-hidden rounded-2xl bg-gradient-to-r from-[#02A36E] to-[#00C853] px-6 py-8 text-white sm:block sm:px-10 sm:py-10">
           <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Text
@@ -293,40 +292,74 @@ export function Rosca() {
           <div className="absolute right-48 top-2 h-24 w-24 rounded-full bg-white/5" />
         </div>
 
+        <div className="sm:hidden">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Text fw={700} className="text-[26px] leading-tight text-[#0F172A]">Find an ajo</Text>
+              <Text size="sm" c="dimmed" className="mt-1">Discover a group or check the ones you've joined.</Text>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/rosca/how-it-works")}
+              className="shrink-0 py-1 text-xs font-semibold text-[#0B6B55]"
+            >
+              How it works
+            </button>
+          </div>
+          <div className="mt-5 grid grid-cols-2 rounded-xl bg-[#EEF3F1] p-1" aria-label="Ajo view">
+            <button
+              type="button"
+              onClick={() => { setActiveTab("All Groups"); setShowAll(false); }}
+              className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${activeTab !== "Joined" ? "bg-white text-[#0B6B55] shadow-sm" : "text-[#667085]"}`}
+            >
+              Discover
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab("Joined"); setShowAll(false); }}
+              className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${activeTab === "Joined" ? "bg-white text-[#0B6B55] shadow-sm" : "text-[#667085]"}`}
+            >
+              Joined
+            </button>
+          </div>
+        </div>
+
         {/* Tabs */}
-        <Tabs
-          value={activeTab}
-          onChange={(v) => {
-            setActiveTab(v || "All Groups");
-            setShowAll(false);
-          }}
-          variant="default"
-          styles={{
-            list: {
-              display: "flex",
-              justifyContent: "space-between",
-            },
-            tab: {
-              flex: 1,
-              textAlign: "center",
-              fontWeight: 500,
-              fontSize: 14,
-              padding: "10px 0",
-              color: "#9CA3AF",
-            },
-          }}
-        >
-          <Tabs.List grow>
-            {TABS.map((tab) => (
-              <Tabs.Tab key={tab} value={tab}>
-                {tab}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs>
+        <div className="hidden sm:block">
+          <Tabs
+            value={activeTab}
+            onChange={(v) => {
+              setActiveTab(v || "All Groups");
+              setShowAll(false);
+            }}
+            variant="default"
+            styles={{
+              list: {
+                display: "flex",
+                justifyContent: "space-between",
+              },
+              tab: {
+                flex: 1,
+                textAlign: "center",
+                fontWeight: 500,
+                fontSize: 14,
+                padding: "10px 0",
+                color: "#9CA3AF",
+              },
+            }}
+          >
+            <Tabs.List grow>
+              {TABS.map((tab) => (
+                <Tabs.Tab key={tab} value={tab}>
+                  {tab}
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+          </Tabs>
+        </div>
 
         {!admin && (
-          <div className="flex items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-6 py-4">
+          <div className="hidden items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-6 py-4 sm:flex">
             <div>
               <Text fw={600} size="sm" className="text-[#0F172A]">
                 Become an ajo admin
@@ -345,7 +378,7 @@ export function Rosca() {
         )}
 
         {/* Search + Filter */}
-        <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 sm:flex">
           <TextInput
             placeholder="Search groups or admins..."
             leftSection={<IconSearch size={18} color="#9CA3AF" />}
@@ -357,10 +390,6 @@ export function Rosca() {
               input: { borderColor: "#E5E7EB", backgroundColor: "#FFFFFF" },
             }}
           />
-          <button className="flex h-[42px] items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 text-[13px] font-medium text-[#374151]">
-            <IconFilter size={16} color="#6B7280" />
-            Filter
-          </button>
           <button
             onClick={() => navigate("/rosca/requests")}
             className="flex h-[42px] cursor-pointer items-center gap-2 rounded-lg border border-[#02A36E] bg-white px-4 text-[13px] font-medium text-[#02A36E]"
@@ -368,6 +397,39 @@ export function Rosca() {
             My Requests
           </button>
         </div>
+
+        {activeTab !== "Joined" && (
+          <div className="space-y-3 sm:hidden">
+            <TextInput
+              aria-label="Search ajo groups"
+              placeholder="Search groups or admins"
+              leftSection={<IconSearch size={18} color="#9CA3AF" />}
+              radius="md"
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+              styles={{ input: { borderColor: "#E5E7EB", backgroundColor: "#FFFFFF" } }}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex flex-1 items-center gap-2 text-xs font-medium text-[#475467]">
+                Show
+                <select
+                  aria-label="Filter ajo groups"
+                  value={activeTab}
+                  onChange={(e) => { setActiveTab(e.currentTarget.value); setShowAll(false); }}
+                  className="min-w-0 flex-1 rounded-lg border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#101828]"
+                >
+                  <option value="All Groups">All groups</option>
+                  <option value="Open Groups">Open groups</option>
+                  <option value="Invite-Only">Invite-only</option>
+                </select>
+              </label>
+              <div className="flex shrink-0 items-center gap-3 text-xs font-semibold text-[#0B6B55]">
+                <button type="button" onClick={() => navigate("/rosca/requests")}>Requests</button>
+                <button type="button" onClick={() => navigate("/rosca/invites")}>Invites</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Joined Tab Content */}
         {isJoinedTab ? (
@@ -532,98 +594,89 @@ export function Rosca() {
                     group.isRequestingUserAdmin ||
                     group.hasInvite;
 
-                  return <div
-                    key={group.id}
-                    onClick={hasAction ? openGroup : undefined}
-                    className={`flex flex-col overflow-hidden rounded-2xl shadow-sm transition-shadow ${hasAction ? "cursor-pointer hover:shadow-md" : "cursor-default"}`}
-                    style={{ backgroundColor: "rgba(0, 200, 83, 0.3)" }}
-                  >
-                    {/* Card body */}
-                    <div className="flex-1 px-6 pt-6 pb-5">
-                      <Text
-                        fw={700}
-                        className="text-[18px] leading-snug text-[#0F172A]"
-                      >
-                        {group.name}
-                      </Text>
+                  const actionLabel =
+                    group.status === "Open"
+                      ? "View group"
+                      : group.canViewDetails || group.isRequestingUserAdmin
+                        ? "View group"
+                        : group.hasInvite
+                          ? "View invitation"
+                          : "Invite only";
 
-                      <Text
-                        fw={500}
-                        className="mt-2 text-[13px] text-[#1F2937]"
-                      >
-                        {group.slots}
-                      </Text>
-
-                      <div className="mt-4">
+                  return (
+                    <article
+                      key={group.id}
+                      className="flex min-h-[210px] flex-col rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 hover:-translate-y-0.5 hover:border-[#B7D9CF] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <Text
+                          component="h3"
+                          fw={700}
+                          className="line-clamp-2 text-[17px] leading-snug text-[#0F172A]"
+                        >
+                          {group.name}
+                        </Text>
                         <Badge
                           size="md"
                           radius="xl"
+                          className="shrink-0"
                           styles={{
                             root: {
                               backgroundColor: statusBadge[group.status].bg,
-                              color: "#FFFFFF",
+                              color: statusBadge[group.status].color,
+                              border: `1px solid ${statusBadge[group.status].border}`,
                               textTransform: "none",
                               fontWeight: 600,
-                              fontSize: 12,
-                              paddingLeft: 14,
-                              paddingRight: 14,
-                              height: 28,
+                              fontSize: 11,
+                              paddingLeft: 10,
+                              paddingRight: 10,
+                              height: 25,
                             },
                           }}
                         >
                           {group.status}
                         </Badge>
                       </div>
-                    </div>
 
-                    {/* Card footer - deeper green */}
-                    <div
-                      className="flex items-center justify-between px-6 py-4"
-                      style={{ backgroundColor: "rgba(0, 200, 83, 0.5)" }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          size={36}
-                          radius="xl"
-                          color="dark"
-                          variant="filled"
-                        >
-                          {group.admin.charAt(0)}
-                        </Avatar>
-                        <div>
-                          <Text
-                            fw={600}
-                            className="text-[13px] leading-tight text-[#0F172A]"
+                      <Text size="sm" fw={600} className="mt-3 text-[#475569]">
+                        {group.slots} available
+                      </Text>
+
+                      <div className="mt-auto border-t border-[#F1F5F9] pt-4">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar
+                            size={32}
+                            radius="xl"
+                            color="teal"
+                            variant="light"
                           >
-                            {group.admin}
-                          </Text>
-                          <Text
-                            fw={400}
-                            className="text-[11px]"
-                            style={{ color: "#6B7280" }}
-                          >
-                            Admin
-                          </Text>
+                            {group.admin.charAt(0)}
+                          </Avatar>
+                          <div className="min-w-0">
+                            <Text size="xs" className="text-[#64748B]">
+                              Organised by
+                            </Text>
+                            <Text
+                              fw={600}
+                              className="truncate text-[13px] text-[#1E293B]"
+                            >
+                              {group.admin}
+                            </Text>
+                          </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={openGroup}
+                          disabled={!hasAction}
+                          aria-label={`${actionLabel}: ${group.name}`}
+                          className={`mt-4 w-full rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-colors ${hasAction ? "cursor-pointer bg-[#02A36E] text-white hover:bg-[#01875B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#02A36E]" : "cursor-not-allowed bg-[#F1F5F9] text-[#94A3B8]"}`}
+                        >
+                          {actionLabel}
+                        </button>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openGroup();
-                        }}
-                        disabled={!hasAction}
-                        className={`rounded-lg bg-white px-6 py-2.5 text-[13px] font-semibold shadow-sm ${hasAction ? "cursor-pointer text-[#0F172A]" : "cursor-not-allowed text-[#6B7280]"}`}
-                      >
-                        {group.status === "Open"
-                          ? "View & Join"
-                          : group.canViewDetails || group.isRequestingUserAdmin
-                            ? "View"
-                            : group.hasInvite
-                              ? "View Invitation"
-                              : "Invite Only"}
-                      </button>
-                    </div>
-                  </div>;
+                    </article>
+                  );
                 })}
               </div>
             ) : (
@@ -651,6 +704,22 @@ export function Rosca() {
           </>
         )}
       </div>
+
+      {!admin && (
+        <div className="mt-8 flex items-center justify-between gap-4 border-t border-[#E5E7EB] py-5 sm:hidden">
+          <div>
+            <Text fw={600} size="sm">Want to organise an ajo?</Text>
+            <Text size="xs" c="dimmed">Learn about creating and managing a group.</Text>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/rosca/become-admin")}
+            className="shrink-0 text-xs font-semibold text-[#0B6B55]"
+          >
+            Learn more
+          </button>
+        </div>
+      )}
 
       {/* Leave Group Modal */}
       {leaveGroupId &&
