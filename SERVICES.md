@@ -90,9 +90,9 @@ Each active app builds to static assets and must be configured with the correct 
 
 Current intended domains:
 
-| App | Domain |
-| --- | --- |
-| Customer | `admin.ajoti.com` |
+| App         | Domain                  |
+| ----------- | ----------------------- |
+| Customer    | `admin.ajoti.com`       |
 | Super Admin | `super-admin.ajoti.com` |
 
 If `user.ajoti.com` remains reachable during the migration period, it should redirect to the canonical customer app rather than host a separate implementation.
