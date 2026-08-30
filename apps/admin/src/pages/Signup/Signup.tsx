@@ -13,18 +13,20 @@ import { DateInput } from "@mantine/dates";
 import { Link, useNavigate } from "react-router-dom";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { register } from "@/utils/api";
+import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
+import {
+    formatCalendarDate,
+    isAdultDob,
+    latestAdultDob,
+    validatePersonName,
+    validatePhone,
+} from "@ajoti/shared";
 
 const MINIMUM_REGISTRATION_AGE = 18;
 
-function latestAllowedDob() {
-    const today = new Date();
-    return new Date(
-        today.getFullYear() - MINIMUM_REGISTRATION_AGE,
-        today.getMonth(),
-        today.getDate(),
-    );
-}
+type SignupField = "firstName" | "lastName" | "email" | "phone" | "dob" | "gender" | "password";
+type SignupErrors = Partial<Record<SignupField, string>>;
 
 export function Signup() {
     const navigate = useNavigate();
@@ -38,34 +40,68 @@ export function Signup() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [touched, setTouched] = useState<Partial<Record<SignupField, boolean>>>({});
+    const [submitted, setSubmitted] = useState(false);
+    const [serverFieldErrors, setServerFieldErrors] = useState<SignupErrors>({});
+
+    const fieldErrors: SignupErrors = {
+        firstName: validatePersonName(firstName, "First name"),
+        lastName: validatePersonName(lastName, "Last name"),
+        email: !email.trim()
+            ? "Email is required."
+            : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+              ? "Enter a valid email address."
+              : undefined,
+        phone: validatePhone(phone),
+        dob: !dob
+            ? "Date of birth is required."
+            : !isAdultDob(dob, MINIMUM_REGISTRATION_AGE)
+              ? `You must be at least ${MINIMUM_REGISTRATION_AGE} years old.`
+              : undefined,
+        gender: !gender ? "Gender is required." : undefined,
+        password: !password
+            ? "Password is required."
+            : password.length < 8 || password.length > 20
+              ? "Password must be between 8 and 20 characters."
+              : undefined,
+        ...serverFieldErrors,
+    };
+
+    function visibleError(field: SignupField) {
+        return touched[field] || submitted ? fieldErrors[field] : undefined;
+    }
+
+    function markTouched(field: SignupField) {
+        setTouched((current) => ({ ...current, [field]: true }));
+    }
+
+    function clearServerError(field: SignupField) {
+        setServerFieldErrors((current) => {
+            const next = { ...current };
+            delete next[field];
+            return next;
+        });
+    }
 
     async function handleSignup() {
-        if (
-            !firstName.trim() ||
-            !lastName.trim() ||
-            !email.trim() ||
-            !password ||
-            !gender ||
-            !dob
-        ) {
-            setError("Please fill in all fields.");
-            return;
-        }
-        if (dob > latestAllowedDob()) {
-            setError(`You must be at least ${MINIMUM_REGISTRATION_AGE} years old to register.`);
+        setSubmitted(true);
+        setServerFieldErrors({});
+        const currentErrors = Object.values(fieldErrors).filter(Boolean);
+        if (currentErrors.length > 0) {
+            setError(currentErrors.join(" "));
             return;
         }
         setError(null);
         setLoading(true);
         try {
-            const dobString = dob.toISOString().split("T")[0];
+            const dobString = formatCalendarDate(dob!);
             await register({
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
                 email: email.trim(),
                 phone,
                 dob: dobString,
-                gender: gender.toUpperCase() as "MALE" | "FEMALE",
+                gender: gender!.toUpperCase() as "MALE" | "FEMALE",
                 password,
             });
             localStorage.setItem("verify_email", email.trim());
@@ -75,14 +111,23 @@ export function Signup() {
                     firstName: firstName.trim(),
                     lastName: lastName.trim(),
                     email: email.trim(),
+                    phone,
                     dob: dobString,
                 }),
             );
             navigate("/verify-otp");
         } catch (err) {
-            setError(
-                err instanceof Error ? err.message : "Registration failed",
-            );
+            if (err instanceof ApiError) {
+                const mapped = Object.fromEntries(
+                    Object.entries(err.fieldErrors)
+                        .filter(([field]) => ["firstName", "lastName", "email", "phone", "dob", "gender", "password"].includes(field))
+                        .map(([field, messages]) => [field, messages.join(" ")]),
+                ) as SignupErrors;
+                setServerFieldErrors(mapped);
+                setError(err.messages.join(" "));
+            } else {
+                setError(err instanceof Error ? err.message : "Registration failed");
+            }
         } finally {
             setLoading(false);
         }
@@ -179,9 +224,10 @@ export function Signup() {
                                     placeholder="First name"
                                     radius="md"
                                     value={firstName}
-                                    onChange={(e) =>
-                                        setFirstName(e.currentTarget.value)
-                                    }
+                                    onChange={(e) => { setFirstName(e.currentTarget.value); clearServerError("firstName"); }}
+                                    onBlur={() => markTouched("firstName")}
+                                    error={visibleError("firstName")}
+                                    required
                                     styles={{
                                         input: {
                                             borderColor: "#BFEBD1",
@@ -194,9 +240,10 @@ export function Signup() {
                                     placeholder="Last name"
                                     radius="md"
                                     value={lastName}
-                                    onChange={(e) =>
-                                        setLastName(e.currentTarget.value)
-                                    }
+                                    onChange={(e) => { setLastName(e.currentTarget.value); clearServerError("lastName"); }}
+                                    onBlur={() => markTouched("lastName")}
+                                    error={visibleError("lastName")}
+                                    required
                                     styles={{
                                         input: {
                                             borderColor: "#BFEBD1",
@@ -210,9 +257,10 @@ export function Signup() {
                                 placeholder="you@example.com"
                                 radius="md"
                                 value={email}
-                                onChange={(e) =>
-                                    setEmail(e.currentTarget.value)
-                                }
+                                onChange={(e) => { setEmail(e.currentTarget.value); clearServerError("email"); }}
+                                onBlur={() => markTouched("email")}
+                                error={visibleError("email")}
+                                required
                                 styles={{
                                     input: {
                                         borderColor: "#BFEBD1",
@@ -222,8 +270,11 @@ export function Signup() {
                             />
                             <PhoneInputField
                                 value={phone}
-                                onChange={setPhone}
+                                onChange={(value) => { setPhone(value); clearServerError("phone"); }}
                                 label="Phone number"
+                                required
+                                onBlur={() => markTouched("phone")}
+                                error={visibleError("phone")}
                                 styles={{
                                     input: {
                                         borderColor: "#BFEBD1",
@@ -237,11 +288,12 @@ export function Signup() {
                                     placeholder="DD/MM/YYYY"
                                     radius="md"
                                     valueFormat="DD/MM/YYYY"
-                                    maxDate={latestAllowedDob()}
+                                    maxDate={latestAdultDob(MINIMUM_REGISTRATION_AGE)}
                                     value={dob}
-                                    onChange={(value) =>
-                                        setDob(value ? new Date(value) : null)
-                                    }
+                                    onChange={(value) => { setDob(value ? new Date(value) : null); clearServerError("dob"); }}
+                                    onBlur={() => markTouched("dob")}
+                                    error={visibleError("dob")}
+                                    required
                                     dateParser={(input) => {
                                         const [day, month, year] =
                                             input.split("/");
@@ -275,7 +327,9 @@ export function Signup() {
                                     ]}
                                     radius="md"
                                     value={gender}
-                                    onChange={setGender}
+                                    onChange={(value) => { setGender(value); clearServerError("gender"); markTouched("gender"); }}
+                                    error={visibleError("gender")}
+                                    required
                                     styles={{
                                         input: {
                                             borderColor: "#BFEBD1",
@@ -290,9 +344,10 @@ export function Signup() {
                                 label="Password"
                                 radius="md"
                                 value={password}
-                                onChange={(e) =>
-                                    setPassword(e.currentTarget.value)
-                                }
+                                onChange={(e) => { setPassword(e.currentTarget.value); clearServerError("password"); }}
+                                onBlur={() => markTouched("password")}
+                                error={visibleError("password")}
+                                required
                                 styles={{
                                     input: {
                                         borderColor: "#BFEBD1",

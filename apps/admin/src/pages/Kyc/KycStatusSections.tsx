@@ -85,23 +85,19 @@ export function LimitCard({ level }: { level: number }) {
 export function VerificationDataCard({
   data,
 }: {
-  data: Record<string, unknown> | null | undefined;
+  data: {
+    name?: string;
+    phone?: string;
+    identityType?: string;
+    tier?: string;
+    verifiedAt?: string;
+  } | null | undefined;
 }) {
   if (!data) return null;
 
-  // Mono stores the full webhook body: { event, data: { customer, kyc_level, ... } }
-  const inner = (data.data ?? data) as Record<string, any>;
-  const customer = inner?.customer as Record<string, any> | undefined;
-  const name: string | undefined = customer?.name;
-  const phone: string | undefined = customer?.phone;
-  const identityType: string | undefined =
-    customer?.identity?.type?.toUpperCase();
-  const tier: string | undefined = (inner?.kyc_level as string)?.replace(
-    "_",
-    " ",
-  );
-  const verifiedAt: string | undefined =
-    inner?.updated_at ?? inner?.created_at ?? inner?.verified_at;
+  const { name, phone, verifiedAt } = data;
+  const identityType = data.identityType?.toUpperCase();
+  const tier = data.tier?.replaceAll("_", " ");
 
   const rows: { label: string; value: string }[] = [
     ...(name ? [{ label: "Verified Name", value: name }] : []),

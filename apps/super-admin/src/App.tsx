@@ -3,7 +3,7 @@ import { AdminLayout } from '@/layouts'
 import { RequireAuth, RequirePermission } from '@/components/RequireAuth/RequireAuth'
 import {
   Dashboard, ManageUsers, ManageRosca, Transactions, SettingsLogs, Login, ForgotPassword,
-  ResetPassword, ChangePasswordRequired, KycApprovals, TrustScores, Simulations, Wallets,
+  ResetPassword, ChangePasswordRequired, KycApprovals, TrustScores, Wallets,
   SystemAccounts, LoansList, DebtsList, PayoutFeeSettings, LoanSettings, CircleRulesSettings,
   SupportInbox, SupportTicketDetail, ContactDetailsCorrection, StaffManagement, StaffSetup, Maintenance,
 } from '@/pages'
@@ -44,7 +44,6 @@ function App() {
             </Route>
             <Route element={<RequirePermission permission="MANAGE_CIRCLES" />}>
               <Route path="/manage-rosca" element={<ManageRosca />} />
-              <Route path="/simulations" element={<Simulations />} />
             </Route>
             <Route element={<RequirePermission permission="VIEW_LEDGER" />}>
               <Route path="/wallets" element={<Wallets />} />

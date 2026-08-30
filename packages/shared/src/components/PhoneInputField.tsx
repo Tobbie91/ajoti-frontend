@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Group, Select, TextInput } from '@mantine/core'
+import { PHONE_RULES, validatePhone } from '../validation'
 
 const COUNTRIES = [
   { value: '+234', label: '🇳🇬 +234' },
@@ -27,6 +28,9 @@ interface PhoneInputFieldProps {
   radius?: string
   size?: string
   styles?: { input?: React.CSSProperties }
+  error?: React.ReactNode
+  onBlur?: () => void
+  onValidityChange?: (isValid: boolean) => void
 }
 
 export function PhoneInputField({
@@ -39,13 +43,19 @@ export function PhoneInputField({
   radius = 'md',
   size,
   styles,
+  error,
+  onBlur,
+  onValidityChange,
 }: PhoneInputFieldProps) {
   const initial = parsePhone(value || '')
   const [countryCode, setCountryCode] = useState(initial.code)
   const [local, setLocal] = useState(initial.local)
 
   useEffect(() => {
-    if (!value) return
+    if (!value) {
+      setLocal('')
+      return
+    }
     const p = parsePhone(value)
     if (value !== `${countryCode}${local}`) {
       setCountryCode(p.code)
@@ -53,8 +63,13 @@ export function PhoneInputField({
     }
   }, [value])
 
+  useEffect(() => {
+    onValidityChange?.(!validatePhone(value))
+  }, [onValidityChange, value])
+
   function handleLocalChange(raw: string) {
-    const digits = raw.replace(/\D/g, '').replace(/^0+/, '')
+    const maxLength = PHONE_RULES[countryCode]?.nationalLength ?? 15
+    const digits = raw.replace(/\D/g, '').replace(/^0+/, '').slice(0, maxLength)
     setLocal(digits)
     onChange(`${countryCode}${digits}`)
   }
@@ -94,6 +109,11 @@ export function PhoneInputField({
           disabled={disabled}
           styles={styles}
           inputMode="numeric"
+          maxLength={PHONE_RULES[countryCode]?.nationalLength}
+          description={PHONE_RULES[countryCode] ? `${PHONE_RULES[countryCode].nationalLength} digits after ${countryCode}` : undefined}
+          error={error}
+          onBlur={onBlur}
+          aria-invalid={Boolean(error)}
         />
       </Group>
     </div>

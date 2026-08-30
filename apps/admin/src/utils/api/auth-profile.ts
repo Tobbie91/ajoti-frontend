@@ -129,7 +129,15 @@ export interface KycStatus {
   step?: string;
   kycLevel: number; // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
   rejectionReason?: string | null;
-  verificationData?: Record<string, unknown> | null;
+  providerStatus?: string | null;
+  monoUrl?: string | null;
+  verificationSummary?: {
+    name?: string;
+    phone?: string;
+    identityType?: string;
+    tier?: string;
+    verifiedAt?: string;
+  } | null;
   nextOfKinName?: string;
   nextOfKinRelationship?: string;
   nextOfKinPhone?: string;

@@ -1,0 +1,36 @@
+rules:
+  - id: ajoti-frontend-eval
+    message: Dynamic code execution can turn user-controlled data into code.
+    severity: ERROR
+    languages: [typescript, javascript]
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+
+  - id: ajoti-frontend-dangerous-html
+    message: Review dangerouslySetInnerHTML for XSS and ensure content is sanitized.
+    severity: ERROR
+    languages: [typescript, javascript]
+    pattern: <$X dangerouslySetInnerHTML={...} />
+
+  - id: ajoti-frontend-document-write
+    message: document.write can create DOM XSS and should not process dynamic content.
+    severity: ERROR
+    languages: [typescript, javascript]
+    pattern: document.write(...)
+
+  - id: ajoti-frontend-window-location-input
+    message: Review dynamic navigation targets for open redirects or javascript URLs.
+    severity: WARNING
+    languages: [typescript, javascript]
+    pattern-either:
+      - pattern: window.location = $VALUE
+      - pattern: window.location.href = $VALUE
+
+  - id: ajoti-frontend-weak-hash
+    message: MD5 and SHA-1 are unsuitable for signatures or security tokens.
+    severity: WARNING
+    languages: [typescript, javascript]
+    pattern-either:
+      - pattern: crypto.createHash('md5')
+      - pattern: crypto.createHash('sha1')

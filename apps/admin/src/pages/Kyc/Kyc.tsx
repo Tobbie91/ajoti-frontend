@@ -1,19 +1,15 @@
 import { PendingReviewScreen, FullyVerifiedScreen } from "./KycStatusSections";
 import { ProvePendingScreen, UpgradePage } from "./KycUpgradeSections";
 import { OnboardingFlow, OnboardingDoneScreen } from "./KycOnboardingSections";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader } from "@mantine/core";
-import {
-  proveInitiate,
-  submitNok,
-  getKycStatus,
-  resubmitKyc,
-  type KycStatus,
-} from "@/utils/api";
+import { getKycStatus, resubmitKyc, type KycStatus } from "@/utils/api";
 
 type PageView =
   | "loading"
   | "onboarding"
+  | "rejected-l1"
+  | "error"
   | "prove-pending"
   | "onboarding-done"
   | "upgrade-l2"
@@ -36,6 +32,7 @@ function resolveView(kyc: KycStatus | null): PageView {
 
   if (kycLevel === 0) {
     if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
+    if (status === "REJECTED") return "rejected-l1";
     return "onboarding";
   }
 
@@ -43,6 +40,7 @@ function resolveView(kyc: KycStatus | null): PageView {
 
   if (kycLevel === 2) {
     if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
+    if (status === "REJECTED") return "rejected-l3";
     if (step === "PROOF_OF_ADDRESS_REQUIRED" && status === "REJECTED")
       return "rejected-l3";
     if (step === "PROOF_OF_ADDRESS_REQUIRED") return "pending-l3";
@@ -50,6 +48,7 @@ function resolveView(kyc: KycStatus | null): PageView {
   }
 
   if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
+  if (status === "REJECTED") return "rejected-l2";
   if (step === "PHOTO_REQUIRED" && status === "REJECTED") return "rejected-l2";
   if (step === "PHOTO_REQUIRED") return "pending-l2";
   return "upgrade-l2";
@@ -58,68 +57,29 @@ function resolveView(kyc: KycStatus | null): PageView {
 export function Kyc() {
   const [view, setView] = useState<PageView>("loading");
   const [kycData, setKycData] = useState<KycStatus | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
 
-  async function loadStatus() {
+  const loadStatus = useCallback(async () => {
     try {
-      let kyc = await getKycStatus();
-
-      if (kyc.kycLevel === 0 && kyc.status === "REJECTED") {
-        try {
-          kyc = await resubmitKyc();
-        } catch {
-          setView("onboarding");
-          return;
-        }
-      }
-
-      if (
-        kyc.kycLevel === 0 &&
-        kyc.step === "NOK_REQUIRED" &&
-        kyc.nextOfKinName &&
-        kyc.nextOfKinRelationship &&
-        kyc.nextOfKinPhone
-      ) {
-        kyc = await submitNok({
-          nextOfKinName: kyc.nextOfKinName,
-          nextOfKinRelationship: kyc.nextOfKinRelationship,
-          nextOfKinPhone: kyc.nextOfKinPhone,
-        });
-        setKycData(kyc);
-        sessionStorage.removeItem("kyc_widget_opened");
-        setView("onboarding-done");
-        return;
-      }
+      setLoadError(null);
+      const kyc = await getKycStatus();
 
       setKycData(kyc);
-      const resolved = resolveView(kyc);
-
-      if (
-        resolved === "prove-pending" &&
-        sessionStorage.getItem("kyc_widget_opened") !== "true"
-      ) {
-        setView(
-          kyc.kycLevel === 0
-            ? "onboarding"
-            : kyc.kycLevel === 1
-              ? "upgrade-l2"
-              : "upgrade-l3",
-        );
-        return;
-      }
-      setView(resolved);
-    } catch {
-      setView("onboarding");
+      setView(resolveView(kyc));
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to load your KYC status.");
+      setView("error");
     }
-  }
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("status") === "success") {
-      sessionStorage.setItem("kyc_widget_opened", "true");
       window.history.replaceState({}, "", "/kyc");
     }
     loadStatus();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadStatus]);
 
   useEffect(() => {
     if (view !== "prove-pending") return;
@@ -135,7 +95,7 @@ export function Kyc() {
       window.removeEventListener("focus", refreshOnReturn);
       document.removeEventListener("visibilitychange", refreshOnReturn);
     };
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadStatus, view]);
 
   if (view === "loading") {
     return (
@@ -145,33 +105,72 @@ export function Kyc() {
     );
   }
 
-  if (view === "prove-pending") {
-    const isUpgrade = (kycData?.kycLevel ?? 0) >= 1;
+  if (view === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-6">
+        <div className="w-full max-w-[440px] rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center">
+          <h1 className="text-xl font-bold text-[#0F172A]">We couldn't load your verification</h1>
+          <p className="mt-3 text-sm text-[#6B7280]">
+            {loadError} Your saved progress has not been changed.
+          </p>
+          <button
+            onClick={() => void loadStatus()}
+            className="mt-6 w-full rounded-xl bg-[#02A36E] px-6 py-3 font-semibold text-white"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-    async function handleRestart() {
-      sessionStorage.removeItem("kyc_widget_opened");
-      if (!isUpgrade) {
-        setView("onboarding");
-        return;
-      }
+  if (view === "rejected-l1") {
+    const restart = async () => {
+      setRestarting(true);
       try {
-        const result = await proveInitiate({});
-        if (result.monoUrl) {
-          sessionStorage.setItem("kyc_widget_opened", "true");
-          window.open(result.monoUrl, "_blank", "noopener,noreferrer");
-        }
-      } catch {
-        /* stay on pending */
+        const kyc = await resubmitKyc();
+        setKycData(kyc);
+        setView("onboarding");
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : "Unable to restart verification.");
+        setView("error");
+      } finally {
+        setRestarting(false);
       }
-    }
+    };
 
     return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-6">
+        <div className="w-full max-w-[440px] rounded-2xl border border-red-200 bg-white p-8 text-center">
+          <h1 className="text-xl font-bold text-[#0F172A]">Verification unsuccessful</h1>
+          <p className="mt-3 text-sm text-[#6B7280]">
+            {kycData?.rejectionReason ?? "Your identity verification could not be completed."}
+          </p>
+          <p className="mt-2 text-xs text-[#9CA3AF]">
+            Restarting will clear the previous identity submission so you can enter it again.
+          </p>
+          <button
+            disabled={restarting}
+            onClick={() => void restart()}
+            className="mt-6 w-full rounded-xl bg-[#02A36E] px-6 py-3 font-semibold text-white disabled:bg-[#9CA3AF]"
+          >
+            {restarting ? "Preparing..." : "Try Verification Again"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "prove-pending") {
+    return (
       <ProvePendingScreen
-        onVerified={() => {
-          sessionStorage.removeItem("kyc_widget_opened");
-          loadStatus();
-        }}
-        onRestart={handleRestart}
+        awaitingReview={kycData?.providerStatus === "ambiguous"}
+        onContinue={
+          kycData?.monoUrl
+            ? () => window.location.assign(kycData.monoUrl as string)
+            : undefined
+        }
+        onVerified={loadStatus}
       />
     );
   }
@@ -183,7 +182,6 @@ export function Kyc() {
           kycData?.kycLevel === 0 ? (kycData.rejectionReason ?? null) : null
         }
         onComplete={() => setView("onboarding-done")}
-        onProvePending={() => setView("prove-pending")}
         identityVerified={
           (kycData?.ninVerified && kycData?.bvnVerified) ?? false
         }
@@ -195,7 +193,7 @@ export function Kyc() {
     return (
       <OnboardingDoneScreen
         onContinue={() => setView("upgrade-l2")}
-        verificationData={kycData?.verificationData}
+        verificationSummary={kycData?.verificationSummary}
       />
     );
   }
@@ -205,7 +203,7 @@ export function Kyc() {
       <PendingReviewScreen
         forLevel={2}
         onRefresh={loadStatus}
-        verificationData={kycData?.verificationData}
+        verificationData={kycData?.verificationSummary}
       />
     );
   }
@@ -215,7 +213,7 @@ export function Kyc() {
       <PendingReviewScreen
         forLevel={3}
         onRefresh={loadStatus}
-        verificationData={kycData?.verificationData}
+        verificationData={kycData?.verificationSummary}
       />
     );
   }
