@@ -47,6 +47,7 @@ export function OnboardingFlow({
   const [bvn, setBvn] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [initiating, setInitiating] = useState(false);
+  const [verifyCooldown, setVerifyCooldown] = useState(0);
   const [kinFullName, setKinFullName] = useState("");
   const [kinRelationship, setKinRelationship] = useState("");
   const [kinPhone, setKinPhone] = useState("");
@@ -70,6 +71,12 @@ export function OnboardingFlow({
       .then((profile) => setRegisteredPhone(profile.phone?.trim() ?? ""))
       .catch(() => setRegisteredPhone(""));
   }, []);
+
+  useEffect(() => {
+    if (verifyCooldown <= 0) return;
+    const timer = setTimeout(() => setVerifyCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [verifyCooldown]);
 
   const progressValue = (step / 3) * 100;
   function identityReady() {
@@ -136,6 +143,7 @@ export function OnboardingFlow({
   async function handleProveInitiate() {
     setError(null);
     setInitiating(true);
+    setVerifyCooldown(60);
     try {
       const result = await proveInitiate({ nin: nin.trim(), bvn: bvn.trim() });
       if (result.monoUrl) {
@@ -147,7 +155,8 @@ export function OnboardingFlow({
           nextOfKinRelationship: normalizedRelationship,
           nextOfKinPhone: normalizedKinPhone,
         });
-        onComplete();
+        setVerifyCooldown(0);
+        navigate("/my-profile", { state: { kycLevelOneComplete: true } });
       }
     } catch (err) {
       setError(
@@ -438,12 +447,14 @@ export function OnboardingFlow({
             />
             <button
               onClick={handleProveInitiate}
-              disabled={!confirmed || initiating}
-              className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${confirmed && !initiating ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
+              disabled={!confirmed || initiating || verifyCooldown > 0}
+              className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${confirmed && !initiating && verifyCooldown === 0 ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
             >
               {initiating
-                ? "Verifying identity..."
-                : "Verify Identity"}
+                ? `Verifying identity... (${verifyCooldown}s)`
+                : verifyCooldown > 0
+                  ? `Please wait ${verifyCooldown}s before retrying`
+                  : "Verify Identity"}
             </button>
           </div>
         )}

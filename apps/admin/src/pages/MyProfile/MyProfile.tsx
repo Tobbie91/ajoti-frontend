@@ -34,7 +34,7 @@ import {
     IconStar,
     IconTrash,
 } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
     logout as logoutApi,
     getUserProfile,
@@ -129,6 +129,10 @@ function InfoRow({
 
 export function MyProfile() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const [showLevelOneToast, setShowLevelOneToast] = useState(
+        Boolean((location.state as { kycLevelOneComplete?: boolean } | null)?.kycLevelOneComplete),
+    );
     const admin = isCircleAdmin();
     const roleLabel = admin ? "Admin" : "Member";
     const [editing, setEditing] = useState(false);
@@ -441,6 +445,33 @@ export function MyProfile() {
                 <div className="mb-4 flex items-center gap-2 text-[#6B7280]">
                     <Loader size="xs" color="#02A36E" />
                     <Text fz="xs">Loading profile...</Text>
+                </div>
+            )}
+
+            {showLevelOneToast && (
+                <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] p-4">
+                    <IconShieldCheck size={20} color="#02A36E" className="mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                        <Text fw={700} className="text-[14px] text-[#065F46]">
+                            Level 1 verification complete
+                        </Text>
+                        <Text fw={400} className="mt-1 text-[13px] leading-[1.6] text-[#047857]">
+                            You're verified as a basic member. Continue to Level 2 verification to unlock higher payout limits, group creation, and full platform access.
+                        </Text>
+                        <button
+                            onClick={() => { setShowLevelOneToast(false); navigate("/kyc"); }}
+                            className="mt-3 cursor-pointer rounded-lg bg-[#02A36E] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#028a5b]"
+                        >
+                            Continue to Level 2
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setShowLevelOneToast(false)}
+                        className="flex-shrink-0 cursor-pointer text-[#065F46] hover:text-[#02A36E]"
+                        aria-label="Dismiss"
+                    >
+                        <IconMinus size={18} />
+                    </button>
                 </div>
             )}
 
