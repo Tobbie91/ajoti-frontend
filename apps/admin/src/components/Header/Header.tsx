@@ -1,9 +1,9 @@
 ﻿import { useState, useEffect } from 'react'
-import { Group, Burger, Text, Avatar, Box, Popover, Modal, ScrollArea, Loader, Badge } from '@mantine/core'
+import { Group, Burger, Text, Avatar, Box, Popover, Modal, ScrollArea, Loader, Badge, UnstyledButton } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { IconBell } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getCurrentRole } from '@/utils/auth-role'
+import { defaultAuthenticatedPath, getCurrentRole } from '@/utils/auth-role'
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -201,10 +201,18 @@ export function Header({ opened, onToggle }: HeaderProps) {
     <Group h="100%" px="md" justify="space-between">
       <Group>
         <Burger opened={opened} onClick={onToggle} hiddenFrom="sm" size="sm" />
-        <Text fw={900} fz={20} style={{ color: PRIMARY, letterSpacing: 1 }} visibleFrom="sm">
-          AJOTI
-        </Text>
-        <Badge size="xs" variant="light" color="green" radius="sm" visibleFrom="sm">BETA</Badge>
+        <UnstyledButton
+          onClick={() => navigate(defaultAuthenticatedPath(role))}
+          aria-label="Go to home"
+          visibleFrom="sm"
+        >
+          <Group gap="xs">
+            <Text fw={900} fz={20} style={{ color: PRIMARY, letterSpacing: 1 }}>
+              AJOTI
+            </Text>
+            <Badge size="xs" variant="light" color="green" radius="sm">BETA</Badge>
+          </Group>
+        </UnstyledButton>
       </Group>
 
       <Group gap="sm">
