@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Group, Modal, PasswordInput, PinInput, Stack, Text, TextInput } from '@mantine/core'
 import { forgotPassword, resetPassword } from '@/utils/api'
+import { PASSWORD_POLICY_DESCRIPTION, validatePassword } from '@ajoti/shared'
 
 interface Props {
   opened: boolean
@@ -44,6 +45,11 @@ export function ForgotPasswordModal({ opened, onClose }: Props) {
 
   async function confirmReset() {
     if (!otp || !newPassword) return
+    const passwordError = validatePassword(newPassword)
+    if (passwordError) {
+      setError(passwordError)
+      return
+    }
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match')
       return
@@ -79,7 +85,7 @@ export function ForgotPasswordModal({ opened, onClose }: Props) {
           <>
             <Text fz="sm" c="dimmed">Enter the OTP sent to <b>{email}</b> and your new password.</Text>
             <Stack gap={4}><Text fz="sm" fw={500}>OTP Code</Text><PinInput length={6} value={otp} onChange={setOtp} type="number" /></Stack>
-            <PasswordInput label="New Password" value={newPassword} onChange={(e) => setNewPassword(e.currentTarget.value)} />
+            <PasswordInput label="New Password" description={PASSWORD_POLICY_DESCRIPTION} value={newPassword} onChange={(e) => setNewPassword(e.currentTarget.value)} />
             <PasswordInput label="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.currentTarget.value)} />
             {error && <Text fz="sm" c="red">{error}</Text>}
             <Group gap="sm">

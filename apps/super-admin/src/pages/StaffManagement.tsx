@@ -36,7 +36,7 @@ import {
   type PaginatedResponse,
   ApiError,
 } from '@/utils/api'
-import { PhoneInputField, isAdultDob, parseCalendarDate, validatePersonName, validatePhone } from '@ajoti/shared'
+import { PASSWORD_POLICY_DESCRIPTION, PhoneInputField, isAdultDob, parseCalendarDate, validatePassword, validatePersonName, validatePhone } from '@ajoti/shared'
 import { getStaffRoleFromStorage } from '@/utils/permissions'
 import { SortableTh } from '@/components/SortableTh'
 import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
@@ -258,7 +258,7 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
     phone: validatePhone(phone),
     dob: !dob ? 'Date of birth is required.' : !parsedDob || !isAdultDob(parsedDob) ? 'Staff must be at least 18 years old.' : undefined,
     gender: !gender ? 'Gender is required.' : undefined,
-    tempPassword: tempPassword.length < 8 || tempPassword.length > 20 ? 'Temporary password must be between 8 and 20 characters.' : undefined,
+    tempPassword: validatePassword(tempPassword),
     ...serverFieldErrors,
   }
 
@@ -362,7 +362,7 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
             </Group>
             <PasswordInput
               label="Temporary password"
-              description="8–20 characters - they must change it at first login"
+              description={`${PASSWORD_POLICY_DESCRIPTION} They must change it at first login.`}
               value={tempPassword}
               onChange={(e) => { setTempPassword(e.currentTarget.value); clearServerField('tempPassword') }}
               error={submitted ? fieldErrors.tempPassword : undefined}

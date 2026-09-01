@@ -20,6 +20,7 @@ import {
   isAdultDob,
   parseCalendarDate,
   validatePersonName,
+  validatePassword,
   validatePhone,
 } from "@ajoti/shared";
 
@@ -45,24 +46,24 @@ const DOB_MONTHS = [
   "December",
 ].map((label, index) => ({ value: String(index + 1), label }));
 
-const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=[\]\\;'/`~]/;
-
 function passwordChecks(pwd: string) {
   return {
-    length: pwd.length >= 8,
-    letter: /[A-Za-z]/.test(pwd),
-    number: /[0-9]/.test(pwd),
-    special: SPECIAL_CHAR_REGEX.test(pwd),
+    length: pwd.length >= 8 && pwd.length <= 128,
+    upper: /[A-Z]/.test(pwd),
+    lower: /[a-z]/.test(pwd),
+    number: /\d/.test(pwd),
+    special: /[^A-Za-z0-9\s]/.test(pwd),
   };
 }
 
 function PasswordChecklist({ password }: { password: string }) {
   const checks = passwordChecks(password);
   const items: Array<{ key: keyof ReturnType<typeof passwordChecks>; label: string }> = [
-    { key: "length", label: "At least 8 characters" },
-    { key: "letter", label: "Contains a letter" },
-    { key: "number", label: "Contains a number" },
-    { key: "special", label: "Contains a special character" },
+    { key: "length", label: "8–128 characters" },
+    { key: "upper", label: "Uppercase letter" },
+    { key: "lower", label: "Lowercase letter" },
+    { key: "number", label: "Number" },
+    { key: "special", label: "Special character" },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
@@ -141,15 +142,7 @@ export function Signup() {
           ? `You must be at least ${MINIMUM_REGISTRATION_AGE} years old.`
           : undefined,
     gender: !gender ? "Gender is required." : undefined,
-    password: (() => {
-      if (!password) return "Password is required.";
-      if (password.length > 20) return "Password must be at most 20 characters.";
-      const checks = passwordChecks(password);
-      if (!checks.length || !checks.letter || !checks.number || !checks.special) {
-        return "Password must be at least 8 characters and include a letter, a number, and a special character.";
-      }
-      return undefined;
-    })(),
+    password: validatePassword(password),
     confirmPassword: !confirmPassword
       ? "Confirm password is required."
       : confirmPassword !== password

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Card, Text, PasswordInput, Alert } from '@mantine/core'
 import { IconAlertCircle, IconLock } from '@tabler/icons-react'
 import { changePassword, clearSessionAndRedirect } from '@/utils/api'
+import { PASSWORD_POLICY_DESCRIPTION, validatePassword } from '@ajoti/shared'
 
 /**
  * Forced first-login password rotation for staff created directly with a
@@ -24,8 +25,9 @@ export function ChangePasswordRequired() {
       setError('Enter the temporary password you were given.')
       return
     }
-    if (newPassword.length < 8 || newPassword.length > 20) {
-      setError('New password must be between 8 and 20 characters.')
+    const passwordError = validatePassword(newPassword)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
     if (newPassword === currentPassword) {
@@ -89,7 +91,7 @@ export function ChangePasswordRequired() {
               />
               <PasswordInput
                 label="New password"
-                description="8–20 characters"
+                description={PASSWORD_POLICY_DESCRIPTION}
                 placeholder="••••••••"
                 radius="md"
                 value={newPassword}
