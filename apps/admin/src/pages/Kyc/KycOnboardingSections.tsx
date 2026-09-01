@@ -29,7 +29,7 @@ const inputStyles = {
   label: { fontWeight: 500, fontSize: 14, color: "#374151", marginBottom: 4 },
 };
 
-const ONBOARDING_LABELS = ["Identity", "Next of Kin", "Face Check"];
+const ONBOARDING_LABELS = ["Identity", "Next of Kin", "Verify"];
 export function OnboardingFlow({
   rejectionReason,
   onComplete,
@@ -341,7 +341,7 @@ export function OnboardingFlow({
                   Next of Kin
                 </Text>
                 <Text fw={400} className="text-[13px] text-[#6B7280]">
-                  Provide details of your next of kin before the face check.
+                  Provide your next of kin details before verifying your identity.
                 </Text>
               </div>
             </div>
@@ -396,7 +396,7 @@ export function OnboardingFlow({
                 ? "Saving..."
                 : identityVerified
                   ? "Submit & Complete Level 1"
-                  : "Save & Continue to Face Check"}
+                  : "Save & Continue to Verification"}
             </button>
           </div>
         )}
@@ -408,10 +408,10 @@ export function OnboardingFlow({
               </div>
               <div>
                 <Text fw={700} className="text-[16px] text-[#0F172A]">
-                  Face Verification
+                  Verify Identity
                 </Text>
                 <Text fw={400} className="text-[13px] text-[#6B7280]">
-                  One final identity check to complete Level 1.
+                  We will verify your BVN, NIN, and date of birth with Mono.
                 </Text>
               </div>
             </div>
@@ -420,9 +420,7 @@ export function OnboardingFlow({
                 fw={400}
                 className="text-[13px] leading-[1.6] text-[#1E40AF]"
               >
-                A secure Mono verification window will open. Complete every
-                step, including the selfie check, before closing it. Use a
-                well-lit area and face the camera directly.
+                Ajoti will securely send the BVN and NIN you entered to Mono and compare the returned identity with your account details. No selfie is required.
               </Text>
             </div>
             <Checkbox
@@ -433,8 +431,7 @@ export function OnboardingFlow({
                   fw={400}
                   className="text-[12px] leading-normal text-[#374151]"
                 >
-                  I'm ready to complete the face verification now and will
-                  finish it before leaving the Mono window.
+                  I consent to Ajoti verifying the BVN, NIN, and date of birth I provided through Mono Lookup.
                 </Text>
               }
               styles={{ input: { borderColor: "#D1D5DB" } }}
@@ -445,8 +442,8 @@ export function OnboardingFlow({
               className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${confirmed && !initiating ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]" : "cursor-not-allowed bg-[#9CA3AF]"}`}
             >
               {initiating
-                ? "Opening verification..."
-                : "Start Face Verification"}
+                ? "Verifying identity..."
+                : "Verify Identity"}
             </button>
           </div>
         )}
