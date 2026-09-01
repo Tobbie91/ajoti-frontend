@@ -3,6 +3,7 @@ import { Button, Card, Text, PinInput, PasswordInput, Alert } from '@mantine/cor
 import { useNavigate } from 'react-router-dom'
 import { IconAlertCircle, IconLock } from '@tabler/icons-react'
 import { resetPassword, resendResetOtp } from '@/utils/api'
+import { PASSWORD_POLICY_DESCRIPTION, validatePassword } from '@ajoti/shared'
 
 export function ResetPassword() {
   const navigate = useNavigate()
@@ -23,8 +24,9 @@ export function ResetPassword() {
       setError('Please enter the 6-digit code.')
       return
     }
-    if (newPassword.length < 8 || newPassword.length > 20) {
-      setError('New password must be between 8 and 20 characters.')
+    const passwordError = validatePassword(newPassword)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
     if (newPassword !== confirmPassword) {
@@ -106,7 +108,7 @@ export function ResetPassword() {
 
           <PasswordInput
             label="New password"
-            description="8–20 characters"
+            description={PASSWORD_POLICY_DESCRIPTION}
             placeholder="••••••••"
             radius="md"
             value={newPassword}

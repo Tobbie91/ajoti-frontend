@@ -19,7 +19,9 @@ import {
   earliestReasonableDob,
   isAdultDob,
   parseCalendarDate,
+  PASSWORD_POLICY_DESCRIPTION,
   validatePersonName,
+  validatePassword,
   validatePhone,
 } from "@ajoti/shared";
 
@@ -98,11 +100,7 @@ export function Signup() {
           ? `You must be at least ${MINIMUM_REGISTRATION_AGE} years old.`
           : undefined,
     gender: !gender ? "Gender is required." : undefined,
-    password: !password
-      ? "Password is required."
-      : password.length < 8 || password.length > 20
-        ? "Password must be between 8 and 20 characters."
-        : undefined,
+    password: validatePassword(password),
     confirmPassword: !confirmPassword
       ? "Confirm password is required."
       : confirmPassword !== password
@@ -456,6 +454,7 @@ export function Signup() {
 
               <PasswordInput
                 label="Password"
+                description={PASSWORD_POLICY_DESCRIPTION}
                 radius="md"
                 value={password}
                 onChange={(e) => {
