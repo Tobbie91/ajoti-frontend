@@ -158,6 +158,8 @@ export function resubmitKyc(): Promise<KycStatus> {
 export interface ProveInitiatePayload {
   nin?: string;
   bvn?: string;
+  documentType?: "drivers_license" | "international_passport";
+  documentNumber?: string;
 }
 
 export function proveInitiate(
