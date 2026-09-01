@@ -96,11 +96,11 @@ export function Login() {
                 <PasswordInput label="Password" placeholder="••••••••" radius="md" value={password}
                   onChange={(e) => setPassword(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   styles={{ input: { borderColor: '#BFEBD1' } }} />
-                <Group justify="flex-end"><Text component="button" type="button" fz="xs" c="#0B6B55" onClick={() => setForgotOpen(true)}>Forgot password?</Text></Group>
+                <Group justify="flex-end"><Text component="button" type="button" fz="xs" c="#0B6B55" style={{ cursor: 'pointer' }} onClick={() => setForgotOpen(true)}>Forgot password?</Text></Group>
                 <Button fullWidth radius="md" onClick={handleLogin} loading={loading} style={{ background: '#0B6B55' }}>Sign in</Button>
                 <Text size="sm" className="text-center text-[#6B7280]">
                   New to Ajoti?{' '}
-                  <Text component="button" type="button" c="#0B6B55" fw={600} onClick={() => navigate('/signup')}>
+                  <Text component="button" type="button" c="#0B6B55" fw={600} style={{ cursor: 'pointer' }} onClick={() => navigate('/signup')}>
                     Create an account
                   </Text>
                 </Text>

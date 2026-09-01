@@ -87,7 +87,7 @@ export function PhoneInputField({
           {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
         </div>
       )}
-      <Group gap={6} wrap="nowrap">
+      <Group gap={6} wrap="nowrap" align="flex-start">
         <Select
           data={COUNTRIES}
           value={countryCode}

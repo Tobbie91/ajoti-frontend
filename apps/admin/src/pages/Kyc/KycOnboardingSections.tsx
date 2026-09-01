@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, TextInput, Progress, Alert, Checkbox } from "@mantine/core";
+import { Text, TextInput, Select, Progress, Alert, Checkbox } from "@mantine/core";
 import {
   IconArrowLeft,
   IconCheck,
@@ -19,6 +19,8 @@ import {
 import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
 import { normalizePhoneForComparison, PERSON_NAME_REGEX, validatePhone } from "@ajoti/shared";
+
+const RELATIONSHIP_OPTIONS = ["Father", "Mother", "Sister", "Brother", "Cousin", "Spouse"];
 
 import { LimitCard, VerificationDataCard } from "./KycStatusSections";
 
@@ -80,10 +82,7 @@ export function OnboardingFlow({
     normalizedKinName.length >= 2 &&
     normalizedKinName.length <= 100 &&
     PERSON_NAME_REGEX.test(normalizedKinName);
-  const relationshipValid =
-    normalizedRelationship.length >= 2 &&
-    normalizedRelationship.length <= 50 &&
-    PERSON_NAME_REGEX.test(normalizedRelationship);
+  const relationshipValid = RELATIONSHIP_OPTIONS.includes(normalizedRelationship);
   const phoneError =
     validatePhone(normalizedKinPhone) ??
     ((registeredPhone || accountPhone) &&
@@ -361,19 +360,20 @@ export function OnboardingFlow({
                 maxLength={100}
                 required
               />
-              <TextInput
+              <Select
                 label="Relationship"
-                placeholder="e.g. Spouse, Parent, Sibling"
+                placeholder="Select relationship"
                 radius="md"
-                value={kinRelationship}
-                onChange={(e) => setKinRelationship(e.currentTarget.value)}
+                data={RELATIONSHIP_OPTIONS}
+                value={kinRelationship || null}
+                onChange={(value) => setKinRelationship(value ?? "")}
                 error={
-                  (nokAttempted || kinRelationship.length > 0) && !relationshipValid
-                    ? "Enter a valid relationship using letters only."
+                  nokAttempted && !relationshipValid
+                    ? "Select a relationship."
                     : undefined
                 }
+                allowDeselect={false}
                 styles={inputStyles}
-                maxLength={50}
                 required
               />
               <div>

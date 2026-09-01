@@ -10,7 +10,7 @@ import {
   Alert,
 } from "@mantine/core";
 import { Link, useNavigate } from "react-router-dom";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconX } from "@tabler/icons-react";
 import { register } from "@/utils/api";
 import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
@@ -44,6 +44,49 @@ const DOB_MONTHS = [
   "November",
   "December",
 ].map((label, index) => ({ value: String(index + 1), label }));
+
+const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=[\]\\;'/`~]/;
+
+function passwordChecks(pwd: string) {
+  return {
+    length: pwd.length >= 8,
+    letter: /[A-Za-z]/.test(pwd),
+    number: /[0-9]/.test(pwd),
+    special: SPECIAL_CHAR_REGEX.test(pwd),
+  };
+}
+
+function PasswordChecklist({ password }: { password: string }) {
+  const checks = passwordChecks(password);
+  const items: Array<{ key: keyof ReturnType<typeof passwordChecks>; label: string }> = [
+    { key: "length", label: "At least 8 characters" },
+    { key: "letter", label: "Contains a letter" },
+    { key: "number", label: "Contains a number" },
+    { key: "special", label: "Contains a special character" },
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+      {items.map(({ key, label }) => {
+        const met = checks[key];
+        return (
+          <div
+            key={key}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: met ? "#02A36E" : "#9CA3AF",
+            }}
+          >
+            {met ? <IconCheck size={14} stroke={2.5} /> : <IconX size={14} stroke={2.5} />}
+            <span>{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 type SignupField =
   | "firstName"
@@ -98,11 +141,15 @@ export function Signup() {
           ? `You must be at least ${MINIMUM_REGISTRATION_AGE} years old.`
           : undefined,
     gender: !gender ? "Gender is required." : undefined,
-    password: !password
-      ? "Password is required."
-      : password.length < 8 || password.length > 20
-        ? "Password must be between 8 and 20 characters."
-        : undefined,
+    password: (() => {
+      if (!password) return "Password is required.";
+      if (password.length > 20) return "Password must be at most 20 characters.";
+      const checks = passwordChecks(password);
+      if (!checks.length || !checks.letter || !checks.number || !checks.special) {
+        return "Password must be at least 8 characters and include a letter, a number, and a special character.";
+      }
+      return undefined;
+    })(),
     confirmPassword: !confirmPassword
       ? "Confirm password is required."
       : confirmPassword !== password
@@ -454,24 +501,27 @@ export function Signup() {
                 />
               </Group>
 
-              <PasswordInput
-                label="Password"
-                radius="md"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.currentTarget.value);
-                  clearServerError("password");
-                }}
-                onBlur={() => markTouched("password")}
-                error={visibleError("password")}
-                required
-                styles={{
-                  input: {
-                    borderColor: "#BFEBD1",
-                    backgroundColor: "#FFFFFF",
-                  },
-                }}
-              />
+              <div>
+                <PasswordInput
+                  label="Password"
+                  radius="md"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.currentTarget.value);
+                    clearServerError("password");
+                  }}
+                  onBlur={() => markTouched("password")}
+                  error={visibleError("password")}
+                  required
+                  styles={{
+                    input: {
+                      borderColor: "#BFEBD1",
+                      backgroundColor: "#FFFFFF",
+                    },
+                  }}
+                />
+                <PasswordChecklist password={password} />
+              </div>
 
               <PasswordInput
                 label="Confirm password"
