@@ -213,24 +213,56 @@ export function ProvePendingScreen({
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    let checking = false;
+    let attempts = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleNext = () => {
+      if (!active) return;
+      const delay = attempts < 24 ? 2_500 : 10_000;
+      timeoutId = setTimeout(check, delay);
+    };
+
     async function check() {
-      if (document.hidden) return;
+      if (!active || checking) return;
+      if (document.hidden) {
+        scheduleNext();
+        return;
+      }
+
+      checking = true;
+      attempts += 1;
       try {
         const kyc = await getKycStatus();
         setConsecutiveErrors(0);
         if (!kyc.step || !PROVE_PENDING_STEPS.has(kyc.step)) {
           onVerified();
+          return;
         }
       } catch {
         setConsecutiveErrors((count) => count + 1);
+      } finally {
+        checking = false;
       }
+
+      scheduleNext();
     }
 
-    const id = setInterval(check, 10_000);
-    document.addEventListener("visibilitychange", check);
+    const refreshOnReturn = () => {
+      if (document.hidden || !active) return;
+      if (timeoutId) clearTimeout(timeoutId);
+      void check();
+    };
+
+    void check();
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
     return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", check);
+      active = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("focus", refreshOnReturn);
     };
   }, [onVerified]);
 
