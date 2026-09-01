@@ -7,6 +7,7 @@ import {
   Loader,
   Badge,
   Checkbox,
+  Select,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -52,6 +53,10 @@ export function UpgradeSection({
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [documentType, setDocumentType] = useState<
+    "drivers_license" | "international_passport" | null
+  >(null);
+  const [documentNumber, setDocumentNumber] = useState("");
 
   if (targetLevel === 3) {
     return (
@@ -70,36 +75,28 @@ export function UpgradeSection({
     );
   }
 
-  const nextLimits =
-    targetLevel === 2
-      ? { single: "₦100,000", daily: "₦500,000" }
-      : { single: "₦5,000,000", daily: "₦25,000,000" };
-
-  const docDescription =
-    targetLevel === 2
-      ? "government-issued photo ID and a short liveness check"
-      : "proof of address document and a liveness check";
+  const documentReady =
+    documentType !== null && documentNumber.trim().length >= 5;
 
   async function handleStart() {
     setError(null);
+    if (!documentReady) {
+      setError("Select an ID type and enter a valid document number.");
+      return;
+    }
     setStarting(true);
     try {
       if (rejectionReason) await resubmitKyc();
-      // No payload needed - backend reads NIN/BVN from DB for level upgrades
-      const result = await proveInitiate({});
-
-      if (result.monoUrl) {
-        window.location.assign(result.monoUrl);
-        return;
-      } else {
-        // Test bypass - skip widget
-        onProvePending();
-      }
+      await proveInitiate({
+        documentType,
+        documentNumber: documentNumber.trim().toUpperCase(),
+      });
+      onProvePending();
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to start verification. Please try again.",
+          : "Failed to verify your government ID. Please try again.",
       );
     } finally {
       setStarting(false);
@@ -115,30 +112,22 @@ export function UpgradeSection({
           radius="md"
           title="Previous verification rejected"
         >
-          {rejectionReason}. Please start the verification again.
+          {rejectionReason}. Please check your document details and try again.
         </Alert>
       )}
 
-      {/* Info card */}
       <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
         <div className="flex items-center gap-2 mb-2">
           <IconLock size={16} color="#2563EB" />
           <Text fw={600} className="text-[14px] text-[#1E40AF]">
-            Upgrade to Level {targetLevel}
+            Upgrade to Level 2
           </Text>
         </div>
-        <Text
-          fw={400}
-          className="mb-3 text-[13px] leading-[1.6] text-[#3B82F6]"
-        >
-          After approval your limits increase to{" "}
-          <strong>{nextLimits.single}</strong> per transaction and{" "}
-          <strong>{nextLimits.daily}</strong> daily.
+        <Text fw={400} className="text-[13px] leading-[1.6] text-[#3B82F6]">
+          After verification your limits increase to{" "}
+          <strong>₦100,000</strong> per transaction and{" "}
+          <strong>₦500,000</strong> daily.
         </Text>
-        <div className="flex items-center gap-1 text-[12px] text-[#3B82F6]">
-          <IconClock size={14} />
-          <span>Review typically takes 24–48 hours</span>
-        </div>
       </div>
 
       {error && (
@@ -156,24 +145,56 @@ export function UpgradeSection({
 
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-4">
         <Text fw={400} className="text-[14px] leading-[1.6] text-[#6B7280]">
-          To upgrade to Level {targetLevel}, you'll complete a quick identity
-          verification powered by Mono. You'll need your {docDescription}.
+          Choose a government-issued ID and enter its document number. Ajoti
+          will verify it directly with Mono and compare it with your Level 1
+          identity. No selfie or file upload is required.
         </Text>
-        <Text fw={400} className="text-[13px] leading-[1.6] text-[#9CA3AF]">
-          You will continue securely to Mono and return here after completing
-          the check. Your status will update automatically.
-        </Text>
+
+        <Select
+          label="Government ID type"
+          placeholder="Select an ID type"
+          value={documentType}
+          onChange={(value) =>
+            setDocumentType(
+              value as "drivers_license" | "international_passport" | null,
+            )
+          }
+          data={[
+            { value: "drivers_license", label: "Driver's Licence" },
+            { value: "international_passport", label: "International Passport" },
+          ]}
+          radius="md"
+          required
+        />
+
+        <TextInput
+          label={
+            documentType === "international_passport"
+              ? "Passport number"
+              : "Driver's licence number"
+          }
+          placeholder="Enter the document number"
+          value={documentNumber}
+          onChange={(event) =>
+            setDocumentNumber(
+              event.currentTarget.value
+                .replace(/[^A-Za-z0-9-]/g, "")
+                .slice(0, 30),
+            )
+          }
+          radius="md"
+          minLength={5}
+          maxLength={30}
+          required
+        />
 
         <Checkbox
           checked={confirmed}
           onChange={(e) => setConfirmed(e.currentTarget.checked)}
           label={
-            <Text
-              fw={400}
-              className="text-[12px] leading-normal text-[#374151]"
-            >
-              I'm ready to complete this now - I understand starting the check
-              can't be refunded if I don't finish it.
+            <Text fw={400} className="text-[12px] leading-normal text-[#374151]">
+              I consent to Ajoti verifying this document through Mono Lookup.
+              I understand a provider charge may apply once verification starts.
             </Text>
           }
           styles={{ input: { borderColor: "#D1D5DB" } }}
@@ -181,16 +202,14 @@ export function UpgradeSection({
 
         <button
           onClick={handleStart}
-          disabled={starting || !confirmed}
+          disabled={starting || !confirmed || !documentReady}
           className={`w-full rounded-xl px-6 py-3.5 text-[14px] font-semibold text-white ${
-            !starting && confirmed
+            !starting && confirmed && documentReady
               ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]"
               : "cursor-not-allowed bg-[#9CA3AF]"
           }`}
         >
-          {starting
-            ? "Opening verification..."
-            : `Start Level ${targetLevel} Verification`}
+          {starting ? "Verifying document..." : "Verify & Upgrade to Level 2"}
         </button>
       </div>
     </div>
@@ -213,24 +232,56 @@ export function ProvePendingScreen({
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    let checking = false;
+    let attempts = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleNext = () => {
+      if (!active) return;
+      const delay = attempts < 24 ? 2_500 : 10_000;
+      timeoutId = setTimeout(check, delay);
+    };
+
     async function check() {
-      if (document.hidden) return;
+      if (!active || checking) return;
+      if (document.hidden) {
+        scheduleNext();
+        return;
+      }
+
+      checking = true;
+      attempts += 1;
       try {
         const kyc = await getKycStatus();
         setConsecutiveErrors(0);
         if (!kyc.step || !PROVE_PENDING_STEPS.has(kyc.step)) {
           onVerified();
+          return;
         }
       } catch {
         setConsecutiveErrors((count) => count + 1);
+      } finally {
+        checking = false;
       }
+
+      scheduleNext();
     }
 
-    const id = setInterval(check, 10_000);
-    document.addEventListener("visibilitychange", check);
+    const refreshOnReturn = () => {
+      if (document.hidden || !active) return;
+      if (timeoutId) clearTimeout(timeoutId);
+      void check();
+    };
+
+    void check();
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
     return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", check);
+      active = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("focus", refreshOnReturn);
     };
   }, [onVerified]);
 

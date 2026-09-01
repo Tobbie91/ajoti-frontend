@@ -52,7 +52,8 @@ type SignupField =
   | "phone"
   | "dob"
   | "gender"
-  | "password";
+  | "password"
+  | "confirmPassword";
 type SignupErrors = Partial<Record<SignupField, string>>;
 
 export function Signup() {
@@ -68,6 +69,7 @@ export function Signup() {
   const [birthYear, setBirthYear] = useState<string | null>(null);
   const [gender, setGender] = useState<string | null>(null);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState<Partial<Record<SignupField, boolean>>>(
@@ -100,6 +102,11 @@ export function Signup() {
       ? "Password is required."
       : password.length < 8 || password.length > 20
         ? "Password must be between 8 and 20 characters."
+        : undefined,
+    confirmPassword: !confirmPassword
+      ? "Confirm password is required."
+      : confirmPassword !== password
+        ? "Passwords do not match."
         : undefined,
     ...serverFieldErrors,
   };
@@ -457,6 +464,22 @@ export function Signup() {
                 }}
                 onBlur={() => markTouched("password")}
                 error={visibleError("password")}
+                required
+                styles={{
+                  input: {
+                    borderColor: "#BFEBD1",
+                    backgroundColor: "#FFFFFF",
+                  },
+                }}
+              />
+
+              <PasswordInput
+                label="Confirm password"
+                radius="md"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.currentTarget.value)}
+                onBlur={() => markTouched("confirmPassword")}
+                error={visibleError("confirmPassword")}
                 required
                 styles={{
                   input: {

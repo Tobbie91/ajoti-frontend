@@ -158,12 +158,14 @@ export function resubmitKyc(): Promise<KycStatus> {
 export interface ProveInitiatePayload {
   nin?: string;
   bvn?: string;
+  documentType?: "drivers_license" | "international_passport";
+  documentNumber?: string;
 }
 
 export function proveInitiate(
   payload: ProveInitiatePayload,
 ): Promise<{ monoUrl: string | null; reference: string }> {
-  return authRequest("/api/kyc/prove/initiate", {
+  return authRequest("/api/kyc/lookup/verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });
