@@ -19,6 +19,7 @@ export function RequestToJoin() {
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(true);
+  const [requirementsLoaded, setRequirementsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [agreementError, setAgreementError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function RequestToJoin() {
         setContributionKobo(Number(circle.contributionAmount));
         setCollateralPercent(rules.data.collateralRatioPercent);
         setAvailableKobo(Number(balance.available ?? balance.total ?? 0));
+        setRequirementsLoaded(true);
       })
       .catch((err) => {
         if (active) {
@@ -54,7 +56,8 @@ export function RequestToJoin() {
     (contributionKobo * collateralPercent) / 100,
   );
   const shortfallKobo = Math.max(requiredCollateralKobo - availableKobo, 0);
-  const hasSufficientBalance = availableKobo >= requiredCollateralKobo;
+  const hasSufficientBalance =
+    requirementsLoaded && availableKobo >= requiredCollateralKobo;
   const formatNaira = (kobo: number) =>
     `₦${(kobo / 100).toLocaleString("en-NG", {
       minimumFractionDigits: 2,
