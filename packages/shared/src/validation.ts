@@ -1,4 +1,20 @@
 export const PERSON_NAME_REGEX = /^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u;
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
+export const PASSWORD_POLICY_DESCRIPTION =
+  "Use 8–128 characters with uppercase and lowercase letters, a number, and a symbol. Spaces are not allowed.";
+
+export function validatePassword(value: string): string | undefined {
+  if (!value) return "Password is required.";
+  if (value.length < PASSWORD_MIN_LENGTH || value.length > PASSWORD_MAX_LENGTH)
+    return PASSWORD_POLICY_DESCRIPTION;
+  if (/\s/.test(value)) return PASSWORD_POLICY_DESCRIPTION;
+  if (!/[a-z]/.test(value) || !/[A-Z]/.test(value))
+    return PASSWORD_POLICY_DESCRIPTION;
+  if (!/\d/.test(value) || !/[^A-Za-z0-9\s]/.test(value))
+    return PASSWORD_POLICY_DESCRIPTION;
+  return undefined;
+}
 
 export const PHONE_RULES: Record<
   string,

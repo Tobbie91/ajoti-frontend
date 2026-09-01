@@ -14,7 +14,7 @@ import { IconAlertCircle, IconCheck } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ApiError, staffSetup } from '@/utils/api'
-import { PhoneInputField, isAdultDob, parseCalendarDate, validatePersonName, validatePhone } from '@ajoti/shared'
+import { PASSWORD_POLICY_DESCRIPTION, PhoneInputField, isAdultDob, parseCalendarDate, validatePassword, validatePersonName, validatePhone } from '@ajoti/shared'
 
 type StaffSetupField = 'firstName' | 'lastName' | 'dob' | 'gender' | 'phone' | 'password' | 'confirmPassword'
 
@@ -56,7 +56,7 @@ export function StaffSetup() {
       dob: !form.dob ? 'Date of birth is required.' : !dob || !isAdultDob(dob) ? 'Staff must be at least 18 years old.' : undefined,
       gender: !form.gender ? 'Gender is required.' : undefined,
       phone: validatePhone(form.phone),
-      password: form.password.length < 8 || form.password.length > 20 ? 'Password must be between 8 and 20 characters.' : undefined,
+      password: validatePassword(form.password),
       confirmPassword: !form.confirmPassword ? 'Please repeat the password.' : form.password !== form.confirmPassword ? 'Passwords do not match.' : undefined,
       ...serverErrors,
     }
@@ -206,7 +206,7 @@ export function StaffSetup() {
 
           <PasswordInput
             label="Password"
-            description="Minimum 8 characters"
+            description={PASSWORD_POLICY_DESCRIPTION}
             placeholder="Create a strong password"
             value={form.password}
             onChange={(e) => set('password', e.currentTarget.value)}

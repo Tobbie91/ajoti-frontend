@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { changePassword, getAuditLogs, type AuditLogRow, type PaginatedResponse } from '@/utils/api'
 import { SortableTh } from '@/components/SortableTh'
 import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
+import { PASSWORD_POLICY_DESCRIPTION, validatePassword } from '@ajoti/shared'
 
 // ── Change Password card (real, self-contained) ─────────────────────────────
 
@@ -44,8 +45,9 @@ function ChangePasswordCard() {
       setError('All fields are required.')
       return
     }
-    if (newPassword.length < 8 || newPassword.length > 20) {
-      setError('New password must be between 8 and 20 characters.')
+    const passwordError = validatePassword(newPassword)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
     if (newPassword !== confirmPassword) {
@@ -82,7 +84,7 @@ function ChangePasswordCard() {
         />
         <PasswordInput
           label="New password"
-          description="8–20 characters"
+          description={PASSWORD_POLICY_DESCRIPTION}
           value={newPassword}
           onChange={(e) => setNewPassword(e.currentTarget.value)}
           radius="md"
@@ -167,7 +169,7 @@ function SettingsTab() {
           <div>
             <Text fw={500} mb="xs">Password Policy</Text>
             <Text size="sm" c="dimmed">
-              Passwords must be 8–20 characters. Additional configurable policies are not currently supported.
+              {PASSWORD_POLICY_DESCRIPTION} Additional configurable policies are not currently supported.
             </Text>
           </div>
 
