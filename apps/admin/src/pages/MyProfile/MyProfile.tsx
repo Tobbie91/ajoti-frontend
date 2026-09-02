@@ -153,6 +153,7 @@ export function MyProfile() {
     const [deleteReason, setDeleteReason] = useState("");
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
 
     const [accountStatus, setAccountStatus] = useState<string>(
         getUserFromStorage().status || "ACTIVE",
@@ -434,6 +435,7 @@ export function MyProfile() {
             setDeleteError(
                 err instanceof Error ? err.message : "Failed to delete account",
             );
+            setDeleteConfirmModalOpen(false);
         } finally {
             setDeleting(false);
         }
@@ -779,11 +781,50 @@ export function MyProfile() {
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text><PasswordInput placeholder="Enter your password" value={deletePassword} onChange={(e) => setDeletePassword(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconLock size={16} color="#9CA3AF" />} styles={{ input: { borderColor: "#FCA5A5", fontSize: 14 } }} /></div>
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text><TextInput placeholder="Why are you leaving?" value={deleteReason} onChange={(e) => setDeleteReason(e.currentTarget.value)} radius="md" size="sm" styles={{ input: { borderColor: "#E5E7EB", fontSize: 14 } }} /></div>
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Type <strong>DELETE</strong> to confirm</Text><TextInput placeholder="DELETE" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.currentTarget.value)} radius="md" size="sm" styles={{ input: { borderColor: "#FCA5A5", fontSize: 14 } }} /></div>
-                            <button onClick={handleDeleteAccount} disabled={deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8} className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8 ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}>{deleting ? "Deleting..." : "Permanently Delete Account"}</button>
+                            <button onClick={() => { setDeleteError(null); setDeleteConfirmModalOpen(true); }} disabled={deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8} className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8 ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}>{deleting ? "Deleting..." : "Permanently Delete Account"}</button>
                         </div>
                     </div>
                 )}
             </div>
+
+            <Modal
+                opened={deleteConfirmModalOpen}
+                onClose={() => !deleting && setDeleteConfirmModalOpen(false)}
+                withCloseButton={false}
+                centered
+                radius="lg"
+                size="sm"
+                closeOnClickOutside={!deleting}
+                closeOnEscape={!deleting}
+            >
+                <div className="flex flex-col items-center gap-4 py-2 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FEE2E2]">
+                        <IconTrash size={26} color="#EF4444" />
+                    </div>
+                    <Text fw={700} className="text-[18px] text-[#0F172A]">
+                        Delete account permanently?
+                    </Text>
+                    <Text fw={400} className="text-[13px] leading-[1.6] text-[#6B7280]">
+                        This will permanently close your account, remove your profile, transaction history, KYC records, and bank details. It cannot be undone.
+                    </Text>
+                    <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row-reverse">
+                        <button
+                            onClick={handleDeleteAccount}
+                            disabled={deleting}
+                            className={`flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white ${deleting ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}
+                        >
+                            {deleting ? "Deleting..." : "Yes, delete permanently"}
+                        </button>
+                        <button
+                            onClick={() => setDeleteConfirmModalOpen(false)}
+                            disabled={deleting}
+                            className={`flex-1 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-[13px] font-semibold text-[#374151] ${deleting ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[#F9FAFB]"}`}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
