@@ -1,17 +1,12 @@
 export type AppRole = 'MEMBER' | 'CIRCLE_ADMIN' | 'STAFF' | 'SYSTEM' | string
 
-export function getTokenRole(token?: string | null): AppRole | undefined {
-  if (!token) return undefined
+export function getCurrentRole(): AppRole | undefined {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1])) as { role?: AppRole }
-    return payload.role
+    const user = JSON.parse(localStorage.getItem('user') ?? '{}') as { role?: AppRole }
+    return user.role
   } catch {
     return undefined
   }
-}
-
-export function getCurrentRole(): AppRole | undefined {
-  return getTokenRole(localStorage.getItem('access_token'))
 }
 
 export function isCircleAdmin(role = getCurrentRole()): boolean {

@@ -232,20 +232,14 @@ export async function requestAdminAccess(): Promise<{
     { method: "POST" },
   );
 
-  const currentRefreshToken = localStorage.getItem("refresh_token");
-  if (!currentRefreshToken) return { ...result, sessionRefreshed: false };
-
   try {
-    const tokens = await request<{ accessToken: string; refreshToken: string }>(
+    await request<{ expiresIn: string }>(
       "/api/auth/refresh",
       {
         method: "POST",
-        body: JSON.stringify({ refreshToken: currentRefreshToken }),
+        body: JSON.stringify({}),
       },
     );
-    localStorage.setItem("access_token", tokens.accessToken);
-    localStorage.setItem("refresh_token", tokens.refreshToken);
-
     const storedUser = JSON.parse(localStorage.getItem("user") ?? "{}");
     localStorage.setItem(
       "user",

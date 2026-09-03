@@ -63,12 +63,13 @@ export interface ApiClientConfig {
   storagePrefix: string;
   /** Extra localStorage keys to clear on session expiry, beyond access/refresh/user. */
   extraSessionKeys?: string[];
+  /** Selects the isolated staff cookie namespace. Customer apps use the default. */
+  authScope?: "customer" | "staff";
 }
 
 export interface ApiClient {
   request<T>(path: string, options: RequestInit): Promise<T>;
   authRequest<T>(path: string, options: RequestInit): Promise<T>;
-  getAccessToken(): string | null;
   getBaseUrl(): string;
   clearSessionAndRedirect(): void;
 }
@@ -86,9 +87,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     baseUrl,
     storagePrefix,
     extraSessionKeys = [],
+    authScope = "customer",
   } = config;
-  const accessTokenKey = `${storagePrefix}access_token`;
-  const refreshTokenKey = `${storagePrefix}refresh_token`;
   const userKey = `${storagePrefix}user`;
 
   async function request<T>(path: string, options: RequestInit): Promise<T> {
@@ -102,8 +102,10 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
     const res = await fetch(`${baseUrl}${path}`, {
       ...rest,
+      credentials: "include",
       headers: {
         ...contentTypeHeader,
+        "X-Auth-Scope": authScope,
         ...(headers as Record<string, string> | undefined),
       },
     });
@@ -123,45 +125,30 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   let isRefreshing = false;
-  let refreshQueue: Array<(token: string) => void> = [];
+  let refreshQueue: Array<() => void> = [];
 
-  async function tryRefresh(): Promise<string> {
-    const refreshToken = localStorage.getItem(refreshTokenKey);
-    if (!refreshToken) throw new Error("No refresh token");
-
+  async function tryRefresh(): Promise<void> {
     const res = await fetch(`${baseUrl}/api/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-Auth-Scope": authScope },
+      body: JSON.stringify({}),
     });
 
     if (!res.ok) throw new Error("Refresh failed");
 
-    const data = (await res.json()) as {
-      accessToken: string;
-      refreshToken: string;
-    };
-    localStorage.setItem(accessTokenKey, data.accessToken);
-    localStorage.setItem(refreshTokenKey, data.refreshToken);
-    return data.accessToken;
   }
 
   function clearSessionAndRedirect(): void {
-    [accessTokenKey, refreshTokenKey, userKey, ...extraSessionKeys].forEach(
+    [userKey, ...extraSessionKeys].forEach(
       (k) => localStorage.removeItem(k),
     );
     window.location.replace("/login");
   }
 
-  function authHeaders(token?: string): Record<string, string> {
-    const t = token ?? localStorage.getItem(accessTokenKey);
-    return t ? { Authorization: `Bearer ${t}` } : {};
-  }
-
   async function performAuthenticatedRequest<T>(
     path: string,
     options: RequestInit,
-    token?: string,
   ): Promise<{ response: Response; data: unknown }> {
     const { headers, ...rest } = options;
     const isFormData = options.body instanceof FormData;
@@ -171,9 +158,10 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
     const response = await fetch(`${baseUrl}${path}`, {
       ...rest,
+      credentials: "include",
       headers: {
         ...contentTypeHeader,
-        ...authHeaders(token),
+        "X-Auth-Scope": authScope,
         ...(headers as Record<string, string> | undefined),
       },
     });
@@ -189,8 +177,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     if (response.status === 401) {
       if (isRefreshing) {
         return new Promise<T>((resolve, reject) => {
-          refreshQueue.push((newToken) => {
-            performAuthenticatedRequest<T>(path, options, newToken)
+          refreshQueue.push(() => {
+            performAuthenticatedRequest<T>(path, options)
               .then(({ response: retryResponse, data: retryData }) => {
                 if (!retryResponse.ok) {
                   reject(apiErrorFromResponse(retryData, retryResponse.status));
@@ -205,13 +193,12 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
       isRefreshing = true;
       try {
-        const newToken = await tryRefresh();
-        refreshQueue.forEach((cb) => cb(newToken));
+        await tryRefresh();
+        refreshQueue.forEach((cb) => cb());
         refreshQueue = [];
         ({ response, data } = await performAuthenticatedRequest<T>(
           path,
           options,
-          newToken,
         ));
       } catch {
         refreshQueue = [];
@@ -237,7 +224,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   return {
     request,
     authRequest,
-    getAccessToken: () => localStorage.getItem(accessTokenKey),
     getBaseUrl: () => baseUrl,
     clearSessionAndRedirect,
   };

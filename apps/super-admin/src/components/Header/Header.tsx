@@ -14,9 +14,8 @@ export function Header({ opened, onToggle }: HeaderProps) {
   const initial = displayName.charAt(0).toUpperCase()
 
   async function handleLogout() {
-    const refreshToken = localStorage.getItem('superadmin_refresh_token') ?? ''
     try {
-      await logoutApi(refreshToken)
+      await logoutApi()
     } catch {
       // best-effort
     }

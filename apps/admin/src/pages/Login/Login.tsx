@@ -3,7 +3,7 @@ import { Alert, Button, Card, Group, PasswordInput, Text, TextInput } from '@man
 import { IconAlertCircle } from '@tabler/icons-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { login as loginApi } from '@/utils/api'
-import { defaultAuthenticatedPath, getTokenRole } from '@/utils/auth-role'
+import { defaultAuthenticatedPath } from '@/utils/auth-role'
 import { ForgotPasswordModal } from './ForgotPasswordModal'
 
 export function Login() {
@@ -21,14 +21,12 @@ export function Login() {
     setError(null)
     setLoading(true)
     try {
-      const { token, refreshToken, user } = await loginApi(email.trim(), password)
-      const role = getTokenRole(token)
+      const { user } = await loginApi(email.trim(), password)
+      const role = user.role
       if (!role || !['MEMBER', 'CIRCLE_ADMIN'].includes(role)) {
         throw new Error('This account cannot use the Ajoti customer application.')
       }
 
-      localStorage.setItem('access_token', token)
-      localStorage.setItem('refresh_token', refreshToken)
       const existing = JSON.parse(localStorage.getItem('user') ?? '{}')
       const merged: Record<string, unknown> = { ...existing, role }
       for (const [key, value] of Object.entries(user)) {

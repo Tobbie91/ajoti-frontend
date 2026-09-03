@@ -16,7 +16,10 @@
  * we must not remove the live session key during application bootstrap.
  */
 export function migrateLegacyCustomerStorage(): void {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
   for (const [legacyKey, customerKey] of Object.entries(LEGACY_TO_CUSTOMER_KEYS)) {
+    if (legacyKey === 'access_token' || legacyKey === 'refresh_token') continue
     if (legacyKey === customerKey) continue
 
     const legacyValue = localStorage.getItem(legacyKey)

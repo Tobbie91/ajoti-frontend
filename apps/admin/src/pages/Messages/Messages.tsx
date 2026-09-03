@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader, Text, TextInput } from '@mantine/core'
 import { IconSend, IconMessages, IconSearch } from '@tabler/icons-react'
-import { getChatCircles, getAccessToken, type ChatCircle } from '@/utils/api'
+import { getChatCircles, type ChatCircle } from '@/utils/api'
 import { useChat } from '@/hooks/useChat'
 
 const PRIMARY = '#02A36E'
@@ -155,10 +155,8 @@ export function Messages() {
 
   const currentUserId = (() => {
     try {
-      const token = getAccessToken()
-      if (!token) return ''
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      return (payload.sub ?? payload.userId ?? '') as string
+      const user = JSON.parse(localStorage.getItem('user') ?? '{}') as { id?: string }
+      return user.id ?? ''
     } catch { return '' }
   })()
 

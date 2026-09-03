@@ -380,8 +380,7 @@ export function MyProfile() {
 
     async function handleLogout() {
         try {
-            const refreshToken = localStorage.getItem("refresh_token");
-            if (refreshToken) await logoutApi(refreshToken);
+            await logoutApi();
         } catch {
             // ignore logout API errors
         }
@@ -426,6 +425,7 @@ export function MyProfile() {
         setDeleteError(null);
         try {
             await deleteMyAccount(deletePassword, deleteReason || undefined);
+            try { await logoutApi(); } catch { /* session was already revoked */ }
             localStorage.removeItem("access_token");
             localStorage.removeItem("refresh_token");
             localStorage.removeItem("user");

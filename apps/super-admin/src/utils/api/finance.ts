@@ -75,10 +75,9 @@ export function exportCsv(params: {
   startDate: string;
   endDate: string;
 }): Promise<Blob> {
-  const token = localStorage.getItem("superadmin_access_token");
   const q = new URLSearchParams(params as Record<string, string>).toString();
   return fetch(`${BASE_URL}/api/superadmin/export?${q}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
   }).then((r) => r.blob());
 }
 

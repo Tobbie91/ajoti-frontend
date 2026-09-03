@@ -5,7 +5,7 @@ import { KycGate } from '@/components/KycGate'
 import { TransactionPinGate } from '@/components/TransactionPinGate'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { CircleAdminRoute } from '@/components/CircleAdminRoute'
-import { defaultAuthenticatedPath, getTokenRole } from '@/utils/auth-role'
+import { defaultAuthenticatedPath, getCurrentRole } from '@/utils/auth-role'
 import {
   Dashboard, CreateGroup, ManageJoinRequest, RoscaGroups, RoscaArchive, GroupDetail, EditGroup,
   Loans, MyDebts, MyWallet, FundWallet, WithdrawFunds, Transactions, Login, VerifyOtp,
@@ -20,16 +20,15 @@ import {
 } from '@/pages/customer'
 
 function KycPageGuard({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('access_token')
-  const role = getTokenRole(token)
-  if (!token || !role || !['MEMBER', 'CIRCLE_ADMIN'].includes(role)) {
+  const role = getCurrentRole()
+  if (!role || !['MEMBER', 'CIRCLE_ADMIN'].includes(role)) {
     return <Navigate to="/login" replace />
   }
   return <>{children}</>
 }
 
 function MemberHomeRoute({ children }: { children: React.ReactNode }) {
-  const role = getTokenRole(localStorage.getItem('access_token'))
+  const role = getCurrentRole()
   if (role === 'CIRCLE_ADMIN') {
     return <Navigate to="/dashboard" replace />
   }
@@ -37,8 +36,8 @@ function MemberHomeRoute({ children }: { children: React.ReactNode }) {
 }
 
 function HomeRedirect() {
-  const token = localStorage.getItem('access_token')
-  return <Navigate to={token ? defaultAuthenticatedPath() : '/login'} replace />
+  const role = getCurrentRole()
+  return <Navigate to={role ? defaultAuthenticatedPath(role) : '/login'} replace />
 }
 
 function App() {

@@ -21,14 +21,12 @@ export function Login() {
     setError(null)
     setLoading(true)
     try {
-      const { token, refreshToken, user, mustChangePassword } = await loginApi(email.trim(), password)
+      const { user, mustChangePassword } = await loginApi(email.trim(), password)
 
       if (user.role !== 'STAFF') {
         throw new Error('Access denied. Staff account required.')
       }
 
-      localStorage.setItem('superadmin_access_token', token)
-      localStorage.setItem('superadmin_refresh_token', refreshToken)
       localStorage.setItem('superadmin_user', JSON.stringify(user))
 
       // Directly-created staff must replace their temporary password before

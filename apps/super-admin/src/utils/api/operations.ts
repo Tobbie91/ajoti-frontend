@@ -421,8 +421,6 @@ export function staffSetup(dto: {
   phone: string;
   password: string;
 }): Promise<{
-  accessToken: string;
-  refreshToken: string;
   expiresIn: string;
   message: string;
 }> {
