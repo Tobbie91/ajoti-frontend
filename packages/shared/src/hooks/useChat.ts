@@ -2,7 +2,7 @@
 //
 // Socket.io connection + circle chat state management - previously
 // duplicated near-identically in the user and admin apps. Each app's own
-// getChatBaseUrl/getAccessToken/getChatMessages stay where they are (they
+// getChatBaseUrl/getChatMessages stay where they are (they
 // go through that app's own api-client instance), injected here as config
 // so this hook has no direct dependency on either app's utils/api.ts.
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -10,7 +10,6 @@ import { io, Socket } from 'socket.io-client'
 
 export interface UseChatConfig<TMessage> {
   chatBaseUrl: string
-  getAccessToken: () => string | null
   fetchMessages: (circleId: string) => Promise<TMessage[]>
 }
 
@@ -18,7 +17,7 @@ export function useChat<TMessage extends { id: string }>(
   circleId: string | null,
   config: UseChatConfig<TMessage>,
 ) {
-  const { chatBaseUrl, getAccessToken, fetchMessages } = config
+  const { chatBaseUrl, fetchMessages } = config
 
   const [messages, setMessages] = useState<TMessage[]>([])
   const [loading, setLoading] = useState(false)
@@ -28,11 +27,8 @@ export function useChat<TMessage extends { id: string }>(
 
   // Connect socket once
   useEffect(() => {
-    const token = getAccessToken()
-    if (!token) return
-
     const socket = io(`${chatBaseUrl}/chat`, {
-      auth: { token },
+      withCredentials: true,
       transports: ['websocket'],
     })
 

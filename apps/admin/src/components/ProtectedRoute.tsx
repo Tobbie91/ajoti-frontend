@@ -1,7 +1,8 @@
 ﻿import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Loader } from '@mantine/core'
-import { getTokenRole } from '@/utils/auth-role'
+import { getUserProfile } from '@/utils/api'
+import { storeCachedCustomerUser } from '@/utils/customer-storage'
 
 type GuardState = 'loading' | 'ok' | 'no-auth'
 
@@ -10,15 +11,16 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GuardState>('loading')
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    const role = getTokenRole(token)
-    if (!token || !role || !['MEMBER', 'CIRCLE_ADMIN'].includes(role)) {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      setState('no-auth')
-      return
-    }
-    setState('ok')
+    getUserProfile()
+      .then((user) => {
+        if (!user.role || !['MEMBER', 'CIRCLE_ADMIN'].includes(user.role)) {
+          setState('no-auth')
+          return
+        }
+        storeCachedCustomerUser(user)
+        setState('ok')
+      })
+      .catch(() => setState('no-auth'))
   }, [])
 
   if (state === 'loading') {

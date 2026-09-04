@@ -39,7 +39,7 @@ const PROVE_PENDING_STEPS = new Set([
   "PROVE_PENDING_L3",
 ]);
 
-// ── Upgrade section (Level 2 or Level 3 via Mono Prove) ──────────────────────
+// ── Upgrade section (Level 2 via Mono Lookup; Level 3 unavailable) ───────
 
 export function UpgradeSection({
   targetLevel,
@@ -96,7 +96,7 @@ export function UpgradeSection({
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to verify your government ID. Please try again.",
+          : "Failed to check your government ID details. Please try again.",
       );
     } finally {
       setStarting(false);
@@ -112,7 +112,7 @@ export function UpgradeSection({
           radius="md"
           title="Previous verification rejected"
         >
-          {rejectionReason}. Please check your document details and try again.
+          {rejectionReason}. Please check your ID details and try again.
         </Alert>
       )}
 
@@ -145,9 +145,10 @@ export function UpgradeSection({
 
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col gap-4">
         <Text fw={400} className="text-[14px] leading-[1.6] text-[#6B7280]">
-          Choose a government-issued ID and enter its document number. Ajoti
-          will verify it directly with Mono and compare it with your Level 1
-          identity. No selfie or file upload is required.
+          Choose a government-issued ID and enter its number. Ajoti will look up
+          the corresponding government record through Mono and compare it with
+          your Level 1 identity. No physical document, selfie, or liveness check
+          is performed.
         </Text>
 
         <Select
@@ -193,8 +194,9 @@ export function UpgradeSection({
           onChange={(e) => setConfirmed(e.currentTarget.checked)}
           label={
             <Text fw={400} className="text-[12px] leading-normal text-[#374151]">
-              I consent to Ajoti verifying this document through Mono Lookup.
-              I understand a provider charge may apply once verification starts.
+              I consent to Ajoti checking these government ID details through
+              Mono Lookup. I understand a provider charge may apply once the
+              check starts.
             </Text>
           }
           styles={{ input: { borderColor: "#D1D5DB" } }}
@@ -209,7 +211,7 @@ export function UpgradeSection({
               : "cursor-not-allowed bg-[#9CA3AF]"
           }`}
         >
-          {starting ? "Verifying document..." : "Verify & Upgrade to Level 2"}
+          {starting ? "Checking ID details..." : "Check & Upgrade to Level 2"}
         </button>
       </div>
     </div>

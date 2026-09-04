@@ -220,17 +220,7 @@ export function Signup() {
         gender: gender!.toUpperCase() as "MALE" | "FEMALE",
         password,
       });
-      localStorage.setItem("verify_email", email.trim());
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-          phone,
-          dob: dobString,
-        }),
-      );
+      sessionStorage.setItem("verify_email", email.trim());
       navigate("/verify-otp");
     } catch (err) {
       if (err instanceof ApiError) {

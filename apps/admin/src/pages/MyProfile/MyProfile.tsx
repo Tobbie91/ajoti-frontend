@@ -51,6 +51,7 @@ import {
 } from "@/utils/api";
 import { PhoneInputField, AddBankAccountModal } from "@/components";
 import { isCircleAdmin } from "@/utils/auth-role";
+import { storeCachedCustomerUser } from "@/utils/customer-storage";
 
 function getUserFromStorage() {
     const stored = localStorage.getItem("user");
@@ -214,7 +215,7 @@ export function MyProfile() {
                 setPhone(profile.phone || "");
                 setDob((profile.dob as string) || "");
                 if (profile.status) setAccountStatus(profile.status);
-                localStorage.setItem("user", JSON.stringify(profile));
+                storeCachedCustomerUser(profile);
             })
             .catch(() => {})
             .finally(() => setProfileLoading(false));
@@ -322,7 +323,7 @@ export function MyProfile() {
         try {
             await verifyPendingEmailChange(emailOtp);
             const updatedUser = { ...getUserFromStorage(), email };
-            localStorage.setItem("user", JSON.stringify(updatedUser));
+            storeCachedCustomerUser(updatedUser);
             setOriginalEmail(email);
 
             notifications.show({
@@ -364,8 +365,7 @@ export function MyProfile() {
                 ...(!kycStatus?.state && state ? { state } : {}),
                 ...(!kycStatus?.lga && lga ? { lga } : {}),
             });
-            if (res.data)
-                localStorage.setItem("user", JSON.stringify(res.data));
+            if (res.data) storeCachedCustomerUser(res.data);
             setSaveSuccess(true);
             setEditing(false);
             setTimeout(() => setSaveSuccess(false), 3000);
@@ -380,8 +380,7 @@ export function MyProfile() {
 
     async function handleLogout() {
         try {
-            const refreshToken = localStorage.getItem("refresh_token");
-            if (refreshToken) await logoutApi(refreshToken);
+            await logoutApi();
         } catch {
             // ignore logout API errors
         }
@@ -398,10 +397,7 @@ export function MyProfile() {
         try {
             await freezeMyAccount(freezePassword, freezeReason || undefined);
             setAccountStatus("FROZEN");
-            localStorage.setItem(
-                "user",
-                JSON.stringify({ ...getUserFromStorage(), status: "FROZEN" }),
-            );
+            storeCachedCustomerUser({ ...getUserFromStorage(), status: "FROZEN" });
             setFreezeExpanded(false);
             setFreezePassword("");
             setFreezeReason("");
@@ -426,6 +422,7 @@ export function MyProfile() {
         setDeleteError(null);
         try {
             await deleteMyAccount(deletePassword, deleteReason || undefined);
+            try { await logoutApi(); } catch { /* session was already revoked */ }
             localStorage.removeItem("access_token");
             localStorage.removeItem("refresh_token");
             localStorage.removeItem("user");
@@ -765,7 +762,7 @@ export function MyProfile() {
                 >
                     <div className="text-left">
                         <Text fw={600} className="text-[14px] text-[#374151]">Advanced Settings</Text>
-                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">Permanent account actions</Text>
+                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">Account closure</Text>
                     </div>
                     <span className="text-[#6B7280] text-[18px]">{deleteExpanded ? <IconMinus size={18} /> : <IconPlus size={18} />}</span>
                 </button>
@@ -773,15 +770,15 @@ export function MyProfile() {
                 {deleteExpanded && (
                     <div className="mt-4 border-t border-[#E5E7EB] pt-4">
                         <div className="rounded-xl border border-[#FCA5A5] bg-[#FEF2F2] p-4">
-                            <Text fw={600} className="text-[14px] text-[#EF4444]">Delete Account</Text>
-                            <Text fw={400} className="mt-1 text-[12px] text-[#6B7280]">This permanently closes your account, deletes your data, and cannot be undone. Make sure your wallet balance is zero and you have no active circle memberships before proceeding.</Text>
+                            <Text fw={600} className="text-[14px] text-[#EF4444]">Close Account</Text>
+                            <Text fw={400} className="mt-1 text-[12px] text-[#6B7280]">This immediately closes your access and sends the account to staff for final processing. Records required for financial, fraud, legal and regulatory purposes are retained. Make sure your wallet balance is zero and you have no active circle memberships.</Text>
                         </div>
                         <div className="mt-4 flex flex-col gap-4">
                             {deleteError && <div className="rounded-xl bg-red-50 px-4 py-3"><Text fw={500} className="text-[12px] text-red-600">{deleteError}</Text></div>}
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text><PasswordInput placeholder="Enter your password" value={deletePassword} onChange={(e) => setDeletePassword(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconLock size={16} color="#9CA3AF" />} styles={{ input: { borderColor: "#FCA5A5", fontSize: 14 } }} /></div>
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text><TextInput placeholder="Why are you leaving?" value={deleteReason} onChange={(e) => setDeleteReason(e.currentTarget.value)} radius="md" size="sm" styles={{ input: { borderColor: "#E5E7EB", fontSize: 14 } }} /></div>
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Type <strong>DELETE</strong> to confirm</Text><TextInput placeholder="DELETE" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.currentTarget.value)} radius="md" size="sm" styles={{ input: { borderColor: "#FCA5A5", fontSize: 14 } }} /></div>
-                            <button onClick={() => { setDeleteError(null); setDeleteConfirmModalOpen(true); }} disabled={deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8} className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8 ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}>{deleting ? "Deleting..." : "Permanently Delete Account"}</button>
+                            <button onClick={() => { setDeleteError(null); setDeleteConfirmModalOpen(true); }} disabled={deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8} className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8 ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}>{deleting ? "Submitting..." : "Request Account Closure"}</button>
                         </div>
                     </div>
                 )}
@@ -802,10 +799,10 @@ export function MyProfile() {
                         <IconTrash size={26} color="#EF4444" />
                     </div>
                     <Text fw={700} className="text-[18px] text-[#0F172A]">
-                        Delete account permanently?
+                        Close your account?
                     </Text>
                     <Text fw={400} className="text-[13px] leading-[1.6] text-[#6B7280]">
-                        This will permanently close your account, remove your profile, transaction history, KYC records, and bank details. It cannot be undone.
+                        Your access will end immediately. Staff will complete the closure, and records required for financial, fraud, legal and regulatory purposes will be retained.
                     </Text>
                     <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row-reverse">
                         <button
@@ -813,7 +810,7 @@ export function MyProfile() {
                             disabled={deleting}
                             className={`flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white ${deleting ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}
                         >
-                            {deleting ? "Deleting..." : "Yes, delete permanently"}
+                            {deleting ? "Submitting..." : "Yes, close my access"}
                         </button>
                         <button
                             onClick={() => setDeleteConfirmModalOpen(false)}

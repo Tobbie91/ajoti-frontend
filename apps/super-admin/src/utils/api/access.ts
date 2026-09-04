@@ -17,27 +17,20 @@ export interface SuperadminUser {
   staffRole: string | null;
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> {
-  try {
-    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(base64)) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
-
 export async function login(
   email: string,
   password: string,
 ): Promise<{
-  token: string;
-  refreshToken: string;
   user: SuperadminUser;
   mustChangePassword: boolean;
 }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Auth-Scope": "staff",
+    },
     body: new URLSearchParams({ grant_type: "password", email, password }),
   });
 
@@ -51,37 +44,28 @@ export async function login(
     );
   }
 
-  const raw = data as Record<string, unknown>;
-  const payload = (raw.data ?? raw) as Record<string, unknown>;
-
-  const token = (payload.accessToken ?? payload.token ?? "") as string;
-  const refreshToken = (payload.refreshToken ?? "") as string;
-
-  // Role and sub are in the JWT payload - backend doesn't return a user object
-  const jwtPayload = decodeJwtPayload(token);
-
-  const user: SuperadminUser = {
-    id: (jwtPayload.sub ?? "") as string,
-    email,
-    firstName: (jwtPayload.firstName ?? "") as string,
-    lastName: (jwtPayload.lastName ?? "") as string,
-    role: (jwtPayload.role ?? "") as string,
-    staffRole: (jwtPayload.staffRole ?? null) as string | null,
-  };
+  const payload = data as { mustChangePassword?: boolean };
+  const user = await getCurrentUser();
 
   return {
-    token,
-    refreshToken,
     user,
     mustChangePassword: Boolean(payload.mustChangePassword),
   };
 }
 
-export function logoutApi(refreshToken: string): Promise<{ message: string }> {
+export function logoutApi(): Promise<{ message: string }> {
   return authRequest("/api/auth/logout", {
     method: "POST",
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify({}),
   });
+}
+
+export async function getCurrentUser(): Promise<SuperadminUser> {
+  const response = await authRequest<{ data?: SuperadminUser } | SuperadminUser>(
+    "/api/users/me",
+    { method: "GET" },
+  );
+  return ("data" in response && response.data ? response.data : response) as SuperadminUser;
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────

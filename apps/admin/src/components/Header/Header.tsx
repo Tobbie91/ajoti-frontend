@@ -4,6 +4,7 @@ import { useMediaQuery } from '@mantine/hooks'
 import { IconBell } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { defaultAuthenticatedPath, getCurrentRole } from '@/utils/auth-role'
+import { storeCachedCustomerUser } from '@/utils/customer-storage'
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -180,14 +181,11 @@ export function Header({ opened, onToggle }: HeaderProps) {
 
         setFullName(canonicalName)
         const currentUser = JSON.parse(localStorage.getItem('user') ?? '{}')
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            ...currentUser,
-            firstName: profile.firstName,
-            lastName: profile.lastName,
-          }),
-        )
+        storeCachedCustomerUser({
+          ...currentUser,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+        })
       })
       .catch(() => {})
 

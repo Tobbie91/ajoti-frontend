@@ -11,7 +11,7 @@ export function VerifyOtp() {
   const [resent, setResent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const email = localStorage.getItem('verify_email') || ''
+  const email = sessionStorage.getItem('verify_email') || ''
 
   async function handleVerify() {
     if (otp.length < 6) return
@@ -19,6 +19,7 @@ export function VerifyOtp() {
     setStep('verifying')
     try {
       await verifyEmail({ email, otp })
+      sessionStorage.removeItem('verify_email')
       navigate('/login?verified=true', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed')

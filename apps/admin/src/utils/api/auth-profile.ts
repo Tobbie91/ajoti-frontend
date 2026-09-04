@@ -39,16 +39,15 @@ export interface LoginResponse {
     DOB: string;
     phone: string;
   };
-  accessToken: string;
-  refreshToken: string;
 }
 
 export async function login(
   email: string,
   password: string,
-): Promise<{ token: string; refreshToken: string; user: UserProfile }> {
+): Promise<{ user: UserProfile }> {
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "password",
@@ -67,33 +66,7 @@ export async function login(
     );
   }
 
-  const raw = data as Record<string, unknown>;
-  const payload = (raw.data ?? raw) as Record<string, unknown>;
-
-  const token = (payload.accessToken ??
-    payload.token ??
-    payload.access_token ??
-    "") as string;
-  const refreshToken = (payload.refreshToken ??
-    payload.refresh_token ??
-    "") as string;
-  const backendUser = (payload.user ?? payload.profile ?? {}) as Record<
-    string,
-    unknown
-  >;
-
-  const user: UserProfile = {
-    id: (backendUser.id ?? backendUser._id ?? "") as string,
-    email: (backendUser.email ?? email) as string,
-    firstName: (backendUser.firstName ?? backendUser.firstname ?? "") as string,
-    lastName: (backendUser.lastName ?? backendUser.lastname ?? "") as string,
-    dob: backendUser.DOB
-      ? (backendUser.DOB as string).split("T")[0]
-      : ((backendUser.dob as string) ?? ""),
-    phone: (backendUser.phone ?? "") as string,
-  };
-
-  return { token, refreshToken, user };
+  return { user: await getUserProfile() };
 }
 
 // Verify email OTP
@@ -267,10 +240,10 @@ export function rejectKyc(
 
 // ── Logout ──────────────────────────────────────────────────────────────────
 
-export function logout(refreshToken: string): Promise<{ message: string }> {
+export function logout(): Promise<{ message: string }> {
   return authRequest("/api/auth/logout", {
     method: "POST",
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify({}),
   });
 }
 

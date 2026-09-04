@@ -205,10 +205,6 @@ export function getChatBaseUrl(): string {
   return client.getBaseUrl();
 }
 
-export function getAccessToken(): string | null {
-  return client.getAccessToken();
-}
-
 export async function getChatCircles(): Promise<ChatCircle[]> {
   return authRequest("/api/chat/circles", { method: "GET" });
 }

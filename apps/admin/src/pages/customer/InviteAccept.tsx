@@ -37,7 +37,7 @@ export function InviteAccept() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const isLoggedIn = Boolean(localStorage.getItem("access_token"));
+    const isLoggedIn = Boolean(localStorage.getItem("user"));
     if (!isLoggedIn && token) {
       localStorage.setItem("pending_redirect", `/rosca/invite/${token}`);
       navigate("/login", { replace: true });

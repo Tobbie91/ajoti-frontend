@@ -8,7 +8,22 @@ import {
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
-export type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED" | "FROZEN" | "CLOSED";
+export type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED" | "FROZEN" | "CLOSURE_PENDING" | "CLOSED";
+
+export interface AccountClosure {
+  id: string; status: 'REQUESTED' | 'PROVIDER_CLEANUP_FAILED' | 'LEGAL_HOLD' | 'COMPLETED';
+  providerCleanupStatus: 'NOT_REQUIRED' | 'PENDING' | 'COMPLETED' | 'FAILED';
+  providerCleanupError: string | null; isEmptyAccount: boolean; reason: string | null; requestedAt: string;
+  user: { id: string; firstName: string; lastName: string; email: string; phone: string; status: UserStatus; kyc: { status: string; step: string } | null; virtualAccount: { accountNumber: string; isActive: boolean; orderRef: string } | null };
+}
+
+export async function listAccountClosures(): Promise<AccountClosure[]> {
+  const result = await authRequest<{ success: boolean; data: AccountClosure[] }>('/api/superadmin/users/account-closures/queue', { method: 'GET' });
+  return result.data;
+}
+export function completeAccountClosure(id: string) { return authRequest(`/api/superadmin/users/account-closures/${id}/complete`, { method: 'POST' }); }
+export function retryAccountClosureCleanup(id: string) { return authRequest(`/api/superadmin/users/account-closures/${id}/retry-provider-cleanup`, { method: 'POST' }); }
+export function placeAccountClosureLegalHold(id: string, reason: string) { return authRequest(`/api/superadmin/users/account-closures/${id}/legal-hold`, { method: 'POST', body: JSON.stringify({ reason }) }); }
 
 export interface SuperadminUserRow {
   id: string;

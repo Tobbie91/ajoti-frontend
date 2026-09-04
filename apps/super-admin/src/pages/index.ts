@@ -1,5 +1,6 @@
 export { Dashboard } from './Dashboard'
 export { ManageUsers } from './ManageUsers'
+export { AccountClosures } from './AccountClosures'
 export { ManageRosca } from './ManageRosca'
 export { SavingsInvestment } from './SavingsInvestment'
 export { SavingsInsurance } from './SavingsInsurance'
