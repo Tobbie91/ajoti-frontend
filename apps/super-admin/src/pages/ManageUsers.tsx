@@ -51,6 +51,7 @@ const STATUS_COLOR: Record<string, string> = {
   SUSPENDED: 'yellow',
   BANNED: 'red',
   FROZEN: 'orange',
+  CLOSURE_PENDING: 'orange',
   CLOSED: 'gray',
 }
 
@@ -59,6 +60,7 @@ const STATUS_LABEL: Record<UserStatus, string> = {
   SUSPENDED: 'Suspended',
   BANNED: 'Banned',
   FROZEN: 'Frozen',
+  CLOSURE_PENDING: 'Closure pending',
   CLOSED: 'Closed',
 }
 

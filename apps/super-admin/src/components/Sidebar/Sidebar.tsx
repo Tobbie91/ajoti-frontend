@@ -13,6 +13,7 @@ type NavLink_ = { label: string; icon: React.FC<{ size?: number; stroke?: number
 const mainLinks: NavLink_[] = [
   { label: 'Dashboard', icon: IconLayoutDashboard, path: '/', permission: null },
   { label: 'Manage Users', icon: IconUsers, path: '/manage-users', permission: null },
+  { label: 'Account Closures', icon: IconAddressBook, path: '/account-closures', permission: 'MANAGE_ACCOUNT_CLOSURES' },
   { label: 'KYC Approvals', icon: IconShieldCheck, path: '/kyc-approvals', permission: 'MANAGE_KYC' },
   { label: 'Manage ajo', icon: IconTopologyRing, path: '/manage-rosca', permission: 'MANAGE_CIRCLES' },
   { label: 'Wallets', icon: IconWallet, path: '/wallets', permission: 'VIEW_LEDGER' },

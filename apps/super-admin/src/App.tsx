@@ -5,7 +5,7 @@ import {
   Dashboard, ManageUsers, ManageRosca, Transactions, SettingsLogs, Login, ForgotPassword,
   ResetPassword, ChangePasswordRequired, KycApprovals, TrustScores, Wallets,
   SystemAccounts, LoansList, DebtsList, PayoutFeeSettings, LoanSettings, CircleRulesSettings,
-  SupportInbox, SupportTicketDetail, ContactDetailsCorrection, StaffManagement, StaffSetup, Maintenance,
+  SupportInbox, SupportTicketDetail, ContactDetailsCorrection, StaffManagement, StaffSetup, Maintenance, AccountClosures,
 } from '@/pages'
 import { FixedSavings } from '@/pages/savings/FixedSavings'
 import { TargetSavings } from '@/pages/savings/TargetSavings'
@@ -25,6 +25,9 @@ function App() {
           <Route element={<AdminLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/manage-users" element={<ManageUsers />} />
+            <Route element={<RequirePermission permission="MANAGE_ACCOUNT_CLOSURES" />}>
+              <Route path="/account-closures" element={<AccountClosures />} />
+            </Route>
             <Route path="/trust-scores" element={<TrustScores />} />
 
             <Route element={<RequirePermission permission="MANAGE_TICKETS" />}>

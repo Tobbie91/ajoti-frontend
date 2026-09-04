@@ -765,7 +765,7 @@ export function MyProfile() {
                 >
                     <div className="text-left">
                         <Text fw={600} className="text-[14px] text-[#374151]">Advanced Settings</Text>
-                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">Permanent account actions</Text>
+                        <Text fw={400} className="text-[12px] text-[#9CA3AF]">Account closure</Text>
                     </div>
                     <span className="text-[#6B7280] text-[18px]">{deleteExpanded ? <IconMinus size={18} /> : <IconPlus size={18} />}</span>
                 </button>
@@ -773,15 +773,15 @@ export function MyProfile() {
                 {deleteExpanded && (
                     <div className="mt-4 border-t border-[#E5E7EB] pt-4">
                         <div className="rounded-xl border border-[#FCA5A5] bg-[#FEF2F2] p-4">
-                            <Text fw={600} className="text-[14px] text-[#EF4444]">Delete Account</Text>
-                            <Text fw={400} className="mt-1 text-[12px] text-[#6B7280]">This permanently closes your account, deletes your data, and cannot be undone. Make sure your wallet balance is zero and you have no active circle memberships before proceeding.</Text>
+                            <Text fw={600} className="text-[14px] text-[#EF4444]">Close Account</Text>
+                            <Text fw={400} className="mt-1 text-[12px] text-[#6B7280]">This immediately closes your access and sends the account to staff for final processing. Records required for financial, fraud, legal and regulatory purposes are retained. Make sure your wallet balance is zero and you have no active circle memberships.</Text>
                         </div>
                         <div className="mt-4 flex flex-col gap-4">
                             {deleteError && <div className="rounded-xl bg-red-50 px-4 py-3"><Text fw={500} className="text-[12px] text-red-600">{deleteError}</Text></div>}
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Current Password</Text><PasswordInput placeholder="Enter your password" value={deletePassword} onChange={(e) => setDeletePassword(e.currentTarget.value)} radius="md" size="sm" leftSection={<IconLock size={16} color="#9CA3AF" />} styles={{ input: { borderColor: "#FCA5A5", fontSize: 14 } }} /></div>
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Reason (optional)</Text><TextInput placeholder="Why are you leaving?" value={deleteReason} onChange={(e) => setDeleteReason(e.currentTarget.value)} radius="md" size="sm" styles={{ input: { borderColor: "#E5E7EB", fontSize: 14 } }} /></div>
                             <div><Text fw={500} className="mb-1.5 text-[12px] text-[#6B7280]">Type <strong>DELETE</strong> to confirm</Text><TextInput placeholder="DELETE" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.currentTarget.value)} radius="md" size="sm" styles={{ input: { borderColor: "#FCA5A5", fontSize: 14 } }} /></div>
-                            <button onClick={() => { setDeleteError(null); setDeleteConfirmModalOpen(true); }} disabled={deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8} className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8 ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}>{deleting ? "Deleting..." : "Permanently Delete Account"}</button>
+                            <button onClick={() => { setDeleteError(null); setDeleteConfirmModalOpen(true); }} disabled={deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8} className={`w-full rounded-xl py-3 text-[13px] font-semibold text-white ${deleting || deleteConfirm !== "DELETE" || deletePassword.length < 8 ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}>{deleting ? "Submitting..." : "Request Account Closure"}</button>
                         </div>
                     </div>
                 )}
@@ -802,10 +802,10 @@ export function MyProfile() {
                         <IconTrash size={26} color="#EF4444" />
                     </div>
                     <Text fw={700} className="text-[18px] text-[#0F172A]">
-                        Delete account permanently?
+                        Close your account?
                     </Text>
                     <Text fw={400} className="text-[13px] leading-[1.6] text-[#6B7280]">
-                        This will permanently close your account, remove your profile, transaction history, KYC records, and bank details. It cannot be undone.
+                        Your access will end immediately. Staff will complete the closure, and records required for financial, fraud, legal and regulatory purposes will be retained.
                     </Text>
                     <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row-reverse">
                         <button
@@ -813,7 +813,7 @@ export function MyProfile() {
                             disabled={deleting}
                             className={`flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white ${deleting ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}
                         >
-                            {deleting ? "Deleting..." : "Yes, delete permanently"}
+                            {deleting ? "Submitting..." : "Yes, close my access"}
                         </button>
                         <button
                             onClick={() => setDeleteConfirmModalOpen(false)}
