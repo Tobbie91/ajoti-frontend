@@ -3,6 +3,7 @@ import { Button, Card, PasswordInput, Text, TextInput, Alert } from '@mantine/co
 import { Link, useNavigate } from 'react-router-dom'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { login as loginApi } from '@/utils/api'
+import { storeCachedStaffUser } from '@/utils/staff-storage'
 
 export function Login() {
   const navigate = useNavigate()
@@ -27,7 +28,7 @@ export function Login() {
         throw new Error('Access denied. Staff account required.')
       }
 
-      localStorage.setItem('superadmin_user', JSON.stringify(user))
+      storeCachedStaffUser(user)
 
       // Directly-created staff must replace their temporary password before
       // anything else - the backend rejects every other action until they do.

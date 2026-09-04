@@ -20,7 +20,7 @@ export function ForgotPassword() {
     setLoading(true)
     try {
       await forgotPassword(email.trim())
-      localStorage.setItem('superadmin_reset_email', email.trim())
+      sessionStorage.setItem('superadmin_reset_email', email.trim())
       navigate('/reset-password')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send reset code.')

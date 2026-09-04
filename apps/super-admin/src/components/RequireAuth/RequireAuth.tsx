@@ -4,6 +4,7 @@ import { Loader } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 import { getCurrentUser } from '@/utils/api'
+import { storeCachedStaffUser } from '@/utils/staff-storage'
 
 export function RequireAuth() {
   const [state, setState] = useState<'loading' | 'ok' | 'no-auth'>('loading')
@@ -15,7 +16,7 @@ export function RequireAuth() {
           setState('no-auth')
           return
         }
-        localStorage.setItem('superadmin_user', JSON.stringify(user))
+        storeCachedStaffUser(user)
         setState('ok')
       })
       .catch(() => setState('no-auth'))

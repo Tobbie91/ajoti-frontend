@@ -7,7 +7,7 @@ import { PASSWORD_POLICY_DESCRIPTION, validatePassword } from '@ajoti/shared'
 
 export function ResetPassword() {
   const navigate = useNavigate()
-  const email = localStorage.getItem('superadmin_reset_email') ?? ''
+  const email = sessionStorage.getItem('superadmin_reset_email') ?? ''
 
   const [otp, setOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -37,7 +37,7 @@ export function ResetPassword() {
     setLoading(true)
     try {
       await resetPassword({ email, otp, newPassword })
-      localStorage.removeItem('superadmin_reset_email')
+      sessionStorage.removeItem('superadmin_reset_email')
       navigate('/login')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Password reset failed.')

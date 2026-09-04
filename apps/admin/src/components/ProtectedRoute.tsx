@@ -2,6 +2,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { Loader } from '@mantine/core'
 import { getUserProfile } from '@/utils/api'
+import { storeCachedCustomerUser } from '@/utils/customer-storage'
 
 type GuardState = 'loading' | 'ok' | 'no-auth'
 
@@ -16,7 +17,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
           setState('no-auth')
           return
         }
-        localStorage.setItem('user', JSON.stringify(user))
+        storeCachedCustomerUser(user)
         setState('ok')
       })
       .catch(() => setState('no-auth'))

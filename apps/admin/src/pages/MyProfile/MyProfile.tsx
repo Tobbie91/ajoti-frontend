@@ -51,6 +51,7 @@ import {
 } from "@/utils/api";
 import { PhoneInputField, AddBankAccountModal } from "@/components";
 import { isCircleAdmin } from "@/utils/auth-role";
+import { storeCachedCustomerUser } from "@/utils/customer-storage";
 
 function getUserFromStorage() {
     const stored = localStorage.getItem("user");
@@ -214,7 +215,7 @@ export function MyProfile() {
                 setPhone(profile.phone || "");
                 setDob((profile.dob as string) || "");
                 if (profile.status) setAccountStatus(profile.status);
-                localStorage.setItem("user", JSON.stringify(profile));
+                storeCachedCustomerUser(profile);
             })
             .catch(() => {})
             .finally(() => setProfileLoading(false));
@@ -322,7 +323,7 @@ export function MyProfile() {
         try {
             await verifyPendingEmailChange(emailOtp);
             const updatedUser = { ...getUserFromStorage(), email };
-            localStorage.setItem("user", JSON.stringify(updatedUser));
+            storeCachedCustomerUser(updatedUser);
             setOriginalEmail(email);
 
             notifications.show({
@@ -364,8 +365,7 @@ export function MyProfile() {
                 ...(!kycStatus?.state && state ? { state } : {}),
                 ...(!kycStatus?.lga && lga ? { lga } : {}),
             });
-            if (res.data)
-                localStorage.setItem("user", JSON.stringify(res.data));
+            if (res.data) storeCachedCustomerUser(res.data);
             setSaveSuccess(true);
             setEditing(false);
             setTimeout(() => setSaveSuccess(false), 3000);
@@ -397,10 +397,7 @@ export function MyProfile() {
         try {
             await freezeMyAccount(freezePassword, freezeReason || undefined);
             setAccountStatus("FROZEN");
-            localStorage.setItem(
-                "user",
-                JSON.stringify({ ...getUserFromStorage(), status: "FROZEN" }),
-            );
+            storeCachedCustomerUser({ ...getUserFromStorage(), status: "FROZEN" });
             setFreezeExpanded(false);
             setFreezePassword("");
             setFreezeReason("");

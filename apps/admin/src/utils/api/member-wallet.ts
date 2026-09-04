@@ -7,6 +7,7 @@ import {
 } from "./client";
 import type { WalletBalance } from "./finance";
 import { getRoscaCircle, type PeerReview } from "./community";
+import { storeCachedCustomerUser } from "../customer-storage";
 
 // ── Wallet ──────────────────────────────────────────────────────────────────
 
@@ -241,10 +242,7 @@ export async function requestAdminAccess(): Promise<{
       },
     );
     const storedUser = JSON.parse(localStorage.getItem("user") ?? "{}");
-    localStorage.setItem(
-      "user",
-      JSON.stringify({ ...storedUser, role: result.role }),
-    );
+    storeCachedCustomerUser({ ...storedUser, role: result.role });
     return { ...result, sessionRefreshed: true };
   } catch {
     return { ...result, sessionRefreshed: false };

@@ -14,6 +14,7 @@ import { IconAlertCircle, IconCheck } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ApiError, getCurrentUser, staffSetup } from '@/utils/api'
+import { storeCachedStaffUser } from '@/utils/staff-storage'
 import { PASSWORD_POLICY_DESCRIPTION, PhoneInputField, isAdultDob, parseCalendarDate, validatePassword, validatePersonName, validatePhone } from '@ajoti/shared'
 
 type StaffSetupField = 'firstName' | 'lastName' | 'dob' | 'gender' | 'phone' | 'password' | 'confirmPassword'
@@ -84,7 +85,7 @@ export function StaffSetup() {
       })
 
       const user = await getCurrentUser()
-      localStorage.setItem('superadmin_user', JSON.stringify(user))
+      storeCachedStaffUser(user)
 
       setDone(true)
       setTimeout(() => navigate('/'), 2000)

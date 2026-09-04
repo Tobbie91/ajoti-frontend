@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { login as loginApi } from '@/utils/api'
 import { defaultAuthenticatedPath } from '@/utils/auth-role'
 import { ForgotPasswordModal } from './ForgotPasswordModal'
+import { storeCachedCustomerUser } from '@/utils/customer-storage'
 
 export function Login() {
   const navigate = useNavigate()
@@ -32,7 +33,7 @@ export function Login() {
       for (const [key, value] of Object.entries(user)) {
         if (value !== '' && value !== null && value !== undefined) merged[key] = value
       }
-      localStorage.setItem('user', JSON.stringify(merged))
+      storeCachedCustomerUser(merged)
       const pendingRedirect = localStorage.getItem('pending_redirect')
       if (pendingRedirect?.startsWith('/')) {
         localStorage.removeItem('pending_redirect')
