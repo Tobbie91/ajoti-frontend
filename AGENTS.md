@@ -1,6 +1,6 @@
 # ajoti-frontend
 
-See `../AGENTS.md` for cross-cutting workflow rules (propose-before-implementing, commit cadence, push approval, logging to the completed-changes doc). This file is frontend-specific technical detail only.
+See `../AGENTS.md` and `../CLAUDE.md` for cross-cutting workflow rules (propose-before-implementing, commit cadence, push approval, and dated action records). This file is frontend-specific technical detail only.
 
 ## Two active apps, three access levels
 
