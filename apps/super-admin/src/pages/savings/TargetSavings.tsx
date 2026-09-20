@@ -62,6 +62,10 @@ export function TargetSavings() {
         </Text>
       </div>
 
+      <Alert color="orange" icon={<IconAlertCircle size={16} />}>
+        Investment-backed Target Savings are monitored here only. Provider funding, redemption and wallet settlement remain disabled until the approved lifecycle is implemented.
+      </Alert>
+
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
         <Card withBorder radius="md" p="md">
           <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Active plans</Text>
@@ -137,12 +141,13 @@ export function TargetSavings() {
                 <Table.Th>Expected target</Table.Th>
                 <Table.Th>Frequency</Table.Th>
                 <Table.Th>Maturity</Table.Th>
+                <Table.Th>Investment</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {!loading && rows.length === 0 && (
                 <Table.Tr>
-                  <Table.Td colSpan={9}>
+                  <Table.Td colSpan={10}>
                     <Text ta="center" c="dimmed" py="xl">No Target Savings plans found.</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -164,6 +169,11 @@ export function TargetSavings() {
                   <Table.Td>{money(plan.effectiveTargetAmountKobo)}</Table.Td>
                   <Table.Td>{money(plan.contributionAmountKobo)} {plan.frequency.toLowerCase()}</Table.Td>
                   <Table.Td>{new Date(plan.maturityDate).toLocaleDateString('en-NG')}</Table.Td>
+                  <Table.Td>
+                    <Badge color={plan.investment.enabled ? 'orange' : 'gray'} variant="light">
+                      {plan.investment.enabled ? `${plan.investment.provider ?? 'Mapped'} · disabled` : 'Legacy'}
+                    </Badge>
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

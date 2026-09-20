@@ -363,6 +363,9 @@ export function TargetSavings() {
       >
         {step === "INTRO" ? (
           <Stack>
+            <Alert icon={<IconInfoCircle size={18} />} title="Investment growth is not available yet" color="orange">
+              Target Savings currently uses Ajoti&apos;s wallet-backed flow. Investment-backed growth remains disabled until provider operations and settlement are fully enabled.
+            </Alert>
             <Alert icon={<IconInfoCircle size={18} />} title="Your money stays locked until maturity" color="blue">
               Reaching your target early does not unlock your savings. Early withdrawal is not currently available.
             </Alert>
@@ -536,6 +539,11 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
       </Group>
 
       <Text size="xs" c="dimmed" mt="xs">Planned contribution: {money(plan.contributionAmountKobo)} {plan.frequency.toLowerCase()} · Matures {new Date(plan.maturityDate).toLocaleDateString()}</Text>
+      {plan.investment.enabled && (
+        <Alert mt="md" color="orange" title="Investment-backed target is not active">
+          Provider: {plan.investment.provider ?? "Not assigned"}. Contributions and maturity settlement remain disabled until provider operations are enabled.
+        </Alert>
+      )}
       {plan.type === "GROUP" && <Text size="xs" c="dimmed" mt={2}>Current group target: {money(plan.groupTargetAmountKobo)}. This grows as new members join.</Text>}
 
       {targetReached && !maturityReached && plan.status === "ACTIVE" && (
