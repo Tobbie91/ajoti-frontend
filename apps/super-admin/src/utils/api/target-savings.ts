@@ -2,6 +2,7 @@ import { authRequest } from './client'
 
 export type TargetSavingsStatus = 'ACTIVE' | 'MATURED' | 'CANCELLED'
 export type TargetSavingsType = 'INDIVIDUAL' | 'GROUP'
+export type TargetSavingsInvestmentStatus = 'LEGACY' | 'DISABLED_PENDING_INTEGRATION'
 
 export interface TargetSavingsOversightRow {
   id: string
@@ -22,6 +23,14 @@ export interface TargetSavingsOversightRow {
   contributionAmountKobo: string
   totalSavedKobo: string
   effectiveTargetAmountKobo: string
+  investment: {
+    enabled: boolean
+    provider: string | null
+    productCode: string | null
+    productType: string | null
+    approvalVersion: string | null
+    lifecycleStatus: TargetSavingsInvestmentStatus
+  }
 }
 
 export interface TargetSavingsOversightResponse {
