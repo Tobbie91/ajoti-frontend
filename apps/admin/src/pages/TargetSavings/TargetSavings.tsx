@@ -37,6 +37,7 @@ import {
 } from "@/utils/targetSavingsApi";
 import { getKycStatus } from "@/utils/api";
 import { useNavigate } from "react-router-dom";
+import { CowrywiseTestMode } from "./CowrywiseTestMode";
 
 const toNaira = (k: string) => Number(k || 0) / 100;
 const money = (k: string) =>
@@ -257,6 +258,8 @@ export function TargetSavings() {
         ]}
       />
 
+      <CowrywiseTestMode plans={plans} />
+
       {view === "MINE" ? (
         <Stack gap="md">
           {plans.length === 0 && (
@@ -445,6 +448,7 @@ export function TargetSavings() {
                 onChange={(e) => setForm({ ...form, isPublic: e.currentTarget.checked })}
               />
             )}
+
 
             <Divider />
             <Text size="xs" c="dimmed">No early withdrawal is available. Ajoti stops accepting contributions once you reach your personal target or the maturity date passes.</Text>
