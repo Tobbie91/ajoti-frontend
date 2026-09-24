@@ -90,6 +90,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     authScope = "customer",
   } = config;
   const userKey = `${storagePrefix}user`;
+  const preserveLocalDevShell =
+    import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH_BYPASS === "true";
 
   async function request<T>(path: string, options: RequestInit): Promise<T> {
     const { headers, ...rest } = options;
@@ -140,6 +142,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   function clearSessionAndRedirect(): void {
+    if (preserveLocalDevShell) return;
+
     [userKey, ...extraSessionKeys].forEach(
       (k) => localStorage.removeItem(k),
     );

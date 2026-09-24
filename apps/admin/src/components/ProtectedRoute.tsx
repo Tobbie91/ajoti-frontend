@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { Loader } from '@mantine/core'
 import { getUserProfile } from '@/utils/api'
 import { storeCachedCustomerUser } from '@/utils/customer-storage'
+import { DEV_AUTH_BYPASS_USER, isDevAuthBypass } from '@/utils/dev-auth-bypass'
 
 type GuardState = 'loading' | 'ok' | 'no-auth'
 
@@ -11,6 +12,12 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GuardState>('loading')
 
   useEffect(() => {
+    if (isDevAuthBypass) {
+      storeCachedCustomerUser(DEV_AUTH_BYPASS_USER)
+      setState('ok')
+      return
+    }
+
     getUserProfile()
       .then((user) => {
         if (!user.role || !['MEMBER', 'CIRCLE_ADMIN'].includes(user.role)) {

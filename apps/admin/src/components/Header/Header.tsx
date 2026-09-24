@@ -5,6 +5,7 @@ import { IconBell } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { defaultAuthenticatedPath, getCurrentRole } from '@/utils/auth-role'
 import { storeCachedCustomerUser } from '@/utils/customer-storage'
+import { DEV_AUTH_BYPASS_USER, isDevAuthBypass } from '@/utils/dev-auth-bypass'
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -165,13 +166,17 @@ function NotificationPanel() {
 export function Header({ opened, onToggle }: HeaderProps) {
   const navigate = useNavigate()
   const role = getCurrentRole()
-  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}')
+  const storedUser = isDevAuthBypass
+    ? DEV_AUTH_BYPASS_USER
+    : JSON.parse(localStorage.getItem('user') ?? '{}')
   const [fullName, setFullName] = useState(
     [storedUser.firstName, storedUser.lastName].filter(Boolean).join(' ') || 'My account'
   )
   const initials = fullName.charAt(0).toUpperCase()
 
   useEffect(() => {
+    if (isDevAuthBypass) return
+
     let active = true
     getUserProfile()
       .then((profile) => {
@@ -214,6 +219,7 @@ export function Header({ opened, onToggle }: HeaderProps) {
       </Group>
 
       <Group gap="sm">
+        {isDevAuthBypass && <Badge size="xs" color="orange" variant="light">DEV AUTH BYPASS</Badge>}
         <NotificationPanel />
         <Box
           onClick={() => navigate('/my-profile')}

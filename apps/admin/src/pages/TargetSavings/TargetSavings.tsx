@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Accordion,
   Badge,
   Button,
   Card,
@@ -38,6 +39,7 @@ import {
 import { getKycStatus } from "@/utils/api";
 import { useNavigate } from "react-router-dom";
 import { CowrywiseTestMode } from "./CowrywiseTestMode";
+import { isDevAuthBypass } from "@/utils/dev-auth-bypass";
 
 const toNaira = (k: string) => Number(k || 0) / 100;
 const money = (k: string) =>
@@ -85,6 +87,84 @@ function GroupRules({ plan }: { plan?: TargetSavingsPlan | null }) {
         <List.Item>Early withdrawal is not currently available.</List.Item>
       </List>
     </Stack>
+  );
+}
+
+function LocalReviewSavingsCard() {
+  const [saved, setSaved] = useState(1000);
+  const [available, setAvailable] = useState(5000);
+  const [amount, setAmount] = useState(2500);
+  const [open, setOpen] = useState(false);
+  const progress = Math.round((saved / 10000) * 100);
+
+  const addMoney = () => {
+    const value = Math.min(Math.max(0, amount), available);
+    if (!value) return;
+    setSaved((current) => current + value);
+    setAvailable((current) => current - value);
+    setOpen(false);
+  };
+
+  return (
+    <Card withBorder radius="lg" p="lg">
+      <Group justify="space-between" align="flex-start">
+        <div>
+          <Badge color="green" variant="light" mb="xs">Active savings</Badge>
+          <Title order={3}>Cowrywise E2E Test</Title>
+          <Text size="sm" c="dimmed" mt={4}>A focused plan for reaching your savings goal.</Text>
+        </div>
+        <Text fw={700} c="teal">{progress}% complete</Text>
+      </Group>
+
+      <Group align="baseline" gap={6} mt="xl">
+        <Text fw={800} fz={34}>₦{saved.toLocaleString("en-NG")}</Text>
+        <Text c="dimmed">of ₦10,000</Text>
+      </Group>
+      <Progress value={progress} size="xl" radius="xl" mt="sm" color="teal" />
+      <Group justify="space-between" mt="xs">
+        <Text size="sm" c="dimmed">{progress}% complete</Text>
+        <Text size="sm" fw={600}>₦{(10000 - saved).toLocaleString("en-NG")} remaining</Text>
+      </Group>
+
+      <Group grow mt="xl" align="flex-start">
+        <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>₦2,500 monthly</Text></div>
+        <div><Text size="xs" c="dimmed">Matures</Text><Text fw={700}>24 Dec 2026</Text></div>
+      </Group>
+
+      <Button fullWidth size="md" mt="xl" onClick={() => setOpen(true)}>Add to savings</Button>
+
+      <Card withBorder radius="md" p="md" mt="lg" bg="gray.0">
+        <Text fw={700}>Your savings plan</Text>
+        <Group grow mt="md" align="flex-start">
+          <div><Text size="xs" c="dimmed">Savings type</Text><Text size="sm" fw={600}>90-day Locked Savings</Text></div>
+          <div><Text size="xs" c="dimmed">Access</Text><Text size="sm" fw={600}>Locked until maturity</Text></div>
+        </Group>
+        <Group grow mt="md" align="flex-start">
+          <div><Text size="xs" c="dimmed">Provider</Text><Text size="sm" fw={600}>Cowrywise</Text></div>
+          <div><Text size="xs" c="dimmed">Interest</Text><Text size="sm" fw={600}>Rate unavailable in sandbox</Text></div>
+        </Group>
+        <Text size="xs" c="dimmed" mt="md">Your savings are held through Cowrywise. Ajoti will show the applicable rate and fees when the provider returns them.</Text>
+      </Card>
+
+      <div className="mt-5">
+        <Text fw={700}>Recent activity</Text>
+        <Group justify="space-between" mt="sm">
+          <div><Text size="sm">₦1,000 added</Text><Text size="xs" c="dimmed">24 Sep 2026</Text></div>
+          <Badge color="green" variant="light">Successful</Badge>
+        </Group>
+        {saved > 1000 && <Group justify="space-between" mt="sm"><div><Text size="sm">₦{(saved - 1000).toLocaleString("en-NG")} added</Text><Text size="xs" c="dimmed">Just now</Text></div><Badge color="green" variant="light">Successful</Badge></Group>}
+      </div>
+
+      <Modal opened={open} onClose={() => setOpen(false)} title="Add to your savings" centered>
+        <Stack>
+          <Text size="sm" c="dimmed">Available to save: ₦{available.toLocaleString("en-NG")}</Text>
+          <NumberInput label="Amount" min={1} max={available} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," />
+          <Text size="sm" c="dimmed">Suggested this month: ₦2,500</Text>
+          <Alert color="blue" title="Before you continue">Your money will remain locked until 24 Dec 2026. Early withdrawal is not available.</Alert>
+          <Button onClick={addMoney} disabled={amount <= 0 || amount > available}>Add money</Button>
+        </Stack>
+      </Modal>
+    </Card>
   );
 }
 
@@ -258,12 +338,11 @@ export function TargetSavings() {
         ]}
       />
 
-      <CowrywiseTestMode plans={plans} />
-
       {view === "MINE" ? (
         <Stack gap="md">
+          {isDevAuthBypass && plans.length === 0 && <LocalReviewSavingsCard />}
           {plans.length === 0 && (
-            <Card withBorder>
+            <Card withBorder style={{ display: isDevAuthBypass ? "none" : undefined }}>
               <Text fw={600}>No savings targets yet</Text>
               <Text size="sm" c="dimmed">Create an individual target, start a group target, or discover a public group.</Text>
               <Button variant="light" size="xs" mt="sm" onClick={() => setView("DISCOVER")}>Discover groups</Button>
@@ -271,8 +350,17 @@ export function TargetSavings() {
           )}
 
           {plans.map((p) => (
-            <TargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} />
+            <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} />
           ))}
+
+          {isDevAuthBypass && (
+            <Accordion variant="separated" mt="md">
+              <Accordion.Item value="developer-tools">
+                <Accordion.Control>Developer sandbox tools</Accordion.Control>
+                <Accordion.Panel><CowrywiseTestMode plans={plans} /></Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          )}
         </Stack>
       ) : (
         <Stack gap="md">
@@ -466,6 +554,71 @@ export function TargetSavings() {
         )}
       </Modal>
     </div>
+  );
+}
+
+function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean }) {
+  const mine = plan.myMembership;
+  const saved = toNaira(mine?.savedAmountKobo ?? "0");
+  const target = toNaira(plan.targetAmountKobo);
+  const remaining = Math.max(0, target - saved);
+  const progress = Math.min(100, Math.round((saved / Math.max(target, 1)) * 100));
+  const [amount, setAmount] = useState(Math.min(toNaira(plan.contributionAmountKobo), remaining || toNaira(plan.contributionAmountKobo)));
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const maturityReached = new Date(plan.maturityDate).getTime() <= Date.now();
+  const provider = plan.investment.provider ?? "Ajoti";
+  const savingsType = plan.investment.productType ?? (plan.type === "GROUP" ? "Group Target Savings" : "Target Savings");
+  const actionLabel = saved > 0 ? "Add to savings" : "Start saving";
+
+  const addMoney = async () => {
+    if (!mine || !kycReady || amount <= 0 || amount > remaining) return;
+    setSaving(true);
+    setError("");
+    try {
+      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)));
+      setOpen(false);
+      await onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "We could not add this contribution");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card withBorder radius="lg" p="lg">
+      <Group justify="space-between" align="flex-start">
+        <div><Badge color={maturityReached ? "blue" : "green"} variant="light" mb="xs">{maturityReached ? "Matured" : "Active savings"}</Badge><Title order={3}>{plan.name}</Title></div>
+        <Text fw={700} c="teal">{progress}% complete</Text>
+      </Group>
+      <Group align="baseline" gap={6} mt="xl"><Text fw={800} fz={34}>{money(String(Math.round(saved * 100)))}</Text><Text c="dimmed">of {money(plan.targetAmountKobo)}</Text></Group>
+      <Progress value={progress} size="xl" radius="xl" mt="sm" color="teal" />
+      <Group justify="space-between" mt="xs"><Text size="sm" c="dimmed">{progress}% complete</Text><Text size="sm" fw={600}>{money(String(Math.round(remaining * 100)))} remaining</Text></Group>
+
+      <Group grow mt="xl" align="flex-start">
+        <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>{money(plan.contributionAmountKobo)} {plan.frequency.toLowerCase()}</Text></div>
+        <div><Text size="xs" c="dimmed">Matures</Text><Text fw={700}>{new Date(plan.maturityDate).toLocaleDateString()}</Text></div>
+      </Group>
+
+      <Button fullWidth size="md" mt="xl" disabled={!kycReady || maturityReached || !mine || remaining <= 0} onClick={() => setOpen(true)}>{actionLabel}</Button>
+      {!kycReady && <Alert mt="md" color="yellow">Complete KYC Level 1 before adding money to this goal.</Alert>}
+      {maturityReached && <Alert mt="md" color="blue" title="Your savings have matured">Contributions are closed for this goal.</Alert>}
+
+      <Card withBorder radius="md" p="md" mt="lg" bg="gray.0">
+        <Text fw={700}>Your savings plan</Text>
+        <Group grow mt="md" align="flex-start"><div><Text size="xs" c="dimmed">Savings type</Text><Text size="sm" fw={600}>{savingsType}</Text></div><div><Text size="xs" c="dimmed">Access</Text><Text size="sm" fw={600}>Locked until maturity</Text></div></Group>
+        <Group grow mt="md" align="flex-start"><div><Text size="xs" c="dimmed">Provider</Text><Text size="sm" fw={600}>{provider}</Text></div><div><Text size="xs" c="dimmed">Interest</Text><Text size="sm" fw={600}>Rate unavailable</Text></div></Group>
+        <Text size="xs" c="dimmed" mt="md">Provider details, applicable rates and fees will be shown when returned by the savings provider.</Text>
+      </Card>
+
+      <div className="mt-5"><Text fw={700}>Recent activity</Text><Text size="sm" c="dimmed" mt="sm">{saved > 0 ? "Your recent contribution activity will appear here." : "Your first contribution will appear here."}</Text></div>
+
+      <Modal opened={open} onClose={() => setOpen(false)} title={actionLabel} centered>
+        <Stack><Text size="sm" c="dimmed">Available to save is managed securely behind the scenes. Your goal has {money(String(Math.round(remaining * 100)))} left to reach.</Text><NumberInput label="Amount" min={1} max={remaining} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," /><Text size="sm" c="dimmed">Suggested contribution: {money(plan.contributionAmountKobo)}</Text><Alert color="blue" title="Before you continue">Your money remains locked until {new Date(plan.maturityDate).toLocaleDateString()}.</Alert>{error && <Alert color="red">{error}</Alert>}<Button loading={saving} onClick={addMoney} disabled={amount <= 0 || amount > remaining}>Add money</Button></Stack>
+      </Modal>
+    </Card>
   );
 }
 
