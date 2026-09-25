@@ -38,7 +38,8 @@ import {
 } from "@/utils/targetSavingsApi";
 import { getKycStatus } from "@/utils/api";
 import { useNavigate } from "react-router-dom";
-import { CowrywiseTestMode } from "./CowrywiseTestMode";
+import { getCowrywiseState } from "@/utils/cowrywiseSavingsApi";
+import { fundSandboxAjotiWallet } from "@/utils/sandboxWalletApi";
 import { isDevAuthBypass } from "@/utils/dev-auth-bypass";
 
 const toNaira = (k: string) => Number(k || 0) / 100;
@@ -182,6 +183,9 @@ export function TargetSavings() {
   const [joinError, setJoinError] = useState("");
   const [privateInvite, setPrivateInvite] = useState<{ id: string; token: string } | null>(null);
   const [kycLevel, setKycLevel] = useState<number | null>(null);
+  const [sandboxStagingAvailable, setSandboxStagingAvailable] = useState(false);
+  const [sandboxFunding, setSandboxFunding] = useState(false);
+  const [sandboxWallet, setSandboxWallet] = useState<string | null>(null);
   const [form, setForm] = useState({
     type: "INDIVIDUAL",
     name: "",
@@ -219,6 +223,9 @@ export function TargetSavings() {
     getKycStatus()
       .then((kyc) => setKycLevel(kyc.kycLevel ?? 0))
       .catch(() => setKycLevel(0));
+    getCowrywiseState()
+      .then((state) => setSandboxStagingAvailable(state.testMode === true))
+      .catch(() => setSandboxStagingAvailable(false));
 
     const params = new URLSearchParams(window.location.search);
     const id = params.get("targetInviteId");
@@ -353,11 +360,34 @@ export function TargetSavings() {
             <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} />
           ))}
 
-          {isDevAuthBypass && (
+          {sandboxStagingAvailable && (
             <Accordion variant="separated" mt="md">
               <Accordion.Item value="developer-tools">
-                <Accordion.Control>Developer sandbox tools</Accordion.Control>
-                <Accordion.Panel><CowrywiseTestMode plans={plans} /></Accordion.Panel>
+                <Accordion.Control>Sandbox tools</Accordion.Control>
+                <Accordion.Panel>
+                  <Card withBorder radius="md" p="md">
+                    <Text fw={700}>Fake Ajoti wallet funding</Text>
+                    <Text size="sm" c="dimmed" mt={4}>
+                      Staging-only test funds. The normal savings action will use this Ajoti wallet balance.
+                    </Text>
+                    {sandboxWallet && <Text size="sm" mt="sm">Available: ₦{(Number(sandboxWallet) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}</Text>}
+                    <Button
+                      mt="sm"
+                      loading={sandboxFunding}
+                      onClick={async () => {
+                        setSandboxFunding(true);
+                        try {
+                          const result = await fundSandboxAjotiWallet("500000", `sandbox-ajoti-${crypto.randomUUID()}`);
+                          setSandboxWallet(result.balance?.available ?? null);
+                        } finally {
+                          setSandboxFunding(false);
+                        }
+                      }}
+                    >
+                      Add ₦5,000 test funds
+                    </Button>
+                  </Card>
+                </Accordion.Panel>
               </Accordion.Item>
             </Accordion>
           )}
@@ -577,7 +607,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavings
     setSaving(true);
     setError("");
     try {
-      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)));
+      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)), `target-${plan.id}-${crypto.randomUUID()}`);
       setOpen(false);
       await onChanged();
     } catch (e) {
@@ -667,7 +697,7 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
     setSaving(true);
     setError("");
     try {
-      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)));
+      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)), `target-${plan.id}-${crypto.randomUUID()}`);
       await onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to save to this target");
