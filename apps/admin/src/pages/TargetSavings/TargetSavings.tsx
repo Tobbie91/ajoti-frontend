@@ -24,6 +24,8 @@ import {
   IconAlertTriangle,
   IconCheck,
   IconCopy,
+  IconEye,
+  IconEyeOff,
   IconInfoCircle,
   IconPlus,
   IconShare,
@@ -43,6 +45,8 @@ import { useNavigate } from "react-router-dom";
 const toNaira = (k: string) => Number(k || 0) / 100;
 const money = (k: string) =>
   `₦${toNaira(k).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const MASKED = "₦••••••";
+const fmtMoney = (k: string, show: boolean) => (show ? money(k) : MASKED);
 
 function countPeriods(maturityDate: string, frequency: string) {
   if (!maturityDate) return 0;
@@ -103,6 +107,20 @@ export function TargetSavings() {
   const [joinError, setJoinError] = useState("");
   const [privateInvite, setPrivateInvite] = useState<{ id: string; token: string } | null>(null);
   const [kycLevel, setKycLevel] = useState<number | null>(null);
+  const [showAmounts, setShowAmounts] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("targetSavings:showAmounts") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggleAmounts = () => {
+    setShowAmounts((v) => {
+      const next = !v;
+      try { localStorage.setItem("targetSavings:showAmounts", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const [form, setForm] = useState({
     type: "INDIVIDUAL",
     name: "",
@@ -237,9 +255,19 @@ export function TargetSavings() {
           <Title order={2}>Target Savings</Title>
           <Text c="dimmed">Save towards your own goal or stay accountable with a group.</Text>
         </div>
-        <Button leftSection={<IconPlus size={16} />} onClick={openCreate} disabled={!kycReady}>
-          New target
-        </Button>
+        <Group gap="xs">
+          <Button
+            variant="default"
+            onClick={toggleAmounts}
+            leftSection={showAmounts ? <IconEye size={16} /> : <IconEyeOff size={16} />}
+            aria-label={showAmounts ? "Hide amounts" : "Show amounts"}
+          >
+            {showAmounts ? "Hide amounts" : "Show amounts"}
+          </Button>
+          <Button leftSection={<IconPlus size={16} />} onClick={openCreate} disabled={!kycReady}>
+            New target
+          </Button>
+        </Group>
       </Group>
 
       {kycLevel !== null && !kycReady && (
@@ -270,7 +298,7 @@ export function TargetSavings() {
           )}
 
           {plans.map((p) => (
-            <TargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} />
+            <TargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
           ))}
         </Stack>
       ) : (
@@ -464,7 +492,7 @@ export function TargetSavings() {
   );
 }
 
-function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean }) {
+function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
   const mine = plan.myMembership;
   const plannedAmount = toNaira(plan.contributionAmountKobo);
   const remaining = toNaira(mine?.remainingAmountKobo ?? "0");
@@ -598,10 +626,10 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
       {/* ─── Hero amount ─── */}
       <Group gap={8} align="baseline" mt="md" wrap="wrap">
         <Text fw={700} fz={32} style={{ color: meta.heroHex, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-          {money(savedKoboStr)}
+          {fmtMoney(savedKoboStr, showAmounts)}
         </Text>
         <Text size="sm" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
-          of <Text component="span" fw={600} c="dark" inherit>{money(personalTargetKoboStr)}</Text>{plan.type === "GROUP" ? " personal" : " target"}
+          of <Text component="span" fw={600} c="dark" inherit>{fmtMoney(personalTargetKoboStr, showAmounts)}</Text>{plan.type === "GROUP" ? " personal" : " target"}
         </Text>
       </Group>
 
@@ -618,23 +646,23 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
 
       {/* ─── Stats tiles ─── */}
       <SimpleGrid cols={{ base: 2, xs: 4 }} spacing="xs" mt="md">
-        <StatTile label="Saved" value={money(savedKoboStr)} />
-        <StatTile label="Remaining" value={money(remainingKoboStr)} subtle />
-        <StatTile label={paceLabel} value={money(plan.contributionAmountKobo)} />
+        <StatTile label="Saved" value={fmtMoney(savedKoboStr, showAmounts)} />
+        <StatTile label="Remaining" value={fmtMoney(remainingKoboStr, showAmounts)} subtle />
+        <StatTile label={paceLabel} value={fmtMoney(plan.contributionAmountKobo, showAmounts)} />
         <StatTile label="Days left" value={maturityReached ? "0" : String(daysLeft)} subtle />
       </SimpleGrid>
 
       {/* ─── Group-only pot line ─── */}
       {plan.type === "GROUP" && (
         <Text size="xs" c="dimmed" mt="sm">
-          Group pot: {money(plan.totalSavedKobo)} of {money(plan.groupTargetAmountKobo)}. Grows as members join and contribute.
+          Group pot: {fmtMoney(plan.totalSavedKobo, showAmounts)} of {fmtMoney(plan.groupTargetAmountKobo, showAmounts)}. Grows as members join and contribute.
         </Text>
       )}
 
       {/* ─── Status nudges ─── */}
       {statusKind === "behind" && (
         <Alert mt="md" color="orange" variant="light" icon={<IconAlertTriangle size={16} />}>
-          You're {money(remainingKoboStr)} short with {daysLeft} day{daysLeft === 1 ? "" : "s"} left. Save about <strong>{money(String(catchUpKobo))}</strong> {freqLabel} to finish on time.
+          You're {fmtMoney(remainingKoboStr, showAmounts)} short with {daysLeft} day{daysLeft === 1 ? "" : "s"} left. Save about <strong>{fmtMoney(String(catchUpKobo), showAmounts)}</strong> {freqLabel} to finish on time.
         </Alert>
       )}
       {targetReached && !maturityReached && plan.status === "ACTIVE" && (
@@ -644,7 +672,7 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
       )}
       {maturityReached && plan.status === "ACTIVE" && (
         <Alert mt="md" color="gray" variant="light" icon={<IconInfoCircle size={16} />}>
-          Contributions are closed. {money(savedKoboStr)} is being released to your Ajoti wallet.
+          Contributions are closed. {fmtMoney(savedKoboStr, showAmounts)} is being released to your Ajoti wallet.
         </Alert>
       )}
       {contributionAvailable && !kycReady && (
@@ -712,6 +740,7 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
                   savedKobo={m.savedAmountKobo}
                   targetKobo={m.targetAmountKobo || plan.targetAmountKobo}
                   progressPercent={m.progressPercent}
+                  showAmounts={showAmounts}
                 />
               ))}
           </Stack>
@@ -749,6 +778,7 @@ function MemberRow({
   savedKobo,
   targetKobo,
   progressPercent,
+  showAmounts,
 }: {
   rank: number;
   name: string;
@@ -756,6 +786,7 @@ function MemberRow({
   savedKobo: string;
   targetKobo: string;
   progressPercent: number;
+  showAmounts: boolean;
 }) {
   const pct = Math.max(0, Math.min(100, progressPercent));
   const done = pct >= 100;
@@ -778,7 +809,7 @@ function MemberRow({
       </div>
       <div style={{ textAlign: "right", flexShrink: 0, minWidth: 150 }}>
         <Text size="xs" fw={600} style={{ fontVariantNumeric: "tabular-nums" }}>
-          {money(savedKobo)} <Text component="span" c="dimmed" fw={400} inherit>of {money(targetKobo)}</Text>
+          {fmtMoney(savedKobo, showAmounts)} <Text component="span" c="dimmed" fw={400} inherit>of {fmtMoney(targetKobo, showAmounts)}</Text>
         </Text>
         <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
           {pct.toFixed(0)}%
