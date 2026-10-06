@@ -657,7 +657,7 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
 
       {/* ─── Stats tiles ─── */}
       <SimpleGrid cols={{ base: 2, xs: 4 }} spacing="xs" mt="md">
-        <StatTile label="Saved" value={fmtMoney(savedKoboStr, showAmounts)} />
+        <StatTile label="Saved" value={fmtMoney(savedKoboStr, showAmounts)} accent />
         <StatTile label="Remaining" value={fmtMoney(remainingKoboStr, showAmounts)} subtle />
         <StatTile label={paceLabel} value={fmtMoney(plan.contributionAmountKobo, showAmounts)} />
         <StatTile label="Days left" value={maturityReached ? "0" : String(daysLeft)} subtle />
@@ -665,9 +665,11 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
 
       {/* ─── Group-only pot line ─── */}
       {plan.type === "GROUP" && (
-        <Text size="xs" c="dimmed" mt="sm">
-          Group pot: {fmtMoney(plan.totalSavedKobo, showAmounts)} of {fmtMoney(plan.groupTargetAmountKobo, showAmounts)}. Grows as members join and contribute.
-        </Text>
+        <div style={{ marginTop: 12, padding: "10px 14px", background: "#F5FBF8", border: "1px solid #DBEDE1", borderRadius: 8 }}>
+          <Text size="xs" style={{ color: "#374151", fontWeight: 500 }}>
+            Group pot: <strong style={{ color: "#0B6B55", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(plan.totalSavedKobo, showAmounts)}</strong> of <strong style={{ color: "#0F172A", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(plan.groupTargetAmountKobo, showAmounts)}</strong>. Grows as members join and contribute.
+          </Text>
+        </div>
       )}
 
       {/* ─── Status nudges ─── */}
@@ -764,17 +766,20 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
   );
 }
 
-function StatTile({ label, value, subtle }: { label: string; value: string; subtle?: boolean }) {
+function StatTile({ label, value, subtle, accent }: { label: string; value: string; subtle?: boolean; accent?: boolean }) {
+  // Accent tile = brand solid green (most important metric). Others sit on a brand-tinted ground with a subtle green border.
+  const bg = accent ? "#0B6B55" : "#E7F4EE";
+  const border = accent ? "#0B6B55" : "#BFE0CC";
+  const labelColor = accent ? "rgba(255,255,255,0.85)" : "#047857";
+  const valueColor = accent ? "#FFFFFF" : "#0F172A";
   return (
-    <div style={{ padding: "10px 12px", background: "#F8FAF9", borderRadius: 6 }}>
-      <Text size="xs" c="dimmed" style={{ letterSpacing: 0.6, textTransform: "uppercase", fontSize: 10 }}>
+    <div style={{ padding: "12px 14px", background: bg, borderRadius: 8, border: `1px solid ${border}` }}>
+      <Text style={{ letterSpacing: 0.6, textTransform: "uppercase", fontSize: 10, fontWeight: 600, color: labelColor }}>
         {label}
       </Text>
       <Text
-        fw={subtle ? 500 : 700}
-        c={subtle ? "dimmed" : "dark"}
-        mt={2}
-        style={{ fontSize: 14, fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}
+        mt={3}
+        style={{ fontSize: 15, fontWeight: subtle ? 600 : 700, color: valueColor, fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}
       >
         {value}
       </Text>
