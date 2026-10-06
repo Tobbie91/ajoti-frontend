@@ -27,6 +27,8 @@ import {
   IconEye,
   IconEyeOff,
   IconInfoCircle,
+  IconLock,
+  IconLockOpen,
   IconPlus,
   IconShare,
   IconUsers,
@@ -594,10 +596,10 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
   return (
     <Card withBorder radius="md" p="lg">
       {/* ─── Header: name + status + days-left ─── */}
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Group gap="xs" wrap="nowrap">
-            <Text fw={700} fz="lg" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plan.name}</Text>
+          <Group gap="xs" wrap="wrap">
+            <Text fw={700} fz="lg" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{plan.name}</Text>
             {plan.type === "GROUP" && (
               <Badge variant="light" color={plan.isPublic ? "green" : "gray"}>
                 {plan.isPublic ? "Public" : "Private"}
@@ -610,18 +612,27 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
               : `Individual · ${freqLabel}`}
           </Text>
         </div>
-        <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
-          <Badge variant="light" color={meta.color} radius="sm">{meta.label}</Badge>
+        <div className="flex items-center gap-2 flex-shrink-0 sm:flex-col sm:items-end sm:gap-1.5">
+          <Badge
+            variant="filled"
+            color={meta.color}
+            size="lg"
+            radius="sm"
+            leftSection={statusKind === "reached" || statusKind === "matured" ? (statusKind === "matured" ? <IconLockOpen size={13} stroke={2.5} /> : <IconLock size={13} stroke={2.5} />) : undefined}
+            style={{ fontWeight: 700, letterSpacing: 0.4 }}
+          >
+            {meta.label}
+          </Badge>
           <Text
             size="xs"
-            fw={daysUrgent ? 600 : 400}
+            fw={daysUrgent ? 700 : 500}
             c={daysUrgent ? "orange.7" : "dimmed"}
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             {daysLeftLabel}
           </Text>
-        </Stack>
-      </Group>
+        </div>
+      </div>
 
       {/* ─── Hero amount ─── */}
       <Group gap={8} align="baseline" mt="md" wrap="wrap">
@@ -666,12 +677,12 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
         </Alert>
       )}
       {targetReached && !maturityReached && plan.status === "ACTIVE" && (
-        <Alert mt="md" color="blue" variant="light" icon={<IconCheck size={16} />}>
-          You've hit your target. Funds unlock automatically on {maturityLabel}.
+        <Alert mt="md" color="blue" variant="light" icon={<IconLock size={18} />} title="Target reached — funds locked">
+          You've hit your target. Your savings are locked until <strong>{maturityLabel}</strong>, when they'll be released to your Ajoti wallet.
         </Alert>
       )}
       {maturityReached && plan.status === "ACTIVE" && (
-        <Alert mt="md" color="gray" variant="light" icon={<IconInfoCircle size={16} />}>
+        <Alert mt="md" color="gray" variant="light" icon={<IconLockOpen size={18} />} title="Matured — funds unlocked">
           Contributions are closed. {fmtMoney(savedKoboStr, showAmounts)} is being released to your Ajoti wallet.
         </Alert>
       )}
@@ -791,30 +802,35 @@ function MemberRow({
   const pct = Math.max(0, Math.min(100, progressPercent));
   const done = pct >= 100;
   return (
-    <Group gap="sm" wrap="nowrap" align="center" style={{ padding: "6px 0", borderBottom: "1px dashed #E5E7EB" }}>
-      <Text size="xs" c="dimmed" w={18} ta="center" style={{ fontVariantNumeric: "tabular-nums" }}>
-        {rank}
-      </Text>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <Group gap={6} wrap="nowrap">
-          <Text size="sm" fw={500} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {name || "Member"}
+    <div
+      className="flex flex-col gap-2 py-2 border-b border-dashed border-[#E5E7EB] sm:flex-row sm:items-center sm:gap-3"
+    >
+      {/* Line 1 on mobile / left on desktop: rank + name + badges */}
+      <div className="flex items-center gap-2 min-w-0 sm:flex-1">
+        <Text size="xs" c="dimmed" ta="center" style={{ width: 18, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
+          {rank}
+        </Text>
+        <Text size="sm" fw={500} style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {name || "Member"}
+        </Text>
+        {isOrganiser && <Badge size="xs" variant="light" color="green" style={{ flexShrink: 0 }}>Organiser</Badge>}
+        {done && !isOrganiser && <Badge size="xs" variant="light" color="green" style={{ flexShrink: 0 }}>Done</Badge>}
+      </div>
+
+      {/* Line 2 on mobile / right on desktop: bar + amount */}
+      <div className="flex items-center gap-3 pl-7 sm:pl-0 sm:flex-shrink-0">
+        <div style={{ flex: 1 }} className="sm:!flex-none sm:w-24">
+          <Progress value={pct} size="xs" radius="xl" color="green" />
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <Text size="xs" fw={600} style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+            {fmtMoney(savedKobo, showAmounts)} <Text component="span" c="dimmed" fw={400} inherit>of {fmtMoney(targetKobo, showAmounts)}</Text>
           </Text>
-          {isOrganiser && <Badge size="xs" variant="light" color="green">Organiser</Badge>}
-          {done && !isOrganiser && <Badge size="xs" variant="light" color="green">Done</Badge>}
-        </Group>
+          <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {pct.toFixed(0)}%
+          </Text>
+        </div>
       </div>
-      <div style={{ width: 90, flexShrink: 0 }}>
-        <Progress value={pct} size="xs" radius="xl" color={done ? "green" : "green"} />
-      </div>
-      <div style={{ textAlign: "right", flexShrink: 0, minWidth: 150 }}>
-        <Text size="xs" fw={600} style={{ fontVariantNumeric: "tabular-nums" }}>
-          {fmtMoney(savedKobo, showAmounts)} <Text component="span" c="dimmed" fw={400} inherit>of {fmtMoney(targetKobo, showAmounts)}</Text>
-        </Text>
-        <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
-          {pct.toFixed(0)}%
-        </Text>
-      </div>
-    </Group>
+    </div>
   );
 }
