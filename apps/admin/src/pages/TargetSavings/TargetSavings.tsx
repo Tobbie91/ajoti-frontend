@@ -12,6 +12,7 @@ import {
   Progress,
   SegmentedControl,
   Select,
+  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -20,6 +21,7 @@ import {
   Title,
 } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconCheck,
   IconCopy,
   IconInfoCircle,
@@ -516,38 +518,140 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
     }
   };
 
+  // ─── Derived display values (no backend changes) ──────────────────────────
+  const nowMs = Date.now();
+  const maturityMs = new Date(plan.maturityDate).getTime();
+  const startMs = new Date(plan.startDate).getTime();
+  const daysLeft = Math.max(0, Math.ceil((maturityMs - nowMs) / 86_400_000));
+  const totalMs = Math.max(1, maturityMs - startMs);
+  const elapsedMs = Math.max(0, Math.min(totalMs, nowMs - startMs));
+  const expectedPct = (elapsedMs / totalMs) * 100;
+  const actualPct = Math.max(0, Math.min(100, mine?.progressPercent ?? 0));
+
+  const savedKoboStr = mine?.savedAmountKobo ?? "0";
+  const personalTargetKoboStr = mine?.targetAmountKobo ?? plan.targetAmountKobo;
+  const remainingKoboStr = mine?.remainingAmountKobo ?? "0";
+  const dateFormat: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+  const maturityLabel = new Date(plan.maturityDate).toLocaleDateString("en-NG", dateFormat);
+
+  type StatusKind = "matured" | "reached" | "behind" | "on-track";
+  const statusKind: StatusKind = maturityReached
+    ? "matured"
+    : targetReached
+      ? "reached"
+      : actualPct + 10 < expectedPct
+        ? "behind"
+        : "on-track";
+
+  const statusMeta: Record<StatusKind, { label: string; color: string; heroHex: string; barColor: string }> = {
+    "on-track": { label: "On track", color: "green", heroHex: "#0B6B55", barColor: "green" },
+    behind:     { label: "Behind pace", color: "orange", heroHex: "#B45309", barColor: "orange" },
+    reached:    { label: "Target reached", color: "blue", heroHex: "#1E40AF", barColor: "blue" },
+    matured:    { label: "Matured", color: "gray", heroHex: "#374151", barColor: "gray" },
+  };
+  const meta = statusMeta[statusKind];
+
+  // Catch-up pace (used by the "behind" nudge). Planned pace shown in the stats tile is the admin-set value.
+  const freqLabel = plan.frequency === "DAILY" ? "daily" : plan.frequency === "WEEKLY" ? "weekly" : "monthly";
+  const paceLabel = plan.frequency === "DAILY" ? "Daily pace" : plan.frequency === "WEEKLY" ? "Weekly pace" : "Monthly pace";
+  const periodsLeft = countPeriods(plan.maturityDate.slice(0, 10), plan.frequency);
+  const catchUpKobo = periodsLeft > 0 ? Math.ceil(Number(remainingKoboStr) / periodsLeft) : Number(remainingKoboStr);
+  const daysLeftLabel = maturityReached
+    ? "Matured"
+    : daysLeft === 0
+      ? "Matures today"
+      : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
+  const daysUrgent = !maturityReached && !targetReached && daysLeft > 0 && daysLeft < 7;
+
   return (
     <Card withBorder radius="md" p="lg">
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Group gap="xs">
-            <Text fw={700} fz="lg">{plan.name}</Text>
-            {plan.type === "GROUP" && <Badge variant="light" color={plan.isPublic ? "green" : "gray"}>{plan.isPublic ? "Public" : "Private"}</Badge>}
+      {/* ─── Header: name + status + days-left ─── */}
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Group gap="xs" wrap="nowrap">
+            <Text fw={700} fz="lg" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plan.name}</Text>
+            {plan.type === "GROUP" && (
+              <Badge variant="light" color={plan.isPublic ? "green" : "gray"}>
+                {plan.isPublic ? "Public" : "Private"}
+              </Badge>
+            )}
           </Group>
-          <Text size="sm" c="dimmed">{plan.type === "GROUP" ? `${plan.memberCount} members · Group accountability` : "Individual target"} · {plan.frequency.toLowerCase()}</Text>
+          <Text size="xs" c="dimmed" mt={2}>
+            {plan.type === "GROUP"
+              ? `${plan.memberCount} member${plan.memberCount === 1 ? "" : "s"} · Group · ${freqLabel}`
+              : `Individual · ${freqLabel}`}
+          </Text>
         </div>
-        <Text size="sm" fw={600}>{plan.status}</Text>
+        <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
+          <Badge variant="light" color={meta.color} radius="sm">{meta.label}</Badge>
+          <Text
+            size="xs"
+            fw={daysUrgent ? 600 : 400}
+            c={daysUrgent ? "orange.7" : "dimmed"}
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {daysLeftLabel}
+          </Text>
+        </Stack>
       </Group>
 
-      <Progress mt="md" value={mine?.progressPercent ?? 0} />
-      <Group justify="space-between" mt="xs">
-        <Text size="sm">{money(mine?.savedAmountKobo ?? "0")} saved</Text>
-        <Text size="sm">Personal target {money(plan.targetAmountKobo)}</Text>
+      {/* ─── Hero amount ─── */}
+      <Group gap={8} align="baseline" mt="md" wrap="wrap">
+        <Text fw={700} fz={32} style={{ color: meta.heroHex, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          {money(savedKoboStr)}
+        </Text>
+        <Text size="sm" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+          of <Text component="span" fw={600} c="dark" inherit>{money(personalTargetKoboStr)}</Text>{plan.type === "GROUP" ? " personal" : " target"}
+        </Text>
       </Group>
 
-      <Text size="xs" c="dimmed" mt="xs">Planned contribution: {money(plan.contributionAmountKobo)} {plan.frequency.toLowerCase()} · Matures {new Date(plan.maturityDate).toLocaleDateString()}</Text>
-      {plan.type === "GROUP" && <Text size="xs" c="dimmed" mt={2}>Current group target: {money(plan.groupTargetAmountKobo)}. This grows as new members join.</Text>}
+      {/* ─── Progress bar ─── */}
+      <Progress mt="sm" size="md" radius="xl" value={actualPct} color={meta.barColor} />
+      <Group justify="space-between" mt={6}>
+        <Text size="xs" c="dimmed" style={{ letterSpacing: 0.5, textTransform: "uppercase", fontVariantNumeric: "tabular-nums" }}>
+          {actualPct.toFixed(0)}% saved
+        </Text>
+        <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+          Matures {maturityLabel}
+        </Text>
+      </Group>
 
+      {/* ─── Stats tiles ─── */}
+      <SimpleGrid cols={{ base: 2, xs: 4 }} spacing="xs" mt="md">
+        <StatTile label="Saved" value={money(savedKoboStr)} />
+        <StatTile label="Remaining" value={money(remainingKoboStr)} subtle />
+        <StatTile label={paceLabel} value={money(plan.contributionAmountKobo)} />
+        <StatTile label="Days left" value={maturityReached ? "0" : String(daysLeft)} subtle />
+      </SimpleGrid>
+
+      {/* ─── Group-only pot line ─── */}
+      {plan.type === "GROUP" && (
+        <Text size="xs" c="dimmed" mt="sm">
+          Group pot: {money(plan.totalSavedKobo)} of {money(plan.groupTargetAmountKobo)}. Grows as members join and contribute.
+        </Text>
+      )}
+
+      {/* ─── Status nudges ─── */}
+      {statusKind === "behind" && (
+        <Alert mt="md" color="orange" variant="light" icon={<IconAlertTriangle size={16} />}>
+          You're {money(remainingKoboStr)} short with {daysLeft} day{daysLeft === 1 ? "" : "s"} left. Save about <strong>{money(String(catchUpKobo))}</strong> {freqLabel} to finish on time.
+        </Alert>
+      )}
       {targetReached && !maturityReached && plan.status === "ACTIVE" && (
-        <Alert mt="md" color="green" title="Target reached">You have finished contributing. Your savings remain locked until the maturity date.</Alert>
+        <Alert mt="md" color="blue" variant="light" icon={<IconCheck size={16} />}>
+          You've hit your target. Funds unlock automatically on {maturityLabel}.
+        </Alert>
       )}
       {maturityReached && plan.status === "ACTIVE" && (
-        <Alert mt="md" color="blue" title="Maturity reached">Contributions are closed. Your saved amount is being released to your Ajoti wallet.</Alert>
+        <Alert mt="md" color="gray" variant="light" icon={<IconInfoCircle size={16} />}>
+          Contributions are closed. {money(savedKoboStr)} is being released to your Ajoti wallet.
+        </Alert>
       )}
       {contributionAvailable && !kycReady && (
-        <Alert mt="md" color="yellow">Complete KYC Level 1 before contributing to this target.</Alert>
+        <Alert mt="md" color="yellow" variant="light">Complete KYC Level 1 before contributing to this target.</Alert>
       )}
 
+      {/* ─── Save-now (unchanged logic) ─── */}
       {canContribute && (
         <>
           <Group mt="md" align="end">
@@ -564,12 +668,15 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
             />
             <Button loading={saving} disabled={amount <= 0 || amount > remaining} onClick={save}>Save now</Button>
           </Group>
-          <Text size="xs" c="dimmed" mt={4}>Remaining target: {money(mine?.remainingAmountKobo ?? "0")}. Multiple manual contributions are allowed; Ajoti does not auto-debit.</Text>
+          <Text size="xs" c="dimmed" mt={4}>
+            Multiple manual contributions are allowed; Ajoti does not auto-debit.
+          </Text>
         </>
       )}
 
       {error && <Alert color="red" mt="sm">{error}</Alert>}
 
+      {/* ─── Group invite card (unchanged) ─── */}
       {plan.type === "GROUP" && plan.inviteToken && (
         <Card withBorder radius="md" p="sm" mt="md">
           <Group justify="space-between" align="center">
@@ -585,23 +692,98 @@ function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; on
         </Card>
       )}
 
-      {plan.type === "GROUP" && (
-        <Stack gap={4} mt="md">
-          {plan.members
-            .slice()
-            .sort((a, b) => b.progressPercent - a.progressPercent)
-            .map((m, i) => (
-              <Group key={m.id} justify="space-between">
-                <Group gap="xs">
-                  <Text size="sm">{i + 1}. {m.user.firstName} {m.user.lastName}</Text>
-                  {m.userId === plan.ownerId && <Badge size="xs" variant="light">Organiser</Badge>}
-                </Group>
-                <Text size="sm">{m.progressPercent.toFixed(0)}%</Text>
-              </Group>
-            ))}
-          {organiser && plan.members.length === 0 && <Text size="xs" c="dimmed">Organised by {organiser.user.firstName}</Text>}
-        </Stack>
+      {/* ─── Group member list — amounts first, then percent ─── */}
+      {plan.type === "GROUP" && plan.members.length > 0 && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
+          <Group justify="space-between" mb="sm">
+            <Text fw={600} size="sm">Members</Text>
+            <Text size="xs" c="dimmed">Sorted by progress</Text>
+          </Group>
+          <Stack gap={10}>
+            {plan.members
+              .slice()
+              .sort((a, b) => b.progressPercent - a.progressPercent)
+              .map((m, i) => (
+                <MemberRow
+                  key={m.id}
+                  rank={i + 1}
+                  name={`${m.user.firstName} ${m.user.lastName}`.trim()}
+                  isOrganiser={m.userId === plan.ownerId}
+                  savedKobo={m.savedAmountKobo}
+                  targetKobo={m.targetAmountKobo || plan.targetAmountKobo}
+                  progressPercent={m.progressPercent}
+                />
+              ))}
+          </Stack>
+        </div>
+      )}
+      {plan.type === "GROUP" && plan.members.length === 0 && organiser && (
+        <Text size="xs" c="dimmed" mt="md">Organised by {organiser.user.firstName}</Text>
       )}
     </Card>
+  );
+}
+
+function StatTile({ label, value, subtle }: { label: string; value: string; subtle?: boolean }) {
+  return (
+    <div style={{ padding: "10px 12px", background: "#F8FAF9", borderRadius: 6 }}>
+      <Text size="xs" c="dimmed" style={{ letterSpacing: 0.6, textTransform: "uppercase", fontSize: 10 }}>
+        {label}
+      </Text>
+      <Text
+        fw={subtle ? 500 : 700}
+        c={subtle ? "dimmed" : "dark"}
+        mt={2}
+        style={{ fontSize: 14, fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}
+      >
+        {value}
+      </Text>
+    </div>
+  );
+}
+
+function MemberRow({
+  rank,
+  name,
+  isOrganiser,
+  savedKobo,
+  targetKobo,
+  progressPercent,
+}: {
+  rank: number;
+  name: string;
+  isOrganiser: boolean;
+  savedKobo: string;
+  targetKobo: string;
+  progressPercent: number;
+}) {
+  const pct = Math.max(0, Math.min(100, progressPercent));
+  const done = pct >= 100;
+  return (
+    <Group gap="sm" wrap="nowrap" align="center" style={{ padding: "6px 0", borderBottom: "1px dashed #E5E7EB" }}>
+      <Text size="xs" c="dimmed" w={18} ta="center" style={{ fontVariantNumeric: "tabular-nums" }}>
+        {rank}
+      </Text>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Group gap={6} wrap="nowrap">
+          <Text size="sm" fw={500} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {name || "Member"}
+          </Text>
+          {isOrganiser && <Badge size="xs" variant="light" color="green">Organiser</Badge>}
+          {done && !isOrganiser && <Badge size="xs" variant="light" color="green">Done</Badge>}
+        </Group>
+      </div>
+      <div style={{ width: 90, flexShrink: 0 }}>
+        <Progress value={pct} size="xs" radius="xl" color={done ? "green" : "green"} />
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0, minWidth: 150 }}>
+        <Text size="xs" fw={600} style={{ fontVariantNumeric: "tabular-nums" }}>
+          {money(savedKobo)} <Text component="span" c="dimmed" fw={400} inherit>of {money(targetKobo)}</Text>
+        </Text>
+        <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {pct.toFixed(0)}%
+        </Text>
+      </div>
+    </Group>
   );
 }
