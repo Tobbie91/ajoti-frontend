@@ -56,7 +56,7 @@ function mapCircleToGroup(circle: RoscaCircle): RoscaGroup {
           : 'Not scheduled',
     roundProgress:
       status === 'Active'
-        ? `${circle.currentCycle ?? 1} of ${circle.durationCycles ?? total}`
+        ? `${circle.currentCycle ?? 1} of ${circle.durationCycles}`
         : status,
     status,
     canInvite: canInviteToCircle(circle),
