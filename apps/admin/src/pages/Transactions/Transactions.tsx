@@ -9,6 +9,7 @@ import {
   IconEye,
   IconEyeOff,
   IconLock,
+  IconLockOpen,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { getWalletTransactions, getWalletBalance, getAdminWalletBalance } from '@/utils/api'
@@ -76,7 +77,9 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
   const raw = tx.raw
   const d = new Date(raw.createdAt)
   const isCredit = tx.direction === 'credit'
-  const color = isCredit ? '#02A36E' : '#EF4444'
+  const reservation = tx.direction === 'reservation'
+  const reservationRelease = reservation && tx.type === 'RELEASE'
+  const color = reservation ? '#0B6B55' : isCredit ? '#02A36E' : '#EF4444'
 
   const metaEntries = raw.metadata
     ? Object.entries(raw.metadata as Record<string, unknown>).filter(([, v]) => v != null && v !== '' && typeof v !== 'object')
@@ -100,9 +103,13 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
           className="flex h-14 w-14 items-center justify-center rounded-full"
           style={{ background: `${color}15` }}
         >
-          {isCredit
-            ? <IconArrowDownLeft size={26} color={color} />
-            : <IconArrowUpRight size={26} color={color} />}
+          {reservation
+            ? reservationRelease
+              ? <IconLockOpen size={26} color={color} />
+              : <IconLock size={26} color={color} />
+            : isCredit
+              ? <IconArrowDownLeft size={26} color={color} />
+              : <IconArrowUpRight size={26} color={color} />}
         </div>
         <Text fw={700} fz={28} style={{ color, lineHeight: 1 }}>
           {tx.direction === 'reservation' ? '' : isCredit ? '+' : '-'}{tx.amount}
@@ -296,17 +303,21 @@ export function Transactions() {
                     className="flex cursor-pointer items-center justify-between rounded-xl border border-[#F3F4F6] bg-white px-4 py-3 transition-colors hover:bg-[#F9FAFB] active:bg-[#F3F4F6]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${tx.direction === 'credit' ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
-                        {tx.direction === 'credit'
-                          ? <IconArrowDownLeft size={18} color="#02A36E" />
-                          : <IconArrowUpRight size={18} color="#EF4444" />}
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${tx.direction === 'reservation' ? 'bg-[#E7F4EE]' : tx.direction === 'credit' ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
+                        {tx.direction === 'reservation'
+                          ? tx.type === 'RELEASE'
+                            ? <IconLockOpen size={18} color="#0B6B55" />
+                            : <IconLock size={18} color="#0B6B55" />
+                          : tx.direction === 'credit'
+                            ? <IconArrowDownLeft size={18} color="#02A36E" />
+                            : <IconArrowUpRight size={18} color="#EF4444" />}
                       </div>
                       <div>
                         <Text fw={500} className="text-[14px] text-[#0F172A]">{tx.name}</Text>
                         <Text fw={400} className="text-[12px] text-[#9CA3AF]">{tx.type} / {tx.time}</Text>
                       </div>
                     </div>
-                    <Text fw={600} className={`text-[14px] ${tx.direction === 'credit' ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
+                    <Text fw={600} className={`text-[14px] ${tx.direction === 'reservation' ? 'text-[#0B6B55]' : tx.direction === 'credit' ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
                       {tx.direction === 'reservation' ? '' : tx.direction === 'credit' ? '+' : '-'}{tx.amount}
                     </Text>
                   </div>
