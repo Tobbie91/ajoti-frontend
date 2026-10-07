@@ -7,6 +7,7 @@ import {
   IconEye,
   IconEyeOff,
   IconLock,
+  IconLockOpen,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '@/utils/api'
@@ -64,7 +65,8 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
   const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
   const isCredit = entryType === 'CREDIT'
   const reservation = tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType)
-  const color = isCredit ? '#02A36E' : '#EF4444'
+  const reservationRelease = reservation && entryType === 'RELEASE'
+  const color = reservation ? '#0B6B55' : isCredit ? '#02A36E' : '#EF4444'
   const label = resolveTxLabel(tx, entryType)
   const d = new Date(tx.createdAt)
   const amtNaira = `₦${(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
@@ -77,7 +79,13 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
     <Modal opened={!!tx} onClose={onClose} title="Transaction Details" radius={16} size="sm" centered>
       <div className="mb-4 flex flex-col items-center gap-2 py-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: `${color}15` }}>
-          {isCredit ? <IconArrowDownLeft size={26} color={color} /> : <IconArrowUpRight size={26} color={color} />}
+          {reservation
+            ? reservationRelease
+              ? <IconLockOpen size={26} color={color} />
+              : <IconLock size={26} color={color} />
+            : isCredit
+              ? <IconArrowDownLeft size={26} color={color} />
+              : <IconArrowUpRight size={26} color={color} />}
         </div>
         <Text fw={700} fz={28} style={{ color, lineHeight: 1 }}>
           {reservation ? '' : isCredit ? '+' : '-'}{amtNaira}
@@ -230,6 +238,7 @@ export function MyWallet() {
           const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
           const isCredit = entryType === 'CREDIT'
           const reservation = tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType)
+          const reservationRelease = reservation && entryType === 'RELEASE'
           const label = resolveTxLabel(tx, entryType)
           return (
             <div
@@ -238,10 +247,14 @@ export function MyWallet() {
               className="flex cursor-pointer items-center justify-between rounded-xl border border-[#F3F4F6] bg-white px-4 py-3 transition-colors hover:bg-[#F9FAFB] active:bg-[#F3F4F6]"
             >
               <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isCredit ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
-                  {isCredit
-                    ? <IconArrowDownLeft size={18} color="#02A36E" />
-                    : <IconArrowUpRight size={18} color="#EF4444" />}
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${reservation ? 'bg-[#E7F4EE]' : isCredit ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
+                  {reservation
+                    ? reservationRelease
+                      ? <IconLockOpen size={18} color="#0B6B55" />
+                      : <IconLock size={18} color="#0B6B55" />
+                    : isCredit
+                      ? <IconArrowDownLeft size={18} color="#02A36E" />
+                      : <IconArrowUpRight size={18} color="#EF4444" />}
                 </div>
                 <div>
                   <Text fw={500} className="text-[14px] text-[#0F172A]">{label}</Text>
@@ -250,7 +263,7 @@ export function MyWallet() {
                   </Text>
                 </div>
               </div>
-              <Text fw={600} className={`text-[14px] ${isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
+              <Text fw={600} className={`text-[14px] ${reservation ? 'text-[#0B6B55]' : isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
                 {reservation ? '' : isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>
