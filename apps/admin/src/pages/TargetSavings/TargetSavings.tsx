@@ -13,6 +13,7 @@ import {
   Progress,
   SegmentedControl,
   Select,
+  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -21,9 +22,14 @@ import {
   Title,
 } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconCheck,
   IconCopy,
+  IconEye,
+  IconEyeOff,
   IconInfoCircle,
+  IconLock,
+  IconLockOpen,
   IconPlus,
   IconShare,
   IconUsers,
@@ -46,6 +52,8 @@ import { isDevAuthBypass } from "@/utils/dev-auth-bypass";
 const toNaira = (k: string) => Number(k || 0) / 100;
 const money = (k: string) =>
   `₦${toNaira(k).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const MASKED = "₦••••••";
+const fmtMoney = (k: string, show: boolean) => (show ? money(k) : MASKED);
 
 function countPeriods(maturityDate: string, frequency: string) {
   if (!maturityDate) return 0;
@@ -190,6 +198,20 @@ export function TargetSavings() {
   const [joinError, setJoinError] = useState("");
   const [privateInvite, setPrivateInvite] = useState<{ id: string; token: string } | null>(null);
   const [kycLevel, setKycLevel] = useState<number | null>(null);
+  const [showAmounts, setShowAmounts] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("targetSavings:showAmounts") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggleAmounts = () => {
+    setShowAmounts((visible) => {
+      const next = !visible;
+      try { localStorage.setItem("targetSavings:showAmounts", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const [sandboxStagingAvailable, setSandboxStagingAvailable] = useState(false);
   const [sandboxFunding, setSandboxFunding] = useState(false);
   const [sandboxWallet, setSandboxWallet] = useState<string | null>(null);
@@ -333,9 +355,19 @@ export function TargetSavings() {
           <Title order={2}>Target Savings</Title>
           <Text c="dimmed">Save towards your own goal or stay accountable with a group.</Text>
         </div>
-        <Button leftSection={<IconPlus size={16} />} onClick={openCreate} disabled={!kycReady}>
-          New target
-        </Button>
+        <Group gap="xs">
+          <Button
+            variant="default"
+            onClick={toggleAmounts}
+            leftSection={showAmounts ? <IconEye size={16} /> : <IconEyeOff size={16} />}
+            aria-label={showAmounts ? "Hide amounts" : "Show amounts"}
+          >
+            {showAmounts ? "Hide amounts" : "Show amounts"}
+          </Button>
+          <Button leftSection={<IconPlus size={16} />} onClick={openCreate} disabled={!kycReady}>
+            New target
+          </Button>
+        </Group>
       </Group>
 
       {kycLevel !== null && !kycReady && (
@@ -367,7 +399,7 @@ export function TargetSavings() {
           )}
 
           {plans.map((p) => (
-            <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} />
+            <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
           ))}
 
           {sandboxStagingAvailable && (
@@ -623,29 +655,36 @@ export function TargetSavings() {
   );
 }
 
-function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean }) {
+function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
   const mine = plan.myMembership;
   const providerActionsUnavailable = investmentActionsUnavailable(plan.investment);
   const savedKobo = BigInt(mine?.savedAmountKobo ?? "0");
-  const saved = toNaira(savedKobo.toString());
   const cancellationFeeKobo = (savedKobo * 150n) / 10_000n;
   const cancellationReturnKobo = savedKobo - cancellationFeeKobo;
-  const target = toNaira(plan.targetAmountKobo);
-  const remaining = Math.max(0, target - saved);
-  const progress = Math.min(100, Math.round((saved / Math.max(target, 1)) * 100));
-  const [amount, setAmount] = useState(Math.min(toNaira(plan.contributionAmountKobo), remaining || toNaira(plan.contributionAmountKobo)));
+  const plannedAmount = toNaira(plan.contributionAmountKobo);
+  const remaining = toNaira(mine?.remainingAmountKobo ?? "0");
+  const [amount, setAmount] = useState(Math.min(plannedAmount, remaining || plannedAmount));
   const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const nextRemaining = toNaira(plan.myMembership?.remainingAmountKobo ?? "0");
+    setAmount(Math.min(toNaira(plan.contributionAmountKobo), nextRemaining || toNaira(plan.contributionAmountKobo)));
+  }, [plan.contributionAmountKobo, plan.myMembership?.remainingAmountKobo]);
+
   const maturityReached = new Date(plan.maturityDate).getTime() <= Date.now();
-  const targetReached = !mine || BigInt(mine.remainingAmountKobo) <= 0n;
+  const targetReached = !mine || Number(mine.remainingAmountKobo) <= 0;
+  const contributionAvailable = plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached && !providerActionsUnavailable;
+  const canContribute = contributionAvailable && kycReady;
   const provider = plan.investment.provider ?? "Ajoti";
   const savingsType = plan.investment.productType ?? (plan.type === "GROUP" ? "Group Target Savings" : "Target Savings");
-  const actionLabel = saved > 0 ? "Add to savings" : "Start saving";
+  const actionLabel = savedKobo > 0n ? "Add to savings" : "Start saving";
   const organiser = plan.members.find((member) => member.userId === plan.ownerId);
+
   const inviteUrl = plan.inviteToken
     ? `${window.location.origin}${window.location.pathname}?targetInviteId=${encodeURIComponent(plan.id)}&targetInviteToken=${encodeURIComponent(plan.inviteToken)}`
     : "";
@@ -671,7 +710,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavings
       setError("Provider-backed contributions are unavailable until the product and full provider lifecycle are approved and enabled.");
       return;
     }
-    if (!mine || !kycReady || amount <= 0 || amount > remaining) return;
+    if (!canContribute || amount <= 0 || amount > remaining) return;
     setSaving(true);
     setError("");
     try {
@@ -700,61 +739,327 @@ function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavings
     }
   };
 
+  // ─── Derived display values (no backend changes) ──────────────────────────
+  const nowMs = Date.now();
+  const maturityMs = new Date(plan.maturityDate).getTime();
+  const startMs = new Date(plan.startDate).getTime();
+  const daysLeft = Math.max(0, Math.ceil((maturityMs - nowMs) / 86_400_000));
+  const totalMs = Math.max(1, maturityMs - startMs);
+  const elapsedMs = Math.max(0, Math.min(totalMs, nowMs - startMs));
+  const expectedPct = (elapsedMs / totalMs) * 100;
+  const actualPct = Math.max(0, Math.min(100, mine?.progressPercent ?? 0));
+
+  const savedKoboStr = mine?.savedAmountKobo ?? "0";
+  const personalTargetKoboStr = mine?.targetAmountKobo ?? plan.targetAmountKobo;
+  const remainingKoboStr = mine?.remainingAmountKobo ?? "0";
+  const dateFormat: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+  const maturityLabel = new Date(plan.maturityDate).toLocaleDateString("en-NG", dateFormat);
+
+  type StatusKind = "matured" | "reached" | "behind" | "on-track";
+  const statusKind: StatusKind = maturityReached
+    ? "matured"
+    : targetReached
+      ? "reached"
+      : actualPct + 10 < expectedPct
+        ? "behind"
+        : "on-track";
+
+  const statusMeta: Record<StatusKind, { label: string; color: string; heroHex: string; barColor: string }> = {
+    "on-track": { label: "On track", color: "green", heroHex: "#0B6B55", barColor: "green" },
+    behind:     { label: "Behind pace", color: "orange", heroHex: "#B45309", barColor: "orange" },
+    reached:    { label: "Target reached", color: "blue", heroHex: "#1E40AF", barColor: "blue" },
+    matured:    { label: "Matured", color: "gray", heroHex: "#374151", barColor: "gray" },
+  };
+  const meta = statusMeta[statusKind];
+
+  // Catch-up pace (used by the "behind" nudge). Planned pace shown in the stats tile is the admin-set value.
+  const freqLabel = plan.frequency === "DAILY" ? "daily" : plan.frequency === "WEEKLY" ? "weekly" : "monthly";
+  const paceLabel = plan.frequency === "DAILY" ? "Daily pace" : plan.frequency === "WEEKLY" ? "Weekly pace" : "Monthly pace";
+  const periodsLeft = countPeriods(plan.maturityDate.slice(0, 10), plan.frequency);
+  const catchUpKobo = periodsLeft > 0 ? Math.ceil(Number(remainingKoboStr) / periodsLeft) : Number(remainingKoboStr);
+  const daysLeftLabel = maturityReached
+    ? "Matured"
+    : daysLeft === 0
+      ? "Matures today"
+      : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
+  const daysUrgent = !maturityReached && !targetReached && daysLeft > 0 && daysLeft < 7;
+
   return (
-    <Card withBorder radius="lg" p="lg">
-      <Group justify="space-between" align="flex-start">
-        <div><Group gap="xs" mb="xs"><Badge color={plan.status === "ACTIVE" ? (maturityReached ? "blue" : "green") : "gray"} variant="light">{maturityReached && plan.status === "ACTIVE" ? "Maturity reached" : plan.status}</Badge>{plan.type === "GROUP" && <Badge variant="light" color={plan.isPublic ? "green" : "gray"}>{plan.isPublic ? "Public" : "Private"}</Badge>}</Group><Title order={3}>{plan.name}</Title><Text size="sm" c="dimmed">{plan.type === "GROUP" ? `${plan.memberCount} members · Group accountability` : "Individual target"} · {plan.frequency.toLowerCase()}</Text></div>
-        <Text fw={700} c="teal">{progress}% complete</Text>
-      </Group>
-      <Group align="baseline" gap={6} mt="xl"><Text fw={800} fz={34}>{money(String(Math.round(saved * 100)))}</Text><Text c="dimmed">of {money(plan.targetAmountKobo)}</Text></Group>
-      <Progress value={progress} size="xl" radius="xl" mt="sm" color="teal" />
-      <Group justify="space-between" mt="xs"><Text size="sm" c="dimmed">{progress}% complete</Text><Text size="sm" fw={600}>{money(String(Math.round(remaining * 100)))} remaining</Text></Group>
-      {plan.type === "GROUP" && <Text size="xs" c="dimmed" mt="xs">Personal target {money(plan.targetAmountKobo)} · Group target {money(plan.groupTargetAmountKobo)}</Text>}
-      {providerActionsUnavailable && <Alert mt="md" color="orange" title="Investment-backed target is not active">Provider: {plan.investment.provider ?? "Not assigned"}. Contributions, cancellation and maturity settlement remain disabled until product eligibility and provider operations are approved and enabled.</Alert>}
+    <Card withBorder radius="md" p="lg">
+      {/* ─── Header: name + status + days-left ─── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Group gap="xs" wrap="wrap">
+            <Text fw={700} fz="lg" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{plan.name}</Text>
+            {plan.type === "GROUP" && (
+              <Badge variant="light" color={plan.isPublic ? "green" : "gray"}>
+                {plan.isPublic ? "Public" : "Private"}
+              </Badge>
+            )}
+          </Group>
+          <Text size="xs" c="dimmed" mt={2}>
+            {plan.type === "GROUP"
+              ? `${plan.memberCount} member${plan.memberCount === 1 ? "" : "s"} · Group · ${freqLabel}`
+              : `Individual · ${freqLabel}`}
+          </Text>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 sm:flex-col sm:items-end sm:gap-1.5">
+          <Badge
+            variant="filled"
+            color={meta.color}
+            size="lg"
+            radius="sm"
+            leftSection={statusKind === "reached" || statusKind === "matured" ? (statusKind === "matured" ? <IconLockOpen size={13} stroke={2.5} /> : <IconLock size={13} stroke={2.5} />) : undefined}
+            style={{ fontWeight: 700, letterSpacing: 0.4 }}
+          >
+            {meta.label}
+          </Badge>
+          <Text
+            size="xs"
+            fw={daysUrgent ? 700 : 500}
+            c={daysUrgent ? "orange.7" : "dimmed"}
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {daysLeftLabel}
+          </Text>
+        </div>
+      </div>
 
-      <Group grow mt="xl" align="flex-start">
-        <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>{money(plan.contributionAmountKobo)} {plan.frequency.toLowerCase()}</Text></div>
-        <div><Text size="xs" c="dimmed">Matures</Text><Text fw={700}>{new Date(plan.maturityDate).toLocaleDateString()}</Text></div>
+      {/* ─── Hero amount ─── */}
+      <Group gap={8} align="baseline" mt="md" wrap="wrap">
+        <Text fw={700} fz={32} style={{ color: meta.heroHex, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          {fmtMoney(savedKoboStr, showAmounts)}
+        </Text>
+        <Text size="sm" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+          of <Text component="span" fw={600} c="dark" inherit>{fmtMoney(personalTargetKoboStr, showAmounts)}</Text>{plan.type === "GROUP" ? " personal" : " target"}
+        </Text>
       </Group>
 
-      <Button fullWidth size="md" mt="xl" disabled={!kycReady || maturityReached || !mine || remaining <= 0 || plan.status !== "ACTIVE" || providerActionsUnavailable} onClick={() => setOpen(true)}>{actionLabel}</Button>
-      {!kycReady && <Alert mt="md" color="yellow">Complete KYC Level 1 before adding money to this goal.</Alert>}
-      {maturityReached && <Alert mt="md" color="blue" title="Your savings have matured">Contributions are closed for this goal.</Alert>}
-      {targetReached && !maturityReached && plan.status === "ACTIVE" && <Alert mt="md" color="green" title="Target reached">You have finished contributing. Your savings will be released at maturity; you can also cancel early with a 1.5% fee on the amount saved.</Alert>}
-      {plan.status === "ACTIVE" && mine && !maturityReached && !providerActionsUnavailable && <Button mt="md" variant="light" color="red" onClick={() => setCancelOpen(true)}>Cancel my savings</Button>}
-      {plan.status === "ACTIVE" && mine && providerActionsUnavailable && <Alert mt="md" color="orange" title="Cancellation unavailable">This provider-backed plan cannot be cancelled until product eligibility and safe provider redemption are approved.</Alert>}
+      {/* ─── Progress bar ─── */}
+      <Progress mt="sm" size="md" radius="xl" value={actualPct} color={meta.barColor} />
+      <Group justify="space-between" mt={6}>
+        <Text size="xs" c="dimmed" style={{ letterSpacing: 0.5, textTransform: "uppercase", fontVariantNumeric: "tabular-nums" }}>
+          {actualPct.toFixed(0)}% saved
+        </Text>
+        <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+          Matures {maturityLabel}
+        </Text>
+      </Group>
+
+      {/* ─── Stats tiles ─── */}
+      <SimpleGrid cols={{ base: 2, xs: 4 }} spacing="xs" mt="md">
+        <StatTile label="Saved" value={fmtMoney(savedKoboStr, showAmounts)} accent />
+        <StatTile label="Remaining" value={fmtMoney(remainingKoboStr, showAmounts)} subtle />
+        <StatTile label={paceLabel} value={fmtMoney(plan.contributionAmountKobo, showAmounts)} />
+        <StatTile label="Days left" value={maturityReached ? "0" : String(daysLeft)} subtle />
+      </SimpleGrid>
+
+      {/* ─── Group-only pot line ─── */}
+      {plan.type === "GROUP" && (
+        <div style={{ marginTop: 12, padding: "10px 14px", background: "#F5FBF8", border: "1px solid #DBEDE1", borderRadius: 8 }}>
+          <Text size="xs" style={{ color: "#374151", fontWeight: 500 }}>
+            Group pot: <strong style={{ color: "#0B6B55", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(plan.totalSavedKobo, showAmounts)}</strong> of <strong style={{ color: "#0F172A", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(plan.groupTargetAmountKobo, showAmounts)}</strong>. Grows as members join and contribute.
+          </Text>
+        </div>
+      )}
+
+      {/* ─── Status nudges ─── */}
+      {statusKind === "behind" && (
+        <Alert mt="md" color="orange" variant="light" icon={<IconAlertTriangle size={16} />}>
+          You're {fmtMoney(remainingKoboStr, showAmounts)} short with {daysLeft} day{daysLeft === 1 ? "" : "s"} left. Save about <strong>{fmtMoney(String(catchUpKobo), showAmounts)}</strong> {freqLabel} to finish on time.
+        </Alert>
+      )}
+      {targetReached && !maturityReached && plan.status === "ACTIVE" && (
+        <Alert mt="md" color="blue" variant="light" icon={<IconLock size={18} />} title="Target reached">
+          You've hit your target. Your savings will be released at <strong>{maturityLabel}</strong>; you can also cancel early with a 1.5% fee on the amount saved.
+        </Alert>
+      )}
+      {maturityReached && plan.status === "ACTIVE" && (
+        <Alert mt="md" color="gray" variant="light" icon={<IconLockOpen size={18} />} title="Matured — funds unlocked">
+          Contributions are closed. {fmtMoney(savedKoboStr, showAmounts)} is being released to your Ajoti wallet.
+        </Alert>
+      )}
+      {contributionAvailable && !kycReady && (
+        <Alert mt="md" color="yellow" variant="light">Complete KYC Level 1 before contributing to this target.</Alert>
+      )}
+
+      {providerActionsUnavailable && (
+        <Alert mt="md" color="orange" title="Investment-backed target is not active">
+          Provider: {plan.investment.provider ?? "Not assigned"}. Contributions, cancellation and maturity settlement remain disabled until product eligibility and provider operations are approved and enabled.
+        </Alert>
+      )}
+
+      <Group grow mt="lg" align="flex-start">
+        <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>{fmtMoney(plan.contributionAmountKobo, showAmounts)} {freqLabel}</Text></div>
+        <div><Text size="xs" c="dimmed">Access</Text><Text fw={700}>Maturity or early cancellation</Text></div>
+      </Group>
+
+      {canContribute && (
+        <Button fullWidth size="md" mt="lg" onClick={() => setOpen(true)}>{actionLabel}</Button>
+      )}
+      {plan.status === "ACTIVE" && mine && !maturityReached && !providerActionsUnavailable && (
+        <Button mt="md" variant="light" color="red" onClick={() => setCancelOpen(true)}>Cancel my savings</Button>
+      )}
+      {plan.status === "ACTIVE" && mine && providerActionsUnavailable && (
+        <Alert mt="md" color="orange" title="Cancellation unavailable">
+          This provider-backed plan cannot be cancelled until product eligibility and safe provider redemption are approved.
+        </Alert>
+      )}
 
       <Card withBorder radius="md" p="md" mt="lg" bg="gray.0">
         <Text fw={700}>Your savings plan</Text>
-        <Group grow mt="md" align="flex-start"><div><Text size="xs" c="dimmed">Savings type</Text><Text size="sm" fw={600}>{savingsType}</Text></div><div><Text size="xs" c="dimmed">Access</Text><Text size="sm" fw={600}>Maturity or early cancellation</Text></div></Group>
-        <Group grow mt="md" align="flex-start"><div><Text size="xs" c="dimmed">Provider</Text><Text size="sm" fw={600}>{provider}</Text></div><div><Text size="xs" c="dimmed">Interest</Text><Text size="sm" fw={600}>Rate unavailable</Text></div></Group>
+        <Group grow mt="md" align="flex-start">
+          <div><Text size="xs" c="dimmed">Savings type</Text><Text size="sm" fw={600}>{savingsType}</Text></div>
+          <div><Text size="xs" c="dimmed">Provider</Text><Text size="sm" fw={600}>{provider}</Text></div>
+        </Group>
         <Text size="xs" c="dimmed" mt="md">Provider details, applicable rates and fees will be shown when returned by the savings provider.</Text>
       </Card>
 
-      <div className="mt-5"><Text fw={700}>Recent activity</Text><Text size="sm" c="dimmed" mt="sm">{saved > 0 ? "Your recent contribution activity will appear here." : "Your first contribution will appear here."}</Text></div>
+      {error && <Alert color="red" mt="sm">{error}</Alert>}
+
+      {/* ─── Group invite card (unchanged) ─── */}
       {plan.type === "GROUP" && plan.inviteToken && (
         <Card withBorder radius="md" p="sm" mt="md">
           <Group justify="space-between" align="center">
-            <div><Text size="sm" fw={600}>Invite people</Text><Text size="xs" c="dimmed">Share a normal Ajoti link to invite members.</Text></div>
-            <Group gap="xs"><Button size="xs" variant="default" leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />} onClick={copyInvite}>{copied ? "Copied" : "Copy link"}</Button><Button size="xs" variant="light" leftSection={<IconShare size={14} />} onClick={shareInvite}>Share</Button></Group>
+            <div>
+              <Text size="sm" fw={600}>Invite people</Text>
+              <Text size="xs" c="dimmed">Share a normal Ajoti link. Invitees never need to handle an invitation token.</Text>
+            </div>
+            <Group gap="xs">
+              <Button size="xs" variant="default" leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />} onClick={copyInvite}>{copied ? "Copied" : "Copy link"}</Button>
+              <Button size="xs" variant="light" leftSection={<IconShare size={14} />} onClick={shareInvite}>Share</Button>
+            </Group>
           </Group>
         </Card>
       )}
-      {plan.type === "GROUP" && (
-        <Stack gap={4} mt="md">
-          {plan.members.slice().sort((a, b) => b.progressPercent - a.progressPercent).map((member, index) => (
-            <Group key={member.id} justify="space-between"><Group gap="xs"><Text size="sm">{index + 1}. {member.user.firstName} {member.user.lastName}</Text>{member.userId === plan.ownerId && <Badge size="xs" variant="light">Organiser</Badge>}</Group><Text size="sm">{member.progressPercent.toFixed(0)}%</Text></Group>
-          ))}
-          {organiser && plan.members.length === 0 && <Text size="xs" c="dimmed">Organised by {organiser.user.firstName}</Text>}
-        </Stack>
-      )}
 
-      <Modal opened={open} onClose={() => setOpen(false)} title={actionLabel} centered>
-        <Stack><Text size="sm" c="dimmed">Available to save is managed securely behind the scenes. Your goal has {money(String(Math.round(remaining * 100)))} left to reach.</Text><NumberInput label="Amount" min={1} max={remaining} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," /><Text size="sm" c="dimmed">Suggested contribution: {money(plan.contributionAmountKobo)}</Text><Alert color="orange" title="Cancellation fee">You may cancel before maturity; a 1.5% fee applies to the amount you have actually saved.</Alert>{providerActionsUnavailable && <Alert color="orange" title="Provider action unavailable">Contributions are disabled until the product and provider lifecycle are approved and enabled.</Alert>}{error && <Alert color="red">{error}</Alert>}<Button loading={saving} onClick={addMoney} disabled={providerActionsUnavailable || amount <= 0 || amount > remaining}>Add money</Button></Stack>
+      {/* ─── Group member list — amounts first, then percent ─── */}
+      {plan.type === "GROUP" && plan.members.length > 0 && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
+          <Group justify="space-between" mb="sm">
+            <Text fw={600} size="sm">Members</Text>
+            <Text size="xs" c="dimmed">Sorted by progress</Text>
+          </Group>
+          <Stack gap={10}>
+            {plan.members
+              .slice()
+              .sort((a, b) => b.progressPercent - a.progressPercent)
+              .map((m, i) => (
+                <MemberRow
+                  key={m.id}
+                  rank={i + 1}
+                  name={`${m.user.firstName} ${m.user.lastName}`.trim()}
+                  isOrganiser={m.userId === plan.ownerId}
+                  savedKobo={m.savedAmountKobo}
+                  targetKobo={m.targetAmountKobo || plan.targetAmountKobo}
+                  progressPercent={m.progressPercent}
+                  showAmounts={showAmounts}
+                />
+              ))}
+          </Stack>
+        </div>
+      )}
+      {plan.type === "GROUP" && plan.members.length === 0 && organiser && (
+        <Text size="xs" c="dimmed" mt="md">Organised by {organiser.user.firstName}</Text>
+      )}
+      <Modal opened={open} onClose={() => !saving && setOpen(false)} title={actionLabel} centered>
+        <Stack>
+          <Text size="sm" c="dimmed">Your goal has {fmtMoney(remainingKoboStr, showAmounts)} left to reach.</Text>
+          <NumberInput label="Amount" min={1} max={remaining} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," />
+          <Text size="sm" c="dimmed">Suggested contribution: {fmtMoney(plan.contributionAmountKobo, showAmounts)}</Text>
+          <Alert color="orange" title="Cancellation fee">You may cancel before maturity; a 1.5% fee applies to the amount you have actually saved.</Alert>
+          {error && <Alert color="red">{error}</Alert>}
+          <Button loading={saving} onClick={addMoney} disabled={providerActionsUnavailable || amount <= 0 || amount > remaining}>Add money</Button>
+        </Stack>
       </Modal>
+
       <Modal opened={cancelOpen} onClose={() => !canceling && setCancelOpen(false)} title="Cancel your savings" centered>
-        <Stack>{providerActionsUnavailable && <Alert color="orange" title="Provider action unavailable">Cancellation is disabled until safe provider redemption is approved and enabled.</Alert>}<Alert color="orange" title="A 1.5% cancellation fee applies">The fee is calculated on your actual saved balance. For this target, {money(savedKobo.toString())} saved means {money(cancellationFeeKobo.toString())} fee and {money(cancellationReturnKobo.toString())} returned to your Ajoti wallet. {plan.type === "GROUP" ? "Only your membership will be cancelled; other members and their money are unaffected." : "Your individual plan will be cancelled."}</Alert>{error && <Alert color="red">{error}</Alert>}<Group justify="flex-end"><Button variant="default" disabled={canceling} onClick={() => setCancelOpen(false)}>Keep savings</Button><Button color="red" loading={canceling} disabled={providerActionsUnavailable} onClick={cancel}>Confirm cancellation</Button></Group></Stack>
+        <Stack>
+          <Alert color="orange" title="A 1.5% cancellation fee applies">
+            The fee is calculated on your actual saved balance. For this target, {fmtMoney(savedKobo.toString(), showAmounts)} saved means {fmtMoney(cancellationFeeKobo.toString(), showAmounts)} fee and {fmtMoney(cancellationReturnKobo.toString(), showAmounts)} returned to your Ajoti wallet. {plan.type === "GROUP" ? "Only your membership will be cancelled; other members and their money are unaffected." : "Your individual plan will be cancelled."}
+          </Alert>
+          {error && <Alert color="red">{error}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" disabled={canceling} onClick={() => setCancelOpen(false)}>Keep savings</Button>
+            <Button color="red" loading={canceling} disabled={providerActionsUnavailable} onClick={cancel}>Confirm cancellation</Button>
+          </Group>
+        </Stack>
       </Modal>
+
     </Card>
+  );
+}
+
+function StatTile({ label, value, subtle, accent }: { label: string; value: string; subtle?: boolean; accent?: boolean }) {
+  // Accent tile = brand solid green (most important metric). Others sit on a brand-tinted ground with a subtle green border.
+  const bg = accent ? "#0B6B55" : "#E7F4EE";
+  const border = accent ? "#0B6B55" : "#BFE0CC";
+  const labelColor = accent ? "rgba(255,255,255,0.85)" : "#047857";
+  const valueColor = accent ? "#FFFFFF" : "#0F172A";
+  return (
+    <div style={{ padding: "12px 14px", background: bg, borderRadius: 8, border: `1px solid ${border}` }}>
+      <Text style={{ letterSpacing: 0.6, textTransform: "uppercase", fontSize: 10, fontWeight: 600, color: labelColor }}>
+        {label}
+      </Text>
+      <Text
+        mt={3}
+        style={{ fontSize: 15, fontWeight: subtle ? 600 : 700, color: valueColor, fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}
+      >
+        {value}
+      </Text>
+    </div>
+  );
+}
+
+function MemberRow({
+  rank,
+  name,
+  isOrganiser,
+  savedKobo,
+  targetKobo,
+  progressPercent,
+  showAmounts,
+}: {
+  rank: number;
+  name: string;
+  isOrganiser: boolean;
+  savedKobo: string;
+  targetKobo: string;
+  progressPercent: number;
+  showAmounts: boolean;
+}) {
+  const pct = Math.max(0, Math.min(100, progressPercent));
+  const done = pct >= 100;
+  return (
+    <div
+      className="flex flex-col gap-2 py-2 border-b border-dashed border-[#E5E7EB] sm:flex-row sm:items-center sm:gap-3"
+    >
+      {/* Line 1 on mobile / left on desktop: rank + name + badges */}
+      <div className="flex items-center gap-2 min-w-0 sm:flex-1">
+        <Text size="xs" c="dimmed" ta="center" style={{ width: 18, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
+          {rank}
+        </Text>
+        <Text size="sm" fw={500} style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {name || "Member"}
+        </Text>
+        {isOrganiser && <Badge size="xs" variant="light" color="green" style={{ flexShrink: 0 }}>Organiser</Badge>}
+        {done && !isOrganiser && <Badge size="xs" variant="light" color="green" style={{ flexShrink: 0 }}>Done</Badge>}
+      </div>
+
+      {/* Line 2 on mobile / right on desktop: bar + amount */}
+      <div className="flex items-center gap-3 pl-7 sm:pl-0 sm:flex-shrink-0">
+        <div style={{ flex: 1 }} className="sm:!flex-none sm:w-24">
+          <Progress value={pct} size="xs" radius="xl" color="green" />
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <Text size="xs" fw={600} style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+            {fmtMoney(savedKobo, showAmounts)} <Text component="span" c="dimmed" fw={400} inherit>of {fmtMoney(targetKobo, showAmounts)}</Text>
+          </Text>
+          <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {pct.toFixed(0)}%
+          </Text>
+        </div>
+      </div>
+    </div>
   );
 }
