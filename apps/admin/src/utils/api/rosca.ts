@@ -76,6 +76,7 @@ export interface MyJoinRequest {
     name?: string;
     durationCycles?: number;
     currentCycle?: number;
+    status?: string;
     filledSlots?: number;
     maxSlots?: number;
     frequency?: string;
