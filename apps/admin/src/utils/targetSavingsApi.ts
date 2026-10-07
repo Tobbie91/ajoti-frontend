@@ -8,3 +8,4 @@ export async function getPublicTargetSavings(){const r=await authRequest<{data?:
 export const createTargetSavings=(payload:object)=>authRequest('/api/target-savings',{method:'POST',body:JSON.stringify(payload)})
 export const joinTargetSavings=(id:string,inviteToken?:string)=>authRequest(`/api/target-savings/${id}/join`,{method:'POST',body:JSON.stringify({inviteToken})})
 export const contributeTargetSavings=(id:string,amountKobo:string,idempotencyKey=crypto.randomUUID())=>authRequest(`/api/target-savings/${id}/contributions`,{method:'POST',body:JSON.stringify({amountKobo,idempotencyKey})})
+export const cancelTargetSavings=(id:string)=>authRequest(`/api/target-savings/${id}/cancel`,{method:'POST',body:JSON.stringify({})})
