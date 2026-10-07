@@ -122,6 +122,22 @@ export function verifyFunding(
 
 // ── Withdrawal ────────────────────────────────────────────────────────────────
 
+export interface WithdrawalQuote {
+  feeBearer: "PLATFORM" | "CUSTOMER";
+  amountKobo: string;
+  feeKobo: string;
+  totalDebitKobo: string;
+  currency: "NGN";
+  expiresAt: string;
+}
+
+export async function quoteWithdrawal(amount: number): Promise<WithdrawalQuote> {
+  return authRequest<WithdrawalQuote>("/api/wallet/withdrawal/quote", {
+    method: "POST",
+    body: JSON.stringify({ amount: Math.round(amount * 100) }),
+  });
+}
+
 export interface WithdrawalPayload {
   amount: number; // naira - will be multiplied × 100 to kobo before sending
   accountNumber: string;
@@ -130,22 +146,29 @@ export interface WithdrawalPayload {
   bankName?: string;
   narration?: string;
   transactionPin: string;
+  quotedFeeKobo?: string;
+}
+
+export interface WithdrawalInitResponse {
+  reference: string;
+  amount: number;
+  feeKobo: string;
+  totalDebitKobo: string;
+  status: string;
+  message: string;
 }
 
 export async function initializeWithdrawal(
   payload: WithdrawalPayload,
-): Promise<Record<string, unknown>> {
+): Promise<WithdrawalInitResponse> {
   const { amount, ...rest } = payload;
   const res = await authRequest<
-    { data?: Record<string, unknown> } | Record<string, unknown>
+    { data?: WithdrawalInitResponse } | WithdrawalInitResponse
   >(
     "/api/wallet/withdrawal/initialize",
     { method: "POST", body: JSON.stringify({ ...rest, amount: amount * 100 }) }, // convert naira → kobo
   );
-  return ("data" in res && res.data ? res.data : res) as Record<
-    string,
-    unknown
-  >;
+  return ("data" in res && res.data ? res.data : res) as WithdrawalInitResponse;
 }
 
 // ── Saved Bank Accounts ───────────────────────────────────────────────────────
