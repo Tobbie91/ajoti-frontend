@@ -37,13 +37,44 @@ export async function getWallet(): Promise<Wallet> {
 }
 
 export interface WalletBucket {
-  name: string;
-  amount: number;
-  [key: string]: unknown;
+  id: string;
+  bucketType: string;
+  sourceId: string;
+  reservedAmount: string;
+  rosca: {
+    membershipId: string;
+    membershipStatus: string;
+    originalCollateralKobo: string;
+    circleId: string;
+    circleName: string;
+    contributionAmountKobo: string;
+  } | null;
 }
 
-export function getWalletBuckets(): Promise<WalletBucket[]> {
-  return authRequest("/api/wallet/buckets", { method: "GET" });
+interface WalletBucketsResponse {
+  data: WalletBucket[];
+  totalRoscaReservedKobo: string;
+}
+
+export async function getWalletBuckets(): Promise<WalletBucket[]> {
+  const res = await authRequest<WalletBucketsResponse>("/api/wallet/buckets", { method: "GET" });
+  return res.data;
+}
+
+export interface RoscaCommitments {
+  totalReservedKobo: string;
+  items: WalletBucket[];
+}
+
+export async function getRoscaCommitments(): Promise<RoscaCommitments> {
+  const res = await authRequest<WalletBucketsResponse>("/api/wallet/buckets", { method: "GET" });
+  if (!Array.isArray(res.data) || typeof res.totalRoscaReservedKobo !== "string") {
+    throw new Error("Collateral information is temporarily unavailable.");
+  }
+  return {
+    totalReservedKobo: res.totalRoscaReservedKobo,
+    items: res.data.filter(bucket => bucket.bucketType === "ROSCA"),
+  };
 }
 
 export interface WalletStatistics {

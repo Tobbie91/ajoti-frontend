@@ -29,6 +29,7 @@ import {
   IconCash,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { RoscaCommitments } from "@/components/RoscaCommitments";
 import {
   getRoscaCircle,
   getRoscaSchedules,
@@ -60,6 +61,7 @@ export function GrowthActivities() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState<string>("Overview");
   const [loading, setLoading] = useState(true);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   const [circle, setCircle] = useState<RoscaCircle | null>(null);
   const [schedules, setSchedules] = useState<RoscaSchedule[]>([]);
@@ -94,7 +96,7 @@ export function GrowthActivities() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, refreshVersion]);
 
   if (loading) {
     return (
@@ -126,7 +128,7 @@ export function GrowthActivities() {
     : "Admin";
   const cycles = mapSchedulesToCycles(schedules, members);
   const completedCycles = cycles.filter((c) => c.status === "Completed").length;
-  const totalCycles = cycles.length || circle.durationCycles || 1;
+  const totalCycles = circle.durationCycles;
   const progressPercent =
     totalCycles > 0 ? (completedCycles / totalCycles) * 100 : 0;
 
@@ -166,9 +168,11 @@ export function GrowthActivities() {
           <Text fw={700} className="text-[22px] text-[#0F172A]">
             Growth & Activities
           </Text>
+          <button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="ml-auto cursor-pointer text-sm font-semibold text-[#02A36E]">Refresh</button>
         </div>
 
         {/* Tabs */}
+        <RoscaCommitments circleId={id} refreshVersion={refreshVersion} />
         <Tabs
           value={activeTab}
           onChange={(v) => setActiveTab(v || "Overview")}

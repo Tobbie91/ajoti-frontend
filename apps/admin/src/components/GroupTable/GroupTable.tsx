@@ -36,7 +36,7 @@ function mapCircle(c: RoscaCircle): RoscaGroup {
         : status === 'Active'
           ? '-'
           : 'Not scheduled',
-    cycle: status === 'Active' ? `${c.currentCycle ?? 1} of ${c.durationCycles ?? total}` : status,
+    cycle: status === 'Active' ? `${c.currentCycle ?? 1} of ${c.durationCycles}` : status,
     canInvite: canInviteToCircle(c),
   }
 }

@@ -9,15 +9,14 @@ import {
   IconStar,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { RoscaCommitments } from "@/components/RoscaCommitments";
 import {
-  listRoscaCircles,
+  getRoscaCircle,
   getRoscaSchedules,
-  getCircleMembers,
   submitPeerReview,
   getCirclePeerReviews,
   leaveRoscaCircle,
   getCircleRules,
-  type RoscaCircle,
   type RoscaSchedule,
   type CircleMember,
   type PeerReview,
@@ -56,6 +55,7 @@ export function GroupDetails() {
   const [circleStatus, setCircleStatus] = useState<string>("");
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
@@ -87,17 +87,13 @@ export function GroupDetails() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [circles, schedules] = await Promise.all([
-          listRoscaCircles(),
+        const [circle, schedules] = await Promise.all([
+          getRoscaCircle(id!),
           getRoscaSchedules(id!).catch(() => [] as RoscaSchedule[]),
         ]);
         // Fetch members and existing reviews in background
-        getCircleMembers(id!)
-          .then((m) => {
-            setMembers(m);
-            setMembersLoaded(true);
-          })
-          .catch(() => setMembersLoaded(true));
+        setMembers(circle.members ?? []);
+        setMembersLoaded(true);
         getCirclePeerReviews(id!)
           .then(setExistingReviews)
           .catch(() => {});
@@ -109,9 +105,6 @@ export function GroupDetails() {
             ),
           )
           .catch(() => setPostStartExitPenaltyPercent(null));
-        const circle = (Array.isArray(circles) ? circles : []).find(
-          (c: RoscaCircle) => c.id === id,
-        );
         if (circle) {
           setCircleStatus(circle.status ?? "");
           const slotsLeft = (circle.maxSlots ?? 0) - (circle.filledSlots ?? 0);
@@ -146,7 +139,7 @@ export function GroupDetails() {
             adminBio: String(
               (circle as Record<string, unknown>).adminBio ?? "",
             ),
-            completionRate: `${(circle as Record<string, unknown>).completionRate ?? 0}%`,
+            completionRate: `${circle.durationCycles > 0 ? Math.round(((circle.status === "COMPLETED" ? circle.durationCycles : Math.max(0, (circle.currentCycle ?? 1) - 1)) / circle.durationCycles) * 100) : 0}%`,
             isCurrentUserAdmin: circle.isRequestingUserAdmin ?? false,
           });
         }
@@ -166,7 +159,7 @@ export function GroupDetails() {
       }
     }
     fetchData();
-  }, [id]);
+  }, [id, refreshVersion]);
 
   if (loading) {
     return (
@@ -228,6 +221,7 @@ export function GroupDetails() {
           <Text fw={700} className="text-[22px] text-[#0F172A]">
             Group Details
           </Text>
+          <button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="ml-auto cursor-pointer text-sm font-semibold text-[#02A36E]">Refresh</button>
         </div>
 
         {/* Group Header */}
@@ -301,6 +295,7 @@ export function GroupDetails() {
         </div>
 
         {/* Private Group Notice */}
+        <RoscaCommitments circleId={id} refreshVersion={refreshVersion} />
         {isInviteOnly && (
           <div className="flex items-start gap-3 rounded-xl border border-[#FBBF24] bg-[#FFFBEB] px-5 py-4">
             <IconLock
