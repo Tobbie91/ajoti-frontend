@@ -4,12 +4,14 @@ import { Loader } from '@mantine/core'
 import { getUserProfile, logout } from '@/utils/api'
 import { storeCachedCustomerUser } from '@/utils/customer-storage'
 import { DEV_AUTH_BYPASS_USER, isDevAuthBypass } from '@/utils/dev-auth-bypass'
+import { watchCustomerInactivity } from '@/utils/customer-inactivity'
 
 type GuardState = 'loading' | 'ok' | 'no-auth'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation()
   const [state, setState] = useState<GuardState>('loading')
+  const [userId, setUserId] = useState('')
 
   useEffect(() => {
     if (isDevAuthBypass) {
@@ -25,15 +27,15 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
           return
         }
         storeCachedCustomerUser(user)
+        setUserId(user.id)
         setState('ok')
       })
       .catch(() => setState('no-auth'))
   }, [])
 
   useEffect(() => {
-    if (state !== 'ok' || isDevAuthBypass) return
+    if (state !== 'ok' || !userId || isDevAuthBypass) return
 
-    let timeout: number
     let signingOut = false
     const finishSession = () => {
       if (signingOut) return
@@ -45,26 +47,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
           window.location.replace('/login')
         })
     }
-    const resetTimeout = () => {
-      window.clearTimeout(timeout)
-      timeout = window.setTimeout(finishSession, 3 * 60 * 1000)
-    }
-    const activityEvents: Array<keyof WindowEventMap> = [
-      'pointerdown',
-      'pointermove',
-      'keydown',
-      'touchstart',
-      'wheel',
-      'scroll',
-    ]
-
-    activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimeout, { passive: true }))
-    resetTimeout()
-    return () => {
-      window.clearTimeout(timeout)
-      activityEvents.forEach((eventName) => window.removeEventListener(eventName, resetTimeout))
-    }
-  }, [state])
+    return watchCustomerInactivity(userId, finishSession)
+  }, [state, userId])
 
   if (state === 'loading') {
     return <div className="flex min-h-screen items-center justify-center bg-[#F8F9FA]"><Loader color="#0b6b55" size="md" /></div>

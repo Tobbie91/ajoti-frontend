@@ -14,16 +14,19 @@ import {
   ApiError,
   getWallet,
   initializeWithdrawal,
+  quoteWithdrawal,
   listBankAccounts,
   removeBankAccount,
   type PendingWithdrawal,
   type SavedBankAccount,
+  type WithdrawalQuote,
 } from "@/utils/api";
 import { AddBankAccountModal } from "@/components";
 
 type Step =
   | "select-account"
   | "amount"
+  | "review"
   | "pin"
   | "processing"
   | "success"
@@ -57,6 +60,12 @@ export function WithdrawFunds() {
   const [pendingWithdrawal, setPendingWithdrawal] =
     useState<PendingWithdrawal | null>(null);
   const [loadingWallet, setLoadingWallet] = useState(true);
+
+  // Transfer-fee quote / review
+  const [quote, setQuote] = useState<WithdrawalQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
 
   // PIN
   const [pin, setPin] = useState("");
@@ -108,10 +117,39 @@ export function WithdrawFunds() {
     return parseInt(digits, 10).toLocaleString();
   }
 
-  const canProceedToPin =
+  const canProceedToReview =
     numericAmount >= MIN_WITHDRAWAL_NAIRA &&
     numericAmount <= availableBalance &&
     selectedAccount !== null;
+
+  const quotedTotalNaira = quote ? Number(quote.totalDebitKobo) / 100 : 0;
+  const quotedFeeNaira = quote ? Number(quote.feeKobo) / 100 : 0;
+  const canConfirmQuote = Boolean(quote) && quotedTotalNaira <= availableBalance;
+
+  async function prepareReview(notice?: string) {
+    if (!canProceedToReview) {
+      setStep("select-account");
+      return;
+    }
+    setQuoteLoading(true);
+    setQuoteError(null);
+    setReviewNotice(notice ?? null);
+    try {
+      const nextQuote = await quoteWithdrawal(numericAmount);
+      setQuote(nextQuote);
+      setStep("review");
+    } catch (err) {
+      setQuote(null);
+      setStep("select-account");
+      setQuoteError(
+        err instanceof Error
+          ? err.message
+          : "Unable to retrieve the current transfer fee. Please try again.",
+      );
+    } finally {
+      setQuoteLoading(false);
+    }
+  }
 
   async function submitWithdrawal(enteredPin: string) {
     if (!selectedAccount) return;
@@ -126,6 +164,7 @@ export function WithdrawFunds() {
         bankName: selectedAccount.bankName,
         narration: `Withdrawal of NGN ${amount}`,
         transactionPin: enteredPin,
+        quotedFeeKobo: quote?.feeKobo,
       });
       setStep("success");
     } catch (err) {
@@ -133,6 +172,17 @@ export function WithdrawFunds() {
       // tab/device, between this page loading and submitting) - refresh wallet
       // state so the blocked-state screen shows instead of letting the user retry
       // into the same error again.
+      if (
+        err instanceof ApiError &&
+        err.code === 409 &&
+        /transfer fee changed/i.test(err.message)
+      ) {
+        setPin("");
+        await prepareReview(
+          "Flutterwave updated the transfer fee. Please review the new amount before entering your PIN again.",
+        );
+        return;
+      }
       if (err instanceof ApiError && err.code === 409) {
         loadWallet();
       }
@@ -349,7 +399,12 @@ export function WithdrawFunds() {
                   {savedAccounts.map((acc) => (
                     <button
                       key={acc.id}
-                      onClick={() => setSelectedAccount(acc)}
+                      onClick={() => {
+                        setSelectedAccount(acc);
+                        setQuote(null);
+                        setQuoteError(null);
+                        setReviewNotice(null);
+                      }}
                       className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                         selectedAccount?.id === acc.id
                           ? "border-[#02A36E] bg-[#F0FDF4]"
@@ -411,7 +466,12 @@ export function WithdrawFunds() {
                     type="text"
                     inputMode="numeric"
                     value={amount}
-                    onChange={(e) => setAmount(formatAmount(e.target.value))}
+                    onChange={(e) => {
+                      setAmount(formatAmount(e.target.value));
+                      setQuote(null);
+                      setQuoteError(null);
+                      setReviewNotice(null);
+                    }}
                     placeholder="0"
                     className="h-[52px] w-full rounded-xl border border-[#E5E7EB] pl-8 pr-4 text-[20px] font-semibold text-[#0F172A] outline-none focus:border-[#02A36E]"
                   />
@@ -430,7 +490,12 @@ export function WithdrawFunds() {
                   {["5,000", "10,000", "50,000", "100,000"].map((val) => (
                     <button
                       key={val}
-                      onClick={() => setAmount(val)}
+                      onClick={() => {
+                        setAmount(val);
+                        setQuote(null);
+                        setQuoteError(null);
+                        setReviewNotice(null);
+                      }}
                       className={`cursor-pointer rounded-lg border px-3 py-1.5 text-[12px] font-medium transition-colors ${
                         amount === val
                           ? "border-[#02A36E] bg-[#F0FDF4] text-[#02A36E]"
@@ -444,16 +509,117 @@ export function WithdrawFunds() {
               </div>
             )}
 
+            {quoteError && (
+              <Text fw={500} className="text-[13px] text-red-500">
+                {quoteError}
+              </Text>
+            )}
+
             <button
-              onClick={() => setStep("pin")}
-              disabled={!canProceedToPin}
+              onClick={() => prepareReview()}
+              disabled={!canProceedToReview || quoteLoading}
               className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${
-                canProceedToPin
+                canProceedToReview && !quoteLoading
                   ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]"
                   : "cursor-not-allowed bg-[#9CA3AF]"
               }`}
             >
-              Proceed
+              {quoteLoading ? "Checking transfer fee..." : "Review withdrawal"}
+            </button>
+          </div>
+        )}
+
+        {/* ==================== STEP: REVIEW ==================== */}
+        {step === "review" && quote && (
+          <div className="flex flex-col gap-5">
+            <button
+              onClick={() => {
+                setStep("select-account");
+                setPin("");
+              }}
+              className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[#374151] hover:text-[#0F172A]"
+            >
+              <IconArrowLeft size={18} /> Back
+            </button>
+
+            <div>
+              <Text fw={700} className="text-[24px] text-[#0F172A]">
+                Review Withdrawal
+              </Text>
+              <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
+                Confirm the amount and transfer fee before entering your PIN.
+              </Text>
+            </div>
+
+            {reviewNotice && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <Text fw={500} className="text-[13px] text-[#92400E]">
+                  {reviewNotice}
+                </Text>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
+              <div className="flex items-center justify-between py-2">
+                <Text className="text-[13px] text-[#6B7280]">Recipient receives</Text>
+                <Text fw={600} className="text-[14px] text-[#0F172A]">
+                  ₦{numericAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                </Text>
+              </div>
+              <div className="flex items-center justify-between border-t border-[#F1F5F9] py-3">
+                <Text className="text-[13px] text-[#6B7280]">Transfer fee</Text>
+                <Text fw={600} className="text-[14px] text-[#0F172A]">
+                  {quote.feeBearer === "CUSTOMER"
+                    ? `₦${quotedFeeNaira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+                    : "Covered by Ajoti"}
+                </Text>
+              </div>
+              <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-4">
+                <Text fw={600} className="text-[14px] text-[#374151]">
+                  Maximum wallet debit
+                </Text>
+                <Text fw={700} className="text-[18px] text-[#0F172A]">
+                  ₦{quotedTotalNaira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                </Text>
+              </div>
+
+              <div className="mt-4 rounded-xl bg-[#F8FAFC] p-3">
+                <Text className="text-[12px] leading-[1.6] text-[#64748B]">
+                  {quote.feeBearer === "CUSTOMER"
+                    ? "Flutterwave provides this transfer fee. Ajoti re-checks it before sending. If the final provider fee is lower, you are charged the lower fee; if it increases, Ajoti absorbs the difference."
+                    : "Ajoti is currently covering Flutterwave's transfer fee, so only the withdrawal amount will be debited from your wallet."}
+                </Text>
+              </div>
+
+              <div className="mt-4">
+                <Text fw={600} className="text-[13px] text-[#0F172A]">
+                  {selectedAccount?.accountName}
+                </Text>
+                <Text className="text-[12px] text-[#9CA3AF]">
+                  {selectedAccount?.accountNumber} · {selectedAccount?.bankName}
+                </Text>
+              </div>
+            </div>
+
+            {!canConfirmQuote && (
+              <Text fw={500} className="text-[13px] text-red-500">
+                Your available balance is not enough for the withdrawal plus transfer fee.
+              </Text>
+            )}
+
+            <button
+              onClick={() => {
+                setPin("");
+                setStep("pin");
+              }}
+              disabled={!canConfirmQuote}
+              className={`w-full rounded-xl py-3.5 text-[14px] font-semibold text-white ${
+                canConfirmQuote
+                  ? "cursor-pointer bg-[#02A36E] hover:bg-[#028a5b]"
+                  : "cursor-not-allowed bg-[#9CA3AF]"
+              }`}
+            >
+              Confirm and enter PIN
             </button>
           </div>
         )}
@@ -479,6 +645,13 @@ export function WithdrawFunds() {
               <Text fw={700} className="mt-1 text-[28px] text-[#0F172A]">
                 ₦{amount}
               </Text>
+              {quote && (
+                <Text fw={500} className="mt-1 text-[12px] text-[#6B7280]">
+                  {quote.feeBearer === "CUSTOMER"
+                    ? `Fee ₦${quotedFeeNaira.toLocaleString("en-NG", { minimumFractionDigits: 2 })} · Maximum debit ₦${quotedTotalNaira.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+                    : "Transfer fee covered by Ajoti"}
+                </Text>
+              )}
               <Text fw={600} className="mt-1 text-[14px] text-[#0F172A]">
                 {selectedAccount?.accountName}
               </Text>
