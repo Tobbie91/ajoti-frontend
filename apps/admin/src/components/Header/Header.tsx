@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect } from 'react'
-import { Group, Burger, Text, Avatar, Box, Popover, Modal, ScrollArea, Loader, Badge, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Group, Burger, Text, Avatar, Box, Popover, Modal, ScrollArea, Loader, Badge, UnstyledButton } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { IconBell } from '@tabler/icons-react'
-import { useNavigate } from 'react-router-dom'
+import { IconArrowLeft, IconBell, IconHome } from '@tabler/icons-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { defaultAuthenticatedPath, getCurrentRole } from '@/utils/auth-role'
 import { storeCachedCustomerUser } from '@/utils/customer-storage'
 import { DEV_AUTH_BYPASS_USER, isDevAuthBypass } from '@/utils/dev-auth-bypass'
@@ -165,7 +165,14 @@ function NotificationPanel() {
 
 export function Header({ opened, onToggle }: HeaderProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const role = getCurrentRole()
+  const homePath = defaultAuthenticatedPath(role)
+  const isHome = location.pathname === homePath || location.pathname === '/'
+  const handleBack = () => {
+    if (window.history.length > 1) navigate(-1)
+    else navigate(homePath)
+  }
   const storedUser = isDevAuthBypass
     ? DEV_AUTH_BYPASS_USER
     : JSON.parse(localStorage.getItem('user') ?? '{}')
@@ -202,8 +209,34 @@ export function Header({ opened, onToggle }: HeaderProps) {
 
   return (
     <Group h="100%" px="md" justify="space-between">
-      <Group>
+      <Group gap="xs">
         <Burger opened={opened} onClick={onToggle} hiddenFrom="sm" size="sm" />
+        {!isHome && (
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="lg"
+            radius="xl"
+            onClick={handleBack}
+            hiddenFrom="sm"
+            aria-label="Back"
+          >
+            <IconArrowLeft size={20} stroke={1.8} />
+          </ActionIcon>
+        )}
+        {!isHome && (
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="lg"
+            radius="xl"
+            onClick={() => navigate(homePath)}
+            hiddenFrom="sm"
+            aria-label="Home"
+          >
+            <IconHome size={20} stroke={1.8} />
+          </ActionIcon>
+        )}
         <UnstyledButton
           onClick={() => navigate(defaultAuthenticatedPath(role))}
           aria-label="Go to home"
