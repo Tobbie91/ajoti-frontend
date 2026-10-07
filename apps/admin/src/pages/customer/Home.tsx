@@ -1,6 +1,6 @@
 import { Title, Text, Card, Box } from "@mantine/core";
 import { useState, useEffect } from "react";
-import { IconArrowDownLeft, IconArrowUpRight, IconCash, IconLock } from "@tabler/icons-react";
+import { IconArrowDownLeft, IconArrowUpRight, IconCash, IconLock, IconLockOpen } from "@tabler/icons-react";
 import addFunds from "@/assets/AddFunds_default.svg";
 import addFundsPressed from "@/assets/AddFunds_press.svg";
 import explore from "@/assets/Explore_default.svg";
@@ -324,6 +324,7 @@ function GroupTxStyled({ tx }: { tx: WalletTransaction }) {
   const entry = tx.entryType ?? tx.type ?? "";
   const credit = entry === "CREDIT";
   const reservation = tx.bucketType === "ROSCA" && ["RESERVE", "RELEASE"].includes(entry);
+  const reservationRelease = reservation && entry === "RELEASE";
   const amt = Number(tx.amount) / 100;
   const movement = tx.movementType ?? tx.description ?? entry;
   const label = tx.description ?? (movement
@@ -337,18 +338,24 @@ function GroupTxStyled({ tx }: { tx: WalletTransaction }) {
   return (
     <div className="mx-3 flex items-center justify-between border-t border-[#F3F4F6] px-1 py-3 first:border-t-0">
       <div className="flex min-w-0 items-center gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${credit ? "bg-[#F0FDF4]" : "bg-[#FEF2F2]"}`}>
-          {credit ? <IconArrowDownLeft size={18} color="#02A36E" /> : <IconArrowUpRight size={18} color="#EF4444" />}
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${reservation ? "bg-[#E7F4EE]" : credit ? "bg-[#F0FDF4]" : "bg-[#FEF2F2]"}`}>
+          {reservation
+            ? reservationRelease
+              ? <IconLockOpen size={18} color="#0B6B55" />
+              : <IconLock size={18} color="#0B6B55" />
+            : credit
+              ? <IconArrowDownLeft size={18} color="#02A36E" />
+              : <IconArrowUpRight size={18} color="#EF4444" />}
         </div>
         <div className="min-w-0">
           <Text size="sm" fw={600} truncate>{label}</Text>
           <Text size="xs" c="dimmed">{entry} / {date}</Text>
         </div>
       </div>
-      <Text size="sm" fw={600} c={credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0">
+      <Text size="sm" fw={600} c={reservation ? "#0B6B55" : credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0">
         {reservation ? "" : credit ? "+" : "-"}{String.fromCharCode(0x20a6)}{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
       </Text>
-      <Text size="sm" fw={600} c={credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0" style={{ display: "none" }}>
+      <Text size="sm" fw={600} c={reservation ? "#0B6B55" : credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0" style={{ display: "none" }}>
         {reservation ? "" : credit ? "+" : "-"}₦{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
       </Text>
     </div>
