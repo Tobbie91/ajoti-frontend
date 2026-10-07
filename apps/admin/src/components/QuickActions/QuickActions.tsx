@@ -8,6 +8,8 @@ import {
   IconUserCheck,
   IconBell,
   IconX,
+  IconUsersGroup,
+  IconCompass,
 } from '@tabler/icons-react'
 import {
   getNotifications,
@@ -72,6 +74,16 @@ export function QuickActions() {
       label: 'Create New Group',
       icon: IconTopologyRing,
       onClick: () => navigate('/create-group'),
+    },
+    {
+      label: 'Join Groups',
+      icon: IconUsersGroup,
+      onClick: () => navigate('/rosca'),
+    },
+    {
+      label: 'Explore',
+      icon: IconCompass,
+      onClick: () => navigate('/rosca/how-it-works'),
     },
     {
       label: 'Manage Join Request',

@@ -87,7 +87,7 @@ export function PhoneInputField({
           {label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
         </div>
       )}
-      <Group gap={6} wrap="nowrap" align="flex-start">
+      <Group gap={6} wrap="nowrap" align="center">
         <Select
           data={COUNTRIES}
           value={countryCode}
@@ -110,12 +110,16 @@ export function PhoneInputField({
           styles={styles}
           inputMode="numeric"
           maxLength={PHONE_RULES[countryCode]?.nationalLength}
-          description={PHONE_RULES[countryCode] ? `${PHONE_RULES[countryCode].nationalLength} digits after ${countryCode}` : undefined}
           error={error}
           onBlur={onBlur}
           aria-invalid={Boolean(error)}
         />
       </Group>
+      {PHONE_RULES[countryCode] && !error && (
+        <div style={{ marginTop: 4, fontSize: 12, color: '#6B7280' }}>
+          {`${PHONE_RULES[countryCode].nationalLength} digits after ${countryCode}`}
+        </div>
+      )}
     </div>
   )
 }

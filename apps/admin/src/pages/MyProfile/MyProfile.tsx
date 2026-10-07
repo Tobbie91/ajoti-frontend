@@ -155,6 +155,8 @@ export function MyProfile() {
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
+    const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
 
     const [accountStatus, setAccountStatus] = useState<string>(
         getUserFromStorage().status || "ACTIVE",
@@ -379,6 +381,7 @@ export function MyProfile() {
     }
 
     async function handleLogout() {
+        setLoggingOut(true);
         try {
             await logoutApi();
         } catch {
@@ -525,8 +528,8 @@ export function MyProfile() {
             </div>
 
             <button
-                onClick={handleLogout}
-                className="mb-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#D1D5DB] bg-white py-3.5 text-[14px] font-semibold text-[#374151] hover:bg-[#F9FAFB]"
+                onClick={() => setLogoutModalOpen(true)}
+                className="mb-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EF4444] bg-white py-3.5 text-[14px] font-semibold text-[#EF4444] hover:bg-[#FEF2F2]"
             >
                 <IconLogout size={18} />
                 Log Out
@@ -783,6 +786,45 @@ export function MyProfile() {
                     </div>
                 )}
             </div>
+
+            <Modal
+                opened={logoutModalOpen}
+                onClose={() => !loggingOut && setLogoutModalOpen(false)}
+                withCloseButton={false}
+                centered
+                radius="lg"
+                size="sm"
+                closeOnClickOutside={!loggingOut}
+                closeOnEscape={!loggingOut}
+            >
+                <div className="flex flex-col items-center gap-4 py-2 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FEE2E2]">
+                        <IconLogout size={26} color="#EF4444" />
+                    </div>
+                    <Text fw={700} className="text-[18px] text-[#0F172A]">
+                        Sign out of Ajoti?
+                    </Text>
+                    <Text fw={400} className="text-[13px] leading-[1.6] text-[#6B7280]">
+                        You'll be returned to the login page and will need to enter your credentials again to get back in.
+                    </Text>
+                    <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row-reverse">
+                        <button
+                            onClick={handleLogout}
+                            disabled={loggingOut}
+                            className={`flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white ${loggingOut ? "cursor-not-allowed bg-[#FCA5A5]" : "cursor-pointer bg-[#EF4444] hover:bg-[#DC2626]"}`}
+                        >
+                            {loggingOut ? "Signing out..." : "Sign out"}
+                        </button>
+                        <button
+                            onClick={() => setLogoutModalOpen(false)}
+                            disabled={loggingOut}
+                            className={`flex-1 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-[13px] font-semibold text-[#374151] ${loggingOut ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[#F9FAFB]"}`}
+                        >
+                            Keep me logged in
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <Modal
                 opened={deleteConfirmModalOpen}
