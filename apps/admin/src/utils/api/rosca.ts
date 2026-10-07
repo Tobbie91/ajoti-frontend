@@ -71,6 +71,7 @@ export interface MyJoinRequest {
   status: string;
   requestedAt?: string;
   collateralReserved?: string;
+  originalCollateralKobo?: string;
   circle?: {
     id?: string;
     name?: string;
