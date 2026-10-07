@@ -21,6 +21,7 @@ export interface WalletTransaction {
   sourceType?: string;
   type?: string;
   description?: string;
+  circleId?: string;
   [key: string]: unknown;
 }
 

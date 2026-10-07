@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Accordion,
   Badge,
   Button,
   Card,
@@ -35,6 +36,7 @@ import {
 } from "@tabler/icons-react";
 import {
   contributeTargetSavings,
+  cancelTargetSavings,
   createTargetSavings,
   getMyTargetSavings,
   getPublicTargetSavings,
@@ -43,6 +45,9 @@ import {
 } from "@/utils/targetSavingsApi";
 import { getKycStatus } from "@/utils/api";
 import { useNavigate } from "react-router-dom";
+import { getCowrywiseState } from "@/utils/cowrywiseSavingsApi";
+import { fundSandboxAjotiWallet } from "@/utils/sandboxWalletApi";
+import { isDevAuthBypass } from "@/utils/dev-auth-bypass";
 
 const toNaira = (k: string) => Number(k || 0) / 100;
 const money = (k: string) =>
@@ -88,10 +93,93 @@ function GroupRules({ plan }: { plan?: TargetSavingsPlan | null }) {
         <List.Item>Each member has the same personal savings target.</List.Item>
         <List.Item>You can contribute ahead of schedule or make multiple manual contributions.</List.Item>
         <List.Item>Ajoti does not automatically debit your wallet.</List.Item>
-        <List.Item>Your savings remain locked until the maturity date, even if you finish early.</List.Item>
-        <List.Item>Early withdrawal is not currently available.</List.Item>
+        <List.Item>You may cancel your own membership before maturity. A 1.5% fee applies to the amount you have actually saved.</List.Item>
+        <List.Item>For a group target, cancelling affects only your savings; other members and the group stay active.</List.Item>
+        <List.Item>Provider-backed plans cannot be cancelled until safe provider redemption is available.</List.Item>
       </List>
     </Stack>
+  );
+}
+
+function investmentActionsUnavailable(investment: TargetSavingsPlan["investment"]) {
+  return investment.enabled || investment.lifecycleStatus !== "LEGACY";
+}
+
+function LocalReviewSavingsCard() {
+  const [saved, setSaved] = useState(1000);
+  const [available, setAvailable] = useState(5000);
+  const [amount, setAmount] = useState(2500);
+  const [open, setOpen] = useState(false);
+  const progress = Math.round((saved / 10000) * 100);
+
+  const addMoney = () => {
+    const value = Math.min(Math.max(0, amount), available);
+    if (!value) return;
+    setSaved((current) => current + value);
+    setAvailable((current) => current - value);
+    setOpen(false);
+  };
+
+  return (
+    <Card withBorder radius="lg" p="lg">
+      <Group justify="space-between" align="flex-start">
+        <div>
+          <Badge color="green" variant="light" mb="xs">Active savings</Badge>
+          <Title order={3}>Cowrywise E2E Test</Title>
+          <Text size="sm" c="dimmed" mt={4}>A focused plan for reaching your savings goal.</Text>
+        </div>
+        <Text fw={700} c="teal">{progress}% complete</Text>
+      </Group>
+
+      <Group align="baseline" gap={6} mt="xl">
+        <Text fw={800} fz={34}>₦{saved.toLocaleString("en-NG")}</Text>
+        <Text c="dimmed">of ₦10,000</Text>
+      </Group>
+      <Progress value={progress} size="xl" radius="xl" mt="sm" color="teal" />
+      <Group justify="space-between" mt="xs">
+        <Text size="sm" c="dimmed">{progress}% complete</Text>
+        <Text size="sm" fw={600}>₦{(10000 - saved).toLocaleString("en-NG")} remaining</Text>
+      </Group>
+
+      <Group grow mt="xl" align="flex-start">
+        <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>₦2,500 monthly</Text></div>
+        <div><Text size="xs" c="dimmed">Matures</Text><Text fw={700}>24 Dec 2026</Text></div>
+      </Group>
+
+      <Button fullWidth size="md" mt="xl" onClick={() => setOpen(true)}>Add to savings</Button>
+
+      <Card withBorder radius="md" p="md" mt="lg" bg="gray.0">
+        <Text fw={700}>Your savings plan</Text>
+        <Group grow mt="md" align="flex-start">
+          <div><Text size="xs" c="dimmed">Savings type</Text><Text size="sm" fw={600}>90-day Locked Savings</Text></div>
+          <div><Text size="xs" c="dimmed">Access</Text><Text size="sm" fw={600}>Maturity or early cancellation</Text></div>
+        </Group>
+        <Group grow mt="md" align="flex-start">
+          <div><Text size="xs" c="dimmed">Provider</Text><Text size="sm" fw={600}>Cowrywise</Text></div>
+          <div><Text size="xs" c="dimmed">Interest</Text><Text size="sm" fw={600}>Rate unavailable in sandbox</Text></div>
+        </Group>
+        <Text size="xs" c="dimmed" mt="md">Your savings are held through Cowrywise. Ajoti will show the applicable rate and fees when the provider returns them.</Text>
+      </Card>
+
+      <div className="mt-5">
+        <Text fw={700}>Recent activity</Text>
+        <Group justify="space-between" mt="sm">
+          <div><Text size="sm">₦1,000 added</Text><Text size="xs" c="dimmed">24 Sep 2026</Text></div>
+          <Badge color="green" variant="light">Successful</Badge>
+        </Group>
+        {saved > 1000 && <Group justify="space-between" mt="sm"><div><Text size="sm">₦{(saved - 1000).toLocaleString("en-NG")} added</Text><Text size="xs" c="dimmed">Just now</Text></div><Badge color="green" variant="light">Successful</Badge></Group>}
+      </div>
+
+      <Modal opened={open} onClose={() => setOpen(false)} title="Add to your savings" centered>
+        <Stack>
+          <Text size="sm" c="dimmed">Available to save: ₦{available.toLocaleString("en-NG")}</Text>
+          <NumberInput label="Amount" min={1} max={available} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," />
+          <Text size="sm" c="dimmed">Suggested this month: ₦2,500</Text>
+          <Alert color="orange" title="Cancellation fee">For wallet-backed targets, cancellation before maturity carries a 1.5% fee on the amount saved. Provider-backed plans remain unavailable until safe redemption is available.</Alert>
+          <Button onClick={addMoney} disabled={amount <= 0 || amount > available}>Add money</Button>
+        </Stack>
+      </Modal>
+    </Card>
   );
 }
 
@@ -101,8 +189,9 @@ export function TargetSavings() {
   const [pub, setPub] = useState<TargetSavingsPlan[]>([]);
   const [view, setView] = useState<"MINE" | "DISCOVER">("MINE");
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<"INTRO" | "FORM">("INTRO");
+  const [step, setStep] = useState<"INTRO" | "FORM" | "REVIEW">("INTRO");
   const [busy, setBusy] = useState(false);
+  const createStarted = useRef(false);
   const [error, setError] = useState("");
   const [joinPlan, setJoinPlan] = useState<TargetSavingsPlan | null>(null);
   const [joining, setJoining] = useState(false);
@@ -117,12 +206,15 @@ export function TargetSavings() {
     }
   });
   const toggleAmounts = () => {
-    setShowAmounts((v) => {
-      const next = !v;
+    setShowAmounts((visible) => {
+      const next = !visible;
       try { localStorage.setItem("targetSavings:showAmounts", next ? "1" : "0"); } catch { /* ignore */ }
       return next;
     });
   };
+  const [sandboxStagingAvailable, setSandboxStagingAvailable] = useState(false);
+  const [sandboxFunding, setSandboxFunding] = useState(false);
+  const [sandboxWallet, setSandboxWallet] = useState<string | null>(null);
   const [form, setForm] = useState({
     type: "INDIVIDUAL",
     name: "",
@@ -160,6 +252,9 @@ export function TargetSavings() {
     getKycStatus()
       .then((kyc) => setKycLevel(kyc.kycLevel ?? 0))
       .catch(() => setKycLevel(0));
+    getCowrywiseState()
+      .then((state) => setSandboxStagingAvailable(state.testMode === true))
+      .catch(() => setSandboxStagingAvailable(false));
 
     const params = new URLSearchParams(window.location.search);
     const id = params.get("targetInviteId");
@@ -216,6 +311,8 @@ export function TargetSavings() {
   };
 
   const create = async () => {
+    if (createStarted.current) return;
+    createStarted.current = true;
     setBusy(true);
     setError("");
     try {
@@ -246,6 +343,7 @@ export function TargetSavings() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to create target");
     } finally {
+      createStarted.current = false;
       setBusy(false);
     }
   };
@@ -291,8 +389,9 @@ export function TargetSavings() {
 
       {view === "MINE" ? (
         <Stack gap="md">
+          {isDevAuthBypass && plans.length === 0 && <LocalReviewSavingsCard />}
           {plans.length === 0 && (
-            <Card withBorder>
+            <Card withBorder style={{ display: isDevAuthBypass ? "none" : undefined }}>
               <Text fw={600}>No savings targets yet</Text>
               <Text size="sm" c="dimmed">Create an individual target, start a group target, or discover a public group.</Text>
               <Button variant="light" size="xs" mt="sm" onClick={() => setView("DISCOVER")}>Discover groups</Button>
@@ -300,8 +399,40 @@ export function TargetSavings() {
           )}
 
           {plans.map((p) => (
-            <TargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
+            <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
           ))}
+
+          {sandboxStagingAvailable && (
+            <Accordion variant="separated" mt="md">
+              <Accordion.Item value="developer-tools">
+                <Accordion.Control>Sandbox tools</Accordion.Control>
+                <Accordion.Panel>
+                  <Card withBorder radius="md" p="md">
+                    <Text fw={700}>Fake Ajoti wallet funding</Text>
+                    <Text size="sm" c="dimmed" mt={4}>
+                      Staging-only test funds. The normal savings action will use this Ajoti wallet balance.
+                    </Text>
+                    {sandboxWallet && <Text size="sm" mt="sm">Available: ₦{(Number(sandboxWallet) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}</Text>}
+                    <Button
+                      mt="sm"
+                      loading={sandboxFunding}
+                      onClick={async () => {
+                        setSandboxFunding(true);
+                        try {
+                          const result = await fundSandboxAjotiWallet("500000", `sandbox-ajoti-${crypto.randomUUID()}`);
+                          setSandboxWallet(result.balance?.available ?? null);
+                        } finally {
+                          setSandboxFunding(false);
+                        }
+                      }}
+                    >
+                      Add ₦5,000 test funds
+                    </Button>
+                  </Card>
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          )}
         </Stack>
       ) : (
         <Stack gap="md">
@@ -389,14 +520,17 @@ export function TargetSavings() {
 
       <Modal
         opened={open}
-        onClose={() => setOpen(false)}
-        title={step === "INTRO" ? "How Target Savings works" : "Create savings target"}
+        onClose={() => { setOpen(false); setStep("INTRO"); }}
+        title={step === "INTRO" ? "How Target Savings works" : step === "FORM" ? "Create savings target" : "Review your target"}
         centered
       >
         {step === "INTRO" ? (
           <Stack>
-            <Alert icon={<IconInfoCircle size={18} />} title="Your money stays locked until maturity" color="blue">
-              Reaching your target early does not unlock your savings. Early withdrawal is not currently available.
+            <Alert icon={<IconInfoCircle size={18} />} title="Investment growth is not available yet" color="orange">
+              Target Savings currently uses Ajoti&apos;s wallet-backed flow. Investment-backed growth remains disabled until provider operations and settlement are fully enabled.
+            </Alert>
+            <Alert icon={<IconInfoCircle size={18} />} title="Know the cancellation fee" color="orange">
+              You can cancel your own savings before maturity. A 1.5% fee is charged on the amount you have actually saved, and the rest is returned to your Ajoti wallet. For group targets, this affects only your membership.
             </Alert>
             <List spacing="sm" size="sm">
               <List.Item>Choose a savings frequency and maturity date.</List.Item>
@@ -408,7 +542,7 @@ export function TargetSavings() {
             </List>
             <Button onClick={() => setStep("FORM")}>Set up a target</Button>
           </Stack>
-        ) : (
+        ) : step === "FORM" ? (
           <Stack>
             <SegmentedControl
               value={form.type}
@@ -449,7 +583,7 @@ export function TargetSavings() {
             <TextInput
               type="date"
               label="Maturity date"
-              description="Your savings remain locked until this date even if you finish saving earlier."
+              description="Your savings are released at maturity, or earlier if you cancel with a 1.5% fee on the amount saved."
               value={form.maturityDate}
               onChange={(e) => setForm({ ...form, maturityDate: e.currentTarget.value })}
             />
@@ -475,17 +609,44 @@ export function TargetSavings() {
               />
             )}
 
+
             <Divider />
-            <Text size="xs" c="dimmed">No early withdrawal is available. Ajoti stops accepting contributions once you reach your personal target or the maturity date passes.</Text>
+            <Alert color="orange" title="Cancellation fee">
+              If you cancel before maturity, Ajoti charges 1.5% of the amount you have actually saved and returns the remaining 98.5%. Group cancellation affects only your membership.
+            </Alert>
             {error && <Text c="red" size="sm">{error}</Text>}
 
             <Group justify="space-between">
-              <Button variant="subtle" onClick={() => setStep("INTRO")}>Back</Button>
+              <Button variant="default" onClick={() => { setOpen(false); setStep("INTRO"); }}>Cancel</Button>
               <Button
-                loading={busy}
                 disabled={!form.name || !form.maturityDate || plannedContributionCount < 1 || (form.type === "INDIVIDUAL" ? form.targetAmount <= 0 : form.contributionAmount <= 0)}
-                onClick={create}
-              >Create target</Button>
+                onClick={() => { setError(""); setStep("REVIEW"); }}
+              >Review target</Button>
+            </Group>
+          </Stack>
+        ) : (
+          <Stack>
+            <Card withBorder>
+              <Stack gap="xs">
+                <Group justify="space-between"><Text c="dimmed">Target</Text><Text fw={600}>{form.name}</Text></Group>
+                <Group justify="space-between"><Text c="dimmed">Type</Text><Text fw={600}>{form.type === "GROUP" ? "Group" : "Individual"}</Text></Group>
+                <Group justify="space-between"><Text c="dimmed">Frequency</Text><Text fw={600}>{form.frequency.toLowerCase()}</Text></Group>
+                <Group justify="space-between"><Text c="dimmed">Maturity</Text><Text fw={600}>{new Date(`${form.maturityDate}T00:00:00`).toLocaleDateString()}</Text></Group>
+                {form.type === "INDIVIDUAL" ? (
+                  <Group justify="space-between"><Text c="dimmed">Target amount</Text><Text fw={600}>{money(String(Math.round(form.targetAmount * 100)))}</Text></Group>
+                ) : (
+                  <Group justify="space-between"><Text c="dimmed">Per member, each interval</Text><Text fw={600}>{money(String(Math.round(form.contributionAmount * 100)))}</Text></Group>
+                )}
+                {form.type === "GROUP" && <Group justify="space-between"><Text c="dimmed">Visibility</Text><Text fw={600}>{form.isPublic ? "Public" : "Private"}</Text></Group>}
+              </Stack>
+            </Card>
+            <Alert icon={<IconInfoCircle size={18} />} color="orange" title="Cancellation costs 1.5% of your saved amount">
+              If you cancel before maturity, the fee is based on what you have actually saved at that time—not your target amount. The remaining 98.5% is returned. For a group target, only your membership is cancelled.
+            </Alert>
+            {error && <Alert color="red">{error}</Alert>}
+            <Group justify="space-between">
+              <Button variant="default" disabled={busy} onClick={() => setStep("FORM")}>Back</Button>
+              <Button loading={busy} onClick={create}>Confirm and create target</Button>
             </Group>
           </Stack>
         )}
@@ -494,13 +655,20 @@ export function TargetSavings() {
   );
 }
 
-function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
+function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
   const mine = plan.myMembership;
+  const providerActionsUnavailable = investmentActionsUnavailable(plan.investment);
+  const savedKobo = BigInt(mine?.savedAmountKobo ?? "0");
+  const cancellationFeeKobo = (savedKobo * 150n) / 10_000n;
+  const cancellationReturnKobo = savedKobo - cancellationFeeKobo;
   const plannedAmount = toNaira(plan.contributionAmountKobo);
   const remaining = toNaira(mine?.remainingAmountKobo ?? "0");
   const [amount, setAmount] = useState(Math.min(plannedAmount, remaining || plannedAmount));
+  const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -510,8 +678,11 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
 
   const maturityReached = new Date(plan.maturityDate).getTime() <= Date.now();
   const targetReached = !mine || Number(mine.remainingAmountKobo) <= 0;
-  const contributionAvailable = plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached;
+  const contributionAvailable = plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached && !providerActionsUnavailable;
   const canContribute = contributionAvailable && kycReady;
+  const provider = plan.investment.provider ?? "Ajoti";
+  const savingsType = plan.investment.productType ?? (plan.type === "GROUP" ? "Group Target Savings" : "Target Savings");
+  const actionLabel = savedKobo > 0n ? "Add to savings" : "Start saving";
   const organiser = plan.members.find((member) => member.userId === plan.ownerId);
 
   const inviteUrl = plan.inviteToken
@@ -534,17 +705,37 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
     await copyInvite();
   };
 
-  const save = async () => {
-    if (!canContribute || amount <= 0) return;
+  const addMoney = async () => {
+    if (providerActionsUnavailable) {
+      setError("Provider-backed contributions are unavailable until the product and full provider lifecycle are approved and enabled.");
+      return;
+    }
+    if (!canContribute || amount <= 0 || amount > remaining) return;
     setSaving(true);
     setError("");
     try {
-      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)));
+      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)), `target-${plan.id}-${crypto.randomUUID()}`);
+      setOpen(false);
       await onChanged();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to save to this target");
+      setError(e instanceof Error ? e.message : "We could not add this contribution");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const cancel = async () => {
+    if (!mine || plan.status !== "ACTIVE" || providerActionsUnavailable || canceling) return;
+    setCanceling(true);
+    setError("");
+    try {
+      await cancelTargetSavings(plan.id);
+      setCancelOpen(false);
+      await onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "We could not cancel this savings membership");
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -679,8 +870,8 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
         </Alert>
       )}
       {targetReached && !maturityReached && plan.status === "ACTIVE" && (
-        <Alert mt="md" color="blue" variant="light" icon={<IconLock size={18} />} title="Target reached — funds locked">
-          You've hit your target. Your savings are locked until <strong>{maturityLabel}</strong>, when they'll be released to your Ajoti wallet.
+        <Alert mt="md" color="blue" variant="light" icon={<IconLock size={18} />} title="Target reached">
+          You've hit your target. Your savings will be released at <strong>{maturityLabel}</strong>; you can also cancel early with a 1.5% fee on the amount saved.
         </Alert>
       )}
       {maturityReached && plan.status === "ACTIVE" && (
@@ -692,28 +883,37 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
         <Alert mt="md" color="yellow" variant="light">Complete KYC Level 1 before contributing to this target.</Alert>
       )}
 
-      {/* ─── Save-now (unchanged logic) ─── */}
-      {canContribute && (
-        <>
-          <Group mt="md" align="end">
-            <NumberInput
-              label="Save now"
-              description={`Suggested: ${money(plan.contributionAmountKobo)}. You can save more or less.`}
-              min={1}
-              max={remaining}
-              value={amount}
-              onChange={(v) => setAmount(Number(v) || 0)}
-              prefix="₦"
-              thousandSeparator=","
-              style={{ flex: 1 }}
-            />
-            <Button loading={saving} disabled={amount <= 0 || amount > remaining} onClick={save}>Save now</Button>
-          </Group>
-          <Text size="xs" c="dimmed" mt={4}>
-            Multiple manual contributions are allowed; Ajoti does not auto-debit.
-          </Text>
-        </>
+      {providerActionsUnavailable && (
+        <Alert mt="md" color="orange" title="Investment-backed target is not active">
+          Provider: {plan.investment.provider ?? "Not assigned"}. Contributions, cancellation and maturity settlement remain disabled until product eligibility and provider operations are approved and enabled.
+        </Alert>
       )}
+
+      <Group grow mt="lg" align="flex-start">
+        <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>{fmtMoney(plan.contributionAmountKobo, showAmounts)} {freqLabel}</Text></div>
+        <div><Text size="xs" c="dimmed">Access</Text><Text fw={700}>Maturity or early cancellation</Text></div>
+      </Group>
+
+      {canContribute && (
+        <Button fullWidth size="md" mt="lg" onClick={() => setOpen(true)}>{actionLabel}</Button>
+      )}
+      {plan.status === "ACTIVE" && mine && !maturityReached && !providerActionsUnavailable && (
+        <Button mt="md" variant="light" color="red" onClick={() => setCancelOpen(true)}>Cancel my savings</Button>
+      )}
+      {plan.status === "ACTIVE" && mine && providerActionsUnavailable && (
+        <Alert mt="md" color="orange" title="Cancellation unavailable">
+          This provider-backed plan cannot be cancelled until product eligibility and safe provider redemption are approved.
+        </Alert>
+      )}
+
+      <Card withBorder radius="md" p="md" mt="lg" bg="gray.0">
+        <Text fw={700}>Your savings plan</Text>
+        <Group grow mt="md" align="flex-start">
+          <div><Text size="xs" c="dimmed">Savings type</Text><Text size="sm" fw={600}>{savingsType}</Text></div>
+          <div><Text size="xs" c="dimmed">Provider</Text><Text size="sm" fw={600}>{provider}</Text></div>
+        </Group>
+        <Text size="xs" c="dimmed" mt="md">Provider details, applicable rates and fees will be shown when returned by the savings provider.</Text>
+      </Card>
 
       {error && <Alert color="red" mt="sm">{error}</Alert>}
 
@@ -762,6 +962,30 @@ function TargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSa
       {plan.type === "GROUP" && plan.members.length === 0 && organiser && (
         <Text size="xs" c="dimmed" mt="md">Organised by {organiser.user.firstName}</Text>
       )}
+      <Modal opened={open} onClose={() => !saving && setOpen(false)} title={actionLabel} centered>
+        <Stack>
+          <Text size="sm" c="dimmed">Your goal has {fmtMoney(remainingKoboStr, showAmounts)} left to reach.</Text>
+          <NumberInput label="Amount" min={1} max={remaining} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," />
+          <Text size="sm" c="dimmed">Suggested contribution: {fmtMoney(plan.contributionAmountKobo, showAmounts)}</Text>
+          <Alert color="orange" title="Cancellation fee">You may cancel before maturity; a 1.5% fee applies to the amount you have actually saved.</Alert>
+          {error && <Alert color="red">{error}</Alert>}
+          <Button loading={saving} onClick={addMoney} disabled={providerActionsUnavailable || amount <= 0 || amount > remaining}>Add money</Button>
+        </Stack>
+      </Modal>
+
+      <Modal opened={cancelOpen} onClose={() => !canceling && setCancelOpen(false)} title="Cancel your savings" centered>
+        <Stack>
+          <Alert color="orange" title="A 1.5% cancellation fee applies">
+            The fee is calculated on your actual saved balance. For this target, {fmtMoney(savedKobo.toString(), showAmounts)} saved means {fmtMoney(cancellationFeeKobo.toString(), showAmounts)} fee and {fmtMoney(cancellationReturnKobo.toString(), showAmounts)} returned to your Ajoti wallet. {plan.type === "GROUP" ? "Only your membership will be cancelled; other members and their money are unaffected." : "Your individual plan will be cancelled."}
+          </Alert>
+          {error && <Alert color="red">{error}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" disabled={canceling} onClick={() => setCancelOpen(false)}>Keep savings</Button>
+            <Button color="red" loading={canceling} disabled={providerActionsUnavailable} onClick={cancel}>Confirm cancellation</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
     </Card>
   );
 }

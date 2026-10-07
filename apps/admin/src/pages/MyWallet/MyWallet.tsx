@@ -7,12 +7,14 @@ import {
   IconEye,
   IconEyeOff,
   IconLock,
+  IconLockOpen,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 import { isCircleAdmin } from '@/utils/auth-role'
+import { RoscaCommitments } from '@/components/RoscaCommitments'
 
 // Friendly overrides for sourceTypes whose humanized enum name reads awkwardly
 // or should be phrased for this audience specifically.
@@ -34,6 +36,7 @@ function formatTxLabel(raw: string): string {
 // movementTypes like TRANSFER would mask it (a fee credit and a plain
 // wallet-to-wallet transfer both have movementType=TRANSFER).
 function resolveTxLabel(tx: WalletTransaction, entryType: string): string {
+  if (tx.description) return tx.description
   const sourceType = (tx as Record<string, unknown>).sourceType as string | undefined
   if (sourceType && SOURCE_TYPE_LABELS[sourceType]) return SOURCE_TYPE_LABELS[sourceType]
 
@@ -61,7 +64,9 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
   if (!tx) return null
   const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
   const isCredit = entryType === 'CREDIT'
-  const color = isCredit ? '#02A36E' : '#EF4444'
+  const reservation = tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType)
+  const reservationRelease = reservation && entryType === 'RELEASE'
+  const color = reservation ? '#0B6B55' : isCredit ? '#02A36E' : '#EF4444'
   const label = resolveTxLabel(tx, entryType)
   const d = new Date(tx.createdAt)
   const amtNaira = `₦${(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
@@ -74,10 +79,16 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
     <Modal opened={!!tx} onClose={onClose} title="Transaction Details" radius={16} size="sm" centered>
       <div className="mb-4 flex flex-col items-center gap-2 py-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: `${color}15` }}>
-          {isCredit ? <IconArrowDownLeft size={26} color={color} /> : <IconArrowUpRight size={26} color={color} />}
+          {reservation
+            ? reservationRelease
+              ? <IconLockOpen size={26} color={color} />
+              : <IconLock size={26} color={color} />
+            : isCredit
+              ? <IconArrowDownLeft size={26} color={color} />
+              : <IconArrowUpRight size={26} color={color} />}
         </div>
         <Text fw={700} fz={28} style={{ color, lineHeight: 1 }}>
-          {isCredit ? '+' : '-'}{amtNaira}
+          {reservation ? '' : isCredit ? '+' : '-'}{amtNaira}
         </Text>
         <Badge variant="light" size="sm" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>
           {entryType}
@@ -194,6 +205,7 @@ export function MyWallet() {
       </div>
 
       {/* Recent Transactions */}
+      <div className="mb-6"><RoscaCommitments /></div>
       <div className="mb-4 flex items-center justify-between">
         <Text fw={700} className="text-[18px] text-[#0F172A]">Recent Transactions</Text>
         <div className="flex items-center gap-4">
@@ -225,6 +237,8 @@ export function MyWallet() {
           {transactions.map((tx) => {
           const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
           const isCredit = entryType === 'CREDIT'
+          const reservation = tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType)
+          const reservationRelease = reservation && entryType === 'RELEASE'
           const label = resolveTxLabel(tx, entryType)
           return (
             <div
@@ -233,10 +247,14 @@ export function MyWallet() {
               className="flex cursor-pointer items-center justify-between rounded-xl border border-[#F3F4F6] bg-white px-4 py-3 transition-colors hover:bg-[#F9FAFB] active:bg-[#F3F4F6]"
             >
               <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isCredit ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
-                  {isCredit
-                    ? <IconArrowDownLeft size={18} color="#02A36E" />
-                    : <IconArrowUpRight size={18} color="#EF4444" />}
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${reservation ? 'bg-[#E7F4EE]' : isCredit ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
+                  {reservation
+                    ? reservationRelease
+                      ? <IconLockOpen size={18} color="#0B6B55" />
+                      : <IconLock size={18} color="#0B6B55" />
+                    : isCredit
+                      ? <IconArrowDownLeft size={18} color="#02A36E" />
+                      : <IconArrowUpRight size={18} color="#EF4444" />}
                 </div>
                 <div>
                   <Text fw={500} className="text-[14px] text-[#0F172A]">{label}</Text>
@@ -245,8 +263,8 @@ export function MyWallet() {
                   </Text>
                 </div>
               </div>
-              <Text fw={600} className={`text-[14px] ${isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
-                {isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+              <Text fw={600} className={`text-[14px] ${reservation ? 'text-[#0B6B55]' : isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
+                {reservation ? '' : isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>
           )

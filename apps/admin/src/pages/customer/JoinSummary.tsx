@@ -3,7 +3,7 @@ import { Text, Loader } from "@mantine/core";
 import { IconArrowLeft, IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  listRoscaCircles,
+  getRoscaCircle,
   getWalletBalance,
   type RoscaCircle,
 } from "@/utils/api";
@@ -34,9 +34,7 @@ export function JoinSummary() {
 
   useEffect(() => {
     Promise.all([
-      listRoscaCircles().then(
-        (circles) => circles.find((c) => c.id === id) ?? null,
-      ),
+      getRoscaCircle(id!),
       getWalletBalance()
         .then((b) => Number(b.available ?? b.total ?? 0) / 100)
         .catch(() => 0),

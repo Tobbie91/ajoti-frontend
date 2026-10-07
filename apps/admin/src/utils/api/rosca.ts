@@ -71,11 +71,13 @@ export interface MyJoinRequest {
   status: string;
   requestedAt?: string;
   collateralReserved?: string;
+  originalCollateralKobo?: string;
   circle?: {
     id?: string;
     name?: string;
     durationCycles?: number;
     currentCycle?: number;
+    status?: string;
     filledSlots?: number;
     maxSlots?: number;
     frequency?: string;

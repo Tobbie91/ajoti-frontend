@@ -70,6 +70,7 @@ export function Rosca() {
   const navigate = useNavigate();
   const admin = isCircleAdmin();
   const [activeTab, setActiveTab] = useState("All Groups");
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [leaveGroupId, setLeaveGroupId] = useState<string | null>(null);
@@ -150,7 +151,7 @@ export function Rosca() {
         setPostStartExitPenaltyPercent(res.data.postStartExitPenaltyPercent),
       )
       .catch(() => setPostStartExitPenaltyPercent(null));
-  }, []);
+  }, [refreshVersion]);
 
   useEffect(() => {
     if (activeTab !== "Joined") return;
@@ -158,7 +159,7 @@ export function Rosca() {
 
     function mapJoinRequest(r: MyJoinRequest): JoinedGroup {
       const circle = r.circle ?? {};
-      const completed = Number(circle.currentCycle ?? 0);
+      const completed = circle.status === "COMPLETED" ? Number(circle.durationCycles ?? 0) : Math.max(0, Number(circle.currentCycle ?? 1) - 1);
       const total = Number(circle.durationCycles ?? 1);
       const adminName = circle.admin
         ? `${circle.admin.firstName ?? ""} ${circle.admin.lastName ?? ""}`.trim()
@@ -187,7 +188,7 @@ export function Rosca() {
     }
 
     function mapParticipation(c: Participation): JoinedGroup {
-      const completed = Number(c.currentCycle ?? 0);
+      const completed = c.status === "COMPLETED" ? Number(c.durationCycles ?? 0) : Math.max(0, Number(c.currentCycle ?? 1) - 1);
       const total = Number(c.durationCycles ?? 1);
       const adminName = c.admin
         ? `${c.admin.firstName ?? ""} ${c.admin.lastName ?? ""}`.trim()
@@ -244,7 +245,7 @@ export function Rosca() {
         setJoinedGroups(merged);
       })
       .finally(() => setJoinedLoading(false));
-  }, [activeTab]);
+  }, [activeTab, refreshVersion]);
 
   const filtered = groups.filter((g) => {
     if (joinedIds.has(g.id)) return false;
@@ -264,6 +265,7 @@ export function Rosca() {
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6">
+      <div className="mb-3 flex justify-end"><button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="cursor-pointer text-sm font-semibold text-[#02A36E]">Refresh</button></div>
       <div className="flex flex-col gap-6">
         {/* Hero Banner */}
         <div className="relative hidden overflow-hidden rounded-2xl bg-gradient-to-r from-[#02A36E] to-[#00C853] px-6 py-8 text-white sm:block sm:px-10 sm:py-10">
@@ -641,6 +643,7 @@ export function Rosca() {
                       <Text size="sm" fw={600} className="mt-3 text-[#475569]">
                         {group.slots} available
                       </Text>
+                      <Text size="sm" c="dimmed" mb="sm">{group.duration}</Text>
 
                       <div className="mt-auto border-t border-[#F1F5F9] pt-4">
                         <div className="flex items-center gap-2.5">
