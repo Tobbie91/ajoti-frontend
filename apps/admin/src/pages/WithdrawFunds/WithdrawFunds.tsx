@@ -127,7 +127,10 @@ export function WithdrawFunds() {
   const canConfirmQuote = Boolean(quote) && quotedTotalNaira <= availableBalance;
 
   async function prepareReview(notice?: string) {
-    if (!canProceedToReview) return;
+    if (!canProceedToReview) {
+      setStep("select-account");
+      return;
+    }
     setQuoteLoading(true);
     setQuoteError(null);
     setReviewNotice(notice ?? null);
@@ -137,6 +140,7 @@ export function WithdrawFunds() {
       setStep("review");
     } catch (err) {
       setQuote(null);
+      setStep("select-account");
       setQuoteError(
         err instanceof Error
           ? err.message
