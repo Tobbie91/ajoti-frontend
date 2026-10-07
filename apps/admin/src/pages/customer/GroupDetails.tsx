@@ -9,6 +9,7 @@ import {
   IconStar,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { RoscaCommitments } from "@/components/RoscaCommitments";
 import {
   getRoscaCircle,
   getRoscaSchedules,
@@ -294,6 +295,7 @@ export function GroupDetails() {
         </div>
 
         {/* Private Group Notice */}
+        <RoscaCommitments circleId={id} refreshVersion={refreshVersion} />
         {isInviteOnly && (
           <div className="flex items-start gap-3 rounded-xl border border-[#FBBF24] bg-[#FFFBEB] px-5 py-4">
             <IconLock

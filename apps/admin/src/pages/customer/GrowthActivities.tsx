@@ -29,6 +29,7 @@ import {
   IconCash,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { RoscaCommitments } from "@/components/RoscaCommitments";
 import {
   getRoscaCircle,
   getRoscaSchedules,
@@ -171,6 +172,7 @@ export function GrowthActivities() {
         </div>
 
         {/* Tabs */}
+        <RoscaCommitments circleId={id} refreshVersion={refreshVersion} />
         <Tabs
           value={activeTab}
           onChange={(v) => setActiveTab(v || "Overview")}

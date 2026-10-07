@@ -22,7 +22,7 @@ type Transaction = {
   type: string
   time: string
   amount: string
-  direction: 'credit' | 'debit'
+  direction: 'credit' | 'debit' | 'reservation'
   date: string
   raw: WalletTransaction
 }
@@ -40,9 +40,9 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
 
   const entryType: string = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
   const movementType: string = (tx as Record<string, unknown>).movementType as string ?? ''
-  const label: string = movementType
+  const label: string = tx.description ?? (movementType
     ? movementType.charAt(0) + movementType.slice(1).toLowerCase()
-    : (tx.description ?? entryType)
+    : entryType)
   const amtNaira = Number(tx.amount) / 100
 
   return {
@@ -51,7 +51,7 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
     type: entryType,
     time: d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', hour12: true }),
     amount: `₦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
-    direction: entryType === 'CREDIT' ? 'credit' : 'debit',
+    direction: tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType) ? 'reservation' : entryType === 'CREDIT' ? 'credit' : 'debit',
     date: dateLabel,
     raw: tx,
   }
@@ -105,7 +105,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
             : <IconArrowUpRight size={26} color={color} />}
         </div>
         <Text fw={700} fz={28} style={{ color, lineHeight: 1 }}>
-          {isCredit ? '+' : '-'}{tx.amount}
+          {tx.direction === 'reservation' ? '' : isCredit ? '+' : '-'}{tx.amount}
         </Text>
         <Badge
           variant="light"
@@ -307,7 +307,7 @@ export function Transactions() {
                       </div>
                     </div>
                     <Text fw={600} className={`text-[14px] ${tx.direction === 'credit' ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
-                      {tx.direction === 'credit' ? '+' : '-'}{tx.amount}
+                      {tx.direction === 'reservation' ? '' : tx.direction === 'credit' ? '+' : '-'}{tx.amount}
                     </Text>
                   </div>
                 ))}

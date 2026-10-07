@@ -25,6 +25,7 @@ import {
 } from "@/utils/api";
 import type { WalletTransaction, TrustScore } from "@/utils/api";
 import { useWalletPrivacy } from "@/hooks/useWalletPrivacy";
+import { RoscaCommitments } from "@/components/RoscaCommitments";
 
 export function Home() {
   const navigate = useNavigate();
@@ -154,6 +155,7 @@ export function Home() {
             hidden={hidden}
           />
         </div>
+        <RoscaCommitments />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-7">
             <div className="hidden gap-3 sm:flex sm:gap-8">
@@ -321,11 +323,12 @@ export function Home() {
 function GroupTxStyled({ tx }: { tx: WalletTransaction }) {
   const entry = tx.entryType ?? tx.type ?? "";
   const credit = entry === "CREDIT";
+  const reservation = tx.bucketType === "ROSCA" && ["RESERVE", "RELEASE"].includes(entry);
   const amt = Number(tx.amount) / 100;
   const movement = tx.movementType ?? tx.description ?? entry;
-  const label = movement
+  const label = tx.description ?? (movement
     ? movement.charAt(0) + movement.slice(1).toLowerCase()
-    : "Transaction";
+    : "Transaction");
   const date = new Date(tx.createdAt).toLocaleDateString("en-NG", {
     day: "numeric",
     month: "short",
@@ -343,10 +346,10 @@ function GroupTxStyled({ tx }: { tx: WalletTransaction }) {
         </div>
       </div>
       <Text size="sm" fw={600} c={credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0">
-        {credit ? "+" : "-"}{String.fromCharCode(0x20a6)}{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+        {reservation ? "" : credit ? "+" : "-"}{String.fromCharCode(0x20a6)}{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
       </Text>
       <Text size="sm" fw={600} c={credit ? "#02A36E" : "#EF4444"} className="ml-3 shrink-0" style={{ display: "none" }}>
-        {credit ? "+" : "-"}₦{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+        {reservation ? "" : credit ? "+" : "-"}₦{amt.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
       </Text>
     </div>
   );

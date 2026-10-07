@@ -13,6 +13,7 @@ import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '
 import type { WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 import { isCircleAdmin } from '@/utils/auth-role'
+import { RoscaCommitments } from '@/components/RoscaCommitments'
 
 // Friendly overrides for sourceTypes whose humanized enum name reads awkwardly
 // or should be phrased for this audience specifically.
@@ -34,6 +35,7 @@ function formatTxLabel(raw: string): string {
 // movementTypes like TRANSFER would mask it (a fee credit and a plain
 // wallet-to-wallet transfer both have movementType=TRANSFER).
 function resolveTxLabel(tx: WalletTransaction, entryType: string): string {
+  if (tx.description) return tx.description
   const sourceType = (tx as Record<string, unknown>).sourceType as string | undefined
   if (sourceType && SOURCE_TYPE_LABELS[sourceType]) return SOURCE_TYPE_LABELS[sourceType]
 
@@ -61,6 +63,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
   if (!tx) return null
   const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
   const isCredit = entryType === 'CREDIT'
+  const reservation = tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType)
   const color = isCredit ? '#02A36E' : '#EF4444'
   const label = resolveTxLabel(tx, entryType)
   const d = new Date(tx.createdAt)
@@ -77,7 +80,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: WalletTransaction | null;
           {isCredit ? <IconArrowDownLeft size={26} color={color} /> : <IconArrowUpRight size={26} color={color} />}
         </div>
         <Text fw={700} fz={28} style={{ color, lineHeight: 1 }}>
-          {isCredit ? '+' : '-'}{amtNaira}
+          {reservation ? '' : isCredit ? '+' : '-'}{amtNaira}
         </Text>
         <Badge variant="light" size="sm" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>
           {entryType}
@@ -194,6 +197,7 @@ export function MyWallet() {
       </div>
 
       {/* Recent Transactions */}
+      <div className="mb-6"><RoscaCommitments /></div>
       <div className="mb-4 flex items-center justify-between">
         <Text fw={700} className="text-[18px] text-[#0F172A]">Recent Transactions</Text>
         <div className="flex items-center gap-4">
@@ -225,6 +229,7 @@ export function MyWallet() {
           {transactions.map((tx) => {
           const entryType = (tx as Record<string, unknown>).entryType as string ?? tx.type ?? ''
           const isCredit = entryType === 'CREDIT'
+          const reservation = tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType)
           const label = resolveTxLabel(tx, entryType)
           return (
             <div
@@ -246,7 +251,7 @@ export function MyWallet() {
                 </div>
               </div>
               <Text fw={600} className={`text-[14px] ${isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
-                {isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                {reservation ? '' : isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>
           )
