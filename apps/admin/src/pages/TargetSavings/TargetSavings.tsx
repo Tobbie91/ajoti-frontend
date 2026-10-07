@@ -93,6 +93,10 @@ function GroupRules({ plan }: { plan?: TargetSavingsPlan | null }) {
   );
 }
 
+function investmentActionsUnavailable(investment: TargetSavingsPlan["investment"]) {
+  return investment.enabled || investment.lifecycleStatus !== "LEGACY";
+}
+
 function LocalReviewSavingsCard() {
   const [saved, setSaved] = useState(1000);
   const [available, setAvailable] = useState(5000);
@@ -621,6 +625,7 @@ export function TargetSavings() {
 
 function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean }) {
   const mine = plan.myMembership;
+  const providerActionsUnavailable = investmentActionsUnavailable(plan.investment);
   const savedKobo = BigInt(mine?.savedAmountKobo ?? "0");
   const saved = toNaira(savedKobo.toString());
   const cancellationFeeKobo = (savedKobo * 150n) / 10_000n;
@@ -662,6 +667,10 @@ function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavings
   };
 
   const addMoney = async () => {
+    if (providerActionsUnavailable) {
+      setError("Provider-backed contributions are unavailable until the product and full provider lifecycle are approved and enabled.");
+      return;
+    }
     if (!mine || !kycReady || amount <= 0 || amount > remaining) return;
     setSaving(true);
     setError("");
@@ -677,7 +686,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavings
   };
 
   const cancel = async () => {
-    if (!mine || plan.status !== "ACTIVE" || plan.investment.enabled || canceling) return;
+    if (!mine || plan.status !== "ACTIVE" || providerActionsUnavailable || canceling) return;
     setCanceling(true);
     setError("");
     try {
@@ -701,19 +710,19 @@ function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavings
       <Progress value={progress} size="xl" radius="xl" mt="sm" color="teal" />
       <Group justify="space-between" mt="xs"><Text size="sm" c="dimmed">{progress}% complete</Text><Text size="sm" fw={600}>{money(String(Math.round(remaining * 100)))} remaining</Text></Group>
       {plan.type === "GROUP" && <Text size="xs" c="dimmed" mt="xs">Personal target {money(plan.targetAmountKobo)} · Group target {money(plan.groupTargetAmountKobo)}</Text>}
-      {plan.investment.enabled && <Alert mt="md" color="orange" title="Investment-backed target is not active">Provider: {plan.investment.provider ?? "Not assigned"}. Contributions, cancellation and maturity settlement remain disabled until provider operations are enabled.</Alert>}
+      {providerActionsUnavailable && <Alert mt="md" color="orange" title="Investment-backed target is not active">Provider: {plan.investment.provider ?? "Not assigned"}. Contributions, cancellation and maturity settlement remain disabled until product eligibility and provider operations are approved and enabled.</Alert>}
 
       <Group grow mt="xl" align="flex-start">
         <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>{money(plan.contributionAmountKobo)} {plan.frequency.toLowerCase()}</Text></div>
         <div><Text size="xs" c="dimmed">Matures</Text><Text fw={700}>{new Date(plan.maturityDate).toLocaleDateString()}</Text></div>
       </Group>
 
-      <Button fullWidth size="md" mt="xl" disabled={!kycReady || maturityReached || !mine || remaining <= 0 || plan.status !== "ACTIVE" || plan.investment.enabled} onClick={() => setOpen(true)}>{actionLabel}</Button>
+      <Button fullWidth size="md" mt="xl" disabled={!kycReady || maturityReached || !mine || remaining <= 0 || plan.status !== "ACTIVE" || providerActionsUnavailable} onClick={() => setOpen(true)}>{actionLabel}</Button>
       {!kycReady && <Alert mt="md" color="yellow">Complete KYC Level 1 before adding money to this goal.</Alert>}
       {maturityReached && <Alert mt="md" color="blue" title="Your savings have matured">Contributions are closed for this goal.</Alert>}
       {targetReached && !maturityReached && plan.status === "ACTIVE" && <Alert mt="md" color="green" title="Target reached">You have finished contributing. Your savings will be released at maturity; you can also cancel early with a 1.5% fee on the amount saved.</Alert>}
-      {plan.status === "ACTIVE" && mine && !maturityReached && !plan.investment.enabled && <Button mt="md" variant="light" color="red" onClick={() => setCancelOpen(true)}>Cancel my savings</Button>}
-      {plan.status === "ACTIVE" && mine && plan.investment.enabled && <Alert mt="md" color="orange" title="Cancellation unavailable">This provider-backed plan cannot be cancelled until safe provider redemption is available.</Alert>}
+      {plan.status === "ACTIVE" && mine && !maturityReached && !providerActionsUnavailable && <Button mt="md" variant="light" color="red" onClick={() => setCancelOpen(true)}>Cancel my savings</Button>}
+      {plan.status === "ACTIVE" && mine && providerActionsUnavailable && <Alert mt="md" color="orange" title="Cancellation unavailable">This provider-backed plan cannot be cancelled until product eligibility and safe provider redemption are approved.</Alert>}
 
       <Card withBorder radius="md" p="md" mt="lg" bg="gray.0">
         <Text fw={700}>Your savings plan</Text>
@@ -741,160 +750,11 @@ function CustomerTargetCard({ plan, onChanged, kycReady }: { plan: TargetSavings
       )}
 
       <Modal opened={open} onClose={() => setOpen(false)} title={actionLabel} centered>
-        <Stack><Text size="sm" c="dimmed">Available to save is managed securely behind the scenes. Your goal has {money(String(Math.round(remaining * 100)))} left to reach.</Text><NumberInput label="Amount" min={1} max={remaining} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," /><Text size="sm" c="dimmed">Suggested contribution: {money(plan.contributionAmountKobo)}</Text><Alert color="orange" title="Cancellation fee">You may cancel before maturity; a 1.5% fee applies to the amount you have actually saved.</Alert>{error && <Alert color="red">{error}</Alert>}<Button loading={saving} onClick={addMoney} disabled={amount <= 0 || amount > remaining}>Add money</Button></Stack>
+        <Stack><Text size="sm" c="dimmed">Available to save is managed securely behind the scenes. Your goal has {money(String(Math.round(remaining * 100)))} left to reach.</Text><NumberInput label="Amount" min={1} max={remaining} value={amount} onChange={(value) => setAmount(Number(value) || 0)} prefix="₦" thousandSeparator="," /><Text size="sm" c="dimmed">Suggested contribution: {money(plan.contributionAmountKobo)}</Text><Alert color="orange" title="Cancellation fee">You may cancel before maturity; a 1.5% fee applies to the amount you have actually saved.</Alert>{providerActionsUnavailable && <Alert color="orange" title="Provider action unavailable">Contributions are disabled until the product and provider lifecycle are approved and enabled.</Alert>}{error && <Alert color="red">{error}</Alert>}<Button loading={saving} onClick={addMoney} disabled={providerActionsUnavailable || amount <= 0 || amount > remaining}>Add money</Button></Stack>
       </Modal>
       <Modal opened={cancelOpen} onClose={() => !canceling && setCancelOpen(false)} title="Cancel your savings" centered>
-        <Stack><Alert color="orange" title="A 1.5% cancellation fee applies">The fee is calculated on your actual saved balance. For this target, {money(savedKobo.toString())} saved means {money(cancellationFeeKobo.toString())} fee and {money(cancellationReturnKobo.toString())} returned to your Ajoti wallet. {plan.type === "GROUP" ? "Only your membership will be cancelled; other members and their money are unaffected." : "Your individual plan will be cancelled."}</Alert>{error && <Alert color="red">{error}</Alert>}<Group justify="flex-end"><Button variant="default" disabled={canceling} onClick={() => setCancelOpen(false)}>Keep savings</Button><Button color="red" loading={canceling} onClick={cancel}>Confirm cancellation</Button></Group></Stack>
+        <Stack>{providerActionsUnavailable && <Alert color="orange" title="Provider action unavailable">Cancellation is disabled until safe provider redemption is approved and enabled.</Alert>}<Alert color="orange" title="A 1.5% cancellation fee applies">The fee is calculated on your actual saved balance. For this target, {money(savedKobo.toString())} saved means {money(cancellationFeeKobo.toString())} fee and {money(cancellationReturnKobo.toString())} returned to your Ajoti wallet. {plan.type === "GROUP" ? "Only your membership will be cancelled; other members and their money are unaffected." : "Your individual plan will be cancelled."}</Alert>{error && <Alert color="red">{error}</Alert>}<Group justify="flex-end"><Button variant="default" disabled={canceling} onClick={() => setCancelOpen(false)}>Keep savings</Button><Button color="red" loading={canceling} disabled={providerActionsUnavailable} onClick={cancel}>Confirm cancellation</Button></Group></Stack>
       </Modal>
-    </Card>
-  );
-}
-
-function TargetCard({ plan, onChanged, kycReady }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean }) {
-  const mine = plan.myMembership;
-  const plannedAmount = toNaira(plan.contributionAmountKobo);
-  const remaining = toNaira(mine?.remainingAmountKobo ?? "0");
-  const [amount, setAmount] = useState(Math.min(plannedAmount, remaining || plannedAmount));
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    const nextRemaining = toNaira(plan.myMembership?.remainingAmountKobo ?? "0");
-    setAmount(Math.min(toNaira(plan.contributionAmountKobo), nextRemaining || toNaira(plan.contributionAmountKobo)));
-  }, [plan.contributionAmountKobo, plan.myMembership?.remainingAmountKobo]);
-
-  const maturityReached = new Date(plan.maturityDate).getTime() <= Date.now();
-  const targetReached = !mine || Number(mine.remainingAmountKobo) <= 0;
-  const contributionAvailable = plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached;
-  const canContribute = contributionAvailable && kycReady;
-  const organiser = plan.members.find((member) => member.userId === plan.ownerId);
-
-  const inviteUrl = plan.inviteToken
-    ? `${window.location.origin}${window.location.pathname}?targetInviteId=${encodeURIComponent(plan.id)}&targetInviteToken=${encodeURIComponent(plan.inviteToken)}`
-    : "";
-
-  const copyInvite = async () => {
-    if (!inviteUrl) return;
-    await navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  };
-
-  const shareInvite = async () => {
-    if (!inviteUrl) return;
-    if (navigator.share) {
-      await navigator.share({ title: `Join ${plan.name} on Ajoti`, text: `You've been invited to join ${plan.name} on Ajoti Target Savings.`, url: inviteUrl });
-      return;
-    }
-    await copyInvite();
-  };
-
-  const save = async () => {
-    if (!canContribute || amount <= 0) return;
-    setSaving(true);
-    setError("");
-    try {
-      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)), `target-${plan.id}-${crypto.randomUUID()}`);
-      await onChanged();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to save to this target");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Card withBorder radius="md" p="lg">
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Group gap="xs">
-            <Text fw={700} fz="lg">{plan.name}</Text>
-            {plan.type === "GROUP" && <Badge variant="light" color={plan.isPublic ? "green" : "gray"}>{plan.isPublic ? "Public" : "Private"}</Badge>}
-          </Group>
-          <Text size="sm" c="dimmed">{plan.type === "GROUP" ? `${plan.memberCount} members · Group accountability` : "Individual target"} · {plan.frequency.toLowerCase()}</Text>
-        </div>
-        <Text size="sm" fw={600}>{plan.status}</Text>
-      </Group>
-
-      <Progress mt="md" value={mine?.progressPercent ?? 0} />
-      <Group justify="space-between" mt="xs">
-        <Text size="sm">{money(mine?.savedAmountKobo ?? "0")} saved</Text>
-        <Text size="sm">Personal target {money(plan.targetAmountKobo)}</Text>
-      </Group>
-
-      <Text size="xs" c="dimmed" mt="xs">Planned contribution: {money(plan.contributionAmountKobo)} {plan.frequency.toLowerCase()} · Matures {new Date(plan.maturityDate).toLocaleDateString()}</Text>
-      {plan.investment.enabled && (
-        <Alert mt="md" color="orange" title="Investment-backed target is not active">
-          Provider: {plan.investment.provider ?? "Not assigned"}. Contributions and maturity settlement remain disabled until provider operations are enabled.
-        </Alert>
-      )}
-      {plan.type === "GROUP" && <Text size="xs" c="dimmed" mt={2}>Current group target: {money(plan.groupTargetAmountKobo)}. This grows as new members join.</Text>}
-
-      {targetReached && !maturityReached && plan.status === "ACTIVE" && (
-        <Alert mt="md" color="green" title="Target reached">You have finished contributing. Your savings will be released at maturity; you can also cancel early with a 1.5% fee on the amount saved.</Alert>
-      )}
-      {maturityReached && plan.status === "ACTIVE" && (
-        <Alert mt="md" color="blue" title="Maturity reached">Contributions are closed. Your saved amount is being released to your Ajoti wallet.</Alert>
-      )}
-      {contributionAvailable && !kycReady && (
-        <Alert mt="md" color="yellow">Complete KYC Level 1 before contributing to this target.</Alert>
-      )}
-
-      {canContribute && (
-        <>
-          <Group mt="md" align="end">
-            <NumberInput
-              label="Save now"
-              description={`Suggested: ${money(plan.contributionAmountKobo)}. You can save more or less.`}
-              min={1}
-              max={remaining}
-              value={amount}
-              onChange={(v) => setAmount(Number(v) || 0)}
-              prefix="₦"
-              thousandSeparator=","
-              style={{ flex: 1 }}
-            />
-            <Button loading={saving} disabled={amount <= 0 || amount > remaining} onClick={save}>Save now</Button>
-          </Group>
-          <Text size="xs" c="dimmed" mt={4}>Remaining target: {money(mine?.remainingAmountKobo ?? "0")}. Multiple manual contributions are allowed; Ajoti does not auto-debit.</Text>
-        </>
-      )}
-
-      {error && <Alert color="red" mt="sm">{error}</Alert>}
-
-      {plan.type === "GROUP" && plan.inviteToken && (
-        <Card withBorder radius="md" p="sm" mt="md">
-          <Group justify="space-between" align="center">
-            <div>
-              <Text size="sm" fw={600}>Invite people</Text>
-              <Text size="xs" c="dimmed">Share a normal Ajoti link. Invitees never need to handle an invitation token.</Text>
-            </div>
-            <Group gap="xs">
-              <Button size="xs" variant="default" leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />} onClick={copyInvite}>{copied ? "Copied" : "Copy link"}</Button>
-              <Button size="xs" variant="light" leftSection={<IconShare size={14} />} onClick={shareInvite}>Share</Button>
-            </Group>
-          </Group>
-        </Card>
-      )}
-
-      {plan.type === "GROUP" && (
-        <Stack gap={4} mt="md">
-          {plan.members
-            .slice()
-            .sort((a, b) => b.progressPercent - a.progressPercent)
-            .map((m, i) => (
-              <Group key={m.id} justify="space-between">
-                <Group gap="xs">
-                  <Text size="sm">{i + 1}. {m.user.firstName} {m.user.lastName}</Text>
-                  {m.userId === plan.ownerId && <Badge size="xs" variant="light">Organiser</Badge>}
-                </Group>
-                <Text size="sm">{m.progressPercent.toFixed(0)}%</Text>
-              </Group>
-            ))}
-          {organiser && plan.members.length === 0 && <Text size="xs" c="dimmed">Organised by {organiser.user.firstName}</Text>}
-        </Stack>
-      )}
     </Card>
   );
 }
