@@ -72,7 +72,7 @@ function contributionDate(circle: { status?: string; nextContributionDeadline?: 
     return date.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
   }
   if (circle.status === "DRAFT") return "After the organiser starts the group";
-  if (["COMPLETED", "CLOSED"].includes(circle.status ?? "")) return "No further contributions";
+  if (["COMPLETED", "CANCELLED"].includes(circle.status ?? "")) return "No further contributions";
   return "Schedule unavailable — open the group for details";
 }
 

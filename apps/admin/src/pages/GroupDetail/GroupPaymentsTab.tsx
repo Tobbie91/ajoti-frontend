@@ -34,27 +34,36 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
   const [paymentContribsLoading, setPaymentContribsLoading] = useState(false)
   const [disbursements, setDisbursements] = useState<ApiDisbursement[]>([])
   const [disbursementsLoading, setDisbursementsLoading] = useState(false)
+  const [contributionError, setContributionError] = useState(false)
+  const [disbursementError, setDisbursementError] = useState(false)
 
   // Refetches on every tab-visit (isActive flips to true) and whenever refreshToken bumps,
   // matching the original "refetch each time you switch into this tab" behavior.
   useEffect(() => {
     if (isActive && circleId) {
+      let active = true
       setDisbursementsLoading(true)
+      setDisbursementError(false)
       getAdminDisbursements(circleId)
-        .then(setDisbursements)
-        .catch(() => setDisbursements([]))
-        .finally(() => setDisbursementsLoading(false))
+        .then(value => { if (active) setDisbursements(value) })
+        .catch(() => { if (active) setDisbursementError(true) })
+        .finally(() => { if (active) setDisbursementsLoading(false) })
+      return () => { active = false }
     }
   }, [isActive, circleId, refreshToken])
 
   useEffect(() => {
     if (!isActive || !circleId || !selectedRound) return
+    let active = true
     setPaymentContribsLoading(true)
+    setPaymentContribs(null)
+    setContributionError(false)
     getAdminCircleContributions(circleId, Number(selectedRound))
-      .then(setPaymentContribs)
-      .catch(() => setPaymentContribs(null))
-      .finally(() => setPaymentContribsLoading(false))
-  }, [isActive, selectedRound, circleId])
+      .then(value => { if (active) setPaymentContribs(value) })
+      .catch(() => { if (active) setContributionError(true) })
+      .finally(() => { if (active) setPaymentContribsLoading(false) })
+    return () => { active = false }
+  }, [isActive, selectedRound, circleId, refreshToken])
 
   return (
     <Stack gap="lg">
@@ -180,6 +189,8 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                   <Loader size="sm" color={PRIMARY} />
                 </Table.Td>
               </Table.Tr>
+            ) : contributionError ? (
+              <Table.Tr><Table.Td colSpan={5}><Text role="alert" c="red" ta="center" py="xl">Could not load contributions. Refresh the group to try again.</Text></Table.Td></Table.Tr>
             ) : (paymentContribs?.contributions ?? []).length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={5}>
@@ -232,7 +243,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
           py="md"
           style={{ borderTop: '1px solid #e9ecef', background: '#f8f9fa' }}
         >
-          <Group gap="xl">
+          {paymentContribs && financialHealth && !paymentContribsLoading && !contributionError && <Group gap="xl">
             <Box>
               <Text fz="xs" c="dimmed">Total Expected</Text>
               <Text fz="sm" fw={600}>
@@ -258,7 +269,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                 })()}
               </Text>
             </Box>
-          </Group>
+          </Group>}
           <Button
             variant="outline"
             size="xs"
@@ -295,6 +306,8 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                   <Loader size="sm" color={PRIMARY} />
                 </Table.Td>
               </Table.Tr>
+            ) : disbursementError ? (
+              <Table.Tr><Table.Td colSpan={6}><Text role="alert" c="red" ta="center" py="xl">Could not load disbursements. Refresh the group to try again.</Text></Table.Td></Table.Tr>
             ) : disbursements.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={6}>
