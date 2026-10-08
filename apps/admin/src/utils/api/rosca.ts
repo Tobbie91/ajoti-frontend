@@ -18,6 +18,8 @@ export interface RoscaCircle {
   frequency: string;
   durationCycles: number;
   currentCycle?: number;
+  initialContributionDeadline?: string | null;
+  nextContributionDeadline?: string | null;
   maxSlots: number;
   totalSlots: number;
   filledSlots: number;
@@ -82,7 +84,8 @@ export interface MyJoinRequest {
     maxSlots?: number;
     frequency?: string;
     contributionAmount?: number | string;
-    nextPayoutDate?: string;
+    initialContributionDeadline?: string | null;
+    nextContributionDeadline?: string | null;
     admin?: { firstName?: string; lastName?: string };
   };
   [key: string]: unknown;

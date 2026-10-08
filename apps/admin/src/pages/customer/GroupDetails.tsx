@@ -211,12 +211,14 @@ export function GroupDetails() {
     <div className="mx-auto w-full max-w-[1200px] px-6 py-6">
       <div className="flex flex-col gap-6">
         {/* Back button + Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={() => navigate("/rosca")}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-[#E5E7EB] bg-white"
+            type="button"
+            onClick={() => navigate(isMember ? "/rosca?tab=joined" : "/rosca")}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm"
           >
             <IconArrowLeft size={18} color="#374151" />
+            {isMember ? "Back to joined groups" : "Back to groups"}
           </button>
           <Text fw={700} className="text-[22px] text-[#0F172A]">
             Group Details
