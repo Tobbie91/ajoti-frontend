@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { RoscaCommitments } from "@/components/RoscaCommitments";
+import { RoscaJoinAction } from "@/components/RoscaJoinAction";
 import {
   getRoscaCircle,
   getRoscaSchedules,
@@ -498,12 +499,10 @@ export function GroupDetails() {
                 View Activities
               </button>
             ) : (
-              <button
-                onClick={() => navigate(`/rosca/${id}/join`)}
-                className="w-full cursor-pointer rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white"
-              >
-                Request to Join
-              </button>
+              <RoscaJoinAction circleId={id!} unavailableReason={circleStatus !== "DRAFT" ? "This group is no longer accepting members." : Number(group.slotsLeft) <= 0 ? "This group is full." : undefined} />
+            )}
+            {isCurrentUserAdmin && !isMember && (
+              <RoscaJoinAction circleId={id!} label="Join as a member" unavailableReason={circleStatus !== "DRAFT" ? "This group is no longer accepting members." : Number(group.slotsLeft) <= 0 ? "This group is full." : undefined} />
             )}
             {canLeave && !leaveConfirm && (
               <button

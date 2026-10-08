@@ -7,6 +7,7 @@ import {
 } from "@mantine/core";
 import { IconArrowLeft, IconAlertCircle } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useRoscaJoinEligibility } from "@/hooks/useRoscaJoinEligibility";
 import {
   getCircleRules,
   getWalletBalance,
@@ -17,6 +18,8 @@ import {
 export function RequestToJoin() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { eligibility, error: eligibilityError, reload: reloadEligibility } = useRoscaJoinEligibility();
+  const [isOrganiser, setIsOrganiser] = useState(false);
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(true);
   const [requirementsLoaded, setRequirementsLoaded] = useState(false);
@@ -34,6 +37,7 @@ export function RequestToJoin() {
         if (!active) return;
         const circle = circles.find((item) => item.id === id);
         if (!circle) throw new Error("Group not found.");
+        setIsOrganiser(circle.isRequestingUserAdmin ?? false);
         setContributionKobo(Number(circle.contributionAmount));
         setCollateralPercent(rules.data.collateralRatioPercent);
         setAvailableKobo(Number(balance.available ?? balance.total ?? 0));
@@ -65,6 +69,7 @@ export function RequestToJoin() {
     })}`;
 
   const handleSubmit = async () => {
+    if (!eligibility?.canJoin) return;
     if (!agreed) {
       setAgreementError("You must agree to the group rules and payout structure.");
       return;
@@ -80,7 +85,7 @@ export function RequestToJoin() {
     setLoading(true);
     try {
       await joinRoscaCircle(id!);
-      navigate(`/rosca/${id}/summary`);
+      navigate(isOrganiser ? `/rosca/groups/${id}` : `/rosca/${id}/summary`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join group.");
       setLoading(false);
@@ -110,13 +115,14 @@ export function RequestToJoin() {
         <div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate(-1)}
+              aria-label="Back to group"
+              onClick={() => navigate(isOrganiser ? `/rosca/groups/${id}` : `/rosca/${id}`)}
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white"
             >
               <IconArrowLeft size={18} color="#374151" />
             </button>
             <Text fw={700} className="text-[22px] text-[#0F172A]">
-              Request to Join Group
+              {isOrganiser ? "Join your group as a member" : "Request to Join Group"}
             </Text>
           </div>
           <Text fw={400} className="mt-2 ml-12 text-[14px] text-[#6B7280]">
@@ -134,6 +140,13 @@ export function RequestToJoin() {
             {error}
           </Alert>
         )}
+        <Text size="sm" c="dimmed">
+          {eligibilityError ? 'Unable to check your group participation limit.' : eligibility
+            ? eligibility.canJoin ? `${eligibility.ongoingMemberships} of ${eligibility.limit} ongoing memberships, including pending requests.`
+              : `You can join up to ${eligibility.limit} ongoing groups at a time. Pending requests count toward this limit.`
+            : 'Checking your participation limit…'}
+        </Text>
+        {eligibilityError && <button type="button" onClick={reloadEligibility}>Check again</button>}
 
         {/* Form */}
         <div className="flex flex-col gap-5">
@@ -142,7 +155,7 @@ export function RequestToJoin() {
               Refundable collateral required: {formatNaira(requiredCollateralKobo)}
             </Text>
             <Text fw={400} className="mt-1 text-[13px] text-[#4B5563]">
-              This is {collateralPercent}% of the {formatNaira(contributionKobo)} contribution. It will be reserved while your request is reviewed and returned if the request is rejected or cancelled.
+              This is {collateralPercent}% of the {formatNaira(contributionKobo)} contribution. {isOrganiser ? 'Joining reserves this collateral and adds you as an active member. Managing a group alone does not give you a member slot.' : 'It will be reserved while your request is reviewed and returned if the request is rejected or cancelled.'}
             </Text>
             <div className="mt-3 flex flex-col gap-1 text-[13px]">
               <Text>Available balance: <strong>{formatNaira(availableKobo)}</strong></Text>
@@ -178,10 +191,10 @@ export function RequestToJoin() {
 
           <button
             onClick={handleSubmit}
-            disabled={!hasSufficientBalance}
+            disabled={!hasSufficientBalance || !eligibility?.canJoin}
             className="mt-2 w-full rounded-xl bg-[#02A36E] py-4 text-[15px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CA3AF]"
           >
-            Request to Join
+            {isOrganiser ? 'Confirm & Join' : 'Request to Join'}
           </button>
         </div>
       </div>

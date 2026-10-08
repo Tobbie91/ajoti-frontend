@@ -65,6 +65,7 @@ import { GroupNotificationsTab } from './GroupNotificationsTab'
 import { GroupPaymentsTab } from './GroupPaymentsTab'
 import { GroupPayoutsTab } from './GroupPayoutsTab'
 import { GroupMembersTab } from './GroupMembersTab'
+import { RoscaJoinAction } from '@/components/RoscaJoinAction'
 
 const PRIMARY = '#0b6b55'
 
@@ -487,9 +488,14 @@ export function GroupDetail() {
   const filteredMembers = apiMembers.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase()),
   )
+  const currentUserId = (() => {
+    try { return JSON.parse(localStorage.getItem('user') ?? '{}').id ?? '' } catch { return '' }
+  })()
+  const hasOwnMembership = apiMembers.some(m => m.userId === currentUserId && (m.status === 'ACTIVE' || m.status === 'PENDING'))
 
   return (
     <Stack gap="lg">
+      <Button variant="subtle" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/rosca/groups')}>Back to groups</Button>
       {circleLoading && (
         <Group justify="center" py="xl">
           <Loader size="md" color={PRIMARY} />
@@ -535,6 +541,12 @@ export function GroupDetail() {
               <Stack gap={8}>
                 {isPending && (
                   <>
+                    {!hasOwnMembership && circleData && (
+                      <Box>
+                        <Text size="sm" mb={6}>Managing this group does not fill a member slot. Join to contribute and receive a payout.</Text>
+                        <RoscaJoinAction circleId={id!} label="Join as a member" unavailableReason={slotsAreFull ? 'This group is full.' : undefined} />
+                      </Box>
+                    )}
                     {slotsAreFull ? (
                       <Box>
                         <Button
@@ -549,7 +561,7 @@ export function GroupDetail() {
                       </Box>
                     ) : (
                       <Text fz={12} c="dimmed" style={{ fontStyle: 'italic' }}>
-                        {circleData?.filledSlots ?? 0}/{circleData?.maxSlots ?? '?'} slots filled - invite more members to start
+                        {circleData?.filledSlots ?? 0}/{circleData?.maxSlots ?? '?'} active member slots filled. {pendingJoinCount} pending requests need approval. Fill all slots before starting the group.
                       </Text>
                     )}
                     <Group gap="sm">
@@ -624,7 +636,7 @@ export function GroupDetail() {
             </ThemeIcon>
             <Box>
               <Text fw={700} fz="sm" style={{ color: '#15803d' }}>All slots filled - circle is ready to start!</Text>
-              <Text fz="xs" style={{ color: '#166534' }}>Click "Start Circle" to set the first contribution deadline and activate the savings cycle.</Text>
+              <Text fz="xs" style={{ color: '#166534' }}>Click "Start Circle" to set the first contribution deadline and activate the savings cycle. For assigned payouts, every member needs a payout position.</Text>
             </Box>
           </Group>
           <Button
