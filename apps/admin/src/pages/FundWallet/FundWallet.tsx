@@ -49,7 +49,7 @@ export function FundWallet() {
           <Text fw={400} className="mb-4 text-[13px] text-red-500">{error}</Text>
           {/BVN/i.test(error) && /verif/i.test(error) && (
             <div className="mb-4">
-              <Text size="sm" mb="sm">Your BVN must be verified before this account can be created. Review your verification status. If it already shows approved, contact support to resolve the account setup.</Text>
+              <Text size="sm" mb="sm">Your BVN must be verified before this account can be created. Complete any missing details on your KYC page, even if your status shows approved. Contact support if you still need help.</Text>
               <div className="flex flex-wrap gap-2">
                 <Button color="teal" onClick={() => navigate('/kyc')}>Review verification</Button>
                 <Button variant="outline" color="teal" onClick={() => navigate('/support')}>Contact support</Button>

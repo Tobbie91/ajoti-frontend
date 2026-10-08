@@ -11,7 +11,7 @@ test('BVN provisioning failures offer verification and support instead of only r
   await page.goto('/fund-wallet')
   await expect(page.getByRole('button', { name: 'Review verification' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Contact support', exact: true })).toBeVisible()
-  await expect(page.getByText(/If it already shows approved/)).toBeVisible()
+  await expect(page.getByText(/Complete any missing details on your KYC page/)).toBeVisible()
   failed = false
   await page.getByRole('button', { name: 'Try again', exact: true }).click()
   await expect(page.getByText('9900000001')).toBeVisible()

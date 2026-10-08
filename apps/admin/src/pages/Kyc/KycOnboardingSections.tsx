@@ -36,10 +36,12 @@ export function OnboardingFlow({
   rejectionReason,
   onComplete,
   identityVerified = false,
+  recovery = false,
 }: {
   rejectionReason?: string | null;
   onComplete: () => void;
   identityVerified?: boolean;
+  recovery?: boolean;
 }) {
   const navigate = useNavigate();
   const [step, setStep] = useState<OnboardingStep>(identityVerified ? 2 : 1);
@@ -156,7 +158,8 @@ export function OnboardingFlow({
           nextOfKinPhone: normalizedKinPhone,
         });
         setVerifyCooldown(0);
-        navigate("/my-profile", { state: { kycLevelOneComplete: true } });
+        if (recovery) onComplete();
+        else navigate("/my-profile", { state: { kycLevelOneComplete: true } });
       }
     } catch (err) {
       setError(
@@ -213,6 +216,11 @@ export function OnboardingFlow({
         </div>
       </div>
       <div className="mx-auto max-w-[600px] px-6 py-8">
+        {recovery && (
+          <Alert color="teal" radius="md" mb="lg" title="Complete missing details for wallet funding">
+            Enter and verify your missing identity details. Your current KYC level is preserved. Once complete, you will return to Fund Wallet.
+          </Alert>
+        )}
         {rejectionReason && (
           <Alert
             icon={<IconAlertCircle size={16} />}
@@ -404,7 +412,7 @@ export function OnboardingFlow({
               {submitting
                 ? "Saving..."
                 : identityVerified
-                  ? "Submit & Complete Level 1"
+                  ? recovery ? "Complete Missing Details" : "Submit & Complete Level 1"
                   : "Save & Continue to Verification"}
             </button>
           </div>

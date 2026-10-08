@@ -95,6 +95,7 @@ export function resendOtp(email: string): Promise<{ message: string }> {
 // ── KYC ─────────────────────────────────────────────────────────────────────
 
 export interface KycStatus {
+  requiresIdentityCompletion?: boolean;
   ninVerified: boolean;
   bvnVerified: boolean;
   nokSubmitted: boolean;
