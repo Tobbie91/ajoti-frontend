@@ -378,6 +378,7 @@ export interface AppNotification {
   message: string;
   read: boolean;
   createdAt: string;
+  actionUrl?: string | null;
   [key: string]: unknown;
 }
 
@@ -395,6 +396,7 @@ export async function getNotifications(): Promise<AppNotification[]> {
       ...r,
       message: (r.message ?? r.body ?? "") as string,
       read: (r.read ?? r.isRead ?? false) as boolean,
+      actionUrl: typeof r.actionUrl === 'string' ? r.actionUrl : null,
     } as AppNotification;
   });
 }
