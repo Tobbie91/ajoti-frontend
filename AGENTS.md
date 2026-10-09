@@ -36,3 +36,11 @@ Each app's `build` script is `tsc -b && vite build`, but `tsc --noEmit` and `tsc
 ## Work cadence
 
 Follow the root AGENTS.md cadence: group related edits, verify once per completed unit with proportionate checks, and commit that unit locally. Repeat checks only for new changes, failures or unresolved risks. Keep progress updates to meaningful findings and blockers; summarize verification briefly at completion.
+
+## Minimalism and the 10-minute checkpoint
+
+Use the smallest correct solution that satisfies the request. Keep simple edits simple: avoid unrelated cleanup, speculative abstractions, extra documentation, new tests that merely mirror the implementation, and repeated checks. Reuse existing code and conventions. Spend effort in proportion to the task and its actual risks; run required checks once per completed unit.
+
+Track elapsed time from starting the task, including investigation, tool runs and verification. If the task is still incomplete after 10 minutes, ask the user to clarify the remaining scope or priorities before expanding the work. Briefly state what is done, what remains and why it is taking longer. Offer a concrete minimal next step. Do not silently turn a simple edit into hours of work or treat silence as approval for broader scope. While awaiting clarification, finish already-running checks and useful work within the agreed scope; pause work that depends on the answer.
+
+Ask earlier when ambiguity materially affects the solution. The time checkpoint does not authorize skipping necessary correctness checks or existing approval rules. Keep communication brief.
