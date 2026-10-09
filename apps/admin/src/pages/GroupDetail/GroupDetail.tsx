@@ -65,28 +65,10 @@ import { GroupNotificationsTab } from './GroupNotificationsTab'
 import { GroupPaymentsTab } from './GroupPaymentsTab'
 import { GroupPayoutsTab } from './GroupPayoutsTab'
 import { GroupMembersTab } from './GroupMembersTab'
+import { RoscaJoinAction } from '@/components/RoscaJoinAction'
+import { GroupFinancialSummary } from './GroupFinancialSummary'
 
 const PRIMARY = '#0b6b55'
-
-interface GroupInfo {
-  id: string
-  name: string
-  tagline: string
-  status: 'Active' | 'Pending' | 'Completed'
-  balance: string
-}
-
-const mockGroups: GroupInfo[] = [
-  { id: '1', name: 'Mamagoals', tagline: 'Grow Together, Save Smarter', status: 'Active', balance: '₦350,000.00' },
-  { id: '2', name: 'Men Thrive', tagline: 'Building Wealth Together', status: 'Active', balance: '₦180,000.00' },
-  { id: '5', name: 'Hustle Squad', tagline: 'Hustle Hard, Save Smart', status: 'Pending', balance: '₦0.00' },
-  { id: '10', name: 'Legacy Builders', tagline: 'Building a Legacy of Savings', status: 'Pending', balance: '₦0.00' },
-  { id: '22', name: 'Golden Circle', tagline: 'The Golden Path to Wealth', status: 'Pending', balance: '₦0.00' },
-  { id: '7', name: 'Family Fund', tagline: 'Family First Savings', status: 'Completed', balance: '₦600,000.00' },
-  { id: '23', name: 'Power Savers', tagline: 'Power in Saving Together', status: 'Completed', balance: '₦440,000.00' },
-]
-
-const defaultGroup: GroupInfo = { id: '0', name: 'Monthly 50k Squad', tagline: 'Grow Together, Save Smarter', status: 'Active', balance: '₦0.00' }
 
 function getStatusBadge(status: string) {
   if (status === 'Active') return { bg: '#e6f5f1', color: PRIMARY }
@@ -125,27 +107,37 @@ export function GroupDetail() {
   const navigate = useNavigate()
   const [circleData, setCircleData] = useState<RoscaCircle | null>(null)
   const [circleLoading, setCircleLoading] = useState(true)
+  const [circleError, setCircleError] = useState<string | null>(null)
+  const [refreshVersion, setRefreshVersion] = useState(0)
 
   useEffect(() => {
     if (!id) return
+    let active = true
+    setCircleLoading(true)
+    setCircleError(null)
+    setCircleData(null)
     getAdminCircleDetail(id)
-      .then(setCircleData)
-      .catch(() => {})
-      .finally(() => setCircleLoading(false))
+      .then(value => { if (active) setCircleData(value) })
+      .catch(() => { if (active) setCircleError('Could not load this group. Please try again.') })
+      .finally(() => { if (active) setCircleLoading(false) })
     // Fetch financial health early so the balance card is populated immediately
     financialHealthFetched.current = true
+    setFinancialHealth(null)
+    setFinancialHealthError(null)
+    setFinancialHealthLoading(true)
     getFinancialHealth(id)
-      .then(setFinancialHealth)
-      .catch(() => {})
+      .then(value => { if (active) setFinancialHealth(value) })
+      .catch(() => { if (active) setFinancialHealthError('Could not load collected contributions. Refresh to try again.') })
+      .finally(() => { if (active) setFinancialHealthLoading(false) })
     // Fetch pending join request count
     getCircleJoinRequests(id)
-      .then((requests) => setPendingJoinCount(requests.length))
+      .then((requests) => { if (active) setPendingJoinCount(requests.length) })
       .catch(() => {})
-  }, [id])
+    return () => { active = false }
+  }, [id, refreshVersion])
 
-  const mockFallback = mockGroups.find((g) => g.id === id) || defaultGroup
-  const groupName = circleData?.name ?? mockFallback.name
-  const groupStatus = (circleData?.status ?? mockFallback.status) as string
+  const groupName = circleData?.name ?? 'Group'
+  const groupStatus = circleData?.status ?? 'DRAFT'
   const isPending = groupStatus === 'PENDING' || groupStatus === 'Pending' || groupStatus === 'DRAFT'
   const isCompleted = groupStatus === 'COMPLETED' || groupStatus === 'Completed'
   const slotsAreFull = circleData != null && circleData.filledSlots >= circleData.maxSlots
@@ -240,18 +232,14 @@ export function GroupDetail() {
   // Financial health state
   const [financialHealth, setFinancialHealth] = useState<FinancialHealth | null>(null)
   const [financialHealthLoading, setFinancialHealthLoading] = useState(false)
+  const [financialHealthError, setFinancialHealthError] = useState<string | null>(null)
   const financialHealthFetched = useRef(false)
   const payoutsFetched = useRef(false)
   const [pendingJoinCount, setPendingJoinCount] = useState<number>(0)
 
-  const totalCollectedKobo = financialHealth?.cycles
-    ? (financialHealth.cycles as Array<{ collected?: string | number }>)
-        .reduce((sum, c) => sum + Number(c.collected ?? 0), 0)
-    : null
-  const groupBalance = totalCollectedKobo !== null
-    ? `₦${(totalCollectedKobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
-    : circleLoading ? '...' : '₦0.00'
-  const group = { ...mockFallback, name: groupName, status: groupStatus as GroupInfo['status'], balance: groupBalance }
+  const totalCollectedKobo = financialHealth?.totalCollected ?? financialHealth?.cycles
+    ?.reduce((sum, cycle) => sum + BigInt(cycle.collected), 0n).toString() ?? null
+  const group = { name: groupName, status: groupStatus }
 
   // Debit filter modal state
   const [debitFilterModal, setDebitFilterModal] = useState(false)
@@ -438,6 +426,8 @@ export function GroupDetail() {
       setProcessCycleInput('')
       const updated = await getPayoutHistory(id)
       setPayouts(updated)
+      setRefreshVersion(v => v + 1)
+      setPaymentsRefreshToken(v => v + 1)
     } catch (err) {
       setPayoutError(err instanceof Error ? err.message : 'Failed to process payout')
     } finally {
@@ -451,6 +441,8 @@ export function GroupDetail() {
       if (id) {
         const updated = await getPayoutHistory(id)
         setPayouts(updated)
+        setRefreshVersion(v => v + 1)
+        setPaymentsRefreshToken(v => v + 1)
       }
     } catch (err) {
       setPayoutError(err instanceof Error ? err.message : 'Failed to retry payout')
@@ -474,6 +466,8 @@ export function GroupDetail() {
       if (id) {
         const updated = await getPayoutHistory(id)
         setPayouts(updated)
+        setRefreshVersion(v => v + 1)
+        setPaymentsRefreshToken(v => v + 1)
       }
     } catch (err) {
       setPayoutError(err instanceof Error ? err.message : 'Failed to reverse payout')
@@ -487,9 +481,17 @@ export function GroupDetail() {
   const filteredMembers = apiMembers.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase()),
   )
+  const currentUserId = (() => {
+    try { return JSON.parse(localStorage.getItem('user') ?? '{}').id ?? '' } catch { return '' }
+  })()
+  const hasOwnMembership = apiMembers.some(m => m.userId === currentUserId && (m.status === 'ACTIVE' || m.status === 'PENDING'))
+
+  if (circleLoading) return <Group justify="center" py="xl"><Loader color={PRIMARY} aria-label="Loading group" /></Group>
+  if (circleError || !circleData) return <Stack><Alert color="red">{circleError ?? 'Group not found.'}</Alert><Button onClick={() => setRefreshVersion(v => v + 1)}>Try again</Button><Button variant="subtle" onClick={() => navigate('/rosca/groups')}>Back to groups</Button></Stack>
 
   return (
     <Stack gap="lg">
+      <Group justify="space-between"><Button variant="subtle" onClick={() => navigate('/rosca/groups')}>Back to groups</Button><Button variant="light" leftSection={<IconRefresh size={14} />} onClick={() => { setRefreshVersion(v => v + 1); setPaymentsRefreshToken(v => v + 1) }}>Refresh group</Button></Group>
       {circleLoading && (
         <Group justify="center" py="xl">
           <Loader size="md" color={PRIMARY} />
@@ -530,11 +532,17 @@ export function GroupDetail() {
                       const amount = (Number(circleData.contributionAmount ?? 0) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
                       return `${freq} · ₦${amount} · ${circleData.filledSlots ?? 0}/${circleData.maxSlots ?? 0} members`
                     })()
-                  : group.tagline}
+                  : 'Loading group…'}
               </Text>
               <Stack gap={8}>
                 {isPending && (
                   <>
+                    {!hasOwnMembership && circleData && (
+                      <Box>
+                        <Text size="sm" mb={6}>Managing this group does not fill a member slot. Join to contribute and receive a payout.</Text>
+                        <RoscaJoinAction circleId={id!} label="Join as a member" unavailableReason={slotsAreFull ? 'This group is full.' : undefined} />
+                      </Box>
+                    )}
                     {slotsAreFull ? (
                       <Box>
                         <Button
@@ -549,7 +557,7 @@ export function GroupDetail() {
                       </Box>
                     ) : (
                       <Text fz={12} c="dimmed" style={{ fontStyle: 'italic' }}>
-                        {circleData?.filledSlots ?? 0}/{circleData?.maxSlots ?? '?'} slots filled - invite more members to start
+                        {circleData?.filledSlots ?? 0}/{circleData?.maxSlots ?? '?'} active member slots filled. {pendingJoinCount} pending requests need approval. Fill all slots before starting the group.
                       </Text>
                     )}
                     <Group gap="sm">
@@ -599,17 +607,14 @@ export function GroupDetail() {
             </Box>
           </Group>
 
-          {/* Total Group Balance */}
-          <Paper
-            p="md"
-            radius="md"
-            style={{ background: PRIMARY, minWidth: 180, flex: '1 1 180px' }}
-          >
-            <Text fz="xs" c="white" style={{ opacity: 0.8 }}>Total Group Balance</Text>
-            <Text fz={24} fw={700} c="white" mt={4}>{group.balance}</Text>
-          </Paper>
+          <GroupFinancialSummary
+            collectedKobo={totalCollectedKobo}
+            remainingKobo={financialHealth?.remainingBalance ?? null}
+            loading={financialHealthLoading}
+          />
         </Group>
       </Paper>
+      {financialHealthError && <Alert color="red" role="alert">{financialHealthError}</Alert>}
 
       {/* Ready-to-start banner */}
       {isPending && slotsAreFull && (
@@ -624,7 +629,7 @@ export function GroupDetail() {
             </ThemeIcon>
             <Box>
               <Text fw={700} fz="sm" style={{ color: '#15803d' }}>All slots filled - circle is ready to start!</Text>
-              <Text fz="xs" style={{ color: '#166534' }}>Click "Start Circle" to set the first contribution deadline and activate the savings cycle.</Text>
+              <Text fz="xs" style={{ color: '#166534' }}>Click "Start Circle" to set the first contribution deadline and activate the savings cycle. For assigned payouts, every member needs a payout position.</Text>
             </Box>
           </Group>
           <Button

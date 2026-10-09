@@ -1,7 +1,9 @@
- [build]
-   base = "."
-   command = "pnpm build:admin"
-   publish = "apps/admin/dist"
+# Repo-root netlify.toml holds ONLY the hostname-scoped redirect rules.
+# The [build] block was removed because every Netlify site that read it
+# ended up building the admin app regardless of which app it was meant to
+# serve. Each app now owns its build config in apps/<app>/netlify.toml and
+# each Netlify site must set Package directory to apps/<app> in its dashboard
+# (Site configuration > Build & deploy).
 
 [[redirects]]
   from = "https://admin.ajoti.com/*"

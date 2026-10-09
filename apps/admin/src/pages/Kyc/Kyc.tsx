@@ -3,6 +3,7 @@ import { ProvePendingScreen, UpgradePage } from "./KycUpgradeSections";
 import { OnboardingFlow, OnboardingDoneScreen } from "./KycOnboardingSections";
 import { useCallback, useEffect, useState } from "react";
 import { Loader } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
 import { getKycStatus, resubmitKyc, type KycStatus } from "@/utils/api";
 
 type PageView =
@@ -29,6 +30,10 @@ const PROVE_PENDING_STEPS = new Set([
 function resolveView(kyc: KycStatus | null): PageView {
   if (!kyc) return "onboarding";
   const { kycLevel, status, step } = kyc;
+  if (kyc.requiresIdentityCompletion) {
+    if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
+    return "onboarding";
+  }
 
   if (kycLevel === 0) {
     if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
@@ -55,6 +60,7 @@ function resolveView(kyc: KycStatus | null): PageView {
 }
 
 export function Kyc() {
+  const navigate = useNavigate();
   const [view, setView] = useState<PageView>("loading");
   const [kycData, setKycData] = useState<KycStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -178,10 +184,11 @@ export function Kyc() {
   if (view === "onboarding") {
     return (
       <OnboardingFlow
+        recovery={kycData?.requiresIdentityCompletion ?? false}
         rejectionReason={
           kycData?.kycLevel === 0 ? (kycData.rejectionReason ?? null) : null
         }
-        onComplete={() => setView("onboarding-done")}
+        onComplete={() => kycData?.requiresIdentityCompletion ? navigate("/fund-wallet") : setView("onboarding-done")}
         identityVerified={
           (kycData?.ninVerified && kycData?.bvnVerified) ?? false
         }

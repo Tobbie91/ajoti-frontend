@@ -18,7 +18,7 @@ import {
   IconX,
   IconCircleCheck,
 } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { isCircleAdmin } from "@/utils/auth-role";
 import {
   listRoscaCircles,
@@ -66,10 +66,21 @@ const statusBadge: Record<GroupStatus, { bg: string; color: string; border: stri
   "Invite Only": { bg: "#FFF7ED", color: "#C2410C", border: "#FED7AA" },
 };
 
+function contributionDate(circle: { status?: string; nextContributionDeadline?: string | null }): string {
+  const date = circle.nextContributionDeadline ? new Date(circle.nextContributionDeadline) : null;
+  if (date && !Number.isNaN(date.getTime())) {
+    return date.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+  }
+  if (circle.status === "DRAFT") return "After the organiser starts the group";
+  if (["COMPLETED", "CANCELLED"].includes(circle.status ?? "")) return "No further contributions";
+  return "Schedule unavailable — open the group for details";
+}
+
 export function Rosca() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const admin = isCircleAdmin();
-  const [activeTab, setActiveTab] = useState("All Groups");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "joined" ? "Joined" : "All Groups");
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -166,22 +177,13 @@ export function Rosca() {
         : "Admin";
       const completionRate =
         total > 0 ? Math.round((completed / total) * 100) : 0;
-      const nextPayout = (circle as { nextPayoutDate?: string }).nextPayoutDate
-        ? new Date(
-            (circle as { nextPayoutDate?: string }).nextPayoutDate!,
-          ).toLocaleDateString("en-NG", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-        : "TBD";
       return {
         id: r.circleId,
         name: circle.name ?? `Circle ${r.circleId.slice(0, 6)}`,
         completionRate,
         completedCycles: completed,
         totalCycles: total,
-        nextContribution: nextPayout,
+        nextContribution: contributionDate(circle),
         admin: adminName,
         circleStatus: (circle as { status?: string }).status ?? "",
       };
@@ -195,22 +197,13 @@ export function Rosca() {
         : "Admin";
       const completionRate =
         total > 0 ? Math.round((completed / total) * 100) : 0;
-      const nextPayout = (c as { nextPayoutDate?: string }).nextPayoutDate
-        ? new Date(
-            (c as { nextPayoutDate?: string }).nextPayoutDate!,
-          ).toLocaleDateString("en-NG", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-        : "TBD";
       return {
         id: c.id,
         name: c.name ?? `Circle ${c.id.slice(0, 6)}`,
         completionRate,
         completedCycles: completed,
         totalCycles: total,
-        nextContribution: nextPayout,
+        nextContribution: contributionDate(c),
         admin: adminName,
         circleStatus: c.status ?? "",
       };
@@ -513,17 +506,15 @@ export function Rosca() {
                     </div>
 
                     {/* Actions */}
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/rosca/${group.id}/activities`)}
+                      className="mt-5 w-full cursor-pointer rounded-lg bg-[#02A36E] py-3 text-[13px] font-semibold text-white"
+                    >
+                      View Group
+                    </button>
                     <div className="mt-5 flex gap-3">
-                      {group.completedCycles > 0 ? (
-                        <button
-                          onClick={() =>
-                            navigate(`/rosca/${group.id}/activities`)
-                          }
-                          className="w-full cursor-pointer rounded-lg border border-[#02A36E] py-3 text-[13px] font-semibold text-[#02A36E]"
-                        >
-                          View Activities
-                        </button>
-                      ) : (
+                      {group.completedCycles === 0 && (
                         <>
                           <button
                             onClick={() => {

@@ -10,6 +10,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { getInvitePreview, joinByInvite } from "@/utils/api";
 import type { InvitePreview } from "@/utils/api";
+import { useRoscaJoinEligibility } from "@/hooks/useRoscaJoinEligibility";
 
 type PageState =
   | "loading-preview"
@@ -30,6 +31,7 @@ function formatFreq(f: string) {
 
 export function InviteAccept() {
   const navigate = useNavigate();
+  const { eligibility, error: eligibilityError, reload } = useRoscaJoinEligibility();
   const { token } = useParams<{ token: string }>();
   const [state, setState] = useState<PageState>("loading-preview");
   const [preview, setPreview] = useState<InvitePreview | null>(null);
@@ -60,7 +62,7 @@ export function InviteAccept() {
   }, [token, navigate]);
 
   async function handleAccept() {
-    if (!token) return;
+    if (!token || !eligibility?.canJoin) return;
     setState("submitting");
     try {
       await joinByInvite(token);
@@ -195,6 +197,13 @@ export function InviteAccept() {
             </ul>
           </div>
 
+          <Text size="sm" c="dimmed" mt="md">
+            {eligibilityError ? 'Could not check your participation limit.' : eligibility
+              ? eligibility.canJoin ? `${eligibility.ongoingMemberships} of ${eligibility.limit} ongoing groups joined or pending.`
+                : `You can join up to ${eligibility.limit} ongoing groups at a time. Pending requests count toward this limit.`
+              : 'Checking your participation limit…'}
+          </Text>
+          {eligibilityError && <button type="button" onClick={reload}>Check again</button>}
           <div className="mt-7 flex w-full gap-3">
             <button
               onClick={() => navigate("/rosca")}
@@ -204,7 +213,8 @@ export function InviteAccept() {
             </button>
             <button
               onClick={handleAccept}
-              className="flex-1 cursor-pointer rounded-xl py-3.5 text-[14px] font-semibold text-white"
+              disabled={!eligibility?.canJoin}
+              className="flex-1 cursor-pointer rounded-xl py-3.5 text-[14px] font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: PRIMARY }}
             >
               Accept Invite

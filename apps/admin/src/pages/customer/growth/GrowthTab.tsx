@@ -229,7 +229,7 @@ export function GrowthTab({
               <button
                 onClick={() => {
                   setModalOpen(false);
-                  navigate("/wallet/fund");
+                  navigate("/fund-wallet");
                 }}
                 className="cursor-pointer rounded-lg border border-[#02A36E] py-3 text-[13px] font-semibold text-[#02A36E]"
               >
@@ -275,10 +275,10 @@ export function GrowthTab({
             {nextPaymentDate}
           </Text>
           <Text fw={600} className="text-[14px] text-[#0F172A]">
-            Next Payment
+            Next Contribution
           </Text>
           <button
-            onClick={() => navigate("/wallet/fund")}
+            onClick={() => navigate("/fund-wallet")}
             className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
           >
             <IconWallet size={16} />
