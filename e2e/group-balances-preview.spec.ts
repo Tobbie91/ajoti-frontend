@@ -1,0 +1,26 @@
+import { expect, test } from '@playwright/test'
+
+test('both group figures remain clear across payout scenarios without a backend', async ({ page }, testInfo) => {
+  const apiRequests: string[] = []
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url())
+  })
+  await page.goto('/preview/group-balances.html')
+  const remaining = page.getByText('Group balance remaining', { exact: true }).locator('..')
+  const collected = page.getByText('Total contributions collected', { exact: true }).locator('..')
+  await expect(remaining).toContainText('₦375,000.00')
+  await expect(collected).toContainText('₦625,000.00')
+  await expect(page.getByText('Preview · sample data')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: `../docs/specs/previews/2026-10-09-group-balances-${testInfo.project.name}.png`, fullPage: true })
+  await page.getByText('Before payouts', { exact: true }).click()
+  await expect(remaining).toContainText('₦250,000.00')
+  await expect(collected).toContainText('₦250,000.00')
+  await page.getByText('Fully paid out', { exact: true }).click()
+  await expect(remaining).toContainText('₦0.00')
+  await expect(collected).toContainText('₦1,250,000.00')
+  await page.getByText('No payments', { exact: true }).click()
+  await expect(remaining).toContainText('₦0.00')
+  await expect(collected).toContainText('₦0.00')
+  expect(apiRequests).toEqual([])
+})
