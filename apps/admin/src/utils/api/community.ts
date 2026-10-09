@@ -228,6 +228,38 @@ export async function sendChatMessage(circleId: string, body: string): Promise<C
   });
 }
 
+// ── Private member / group-admin conversations ────────────────────────────────
+
+export interface DirectChatMessage extends ChatMessage {
+  memberId: string;
+}
+
+export interface DirectChatThread {
+  circleId: string;
+  circleName: string;
+  memberId: string;
+  memberName: string;
+  isCircleAdmin: boolean;
+  lastMessage: DirectChatMessage;
+}
+
+export function getDirectChatThreads(): Promise<DirectChatThread[]> {
+  return authRequest("/api/chat/direct/threads", { method: "GET" });
+}
+
+export function getDirectChatMessages(circleId: string, memberId: string): Promise<DirectChatMessage[]> {
+  return authRequest(`/api/chat/direct/${encodeURIComponent(circleId)}/${encodeURIComponent(memberId)}`, {
+    method: "GET",
+  });
+}
+
+export function sendDirectChatMessage(circleId: string, memberId: string, body: string): Promise<DirectChatMessage> {
+  return authRequest(`/api/chat/direct/${encodeURIComponent(circleId)}/${encodeURIComponent(memberId)}`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
 // ── Support Tickets ───────────────────────────────────────────────────────────
 
 export type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
