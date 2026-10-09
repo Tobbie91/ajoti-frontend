@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader, Text, TextInput } from '@mantine/core'
 import { IconSend, IconMessages, IconSearch } from '@tabler/icons-react'
+import { useSearchParams } from 'react-router-dom'
 import { getChatCircles, type ChatCircle } from '@/utils/api'
 import { useChat } from '@/hooks/useChat'
 
@@ -148,6 +149,8 @@ function ChatThread({ circleId, circleName, currentUserId }: { circleId: string;
 }
 
 export function Messages() {
+  const [searchParams] = useSearchParams()
+  const requestedCircleId = searchParams.get('circleId')
   const [circles, setCircles] = useState<ChatCircle[]>([])
   const [loadingCircles, setLoadingCircles] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -164,11 +167,11 @@ export function Messages() {
     getChatCircles()
       .then((data) => {
         setCircles(data)
-        if (data.length > 0) setSelectedId(data[0].id)
+        if (data.length > 0) setSelectedId(data.find((c) => c.id === requestedCircleId)?.id ?? data[0].id)
       })
       .catch(() => {})
       .finally(() => setLoadingCircles(false))
-  }, [])
+  }, [requestedCircleId])
 
   const filtered = circles.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
   const selectedCircle = circles.find((c) => c.id === selectedId) ?? null
