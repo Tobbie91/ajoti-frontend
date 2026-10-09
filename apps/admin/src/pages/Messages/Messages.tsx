@@ -131,13 +131,18 @@ function ChatThread({ circleId, circleName, currentUserId }: { circleId: string;
         <div ref={bottomRef} />
       </div>
 
+      {error && (
+        <Text role="alert" fz={12} c="red" style={{ padding: '8px 16px' }}>
+          {error}
+        </Text>
+      )}
       <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', background: '#fff', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
         <TextInput
           style={{ flex: 1 }}
           placeholder="Type a message…"
           value={draft}
           onChange={(e) => setDraft(e.currentTarget.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
           radius="xl"
         />
         <button
