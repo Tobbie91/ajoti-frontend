@@ -221,6 +221,13 @@ export async function getChatMessages(
   });
 }
 
+export async function sendChatMessage(circleId: string, body: string): Promise<ChatMessage> {
+  return authRequest(`/api/chat/circles/${encodeURIComponent(circleId)}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
 // ── Support Tickets ───────────────────────────────────────────────────────────
 
 export type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
