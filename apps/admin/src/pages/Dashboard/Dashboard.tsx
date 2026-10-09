@@ -24,6 +24,7 @@ import { TrustScoreCard, CreditScoreCard } from '@/components/ScoreCards'
 import { GroupTable } from '@/components/GroupTable'
 import { QuickActions } from '@/components/QuickActions'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
+import { WalletReservations } from '@/components/WalletReservations'
 import {
   getTrustScore,
   getAdminWalletBalance,
@@ -191,6 +192,8 @@ export function Dashboard() {
           </Group>
         </Group>
       </Paper>
+
+      <WalletReservations />
 
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <TrustScoreCard
