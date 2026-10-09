@@ -1,7 +1,7 @@
 import { Badge, Button, Loader, Modal, Select, Stack, Text, Textarea, TextInput } from '@mantine/core'
 import { IconHeadset, IconPlus } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   createTicket,
   listMyTickets,
@@ -30,14 +30,16 @@ const CATEGORY_OPTIONS: { value: TicketCategory; label: string }[] = [
 
 export function Support() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const exitRequest = searchParams.get('category') === 'ROSCA' && !!searchParams.get('subject')
   const [data, setData] = useState<PaginatedResponse<SupportTicketRow> | null>(null)
   const [loading, setLoading] = useState(true)
-  const [modalOpen, setModalOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(exitRequest)
 
   // Create form state
-  const [category, setCategory] = useState<TicketCategory | null>(null)
-  const [subject, setSubject] = useState('')
-  const [body, setBody] = useState('')
+  const [category, setCategory] = useState<TicketCategory | null>(exitRequest ? 'ROSCA' : null)
+  const [subject, setSubject] = useState(searchParams.get('subject') ?? '')
+  const [body, setBody] = useState(searchParams.get('body') ?? '')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
 
