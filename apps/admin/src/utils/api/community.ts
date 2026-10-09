@@ -162,6 +162,8 @@ export interface CycleHealth {
 }
 
 export interface FinancialHealth {
+  totalCollected?: string;
+  remainingBalance?: string | null;
   circleId?: string;
   contributionAmount?: string;
   filledSlots?: number;

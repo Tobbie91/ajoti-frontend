@@ -66,6 +66,7 @@ import { GroupPaymentsTab } from './GroupPaymentsTab'
 import { GroupPayoutsTab } from './GroupPayoutsTab'
 import { GroupMembersTab } from './GroupMembersTab'
 import { RoscaJoinAction } from '@/components/RoscaJoinAction'
+import { GroupFinancialSummary } from './GroupFinancialSummary'
 
 const PRIMARY = '#0b6b55'
 
@@ -236,14 +237,9 @@ export function GroupDetail() {
   const payoutsFetched = useRef(false)
   const [pendingJoinCount, setPendingJoinCount] = useState<number>(0)
 
-  const totalCollectedKobo = financialHealth?.cycles
-    ? (financialHealth.cycles as Array<{ collected?: string | number }>)
-        .reduce((sum, c) => sum + Number(c.collected ?? 0), 0)
-    : null
-  const groupBalance = totalCollectedKobo !== null
-    ? `₦${(totalCollectedKobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
-    : financialHealthLoading ? 'Loading…' : 'Unavailable'
-  const group = { name: groupName, status: groupStatus, balance: groupBalance }
+  const totalCollectedKobo = financialHealth?.totalCollected ?? financialHealth?.cycles
+    ?.reduce((sum, cycle) => sum + BigInt(cycle.collected), 0n).toString() ?? null
+  const group = { name: groupName, status: groupStatus }
 
   // Debit filter modal state
   const [debitFilterModal, setDebitFilterModal] = useState(false)
@@ -430,6 +426,8 @@ export function GroupDetail() {
       setProcessCycleInput('')
       const updated = await getPayoutHistory(id)
       setPayouts(updated)
+      setRefreshVersion(v => v + 1)
+      setPaymentsRefreshToken(v => v + 1)
     } catch (err) {
       setPayoutError(err instanceof Error ? err.message : 'Failed to process payout')
     } finally {
@@ -443,6 +441,8 @@ export function GroupDetail() {
       if (id) {
         const updated = await getPayoutHistory(id)
         setPayouts(updated)
+        setRefreshVersion(v => v + 1)
+        setPaymentsRefreshToken(v => v + 1)
       }
     } catch (err) {
       setPayoutError(err instanceof Error ? err.message : 'Failed to retry payout')
@@ -466,6 +466,8 @@ export function GroupDetail() {
       if (id) {
         const updated = await getPayoutHistory(id)
         setPayouts(updated)
+        setRefreshVersion(v => v + 1)
+        setPaymentsRefreshToken(v => v + 1)
       }
     } catch (err) {
       setPayoutError(err instanceof Error ? err.message : 'Failed to reverse payout')
@@ -605,16 +607,11 @@ export function GroupDetail() {
             </Box>
           </Group>
 
-          {/* Total Group Balance */}
-          <Paper
-            p="md"
-            radius="md"
-            style={{ background: PRIMARY, minWidth: 180, flex: '1 1 180px' }}
-          >
-            <Text fz="xs" c="white" style={{ opacity: 0.8 }}>Total contributions collected</Text>
-            <Text fz={24} fw={700} c="white" mt={4}>{group.balance}</Text>
-            <Text fz="xs" c="white" mt={6}>Contributions received across all cycles. Wallet top-ups and collateral are separate; payouts do not reduce this total.</Text>
-          </Paper>
+          <GroupFinancialSummary
+            collectedKobo={totalCollectedKobo}
+            remainingKobo={financialHealth?.remainingBalance ?? null}
+            loading={financialHealthLoading}
+          />
         </Group>
       </Paper>
       {financialHealthError && <Alert color="red" role="alert">{financialHealthError}</Alert>}

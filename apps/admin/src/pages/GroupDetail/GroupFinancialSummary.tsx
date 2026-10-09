@@ -44,7 +44,7 @@ export function GroupFinancialSummary({ collectedKobo, remainingKobo, loading = 
           styles={{ root: { background: '#d5e5de' } }}
         />
         <Text fz="sm" fw={500} c="#0b6b55" mt={8}>
-          {!known ? remainingLabel : collected === 0n ? 'No contributions yet' : `${fill.toLocaleString('en-NG', { maximumFractionDigits: 1 })}% of collected contributions remains`}
+          {!known ? remainingLabel : remaining < 0n ? 'Group balance needs reconciliation' : collected === 0n ? 'No contributions yet' : remaining > collected ? 'Balance includes additional group credits' : `${fill.toLocaleString('en-NG', { maximumFractionDigits: 1 })}% of collected contributions remains`}
         </Text>
         <Text fz="xs" c="#34584d" mt={4}>The filled bar shows money left after payouts and deductions.</Text>
       </Paper>

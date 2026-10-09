@@ -42,7 +42,7 @@ test('failed financial reads show unavailable and retry reveals collected contri
   let failed = true
   await page.route('**/api/admin/rosca/family/financial-health', route => failed
     ? route.fulfill({ status: 503, json: { message: 'Unavailable' } })
-    : route.fulfill({ json: { data: { cycles: [{ cycleNumber: 1, contributionDeadline: '2026-10-10', expectedPot: '25000000', collected: '5000000', outstanding: '20000000', expectedCount: 5, collectedCount: 1 }] } } }))
+    : route.fulfill({ json: { data: { totalCollected: '5000000', remainingBalance: '3000000', cycles: [{ cycleNumber: 1, contributionDeadline: '2026-10-10', expectedPot: '25000000', collected: '5000000', outstanding: '20000000', expectedCount: 5, collectedCount: 1 }] } } }))
   await page.route('**/api/admin/rosca/family/contributions**', route => failed
     ? route.fulfill({ status: 503, json: { message: 'Unavailable' } })
     : route.fulfill({ json: { data: { contributions: [{ contributionId: 'payment', memberName: 'Test Member', amount: '5000000', paidAt: '2026-10-08T12:00:00Z' }], totalCollected: '5000000' } } }))
@@ -57,6 +57,8 @@ test('failed financial reads show unavailable and retry reveals collected contri
   failed = false
   await page.getByRole('button', { name: 'Refresh group' }).click()
   await expect(collectedCard).toContainText('50,000.00')
+  await expect(page.getByText('Group balance remaining').locator('..')).toContainText('30,000.00')
+  await expect(page.getByRole('progressbar', { name: 'Group funds remaining' })).toHaveAttribute('aria-valuenow', '60')
   await expect(page.getByRole('tabpanel', { name: 'Payment Oversight' }).getByText('Test Member', { exact: true })).toBeVisible()
   await expect(page.getByText(/Could not load contributions\./)).toHaveCount(0)
 })
@@ -69,4 +71,31 @@ test('failed group details never display a fabricated example group', async ({ p
   await expect(page.getByText(/Could not load this group/)).toBeVisible()
   await expect(page.getByText('Monthly 50k Squad')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Try again', exact: true })).toBeVisible()
+})
+
+test('processing a payout refreshes the live meter without reducing lifetime collected', async ({ page }) => {
+  await mockRoscaReads(page, { duration: 5 })
+  await page.route('**/api/users/me', route => route.fulfill({ json: { id: 'member', role: 'CIRCLE_ADMIN', status: 'ACTIVE' } }))
+  await page.route('**/api/admin/rosca/family', route => route.fulfill({ json: { data: circle } }))
+  let paid = false
+  await page.route('**/api/admin/rosca/family/financial-health', route => route.fulfill({ json: { data: {
+    totalCollected: '62500000', remainingBalance: paid ? '37500000' : '62500000', cycles: [],
+  } } }))
+  await page.route('**/api/rosca/family/payouts', route => route.fulfill({ json: { data: paid ? [{ id: 'payout', amount: '24000000', status: 'COMPLETED', cycleNumber: 1, recipientId: 'recipient' }] : [] } }))
+  await page.route('**/api/admin/payouts/family/process/1', route => {
+    expect(route.request().method()).toBe('POST')
+    paid = true
+    return route.fulfill({ json: { message: 'Processed' } })
+  })
+  await page.goto('/rosca/groups/family')
+  const remaining = page.getByText('Group balance remaining').locator('..')
+  const collected = page.getByText('Total contributions collected').locator('..')
+  await expect(remaining).toContainText('625,000.00')
+  await expect(page.getByRole('progressbar', { name: 'Group funds remaining' })).toHaveAttribute('aria-valuenow', '100')
+  await page.getByRole('tab', { name: 'Payouts', exact: true }).click()
+  await page.getByLabel('Cycle Number', { exact: true }).fill('1')
+  await page.getByRole('button', { name: 'Process Payout', exact: true }).click()
+  await expect(remaining).toContainText('375,000.00')
+  await expect(collected).toContainText('625,000.00')
+  await expect(page.getByRole('progressbar', { name: 'Group funds remaining' })).toHaveAttribute('aria-valuenow', '60')
 })
