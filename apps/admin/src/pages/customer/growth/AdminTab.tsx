@@ -65,13 +65,13 @@ export function AdminTab({
             </Text>
             <button
               type="button"
-              onClick={() => navigate(`/messages?circleId=${encodeURIComponent(circleId)}`)}
+              onClick={() => navigate(`/messages?view=direct&circleId=${encodeURIComponent(circleId)}`)}
               className="mt-4 flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
             >
               <IconMessageCircle size={16} />
               Open Group Chat
             </button>
-            <Text size="xs" c="dimmed" mt={2}>Messages in this chat are visible to the group's members.</Text>
+            <Text size="xs" c="dimmed" mt={2}>Only you and this circle's admin can read this conversation.</Text>
           </div>
         </div>
       </div>
