@@ -44,7 +44,7 @@ import {
   type TargetSavingsPlan,
 } from "@/utils/targetSavingsApi";
 import { getKycStatus } from "@/utils/api";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getCowrywiseState } from "@/utils/cowrywiseSavingsApi";
 import { fundSandboxAjotiWallet } from "@/utils/sandboxWalletApi";
 import { isDevAuthBypass } from "@/utils/dev-auth-bypass";
@@ -185,7 +185,12 @@ function LocalReviewSavingsCard() {
 
 export function TargetSavings() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [plans, setPlans] = useState<TargetSavingsPlan[]>([]);
+  useEffect(() => {
+    const plan = plans.find(p => location.hash === `#target-plan-${p.id}`);
+    if (plan) document.getElementById(`target-plan-${plan.id}`)?.scrollIntoView({ block: 'start' });
+  }, [plans, location.hash]);
   const [pub, setPub] = useState<TargetSavingsPlan[]>([]);
   const [view, setView] = useState<"MINE" | "DISCOVER">("MINE");
   const [open, setOpen] = useState(false);
@@ -785,7 +790,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
   const daysUrgent = !maturityReached && !targetReached && daysLeft > 0 && daysLeft < 7;
 
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card id={`target-plan-${plan.id}`} withBorder radius="md" p="lg" style={{ scrollMarginTop: 90 }}>
       {/* ─── Header: name + status + days-left ─── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div style={{ flex: 1, minWidth: 0 }}>

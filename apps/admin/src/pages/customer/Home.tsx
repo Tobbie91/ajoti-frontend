@@ -25,7 +25,7 @@ import {
 } from "@/utils/api";
 import type { WalletTransaction, TrustScore } from "@/utils/api";
 import { useWalletPrivacy } from "@/hooks/useWalletPrivacy";
-import { RoscaCommitments } from "@/components/RoscaCommitments";
+import { WalletReservations } from "@/components/WalletReservations";
 
 export function Home() {
   const navigate = useNavigate();
@@ -155,7 +155,7 @@ export function Home() {
             hidden={hidden}
           />
         </div>
-        <RoscaCommitments />
+        <WalletReservations />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-7">
             <div className="hidden gap-3 sm:flex sm:gap-8">
