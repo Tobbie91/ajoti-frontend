@@ -1,0 +1,6 @@
+# Netlify site: internal staff / super-admin application
+# Set Package directory to apps/super-admin and leave Base directory at the repo root.
+# Netlify then selects this config instead of the root-level customer fallback.
+[build]
+  command = "pnpm build:super-admin"
+  publish = "apps/super-admin/dist"
