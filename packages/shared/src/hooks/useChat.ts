@@ -8,7 +8,7 @@ export interface UseChatConfig<TMessage> {
   postMessage: (circleId: string, body: string) => Promise<TMessage>
 }
 
-export function useChat<TMessage extends { id: string }>(
+export function useChat<TMessage extends { id: string; createdAt: string }>(
   circleId: string | null,
   config: UseChatConfig<TMessage>,
 ) {
@@ -27,7 +27,7 @@ export function useChat<TMessage extends { id: string }>(
       // Server history is oldest -> newest, followed by any real-time messages.
       for (const msg of incoming) byId.set(msg.id, msg)
       for (const msg of prev) byId.set(msg.id, msg)
-      return [...byId.values()]
+      return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     })
   }, [])
 
