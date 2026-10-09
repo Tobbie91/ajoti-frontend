@@ -104,6 +104,19 @@ pnpm build:admin
 pnpm build:super-admin
 ```
 
+### Netlify monorepo site configuration
+
+The repository contains **two separate Netlify configurations**:
+
+| Netlify site | Package directory (Netlify UI) | Build command | Publish directory |
+| --- | --- | --- | --- |
+| Customer | `apps/admin` | `pnpm build:admin` | `apps/admin/dist` |
+| Super Admin | `apps/super-admin` | `pnpm build:super-admin` | `apps/super-admin/dist` |
+
+For each Netlify site, leave **Base directory** unset (repository root). In **Project configuration → Developer settings → Continuous deployment → Build settings**, configure the matching **Package directory**. Netlify looks for `netlify.toml` inside that directory first, so the Super Admin site uses `apps/super-admin/netlify.toml`. The root `netlify.toml` remains a customer-app fallback for sites without a package-directory setting.
+
+The package-directory selection is a **Netlify UI setting**, not a Git-tracked setting. A repo commit alone cannot correct a Netlify site whose package directory or custom domain points to the wrong app. Confirm that the actual Super Admin hostname (for example, `superadmin.ajoti.com` versus `super-admin.ajoti.com`) is attached to the intended Netlify site before deployment. Rebuild after setting `VITE_API_BASE_URL` for the site.
+
 A real build should be run before promotion; see `AGENTS.md` for the `.tsbuildinfo`/incremental TypeScript caveat.
 
 ---
