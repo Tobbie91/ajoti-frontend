@@ -142,6 +142,7 @@ export function rejectAdminRequest(
 // ── KYC ───────────────────────────────────────────────────────────────────────
 
 export interface KycQueueRow {
+  missingKycDetails?: string[];
   id: string;
   userId: string;
   status: string;

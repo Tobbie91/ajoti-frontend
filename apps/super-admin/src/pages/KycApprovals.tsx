@@ -240,12 +240,19 @@ function KycDetailDrawer({
   }
 
   const u = record?.user
+  const missingDetails = record?.missingKycDetails ?? []
+  const needsCustomerDetails = missingDetails.length > 0
 
   return (
     <>
       <Drawer opened={opened} onClose={onClose} title={<Text fw={600}>KYC Review</Text>} position="right" size="lg" padding="lg">
         {!record ? null : (
           <Stack gap="md">
+            {needsCustomerDetails && (
+              <Alert color="orange" title="Customer details required">
+                Ask the customer to complete {missingDetails.join(', ')} from their own KYC page. Approval and positive level overrides require these verified details. Existing levels are preserved during recovery.
+              </Alert>
+            )}
             {actionError && (
               <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" onClose={() => setActionError(null)} withCloseButton>
                 {actionError}
@@ -321,7 +328,7 @@ function KycDetailDrawer({
               <>
                 <Divider />
                 <Group>
-                  <Button flex={1} color="green" leftSection={<IconCheck size={16} />} loading={actionLoading} onClick={handleApprove}>Approve</Button>
+                  <Button flex={1} color="green" leftSection={<IconCheck size={16} />} loading={actionLoading} disabled={needsCustomerDetails} onClick={handleApprove}>Approve</Button>
                   <Button flex={1} color="red" variant="light" leftSection={<IconX size={16} />} onClick={openReject}>Reject</Button>
                 </Group>
               </>
@@ -329,7 +336,7 @@ function KycDetailDrawer({
 
             <Divider label="Manual Override" labelPosition="left" />
             <Stack gap="xs">
-              <Text fz="xs" c="dimmed">Force-set KYC level regardless of current state.</Text>
+              <Text fz="xs" c="dimmed">Set a KYC level after the customer completes verified identity and next-of-kin details. Resetting to Level 0 remains available.</Text>
               <Group gap="sm" align="flex-end">
                 <SegmentedControl
                   value={overrideLevel}
@@ -343,7 +350,7 @@ function KycDetailDrawer({
                   disabled={overrideLoading}
                   size="xs"
                 />
-                <Button size="xs" color="orange" loading={overrideLoading} disabled={overrideLevel === '' || overrideLevel === String(record.kycLevel)} onClick={handleOverride}>
+                <Button size="xs" color="orange" loading={overrideLoading} disabled={overrideLevel === '' || overrideLevel === String(record.kycLevel) || (needsCustomerDetails && Number(overrideLevel) > 0)} onClick={handleOverride}>
                   Set Level
                 </Button>
               </Group>

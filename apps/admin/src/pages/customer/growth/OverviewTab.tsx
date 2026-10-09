@@ -117,9 +117,9 @@ export function OverviewTab({
         <Text fw={500} className="text-[13px] leading-relaxed text-[#0C4A6E]">
           {completedCycles > 0
             ? `${completedCycles} of ${totalCycles} cycles completed. Keep up the great work!`
-            : `Your ajo is getting started. Your first payout is scheduled for ${nextPaymentDate}.`}
+            : circleStatus === 'DRAFT' ? 'The organiser must fill all member slots and start the group before contributions begin.' : 'Your ajo is getting started.'}
           {nextPaymentDate !== "TBD" && completedCycles > 0
-            ? ` Your next payout is scheduled for ${nextPaymentDate}.`
+            ? ` The next group payout is scheduled for ${nextPaymentDate}.`
             : ""}
         </Text>
       </div>

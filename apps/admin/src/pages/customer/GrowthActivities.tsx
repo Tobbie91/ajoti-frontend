@@ -62,6 +62,7 @@ export function GrowthActivities() {
   const [activeTab, setActiveTab] = useState<string>("Overview");
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [circle, setCircle] = useState<RoscaCircle | null>(null);
   const [schedules, setSchedules] = useState<RoscaSchedule[]>([]);
@@ -80,22 +81,29 @@ export function GrowthActivities() {
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
     Promise.all([
       getRoscaCircle(id),
-      getRoscaSchedules(id).catch(() => [] as RoscaSchedule[]),
-      getCircleContributions(id).catch(() => [] as CircleContribution[]),
+      getRoscaSchedules(id),
+      getCircleContributions(id),
       getTrustScore().catch(
         () => ({ trustScore: 0 }) as { trustScore: number },
       ),
     ])
       .then(([c, s, contrib, ts]) => {
+        if (cancelled) return;
         setCircle(c);
         setSchedules(s);
         setContributions(contrib);
         setUserTrustScore((ts as { trustScore: number }).trustScore ?? 0);
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch((err: unknown) => {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load group activity");
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [id, refreshVersion]);
 
   if (loading) {
@@ -106,18 +114,19 @@ export function GrowthActivities() {
     );
   }
 
-  if (!circle) {
+  if (loadError || !circle) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
         <Text fw={600} className="text-[#374151]">
-          Circle not found
+          {loadError ?? "Circle not found"}
         </Text>
         <button
-          onClick={() => navigate("/rosca")}
+          onClick={() => navigate("/rosca?tab=joined")}
           className="cursor-pointer text-sm font-medium text-[#02A36E]"
         >
-          Back to groups
+          Back to joined groups
         </button>
+        <button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="cursor-pointer text-sm font-semibold text-[#02A36E]">Try again</button>
       </div>
     );
   }
@@ -137,7 +146,7 @@ export function GrowthActivities() {
   // Next pending payout
   const nextSchedule = schedules
     .filter(
-      (s) => !["COMPLETED", "PAID"].includes((s.status ?? "").toUpperCase()),
+      (s) => (s.status ?? "").toUpperCase() === "UPCOMING",
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
   const nextPaymentDate = nextSchedule?.payoutDate
@@ -147,6 +156,9 @@ export function GrowthActivities() {
         year: "numeric",
       })
     : "TBD";
+  const nextContributionDate = nextSchedule?.contributionDeadline
+    ? new Date(nextSchedule.contributionDeadline).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
+    : "Not scheduled";
 
   const totalContributed = contributions.reduce(
     (s, c) => s + Number(c.amount),
@@ -158,12 +170,14 @@ export function GrowthActivities() {
     <div className="mx-auto w-full max-w-[900px] px-6 py-6">
       <div className="flex flex-col gap-6">
         {/* Back button + Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={() => navigate("/rosca")}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-[#E5E7EB] bg-white"
+            type="button"
+            onClick={() => navigate("/rosca?tab=joined")}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm"
           >
             <IconArrowLeft size={18} color="#374151" />
+            Back to joined groups
           </button>
           <Text fw={700} className="text-[22px] text-[#0F172A]">
             Growth & Activities
@@ -173,6 +187,17 @@ export function GrowthActivities() {
 
         {/* Tabs */}
         <RoscaCommitments circleId={id} refreshVersion={refreshVersion} />
+        <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+          <Text fw={600} size="sm">How to contribute</Text>
+          <Text size="sm" c="dimmed" mt={4}>
+            Fund your Ajoti wallet, then choose Pay Now in Growth & Activities and confirm your contribution for each cycle. Funding your wallet does not automatically pay a group contribution. Your reserved collateral is separate from your contribution.
+          </Text>
+          {circle.status === "DRAFT" ? (
+            <Text size="sm" mt={8}>The organiser must fill the group and start it before contributions can be paid.</Text>
+          ) : circle.status === "ACTIVE" && nextSchedule ? (
+            <button type="button" onClick={() => setActiveTab("Growth & Activities")} className="mt-3 cursor-pointer text-sm font-semibold text-[#02A36E]">Make a contribution</button>
+          ) : null}
+        </div>
         <Tabs
           value={activeTab}
           onChange={(v) => setActiveTab(v || "Overview")}
@@ -241,7 +266,7 @@ export function GrowthActivities() {
           <GrowthTab
             trustPercent={trustPercent}
             trustScore={userTrustScore}
-            nextPaymentDate={nextPaymentDate}
+            nextPaymentDate={nextContributionDate}
             contributions={contributions}
             setContributions={setContributions}
             contributionAmountKobo={circle.contributionAmount}

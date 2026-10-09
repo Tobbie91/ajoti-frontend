@@ -18,6 +18,7 @@ export async function mockRoscaReads(page: Page, state: { duration: number; buck
     if (!path.startsWith('/api/')) return route.continue()
     const current = { ...circle, durationCycles: state.duration }
     if (path === '/api/users/me') return route.fulfill({ json: { id: 'member', firstName: 'Test', lastName: 'Member', role: 'MEMBER', status: 'ACTIVE' } })
+    if (path === '/api/rosca/join-eligibility') return route.fulfill({ json: { data: { limit: 3, ongoingMemberships: 1, remaining: 2, canJoin: true } } })
     if (path === '/api/rosca') return route.fulfill({ json: { data: [{ ...current, id: 'discoverable', name: 'December Savings' }] } })
     if (path === '/api/rosca/my-participations') return route.fulfill({ json: { data: [current] } })
     if (path === '/api/rosca/family') return route.fulfill({ json: { data: current } })

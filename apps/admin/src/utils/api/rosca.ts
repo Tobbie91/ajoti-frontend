@@ -18,6 +18,8 @@ export interface RoscaCircle {
   frequency: string;
   durationCycles: number;
   currentCycle?: number;
+  initialContributionDeadline?: string | null;
+  nextContributionDeadline?: string | null;
   maxSlots: number;
   totalSlots: number;
   filledSlots: number;
@@ -55,6 +57,18 @@ export interface CircleRules {
   postStartExitPenaltyPercent: number;
 }
 
+export interface RoscaJoinEligibility {
+  limit: number;
+  ongoingMemberships: number;
+  remaining: number;
+  canJoin: boolean;
+}
+
+export async function getRoscaJoinEligibility(): Promise<RoscaJoinEligibility> {
+  const response = await authRequest<{ data: RoscaJoinEligibility }>("/api/rosca/join-eligibility", { method: "GET" });
+  return response.data;
+}
+
 // GET /api/rosca/circle-rules - current platform-wide circle rules (member-facing).
 // Always fetch this live for disclosure copy - never hardcode the rate, so the UI
 // can't drift from whatever the superadmin has actually configured.
@@ -82,7 +96,8 @@ export interface MyJoinRequest {
     maxSlots?: number;
     frequency?: string;
     contributionAmount?: number | string;
-    nextPayoutDate?: string;
+    initialContributionDeadline?: string | null;
+    nextContributionDeadline?: string | null;
     admin?: { firstName?: string; lastName?: string };
   };
   [key: string]: unknown;
