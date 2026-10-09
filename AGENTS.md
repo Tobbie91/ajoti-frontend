@@ -2,6 +2,14 @@
 
 See `../AGENTS.md` and `../CLAUDE.md` for cross-cutting workflow rules (propose-before-implementing, commit cadence, push approval, and dated action records). This file is frontend-specific technical detail only.
 
+## Highest-priority coding preference: minimal scope
+
+Treat minimal scope and efficient use of time and usage as the highest-priority coding preference within existing correctness and approval requirements. Most requests should produce a small, direct change. Do not infer permission for a broad audit, redesign, cleanup or extended implementation from a minor request.
+
+When scope is unclear, ask the user early and give concrete examples of the alternatives: for example, "change this label only" versus "update wording throughout the app," or "fix this failing case" versus "review the whole module." Recommend the smallest option that satisfies the request. Do not ask for routine implementation details that are already clear.
+
+Extended work is appropriate when the user explicitly asks for unattended work while going to bed, or requests many changes supported by an implementation Markdown document. Follow the authorized scope; a document alone does not authorize unrelated work. The 10-minute clarification checkpoint remains the default. Waive or adapt it only when the user explicitly authorizes longer or unattended work; do not interrupt authorized overnight work merely to repeat the checkpoint.
+
 ## Two active apps, three access levels
 
 - **`apps/admin`** - canonical customer app. Gate: `role === 'MEMBER' || role === 'CIRCLE_ADMIN'`. Shared customer routes are available to both roles; organiser URLs additionally require `CircleAdminRoute`.
