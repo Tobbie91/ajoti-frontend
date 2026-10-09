@@ -1,89 +1,106 @@
-// packages/shared/src/hooks/useChat.ts
-//
-// Socket.io connection + circle chat state management - previously
-// duplicated near-identically in the user and admin apps. Each app's own
-// getChatBaseUrl/getChatMessages stay where they are (they
-// go through that app's own api-client instance), injected here as config
-// so this hook has no direct dependency on either app's utils/api.ts.
+// Shared chat state: HTTP handles durable reads/writes, WebSocket only real-time updates.
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { io, Socket } from 'socket.io-client'
+import { io, type Socket } from 'socket.io-client'
 
 export interface UseChatConfig<TMessage> {
   chatBaseUrl: string
   fetchMessages: (circleId: string) => Promise<TMessage[]>
+  postMessage: (circleId: string, body: string) => Promise<TMessage>
 }
 
 export function useChat<TMessage extends { id: string }>(
   circleId: string | null,
   config: UseChatConfig<TMessage>,
 ) {
-  const { chatBaseUrl, fetchMessages } = config
-
+  const { chatBaseUrl, fetchMessages, postMessage } = config
   const [messages, setMessages] = useState<TMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
-  const joinedRef = useRef<string | null>(null)
+  const joinedRef = useRef<string | null>(circleId)
+  joinedRef.current = circleId
 
-  // Connect socket once
+  const mergeMessages = useCallback((incoming: TMessage[]) => {
+    setMessages((prev) => {
+      const byId = new Map<string, TMessage>()
+      // Server history is oldest -> newest, followed by any real-time messages.
+      for (const msg of incoming) byId.set(msg.id, msg)
+      for (const msg of prev) byId.set(msg.id, msg)
+      return [...byId.values()]
+    })
+  }, [])
+
   useEffect(() => {
     const socket = io(`${chatBaseUrl}/chat`, {
       withCredentials: true,
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
     })
-
     socketRef.current = socket
 
-    socket.on('chat.message', (msg: TMessage) => {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev
-        return [...prev, msg]
-      })
+    // Rooms are lost after a disconnect, so join again on every reconnect.
+    socket.on('connect', () => {
+      if (joinedRef.current) socket.emit('chat.join', joinedRef.current)
+    })
+    socket.on('chat.message', (msg: TMessage) => mergeMessages([msg]))
+    socket.on('chat.error', (data: { message?: string }) => {
+      setError(data.message ?? 'Unable to receive the chat update')
     })
 
     return () => {
       socket.disconnect()
       socketRef.current = null
-      joinedRef.current = null
     }
-  }, [])
+  }, [chatBaseUrl, mergeMessages])
 
-  // Join/leave room when circleId changes
   useEffect(() => {
     const socket = socketRef.current
-    if (!socket) return
-
-    if (joinedRef.current && joinedRef.current !== circleId) {
-      socket.emit('chat.leave', joinedRef.current)
-      joinedRef.current = null
-    }
-
+    if (circleId && socket?.connected) socket.emit('chat.join', circleId)
+    setMessages([])
+    setError(null)
     if (!circleId) {
-      setMessages([])
+      setLoading(false)
       return
     }
 
+    let cancelled = false
     setLoading(true)
-    setMessages([])
-
     fetchMessages(circleId)
-      .then(setMessages)
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      .then((history) => { if (!cancelled) mergeMessages(history) })
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : 'Unable to load messages')
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
 
-    socket.emit('chat.join', circleId)
-    joinedRef.current = circleId
-  }, [circleId])
+    // When proxies block Socket.IO, HTTP polling keeps incoming messages visible.
+    const interval = setInterval(() => {
+      if (socket?.connected || (typeof document !== 'undefined' && document.hidden)) return
+      fetchMessages(circleId)
+        .then((history) => { if (!cancelled) mergeMessages(history) })
+        .catch(() => {})
+    }, 12000)
 
-  const sendMessage = useCallback(
-    async (body: string) => {
-      if (!circleId || !body.trim() || !socketRef.current) return
-      setSending(true)
-      socketRef.current.emit('chat.send', { circleId, body: body.trim() })
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      if (socket?.connected) socket.emit('chat.leave', circleId)
+    }
+  }, [circleId, fetchMessages, mergeMessages])
+
+  const sendMessage = useCallback(async (body: string) => {
+    if (!circleId || !body.trim()) throw new Error('Select a conversation and enter a message')
+    setSending(true)
+    setError(null)
+    try {
+      const saved = await postMessage(circleId, body.trim())
+      mergeMessages([saved])
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to send message')
+      throw reason
+    } finally {
       setSending(false)
-    },
-    [circleId],
-  )
+    }
+  }, [circleId, postMessage, mergeMessages])
 
-  return { messages, loading, sending, sendMessage }
+  return { messages, loading, sending, error, sendMessage }
 }
