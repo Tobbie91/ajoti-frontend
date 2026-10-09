@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { DateInput } from '@mantine/dates'
+import { DateInput, DateTimePicker } from '@mantine/dates'
 import {
   Stack,
   Text,
@@ -255,7 +255,7 @@ export function GroupDetail() {
 
   // Activate circle modal state
   const [activateModal, setActivateModal] = useState(false)
-  const [activateStartDate, setActivateStartDate] = useState<Date | null>(null)
+  const [activateStartDate, setActivateStartDate] = useState<string | null>(null)
   const [activateLoading, setActivateLoading] = useState(false)
   const [activateError, setActivateError] = useState<string | null>(null)
   const [activateSuccess, setActivateSuccess] = useState(false)
@@ -265,7 +265,12 @@ export function GroupDetail() {
     setActivateLoading(true)
     setActivateError(null)
     try {
-      await activateRoscaCircle(id, activateStartDate.toISOString().split('T')[0])
+      const deadline = new Date(activateStartDate)
+      if (Number.isNaN(deadline.getTime()) || deadline <= new Date()) {
+        setActivateError('Choose a future first contribution deadline, including time.')
+        return
+      }
+      await activateRoscaCircle(id, deadline.toISOString())
       setActivateSuccess(true)
       setTimeout(() => {
         setActivateModal(false)
@@ -1411,16 +1416,16 @@ export function GroupDetail() {
               <Text fw={700} fz="lg">Activate Circle</Text>
               <IconX size={20} stroke={1.5} color="#868e96" style={{ cursor: 'pointer' }} onClick={() => setActivateModal(false)} />
             </Group>
-            <Text fz="sm" c="dimmed">Set a start date for <strong>{group.name}</strong>. Members will be notified and the cycle will begin on this date.</Text>
-            <DateInput
-              label="Start Date"
-              placeholder="Pick a start date"
+            <Text fz="sm" c="dimmed">Choose the first contribution deadline for <strong>{group.name}</strong>. The first payout will be scheduled 24 hours afterwards.</Text>
+            <DateTimePicker
+              label="First contribution deadline"
+              placeholder="Pick a date and time"
               radius="md"
               size="sm"
-              valueFormat="DD MMM YYYY"
+              valueFormat="DD MMM YYYY, HH:mm"
               minDate={new Date()}
               value={activateStartDate}
-              onChange={(val) => setActivateStartDate(val ? new Date(val) : null)}
+              onChange={setActivateStartDate}
               styles={{ input: { border: '1px solid #dee2e6' } }}
             />
             {activateError && <Text fz="sm" c="red">{activateError}</Text>}
