@@ -1,0 +1,6 @@
+# Netlify site: customer application
+# Set Package directory to apps/admin and leave Base directory at the repo root.
+# Netlify then prefers this config over the root-level customer fallback.
+[build]
+  command = "pnpm build:admin"
+  publish = "apps/admin/dist"
