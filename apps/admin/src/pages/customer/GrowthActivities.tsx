@@ -146,7 +146,7 @@ export function GrowthActivities() {
   // Next pending payout
   const nextSchedule = schedules
     .filter(
-      (s) => (s.status ?? "").toUpperCase() === "UPCOMING",
+      (s) => ["IN_PROGRESS", "UPCOMING"].includes((s.status ?? "").toUpperCase()),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
   const nextPaymentDate = nextSchedule?.payoutDate
@@ -155,7 +155,7 @@ export function GrowthActivities() {
         month: "long",
         year: "numeric",
       })
-    : "TBD";
+    : circle.status === "COMPLETED" ? "All payouts completed" : "Schedule unavailable";
   const nextContributionDate = nextSchedule?.contributionDeadline
     ? new Date(nextSchedule.contributionDeadline).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
     : "Not scheduled";
