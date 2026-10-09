@@ -98,7 +98,7 @@ export function OverviewTab({
           {completedCycles > 0
             ? `${completedCycles} of ${totalCycles} cycles completed. Keep up the great work!`
             : circleStatus === 'DRAFT' ? 'The organiser must fill all member slots and start the group before contributions begin.' : 'Your ajo is getting started.'}
-          {nextPaymentDate !== "TBD" && completedCycles > 0
+          {!["Schedule unavailable", "All payouts completed"].includes(nextPaymentDate) && completedCycles > 0
             ? ` The next group payout is scheduled for ${nextPaymentDate}.`
             : ""}
         </Text>
