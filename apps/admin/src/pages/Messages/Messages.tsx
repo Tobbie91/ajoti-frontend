@@ -163,6 +163,7 @@ function GroupMessages() {
   const requestedCircleId = searchParams.get('circleId')
   const [circles, setCircles] = useState<ChatCircle[]>([])
   const [loadingCircles, setLoadingCircles] = useState(true)
+  const [circlesError, setCirclesError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -179,7 +180,7 @@ function GroupMessages() {
         setCircles(data)
         if (data.length > 0) setSelectedId(data.find((c) => c.id === requestedCircleId)?.id ?? data[0].id)
       })
-      .catch(() => {})
+      .catch((reason: unknown) => setCirclesError(reason instanceof Error ? reason.message : 'Unable to load group chats'))
       .finally(() => setLoadingCircles(false))
   }, [requestedCircleId])
 
@@ -206,6 +207,8 @@ function GroupMessages() {
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 32 }}>
               <Loader size="sm" color={PRIMARY} />
             </div>
+          ) : circlesError ? (
+            <Text role="alert" size="sm" c="red" style={{ padding: 16 }}>{circlesError}</Text>
           ) : filtered.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center' }}>
               <Text fz={13} c="dimmed">No circles found</Text>
