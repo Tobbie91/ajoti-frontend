@@ -4,6 +4,7 @@ import { IconSend, IconMessages, IconSearch } from '@tabler/icons-react'
 import { useSearchParams } from 'react-router-dom'
 import { getChatCircles, type ChatCircle } from '@/utils/api'
 import { useChat } from '@/hooks/useChat'
+import { DirectMessages } from './DirectMessages'
 
 const PRIMARY = '#02A36E'
 const PRIMARY_LIGHT = '#F0FDF4'
@@ -157,7 +158,7 @@ function ChatThread({ circleId, circleName, currentUserId }: { circleId: string;
   )
 }
 
-export function Messages() {
+function GroupMessages() {
   const [searchParams] = useSearchParams()
   const requestedCircleId = searchParams.get('circleId')
   const [circles, setCircles] = useState<ChatCircle[]>([])
@@ -228,6 +229,31 @@ export function Messages() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+export function Messages() {
+  const [params, setParams] = useSearchParams()
+  const direct = params.get('view') === 'direct'
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <button type="button"
+          onClick={() => {
+            const circleId = params.get('circleId')
+            setParams(circleId ? { view: 'group', circleId } : { view: 'group' })
+          }}
+          style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', cursor: 'pointer', background: direct ? 'white' : '#D1FAE5', fontWeight: 600 }}>
+          Group Chats
+        </button>
+        <button type="button"
+          onClick={() => setParams({ view: 'direct' })}
+          style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', cursor: 'pointer', background: direct ? '#D1FAE5' : 'white', fontWeight: 600 }}>
+          Admin Messages
+        </button>
+      </div>
+      {direct ? <DirectMessages /> : <GroupMessages />}
     </div>
   )
 }
