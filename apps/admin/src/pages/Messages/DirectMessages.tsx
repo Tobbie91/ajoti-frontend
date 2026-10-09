@@ -146,13 +146,13 @@ export function DirectMessages() {
       thread.circleId === requestedCircleId && thread.memberId === (requestedMemberId ?? currentUserId),
     )
     if (match) return match
-    if (requestedCircleId && currentUserId) {
+    if (requestedCircleId) {
       const circle = circles.find((c) => c.id === requestedCircleId)
-      if (circle && (!requestedMemberId || requestedMemberId === currentUserId)) {
+      if (circle && (!requestedMemberId || requestedMemberId === currentUserId || requestedMemberId === 'me')) {
         return {
           circleId: requestedCircleId,
           circleName: circle.name,
-          memberId: currentUserId,
+          memberId: currentUserId || 'me',
           memberName: 'You',
           isCircleAdmin: false,
           lastMessage: null,
