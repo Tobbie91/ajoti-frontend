@@ -6,7 +6,6 @@ import {
   Avatar,
   Tabs,
   Progress,
-  Textarea,
   Loader,
 } from "@mantine/core";
 import {
@@ -14,9 +13,6 @@ import {
   IconMessageCircle,
   IconCalendar,
   IconCheck,
-  IconAlertTriangle,
-  IconX,
-  IconCircleCheck,
 } from "@tabler/icons-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isCircleAdmin } from "@/utils/auth-role";
@@ -24,9 +20,6 @@ import {
   listRoscaCircles,
   getMyJoinRequests,
   getMyParticipations,
-  leaveRoscaCircle,
-  getCircleRules,
-  messageAdmin as sendMessageToAdmin,
   type RoscaCircle,
   type MyJoinRequest,
 } from "@/utils/api";
@@ -84,21 +77,6 @@ export function Rosca() {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
-  const [leaveGroupId, setLeaveGroupId] = useState<string | null>(null);
-  const [leaveLoading, setLeaveLoading] = useState(false);
-  const [leaveError, setLeaveError] = useState<string | null>(null);
-  const [postStartExitPenaltyPercent, setPostStartExitPenaltyPercent] =
-    useState<number | null>(null);
-  const [messageAdmin, setMessageAdmin] = useState<{
-    circleId: string;
-    adminName: string;
-  } | null>(null);
-  const [messageSendError, setMessageSendError] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
-  const [messageStep, setMessageStep] = useState<
-    "compose" | "sending" | "sent"
-  >("compose");
-
   const [groups, setGroups] = useState<RoscaGroup[]>([]);
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [joinedGroups, setJoinedGroups] = useState<JoinedGroup[]>([]);
@@ -156,12 +134,6 @@ export function Rosca() {
       }
       setJoinedIds(ids);
     });
-    // Live rate for the post-start exit warning - never hardcode it.
-    getCircleRules()
-      .then((res) =>
-        setPostStartExitPenaltyPercent(res.data.postStartExitPenaltyPercent),
-      )
-      .catch(() => setPostStartExitPenaltyPercent(null));
   }, [refreshVersion]);
 
   useEffect(() => {
@@ -514,30 +486,14 @@ export function Rosca() {
                       View Group
                     </button>
                     <div className="mt-5 flex gap-3">
-                      {group.completedCycles === 0 && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setMessageAdmin({
-                                circleId: group.id,
-                                adminName: group.admin,
-                              });
-                              setMessage("");
-                              setMessageSendError(null);
-                              setMessageStep("compose");
-                            }}
-                            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#02A36E] py-3 text-[13px] font-semibold text-white"
-                          >
-                            <IconMessageCircle size={16} />
-                            Message Admin
-                          </button>
-                          <button
-                            onClick={() => setLeaveGroupId(group.id)}
-                            className="flex-1 cursor-pointer rounded-lg border border-[#EF4444] py-3 text-[13px] font-semibold text-[#EF4444]"
-                          >
-                            Leave Group
-                          </button>
-                        </>
+                      <button type="button" onClick={() => navigate(`/messages?circleId=${encodeURIComponent(group.id)}`)} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#02A36E] py-3 text-[13px] font-semibold text-white">
+                        <IconMessageCircle size={16} />
+                        Group Chat
+                      </button>
+                      {["DRAFT", "ACTIVE"].includes(group.circleStatus) && (
+                        <button type="button" onClick={() => navigate(`/support?category=ROSCA&subject=${encodeURIComponent(`Group exit request: ${group.name}`)}&body=${encodeURIComponent(`Group ID: ${group.id}\nReason for requesting to leave: `)}`)} className="flex-1 cursor-pointer rounded-lg border border-[#02A36E] py-3 text-[13px] font-semibold text-[#02A36E]">
+                          Contact Support
+                        </button>
                       )}
                     </div>
                   </div>
@@ -715,284 +671,6 @@ export function Rosca() {
         </div>
       )}
 
-      {/* Leave Group Modal */}
-      {leaveGroupId &&
-        (() => {
-          const leavingGroup = joinedGroups.find((g) => g.id === leaveGroupId);
-          const isPostStart = leavingGroup?.circleStatus === "ACTIVE";
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-              <div className="mx-4 w-full max-w-[420px] rounded-2xl bg-white p-8">
-                {/* Warning Icon */}
-                <div className="flex justify-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FEF3C7]">
-                    <IconAlertTriangle size={32} color="#F59E0B" stroke={2} />
-                  </div>
-                </div>
-
-                {/* Title */}
-                <Text
-                  fw={700}
-                  className="mt-5 text-center text-[20px] text-[#0F172A]"
-                >
-                  Leave Group?
-                </Text>
-
-                {/* Warnings */}
-                <div className="mt-5 flex flex-col gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#FEF3C7] text-[12px] font-bold text-[#92400E]">
-                      1
-                    </div>
-                    <Text
-                      fw={500}
-                      className="text-[13px] leading-relaxed text-[#374151]"
-                    >
-                      Once you leave,{" "}
-                      <Text component="span" fw={700}>
-                        you forfeit your slot
-                      </Text>{" "}
-                      in the payout order.
-                    </Text>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#FEF3C7] text-[12px] font-bold text-[#92400E]">
-                      2
-                    </div>
-                    <Text
-                      fw={500}
-                      className="text-[13px] leading-relaxed text-[#374151]"
-                    >
-                      You{" "}
-                      <Text component="span" fw={700}>
-                        cannot rejoin
-                      </Text>{" "}
-                      the group once you leave.
-                    </Text>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#FEF3C7] text-[12px] font-bold text-[#92400E]">
-                      3
-                    </div>
-                    <Text
-                      fw={500}
-                      className="text-[13px] leading-relaxed text-[#374151]"
-                    >
-                      Leaving the group may affect your{" "}
-                      <Text component="span" fw={700}>
-                        Trust Score
-                      </Text>
-                      .
-                    </Text>
-                  </div>
-                  {isPostStart && (
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#FEF3C7] text-[12px] font-bold text-[#92400E]">
-                        4
-                      </div>
-                      <Text
-                        fw={500}
-                        className="text-[13px] leading-relaxed text-[#374151]"
-                      >
-                        This group has already started -{" "}
-                        <Text component="span" fw={700}>
-                          {postStartExitPenaltyPercent !== null
-                            ? `${postStartExitPenaltyPercent}% of`
-                            : "a share of"}{" "}
-                          your collateral will be forfeited
-                        </Text>{" "}
-                        to the remaining members.
-                      </Text>
-                    </div>
-                  )}
-                </div>
-
-                {/* Buttons */}
-                {leaveError && (
-                  <Text className="mt-3 text-center text-[12px] text-[#EF4444]">
-                    {leaveError}
-                  </Text>
-                )}
-                <div className="mt-7 flex gap-3">
-                  <button
-                    onClick={() => {
-                      setLeaveGroupId(null);
-                      setLeaveError(null);
-                    }}
-                    className="flex-1 cursor-pointer rounded-lg border border-[#E5E7EB] py-3 text-[13px] font-semibold text-[#374151]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    disabled={leaveLoading}
-                    onClick={async () => {
-                      if (!leaveGroupId) return;
-                      setLeaveLoading(true);
-                      setLeaveError(null);
-                      try {
-                        await leaveRoscaCircle(leaveGroupId);
-                        setLeaveGroupId(null);
-                        setJoinedGroups((prev) =>
-                          prev.filter((g) => g.id !== leaveGroupId),
-                        );
-                        setJoinedIds((prev) => {
-                          const s = new Set(prev);
-                          s.delete(leaveGroupId);
-                          return s;
-                        });
-                      } catch (e) {
-                        setLeaveError(
-                          e instanceof Error
-                            ? e.message
-                            : "Failed to leave group",
-                        );
-                      } finally {
-                        setLeaveLoading(false);
-                      }
-                    }}
-                    className={`flex-1 cursor-pointer rounded-lg py-3 text-[13px] font-semibold text-white ${leaveLoading ? "bg-[#9CA3AF]" : "bg-[#EF4444]"}`}
-                  >
-                    {leaveLoading ? "Leaving…" : "Confirm"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-      {/* Message Admin Modal */}
-      {messageAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="mx-4 w-full max-w-[420px] rounded-2xl bg-white p-8">
-            {messageStep === "compose" && (
-              <>
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <Text fw={700} className="text-[18px] text-[#0F172A]">
-                    Message admin
-                  </Text>
-                  <button
-                    onClick={() => {
-                      setMessageAdmin(null);
-                      setMessageSendError(null);
-                    }}
-                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full hover:bg-[#F3F4F6]"
-                  >
-                    <IconX size={18} color="#6B7280" />
-                  </button>
-                </div>
-
-                {/* Admin Name */}
-                <Text fw={500} className="mt-1 text-[13px] text-[#6B7280]">
-                  {messageAdmin?.adminName}
-                </Text>
-
-                {/* Message Input */}
-                <Textarea
-                  label="Your message"
-                  placeholder="Type message"
-                  value={message}
-                  onChange={(e) => setMessage(e.currentTarget.value)}
-                  minRows={5}
-                  radius="md"
-                  className="mt-5"
-                  styles={{
-                    input: {
-                      borderColor: "#E5E7EB",
-                      fontSize: 13,
-                    },
-                  }}
-                />
-
-                {/* Error */}
-                {messageSendError && (
-                  <Text className="mt-3 text-[12px] text-[#EF4444]">
-                    {messageSendError}
-                  </Text>
-                )}
-
-                {/* Buttons */}
-                <div className="mt-5 flex gap-3">
-                  <button
-                    onClick={() => {
-                      setMessageAdmin(null);
-                      setMessageSendError(null);
-                    }}
-                    className="flex-1 cursor-pointer rounded-lg border border-[#E5E7EB] py-3 text-[13px] font-semibold text-[#374151]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    disabled={!message.trim()}
-                    onClick={async () => {
-                      if (!messageAdmin?.circleId) return;
-                      setMessageSendError(null);
-                      setMessageStep("sending");
-                      try {
-                        await sendMessageToAdmin(
-                          messageAdmin.circleId,
-                          message,
-                        );
-                        setMessageStep("sent");
-                      } catch (e) {
-                        setMessageSendError(
-                          e instanceof Error
-                            ? e.message
-                            : "Failed to send message",
-                        );
-                        setMessageStep("compose");
-                      }
-                    }}
-                    className={`flex-1 cursor-pointer rounded-lg py-3 text-[13px] font-semibold text-white ${
-                      message.trim()
-                        ? "bg-[#02A36E]"
-                        : "cursor-not-allowed bg-[#9CA3AF]"
-                    }`}
-                  >
-                    Send
-                  </button>
-                </div>
-              </>
-            )}
-
-            {messageStep === "sending" && (
-              <div className="flex flex-col items-center py-8">
-                <Loader color="#02A36E" size="lg" />
-                <Text fw={700} className="mt-5 text-[18px] text-[#0F172A]">
-                  Sending your message
-                </Text>
-                <Text fw={500} className="mt-1 text-[13px] text-[#6B7280]">
-                  Please wait...
-                </Text>
-              </div>
-            )}
-
-            {messageStep === "sent" && (
-              <div className="flex flex-col items-center py-8">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
-                  <IconCircleCheck size={36} color="#02A36E" />
-                </div>
-                <Text fw={700} className="mt-5 text-[18px] text-[#0F172A]">
-                  Message sent
-                </Text>
-                <Text fw={500} className="mt-1 text-[13px] text-[#6B7280]">
-                  Your message has been delivered to the admin.
-                </Text>
-                <button
-                  onClick={() => {
-                    setMessageAdmin(null);
-                    setMessage("");
-                    setMessageStep("compose");
-                  }}
-                  className="mt-6 cursor-pointer rounded-lg bg-[#02A36E] px-8 py-3 text-[13px] font-semibold text-white"
-                >
-                  Done
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
