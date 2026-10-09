@@ -1,6 +1,11 @@
 # Netlify site: internal staff / super-admin application
-# Set Package directory to apps/super-admin and leave Base directory at the repo root.
-# Netlify then selects this config instead of the root-level customer fallback.
+#
+# In the Netlify dashboard, set Package directory to `apps/super-admin`.
+# Netlify then uses this file as the site's build config AND treats
+# `apps/super-admin` as the implicit base directory. All paths below are
+# relative to that base, which is why `publish` is just `dist` and the
+# command is the local-package `build`, not the workspace-level
+# `build:super-admin` script that lives in the root package.json.
 [build]
-  command = "pnpm build:super-admin"
-  publish = "apps/super-admin/dist"
+  command = "pnpm build"
+  publish = "dist"
