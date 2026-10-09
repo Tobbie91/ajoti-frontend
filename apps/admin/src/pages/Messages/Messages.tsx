@@ -67,7 +67,7 @@ function CircleListItem({ circle, active, onClick }: { circle: ChatCircle; activ
 }
 
 function ChatThread({ circleId, circleName, currentUserId }: { circleId: string; circleName: string; currentUserId: string }) {
-  const { messages, loading, sending, sendMessage } = useChat(circleId)
+  const { messages, loading, sending, error, sendMessage } = useChat(circleId)
   const [draft, setDraft] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -75,11 +75,15 @@ function ChatThread({ circleId, circleName, currentUserId }: { circleId: string;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  function handleSend() {
+  async function handleSend() {
     const text = draft.trim()
-    if (!text) return
-    setDraft('')
-    sendMessage(text)
+    if (!text || sending) return
+    try {
+      await sendMessage(text)
+      setDraft('')
+    } catch {
+      // Retain the draft and show the API error so users can retry safely.
+    }
   }
 
   return (
@@ -137,7 +141,7 @@ function ChatThread({ circleId, circleName, currentUserId }: { circleId: string;
           radius="xl"
         />
         <button
-          onClick={handleSend}
+          onClick={() => { void handleSend() }}
           disabled={!draft.trim() || sending}
           style={{ width: 40, height: 40, borderRadius: '50%', background: draft.trim() ? PRIMARY : '#E5E7EB', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: draft.trim() ? 'pointer' : 'default', transition: 'background 0.15s', flexShrink: 0 }}
         >
