@@ -65,8 +65,12 @@ function NotificationPanel() {
   async function handleNotificationClick(notification: AppNotification) {
     if (!notification.read) await handleMarkOne(notification.id)
     // Existing notifications can carry an older support path; honour those records too.
+    const title = notification.title?.toLowerCase() ?? ''
     const destination = notification.actionUrl?.replace(/^\/support\/tickets\//, '/support/') ?? (
-      notification.title?.toLowerCase().includes('invited to join') ? '/rosca/invites' : null
+      title.includes('invited to join') ? '/rosca/invites'
+        : title.startsWith('message from ') || title.startsWith('new private message')
+          ? '/messages?view=direct'
+          : null
     )
     if (destination) {
       setOpen(false)
