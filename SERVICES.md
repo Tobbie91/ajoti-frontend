@@ -47,22 +47,35 @@ Future Google sign-in requires a server-validated Ajoti auth exchange and the no
 
 ---
 
-## 3. Mono Prove ✅
+## 3. Mono Lookup / legacy Prove ✅
 
-Purpose: customer KYC verification.
+Purpose: customer KYC verification and staff review.
 
-The frontend requests a Prove session from the backend; provider secrets remain on the backend.
+Current customer flow:
 
-Typical flow:
+1. customer enters NIN + BVN for Level 1 or a supported government-ID type/number for Level 2
+2. customer explicitly consents to the Lookup
+3. frontend sends the request to the Ajoti backend
+4. backend calls Mono Lookup with server-side credentials
+5. backend validates the returned identity against canonical Ajoti account details
+6. backend stores a safe verification summary and updates KYC status
+7. frontend displays the resulting KYC state
 
-1. customer starts identity verification
-2. frontend requests a Prove session from Ajoti backend
-3. backend returns session/widget values
-4. customer completes provider flow
-5. Mono webhook updates backend state
-6. frontend reflects the resulting KYC status
+The frontend never receives or stores the Mono Lookup secret.
+
+Current Super Admin flow:
+
+- opening a KYC review displays the evidence already stored by the backend and does not trigger another provider request
+- Level 1 and Level 2 evidence are shown separately when available
+- sensitive NIN/BVN/document values are masked in expandable evidence
+- staff can choose **Run new Lookup** only when another verification is actually needed
+- the re-verification modal warns that a provider charge may apply and requires an explicit confirmation
+- Level 1 re-verification reuses the encrypted identity details already held by the backend; Level 2 requires staff to enter the government-ID type and number again
+
+Historical Mono Prove records remain supported. The backend may fetch a legacy Prove record by its stored Prove reference, but new Lookup records must not be sent to the Prove customer endpoint.
 
 No long-lived Mono secret should be placed in Vite environment variables.
+
 
 ---
 
@@ -198,7 +211,9 @@ After staging deployment:
 - [ ] private Target Savings invite link works for another account
 - [ ] Target Savings contribution errors are visible in the UI
 - [ ] super-admin Target Savings oversight loads
-- [ ] KYC provider flow opens correctly where enabled
+- [ ] Level 1 and Level 2 customer Mono Lookup flows complete correctly
+- [ ] Super Admin KYC review loads stored evidence without making a new Lookup
+- [ ] Super Admin explicit re-verification shows a charge warning before calling Mono
 - [ ] `user.ajoti.com` redirects to the canonical customer domain if still in use
 
 ---
@@ -221,6 +236,8 @@ The invite link carries its join context in the customer URL. If authentication 
 
 Run a clean production build locally and inspect the deployment logs for TypeScript/import failures. Clear stale `.tsbuildinfo` files when validating broad/shared utility changes.
 
-### KYC widget does not open
+### KYC Lookup fails
 
-Confirm the backend has valid Mono credentials and returns a valid session. Provider secrets should not be moved into the frontend as a workaround.
+Confirm the backend has a valid `MONO_LOOKUP_SECRET_KEY`, the submitted identity data is valid, and the returned identity matches the canonical Ajoti account details. Provider secrets should never be moved into the frontend as a workaround.
+
+For legacy Prove records only, confirm the backend still has the required Prove credentials/webhook configuration. Do not use Prove to re-fetch a new Lookup record.
