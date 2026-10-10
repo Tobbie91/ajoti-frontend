@@ -572,6 +572,10 @@ export function CreateGroup() {
                 <Text fz="sm" fw={500}>{frequency.length > 0 ? frequency.join(', ') : '-'}</Text>
               </Box>
               <Box>
+                <Text fz="xs" c="dimmed">Payout Time (WAT)</Text>
+                <Text fz="sm" fw={500}>{payoutTime}</Text>
+              </Box>
+              <Box>
                 <Text fz="xs" c="dimmed">Payout Order</Text>
                 <Text fz="sm" fw={500}>{payoutStructure || '-'}</Text>
               </Box>
