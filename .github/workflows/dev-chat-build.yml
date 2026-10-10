@@ -1,4 +1,4 @@
-name: Dev member app build
+name: Dev app builds
 on:
   push:
     branches: [dev]
@@ -21,3 +21,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter ajoti-admin build
+      - run: pnpm --filter ajoti-super-admin build
