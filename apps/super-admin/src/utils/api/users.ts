@@ -234,8 +234,8 @@ export function reverifyProviderIdentity(
     | { level: 1 }
     | {
         level: 2;
-        documentType: "drivers_license" | "international_passport";
-        documentNumber: string;
+        documentType?: "drivers_license" | "international_passport";
+        documentNumber?: string;
       },
 ): Promise<Record<string, unknown>> {
   return authRequest(`/api/superadmin/kyc/identity/${userId}/reverify`, {
