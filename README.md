@@ -39,6 +39,18 @@ Shared areas include:
 
 Organiser-only circle management routes and actions remain capability/role gated.
 
+## KYC
+
+The current customer KYC flow is Lookup-first.
+
+- Level 1 verifies NIN + BVN through Mono Mashup Lookup after explicit customer consent.
+- Level 2 verifies an international passport or driver's licence through Mono Lookup.
+- New Lookup verification is synchronous; the backend performs the provider call and returns the resulting KYC state.
+- Historical `PROVE_PENDING*` state names remain in the API for compatibility with old Prove sessions, but new Lookup verification does not require a customer-facing Prove widget.
+- Super Admin displays stored verification evidence by default and does not contact Mono simply because staff opened a review.
+- Staff may deliberately run a new Lookup from Super Admin after a charge warning/confirmation.
+- Staff-facing raw evidence must mask sensitive identity values.
+
 ## Target Savings
 
 Target Savings is now a live customer feature.
