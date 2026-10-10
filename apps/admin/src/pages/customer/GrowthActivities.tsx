@@ -28,7 +28,7 @@ import {
   IconCheck,
   IconCash,
 } from "@tabler/icons-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { RoscaCommitments } from "@/components/RoscaCommitments";
 import {
   getRoscaCircle,
@@ -56,10 +56,23 @@ const GROUP_TABS = [
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
+const TAB_SLUG: Record<string, string> = {
+  overview: "Overview",
+  members: "Members",
+  admin: "Admin",
+  growth: "Growth & Activities",
+  peer: "Peer Reviews",
+};
+
 export function GrowthActivities() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState<string>("Overview");
+  const [searchParams] = useSearchParams();
+  const initialTabSlug = searchParams.get("tab") ?? "";
+  const [activeTab, setActiveTab] = useState<string>(
+    TAB_SLUG[initialTabSlug.toLowerCase()] ?? "Overview",
+  );
+  const autoPay = searchParams.get("pay") === "1";
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -276,6 +289,7 @@ export function GrowthActivities() {
             nextDeadline={
               nextSchedule?.contributionDeadline as string | undefined
             }
+            autoOpenPay={autoPay}
           />
         )}
         {activeTab === "Peer Reviews" && (

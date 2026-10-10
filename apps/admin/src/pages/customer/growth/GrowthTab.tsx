@@ -44,6 +44,7 @@ export function GrowthTab({
   circleStatus,
   nextCycleNumber,
   nextDeadline,
+  autoOpenPay = false,
 }: {
   trustPercent: number;
   trustScore: number;
@@ -57,6 +58,7 @@ export function GrowthTab({
   circleStatus: string;
   nextCycleNumber?: number;
   nextDeadline?: string;
+  autoOpenPay?: boolean;
 }) {
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,6 +86,16 @@ export function GrowthTab({
       .then((b) => setWalletAvailable(Number(b.available) / 100))
       .catch(() => setWalletAvailable(0));
   }
+
+  // Deep-link entry: when ?pay=1 arrives from the Ajo card's Pay CTA, auto-open
+  // the pay modal once we know the user is actually allowed to contribute.
+  // Fires exactly once per mount thanks to the ref guard.
+  const [autoPayFired, setAutoPayFired] = useState(false);
+  useEffect(() => {
+    if (!autoOpenPay || autoPayFired || !canContribute) return;
+    setAutoPayFired(true);
+    openModal();
+  }, [autoOpenPay, autoPayFired, canContribute]);
 
   async function handleConfirm() {
     if (nextCycleNumber == null) return;
