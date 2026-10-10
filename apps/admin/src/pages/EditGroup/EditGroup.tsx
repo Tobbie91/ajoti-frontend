@@ -46,6 +46,7 @@ export function EditGroup() {
   const [contributionAmount, setContributionAmount] = useState<number | ''>('')
   const [frequency, setFrequency] = useState<string | null>(null)
   const [payoutTime, setPayoutTime] = useState<string | null>('18:00')
+  const [contributionCutoffTime, setContributionCutoffTime] = useState<string | null>('18:00')
   const [visibility, setVisibility] = useState<string | null>(null)
   const [maxSlots, setMaxSlots] = useState<number | ''>('')
 
@@ -65,6 +66,7 @@ export function EditGroup() {
         setContributionAmount(Number(data.contributionAmount ?? 0) / 100)
         setFrequency(data.frequency)
         setPayoutTime(data.payoutTime ?? '18:00')
+        setContributionCutoffTime(data.contributionCutoffTime ?? '18:00')
         setVisibility(data.visibility)
         setMaxSlots(data.maxSlots)
       })
@@ -92,6 +94,7 @@ export function EditGroup() {
         maxSlots: Number(maxSlots),
         frequency: frequency as 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY',
         payoutTime: payoutTime ?? undefined,
+        contributionCutoffTime: contributionCutoffTime ?? undefined,
         visibility: visibility ?? undefined,
       })
       navigate(`/rosca/groups/${id}`)
@@ -206,6 +209,15 @@ export function EditGroup() {
                 disabled={!isDraft}
               />
             </Group>
+            <Select
+              label="Contribution cutoff time (WAT)"
+              value={contributionCutoffTime}
+              onChange={setContributionCutoffTime}
+              data={Array.from({ length: 24 }, (_, hour) => ({ value: String(hour).padStart(2, '0') + ':00', label: new Date(Date.UTC(2026, 0, 1, hour)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) }))}
+              disabled={!isDraft}
+              mt="md"
+              styles={inputStyles}
+            />
             <Select
               label="Automatic payout time (WAT)"
               description="Locked after group activation. Payouts remain at least 24 hours after the contribution deadline."
