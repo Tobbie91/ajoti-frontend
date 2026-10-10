@@ -454,6 +454,28 @@ export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
   ).then((res) => (Array.isArray(res) ? res : (res.data ?? [])));
 }
 
+// ── Per-group contribution payment preference ────────────────────────────────
+export type ContributionPaymentMethod = "MANUAL" | "AUTOMATIC";
+
+export async function getContributionPaymentPreference(circleId: string): Promise<ContributionPaymentMethod> {
+  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+    `/api/rosca/${circleId}/contributions/payment-preference`,
+    { method: "GET" },
+  );
+  return response.data.paymentMethod;
+}
+
+export async function setContributionPaymentPreference(
+  circleId: string,
+  paymentMethod: ContributionPaymentMethod,
+): Promise<ContributionPaymentMethod> {
+  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+    `/api/rosca/${circleId}/contributions/payment-preference`,
+    { method: "PATCH", body: JSON.stringify({ paymentMethod }) },
+  );
+  return response.data.paymentMethod;
+}
+
 // ── Payouts ──────────────────────────────────────────────────────────────────
 
 export interface Payout {
