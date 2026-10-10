@@ -45,7 +45,7 @@ Check all that apply - these require **2 approvals**:
 - [ ] Auth / login / session management
 - [ ] Transaction PIN entry or transmission
 - [ ] Wallet / payment / withdrawal UI flows
-- [ ] KYC widget integration (Mono Prove)
+- [ ] KYC / Mono Lookup / legacy Prove / staff identity evidence
 - [ ] Admin or superadmin access control pages
 - [ ] User PII displayed or stored client-side
 
