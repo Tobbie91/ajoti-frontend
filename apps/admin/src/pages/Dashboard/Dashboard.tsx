@@ -118,7 +118,7 @@ export function Dashboard() {
         <StatsCard
           title="Total Groups"
           value={dashStats ? String(dashStats.totalGroups) : unavailableValue}
-          subtitle="Active"
+          subtitle="Excludes cancelled groups"
           withBar
         />
         <StatsCard
@@ -138,6 +138,15 @@ export function Dashboard() {
           subtitle=""
         />
       </SimpleGrid>
+
+      {dashStats?.groupCounts && (
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+          <StatsCard title="Active Groups" value={String(dashStats.groupCounts.active)} subtitle="" />
+          <StatsCard title="Ready to Start" value={String(dashStats.groupCounts.ready)} subtitle="" />
+          <StatsCard title="Not Yet Ready" value={String(dashStats.groupCounts.notReady)} subtitle="" />
+          <StatsCard title="Completed Groups" value={String(dashStats.groupCounts.completed)} subtitle="" />
+        </SimpleGrid>
+      )}
 
       <Paper p="lg" radius="md" style={{ background: '#02A36E' }}>
         <Group justify="space-between">
