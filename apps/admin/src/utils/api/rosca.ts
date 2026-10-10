@@ -476,6 +476,27 @@ export async function setContributionPaymentPreference(
   return response.data.paymentMethod;
 }
 
+export interface CircleEarlyPayout {
+  id: string;
+  userId: string;
+  memberName: string;
+  status: string;
+  expectedPayout: string;
+  advanceReceived: string;
+  companyFee: string;
+  projectedRemainingPayout: string;
+  requestedAt: string;
+  repaidAt: string | null;
+}
+
+export async function getCircleEarlyPayouts(circleId: string): Promise<CircleEarlyPayout[]> {
+  const result = await authRequest<{ data: CircleEarlyPayout[] }>(
+    `/api/admin/rosca/${circleId}/early-payouts`,
+    { method: "GET" },
+  );
+  return result.data;
+}
+
 // ── Payouts ──────────────────────────────────────────────────────────────────
 
 export interface Payout {
