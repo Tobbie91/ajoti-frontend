@@ -48,6 +48,7 @@ export function CreateGroup() {
   const [amount, setAmount] = useState('10,000')
   const [frequency, setFrequency] = useState<string[]>([])
   const [payoutStructure, setPayoutStructure] = useState('SEQUENTIAL')
+  const [payoutTime, setPayoutTime] = useState('18:00')
 
   // Step 3 state
   const [privacyAccess, setPrivacyAccess] = useState('open')
@@ -267,6 +268,14 @@ export function CreateGroup() {
                 />
               </Group>
             </Box>
+
+            <Select
+              label="Automatic payout time (WAT)"
+              description="Payouts are credited to Ajoti wallets automatically, at least 24 hours after the contribution deadline."
+              value={payoutTime}
+              onChange={(value) => setPayoutTime(value ?? '18:00')}
+              data={[{ value: '09:00', label: '9:00 AM' }, { value: '12:00', label: '12:00 PM' }, { value: '15:00', label: '3:00 PM' }, { value: '18:00', label: '6:00 PM' }, { value: '21:00', label: '9:00 PM' }]}
+            />
 
             <Box>
               <Text fw={600} fz="sm" mb="xs">
@@ -658,6 +667,7 @@ export function CreateGroup() {
                     durationCycles: Number(participants) || 10,
                     maxSlots: Number(participants) || 10,
                     payoutLogic: payoutStructure,
+                    payoutTime,
                     visibility,
                   })
                   navigate('/rosca/groups')
