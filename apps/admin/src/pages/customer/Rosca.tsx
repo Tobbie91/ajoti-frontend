@@ -485,6 +485,15 @@ export function Rosca() {
                     >
                       View Group
                     </button>
+                    {group.circleStatus === "ACTIVE" && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/rosca/${group.id}/activities?action=contribute`)}
+                        className="mt-3 w-full cursor-pointer rounded-lg border border-[#02A36E] bg-white py-3 text-[13px] font-semibold text-[#02A36E]"
+                      >
+                        Make Contribution
+                      </button>
+                    )}
                     <div className="mt-5 flex gap-3">
                       <button type="button" onClick={() => navigate(`/messages?circleId=${encodeURIComponent(group.id)}`)} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#02A36E] py-3 text-[13px] font-semibold text-white">
                         <IconMessageCircle size={16} />
