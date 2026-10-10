@@ -334,7 +334,7 @@ export function Loans() {
                     <Stack gap="sm">
                       <Group justify="space-between"><Text fz="sm" c="dimmed">Expected Payout (100%)</Text><Text fz="sm" fw={600}>₦{fmt(expectedPayoutAmount)}</Text></Group>
                       <Group justify="space-between"><Text fz="sm" c="dimmed">Early Payout Amount ({allowedPercent}%)</Text><Text fz="sm" fw={600}>₦{fmt(grossLoanAmount)}</Text></Group>
-                      <Group justify="space-between"><Text fz="sm" c="dimmed">Service Fee (10%)</Text><Text fz="sm" fw={600} style={{ color: '#EF4444' }}>-₦{fmt(serviceFee)}</Text></Group>
+                      <Group justify="space-between"><Text fz="sm" c="dimmed">Service Fee (4%)</Text><Text fz="sm" fw={600} style={{ color: '#EF4444' }}>-₦{fmt(serviceFee)}</Text></Group>
                       <Box style={{ borderTop: '1px solid #D1FAE5', paddingTop: 12 }}>
                         <Group justify="space-between">
                           <Text fz="sm" fw={600}>You'll Receive</Text>
@@ -376,7 +376,7 @@ export function Loans() {
                 { label: 'ajo Group', value: selectedCircle.name },
                 { label: 'Expected Payout (100%)', value: `₦${fmt(expectedPayoutAmount)}` },
                 { label: `Early Payout Amount (${allowedPercent}%)`, value: `₦${fmt(grossLoanAmount)}` },
-                { label: 'Service Fee (10%)', value: `-₦${fmt(serviceFee)}`, red: true },
+                { label: 'Service Fee (4%)', value: `-₦${fmt(serviceFee)}`, red: true },
                 { label: 'Contribution', value: `₦${(Number(selectedCircle.contributionAmount) / 100).toLocaleString()} / ${(selectedCircle.frequency ?? '').toLowerCase()}` },
               ].map(({ label, value, red }) => (
                 <Group key={label} justify="space-between" style={{ borderBottom: '1px solid #F3F4F6', paddingBottom: 12 }}>
