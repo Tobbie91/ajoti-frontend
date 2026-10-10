@@ -44,6 +44,7 @@ export function GrowthTab({
   circleStatus,
   nextCycleNumber,
   nextDeadline,
+  openContributionOnLoad = false,
 }: {
   trustPercent: number;
   trustScore: number;
@@ -57,6 +58,7 @@ export function GrowthTab({
   circleStatus: string;
   nextCycleNumber?: number;
   nextDeadline?: string;
+  openContributionOnLoad?: boolean;
 }) {
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,6 +86,12 @@ export function GrowthTab({
       .then((b) => setWalletAvailable(Number(b.available) / 100))
       .catch(() => setWalletAvailable(0));
   }
+
+  useEffect(() => {
+    if (!openContributionOnLoad || !canContribute) return;
+    openModal();
+  }, [openContributionOnLoad, canContribute]);
+
 
   async function handleConfirm() {
     if (nextCycleNumber == null) return;

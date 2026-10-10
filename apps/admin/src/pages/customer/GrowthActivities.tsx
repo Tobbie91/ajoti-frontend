@@ -28,7 +28,7 @@ import {
   IconCheck,
   IconCash,
 } from "@tabler/icons-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { RoscaCommitments } from "@/components/RoscaCommitments";
 import {
   getRoscaCircle,
@@ -59,7 +59,11 @@ const GROUP_TABS = [
 export function GrowthActivities() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState<string>("Overview");
+  const [searchParams] = useSearchParams();
+  const contributionShortcut = searchParams.get("action") === "contribute";
+  const [activeTab, setActiveTab] = useState<string>(
+    contributionShortcut ? "Growth & Activities" : "Overview",
+  );
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -276,6 +280,7 @@ export function GrowthActivities() {
             nextDeadline={
               nextSchedule?.contributionDeadline as string | undefined
             }
+            openContributionOnLoad={contributionShortcut}
           />
         )}
         {activeTab === "Peer Reviews" && (
