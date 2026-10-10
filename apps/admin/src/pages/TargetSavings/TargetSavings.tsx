@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { notifications } from "@mantine/notifications";
 import {
   Alert,
   Accordion,
@@ -661,7 +662,7 @@ export function TargetSavings() {
 }
 
 function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
-  const mine = plan.myMembership;
+  const mine = plan.myMembership?.status === "ACTIVE" ? plan.myMembership : null;
   const providerActionsUnavailable = investmentActionsUnavailable(plan.investment);
   const savedKobo = BigInt(mine?.savedAmountKobo ?? "0");
   const cancellationFeeKobo = (savedKobo * 150n) / 10_000n;
@@ -734,9 +735,25 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
     setCanceling(true);
     setError("");
     try {
-      await cancelTargetSavings(plan.id);
+      const result = await cancelTargetSavings(plan.id) as {
+        data?: {
+          returnedAmountKobo?: string;
+          penaltyKobo?: string;
+          membershipStatus?: string;
+        };
+      };
       setCancelOpen(false);
       await onChanged();
+      const returned = result?.data?.returnedAmountKobo ?? cancellationReturnKobo.toString();
+      const fee = result?.data?.penaltyKobo ?? cancellationFeeKobo.toString();
+      notifications.show({
+        color: "green",
+        title: "Savings cancelled",
+        message:
+          savedKobo > 0n
+            ? `${money(returned)} returned to your Ajoti wallet. Cancellation fee: ${money(fee)}.`
+            : "Your savings membership has been cancelled.",
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "We could not cancel this savings membership");
     } finally {
