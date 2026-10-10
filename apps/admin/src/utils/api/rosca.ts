@@ -312,8 +312,21 @@ export function closeRoscaCircle(
 }
 
 // GET /api/admin/rosca/dashboard - admin dashboard stats
+export interface DashboardCircle {
+  id: string; name: string; status: string; filledSlots: number;
+  maxSlots: number; durationCycles: number; createdAt: string;
+}
+
 export interface AdminDashboard {
   totalGroups: number;
+  groupCounts?: { active: number; ready: number; notReady: number; completed: number };
+  categories?: {
+    activeGroups: DashboardCircle[];
+    readyGroups: DashboardCircle[];
+    notReadyGroups: DashboardCircle[];
+    completedGroups: DashboardCircle[];
+    targetSavings: { id: string; name: string; status: string; targetAmount: string; createdAt: string }[];
+  };
   nextDeadline: { groupName: string; deadline: string } | null;
   pendingJoinRequests: {
     total: number;
