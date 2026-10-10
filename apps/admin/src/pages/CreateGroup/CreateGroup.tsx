@@ -49,6 +49,7 @@ export function CreateGroup() {
   const [frequency, setFrequency] = useState<string[]>([])
   const [payoutStructure, setPayoutStructure] = useState('SEQUENTIAL')
   const [payoutTime, setPayoutTime] = useState('18:00')
+  const [contributionCutoffTime, setContributionCutoffTime] = useState('18:00')
 
   // Step 3 state
   const [privacyAccess, setPrivacyAccess] = useState('open')
@@ -269,6 +270,13 @@ export function CreateGroup() {
               </Group>
             </Box>
 
+            <Select
+              label="Contribution cutoff time (WAT)"
+              description="Selected cutoff is applied to the contribution date for each cycle."
+              value={contributionCutoffTime}
+              onChange={(value) => setContributionCutoffTime(value ?? '18:00')}
+              data={Array.from({ length: 24 }, (_, hour) => ({ value: String(hour).padStart(2, '0') + ':00', label: new Date(Date.UTC(2026, 0, 1, hour)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) }))}
+            />
             <Select
               label="Automatic payout time (WAT)"
               description="Payouts are credited to Ajoti wallets automatically, at least 24 hours after the contribution deadline."
@@ -572,6 +580,10 @@ export function CreateGroup() {
                 <Text fz="sm" fw={500}>{frequency.length > 0 ? frequency.join(', ') : '-'}</Text>
               </Box>
               <Box>
+                <Text fz="xs" c="dimmed">Contribution Cutoff (WAT)</Text>
+                <Text fz="sm" fw={500}>{contributionCutoffTime}</Text>
+              </Box>
+              <Box>
                 <Text fz="xs" c="dimmed">Payout Time (WAT)</Text>
                 <Text fz="sm" fw={500}>{payoutTime}</Text>
               </Box>
@@ -672,6 +684,7 @@ export function CreateGroup() {
                     maxSlots: Number(participants) || 10,
                     payoutLogic: payoutStructure,
                     payoutTime,
+                    contributionCutoffTime,
                     visibility,
                   })
                   navigate('/rosca/groups')
