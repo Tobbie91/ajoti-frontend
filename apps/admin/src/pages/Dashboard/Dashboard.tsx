@@ -104,17 +104,25 @@ export function Dashboard() {
         )
         .catch(() => setWallet({ total: 0, available: 0, reserved: 0 })),
       listAllRoscaCircles()
-        .then(setCircles)
+        .then((res) => {
+          // Backend sometimes returns a `{ data: [...] }` wrapper; sometimes a bare
+          // array. Normalise so the bucket useMemo can always iterate.
+          const arr = Array.isArray(res)
+            ? res
+            : ((res as unknown as { data?: RoscaCircle[] } | null)?.data ?? [])
+          setCircles(arr)
+        })
         .catch(() => setCircles([])),
       getMyTargetSavings()
-        .then(setTargetPlans)
+        .then((res) => setTargetPlans(Array.isArray(res) ? res : []))
         .catch(() => setTargetPlans([])),
     ])
   }, [])
 
   const bucketCounts = useMemo(() => {
     const counts = { Active: 0, 'Not Ready': 0, Ready: 0, Completed: 0 } as Record<string, number>
-    for (const c of circles) {
+    const safeCircles = Array.isArray(circles) ? circles : []
+    for (const c of safeCircles) {
       const status = getGroupDisplayStatus(c)
       counts[status] = (counts[status] ?? 0) + 1
     }
@@ -123,7 +131,7 @@ export function Dashboard() {
       notReady: counts['Not Ready'],
       ready: counts.Ready,
       completed: counts.Completed,
-      targetSavings: targetPlans.length,
+      targetSavings: Array.isArray(targetPlans) ? targetPlans.length : 0,
     }
   }, [circles, targetPlans])
 
