@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Text, Avatar, Badge, Table, Textarea, Loader } from "@mantine/core";
+import { Text, Avatar, Badge, Table, Textarea, Loader, Select, Button } from "@mantine/core";
 import {
   IconArrowLeft,
   IconUsers,
@@ -11,6 +11,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { RoscaCommitments } from "@/components/RoscaCommitments";
 import { RoscaJoinAction } from "@/components/RoscaJoinAction";
+import { getContributionPaymentPreference, setContributionPaymentPreference, type ContributionPaymentMethod } from "@/utils/api/rosca";
 import {
   getRoscaCircle,
   getRoscaSchedules,
@@ -52,6 +53,9 @@ export function GroupDetails() {
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [circleStatus, setCircleStatus] = useState<string>("");
+  const [paymentPreference, setPaymentPreference] = useState<ContributionPaymentMethod>('MANUAL');
+  const [paymentPreferenceSaving, setPaymentPreferenceSaving] = useState(false);
+  const [paymentPreferenceMessage, setPaymentPreferenceMessage] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -145,6 +149,13 @@ export function GroupDetails() {
     }
     fetchData();
   }, [id, refreshVersion]);
+
+  useEffect(() => {
+    if (!id || !membersLoaded || !members.some(m => m.userId === currentUserId)) return;
+    getContributionPaymentPreference(id)
+      .then(setPaymentPreference)
+      .catch(() => setPaymentPreferenceMessage('Unable to load payment preference'));
+  }, [id, membersLoaded, members, currentUserId]);
 
   if (loading) {
     return (
@@ -471,6 +482,39 @@ export function GroupDetails() {
             )}
             {isCurrentUserAdmin && !isMember && (
               <RoscaJoinAction circleId={id!} label="Join as a member" unavailableReason={circleStatus !== "DRAFT" ? "This group is no longer accepting members." : Number(group.slotsLeft) <= 0 ? "This group is full." : undefined} />
+            )}
+            {isMember && circleStatus === 'ACTIVE' && (
+              <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+                <Text fw={600} size="sm" mb="xs">Contribution payment method</Text>
+                <Select
+                  aria-label="Contribution payment method"
+                  value={paymentPreference}
+                  onChange={(value) => setPaymentPreference(value === 'AUTOMATIC' ? 'AUTOMATIC' : 'MANUAL')}
+                  data={[
+                    { value: 'MANUAL', label: 'Manual: I will pay each contribution' },
+                    { value: 'AUTOMATIC', label: 'Automatic: deduct from my Ajoti wallet' },
+                  ]}
+                  allowDeselect={false}
+                />
+                <Text size="xs" c="dimmed" mt="xs">
+                  Automatic deductions use your Ajoti wallet before the contribution cutoff. Keep sufficient funds available.
+                </Text>
+                <Button mt="sm" loading={paymentPreferenceSaving} onClick={async () => {
+                  if (!id) return;
+                  setPaymentPreferenceSaving(true);
+                  setPaymentPreferenceMessage(null);
+                  try {
+                    const updated = await setContributionPaymentPreference(id, paymentPreference);
+                    setPaymentPreference(updated);
+                    setPaymentPreferenceMessage('Payment preference saved');
+                  } catch (error) {
+                    setPaymentPreferenceMessage(error instanceof Error ? error.message : 'Unable to save preference');
+                  } finally {
+                    setPaymentPreferenceSaving(false);
+                  }
+                }}>Save payment preference</Button>
+                {paymentPreferenceMessage && <Text size="sm" mt="xs">{paymentPreferenceMessage}</Text>}
+              </div>
             )}
             {canRequestExit && (
               <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
