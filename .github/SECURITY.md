@@ -25,7 +25,7 @@ Areas of particular sensitivity:
 
 - Authentication and session management (JWT storage, token refresh)
 - Transaction PIN entry and transmission
-- KYC widget integration (Mono Prove)
+- KYC integration (Mono Lookup, legacy Prove compatibility, staff re-verification and evidence masking)
 - Payment and wallet UI flows
 - Admin and superadmin access control surfaces
 - Exposure of user PII in logs, URLs, or client-side state
