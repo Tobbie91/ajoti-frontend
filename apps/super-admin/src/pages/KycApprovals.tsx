@@ -5,6 +5,7 @@ import {
   Stack,
   Group,
   TextInput,
+  Select,
   Table,
   Badge,
   ActionIcon,
@@ -45,6 +46,7 @@ import {
   rejectKyc,
   overrideKycLevel,
   getProviderIdentity,
+  reverifyProviderIdentity,
   type KycQueueRow,
 } from '@/utils/api'
 import { SortableTh } from '@/components/SortableTh'
@@ -78,6 +80,22 @@ function pendingLabel(record: KycQueueRow) {
   return { label: 'Needs review', color: 'orange' }
 }
 
+function maskSensitiveData(value: unknown, key = ''): unknown {
+  if (/nin|bvn|document.?number|passport.?number|licen[cs]e.?no|licen[cs]e.?number/i.test(key)) {
+    return value == null ? value : '••••••'
+  }
+  if (Array.isArray(value)) return value.map((item) => maskSensitiveData(item))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([childKey, childValue]) => [
+        childKey,
+        maskSensitiveData(childValue, childKey),
+      ]),
+    )
+  }
+  return value
+}
+
 function RawDataToggle({ data }: { data: Record<string, unknown> }) {
   const [opened, { toggle }] = useDisclosure(false)
   return (
@@ -90,12 +108,12 @@ function RawDataToggle({ data }: { data: Record<string, unknown> }) {
         rightSection={opened ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
         style={{ alignSelf: 'flex-start' }}
       >
-        {opened ? 'Hide raw data' : 'View raw data'}
+        {opened ? 'Hide safe data' : 'View safe data'}
       </Button>
       <Collapse in={opened}>
         <ScrollArea h={220} type="auto">
           <Code block fz="xs" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            {JSON.stringify(data, null, 2)}
+            {JSON.stringify(maskSensitiveData(data), null, 2)}
           </Code>
         </ScrollArea>
       </Collapse>
@@ -103,7 +121,112 @@ function RawDataToggle({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function VerificationDataCard({ data }: { data: Record<string, unknown> }) {
+function LookupEvidenceCard({
+  label,
+  evidence,
+  accountName,
+  accountDob,
+}: {
+  label: string
+  evidence: Record<string, unknown>
+  accountName?: string
+  accountDob?: string | null
+}) {
+  const status = typeof evidence.status === 'string' ? evidence.status : 'successful'
+  const lookupType = typeof evidence.lookupType === 'string' ? evidence.lookupType : '-'
+  const reference = typeof evidence.reference === 'string' ? evidence.reference : undefined
+  const verifiedAt = typeof evidence.verifiedAt === 'string' ? evidence.verifiedAt : undefined
+  const verifiedName = [evidence.firstName, evidence.lastName]
+    .filter((part) => typeof part === 'string')
+    .join(' ')
+  const verifiedDob = typeof evidence.dateOfBirth === 'string' ? evidence.dateOfBirth : undefined
+
+  return (
+    <Card withBorder radius="md" p="sm">
+      <Stack gap="xs">
+        <Group justify="space-between">
+          <Text fw={600} fz="sm">{label}</Text>
+          <Badge color={status === 'successful' ? 'green' : 'red'} variant="light">{status}</Badge>
+        </Group>
+        <SimpleGrid cols={2} spacing="xs">
+          <InfoRow label="Lookup Type" value={lookupType.replaceAll('_', ' ')} />
+          <InfoRow label="Verified At" value={verifiedAt ? fmt(verifiedAt) : '-'} />
+          {accountName && <InfoRow label="Account Name" value={accountName} />}
+          {verifiedName && <InfoRow label="Mono Verified Name" value={verifiedName} />}
+          {accountDob && <InfoRow label="Account Date of Birth" value={fmt(accountDob)} />}
+          {verifiedDob && <InfoRow label="Mono Date of Birth" value={fmt(verifiedDob)} />}
+          {reference && <InfoRow label="Reference" value={reference} />}
+        </SimpleGrid>
+      </Stack>
+    </Card>
+  )
+}
+
+function VerificationDataCard({
+  data,
+  accountName,
+  accountDob,
+}: {
+  data: Record<string, unknown>
+  accountName?: string
+  accountDob?: string | null
+}) {
+  const levels =
+    data.levels && typeof data.levels === 'object' && !Array.isArray(data.levels)
+      ? (data.levels as Record<string, Record<string, unknown>>)
+      : null
+  const lastAttempt =
+    data.lastAttempt && typeof data.lastAttempt === 'object' && !Array.isArray(data.lastAttempt)
+      ? (data.lastAttempt as Record<string, unknown>)
+      : null
+
+  if (data.provider === 'mono_lookup' && levels) {
+    return (
+      <Stack gap="sm">
+        {levels.level1 && (
+          <LookupEvidenceCard
+            label="Level 1 Identity Lookup"
+            evidence={levels.level1}
+            accountName={accountName}
+            accountDob={accountDob}
+          />
+        )}
+        {levels.level2 && (
+          <LookupEvidenceCard
+            label="Level 2 Government ID Lookup"
+            evidence={levels.level2}
+            accountName={accountName}
+            accountDob={accountDob}
+          />
+        )}
+        {lastAttempt?.status === 'failed' && (
+          <Alert color="red" title="Latest verification attempt failed">
+            <Text fz="sm">
+              {typeof lastAttempt.error === 'string'
+                ? lastAttempt.error
+                : 'Mono Lookup could not verify this identity.'}
+            </Text>
+          </Alert>
+        )}
+        <RawDataToggle data={data} />
+      </Stack>
+    )
+  }
+
+  if (data.provider === 'mono_lookup' && typeof data.lookupType === 'string') {
+    return (
+      <Stack gap="sm">
+        <LookupEvidenceCard
+          label={data.lookupType === 'mashup' ? 'Level 1 Identity Lookup' : 'Level 2 Government ID Lookup'}
+          evidence={data}
+          accountName={accountName}
+          accountDob={accountDob}
+        />
+        <RawDataToggle data={data} />
+      </Stack>
+    )
+  }
+
   const inner = (data?.data ?? data) as Record<string, unknown>
   const customer = inner?.customer as Record<string, string> | undefined
   const event = (data?.event ?? inner?.event) as string | undefined
@@ -113,35 +236,24 @@ function VerificationDataCard({ data }: { data: Record<string, unknown> }) {
   const createdAt = inner?.created_at as string | undefined
   const liveMode = inner?.live_mode as boolean | undefined
 
-  if (!status && !kycLevel && !customer) {
-    return (
-      <ScrollArea h={220} type="auto">
-        <Code block fz="xs" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-          {JSON.stringify(data, null, 2)}
-        </Code>
-      </ScrollArea>
-    )
-  }
-
   return (
     <Stack gap="xs">
       <Group gap="xs" wrap="nowrap">
+        <Badge color="gray" variant="light" size="sm">Legacy Prove</Badge>
         {status && (
           <Badge color={status === 'successful' ? 'green' : 'red'} variant="filled" size="sm">
             {status}
           </Badge>
         )}
-        {kycLevel && (
-          <Badge color="blue" variant="light" size="sm">
-            {kycLevel.replace('_', ' ').toUpperCase()}
-          </Badge>
-        )}
+        {kycLevel && <Badge color="blue" variant="light" size="sm">{kycLevel.replace('_', ' ').toUpperCase()}</Badge>}
         {liveMode === false && <Badge color="gray" variant="outline" size="sm">Sandbox</Badge>}
         {liveMode === true && <Badge color="teal" variant="outline" size="sm">Live</Badge>}
       </Group>
       {event && <Text fz="xs" c="dimmed">{event}</Text>}
       <SimpleGrid cols={2} spacing="xs">
-        {customer?.name && <InfoRow label="Verified Name" value={customer.name} />}
+        {accountName && <InfoRow label="Account Name" value={accountName} />}
+        {customer?.name && <InfoRow label="Mono Verified Name" value={customer.name} />}
+        {accountDob && <InfoRow label="Account Date of Birth" value={fmt(accountDob)} />}
         {customer?.email && <InfoRow label="Verified Email" value={customer.email} />}
         {customer?.phone && <InfoRow label="Verified Phone" value={customer.phone} />}
         {reference && <InfoRow label="Reference" value={reference} />}
@@ -172,6 +284,12 @@ function KycDetailDrawer({
   const [monoFetchLoading, setMonoFetchLoading] = useState(false)
   const [monoFetchError, setMonoFetchError] = useState<string | null>(null)
   const [monoLiveData, setMonoLiveData] = useState<Record<string, unknown> | null>(null)
+  const [reverifyModal, { open: openReverify, close: closeReverify }] = useDisclosure(false)
+  const [reverifyLevel, setReverifyLevel] = useState<'1' | '2'>('1')
+  const [reverifyDocumentType, setReverifyDocumentType] = useState<'drivers_license' | 'international_passport' | null>(null)
+  const [reverifyDocumentNumber, setReverifyDocumentNumber] = useState('')
+  const [reverifyLoading, setReverifyLoading] = useState(false)
+  const [reverifyError, setReverifyError] = useState<string | null>(null)
 
   useEffect(() => {
     setMonoLiveData(null)
@@ -204,6 +322,36 @@ function KycDetailDrawer({
       setMonoFetchError(err instanceof Error ? err.message : 'Failed to fetch from Mono')
     } finally {
       setMonoFetchLoading(false)
+    }
+  }
+
+  async function handleReverify() {
+    if (!record) return
+    if (
+      reverifyLevel === '2' &&
+      (!reverifyDocumentType || reverifyDocumentNumber.trim().length < 5)
+    ) {
+      setReverifyError('Select an ID type and enter the government ID number.')
+      return
+    }
+    setReverifyLoading(true)
+    setReverifyError(null)
+    try {
+      const data =
+        reverifyLevel === '1'
+          ? await reverifyProviderIdentity(record.userId, { level: 1 })
+          : await reverifyProviderIdentity(record.userId, {
+              level: 2,
+              documentType: reverifyDocumentType!,
+              documentNumber: reverifyDocumentNumber.trim().toUpperCase(),
+            })
+      setMonoLiveData(data)
+      closeReverify()
+      onAction()
+    } catch (err) {
+      setReverifyError(err instanceof Error ? err.message : 'Re-verification failed')
+    } finally {
+      setReverifyLoading(false)
     }
   }
 
@@ -301,20 +449,46 @@ function KycDetailDrawer({
               </>
             )}
 
-            <Divider label={<Group gap={4}><IconShieldCheck size={14} /><Text fz="xs">Mono Prove Verification</Text></Group>} labelPosition="left" />
+            <Divider label={<Group gap={4}><IconShieldCheck size={14} /><Text fz="xs">Identity Verification</Text></Group>} labelPosition="left" />
             <Group justify="space-between" align="center" mb={4}>
-              <Text fz="xs" c="dimmed">Stored snapshot</Text>
-              <Button size="xs" variant="subtle" color="blue" leftSection={<IconRefresh size={12} />} loading={monoFetchLoading} onClick={handleMonoRefetch}>
-                Re-fetch from Mono
-              </Button>
+              <Stack gap={0}>
+                <Text fz="xs" c="dimmed">Stored verification evidence</Text>
+                <Text fz="xs" c="dimmed">Opening this review does not call Mono again.</Text>
+              </Stack>
+              <Group gap="xs">
+                {record.verificationData &&
+                  (record.verificationData as Record<string, unknown>).provider !== 'mono_lookup' && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      color="gray"
+                      leftSection={<IconRefresh size={12} />}
+                      loading={monoFetchLoading}
+                      onClick={handleMonoRefetch}
+                    >
+                      Fetch legacy Prove
+                    </Button>
+                  )}
+                <Button size="xs" variant="light" color="blue" onClick={openReverify}>
+                  Run new Lookup
+                </Button>
+              </Group>
             </Group>
             {monoFetchError && <Alert color="red" radius="md" variant="light" mb={4}><Text fz="xs">{monoFetchError}</Text></Alert>}
             {monoLiveData ? (
-              <VerificationDataCard data={monoLiveData} />
+              <VerificationDataCard
+                data={monoLiveData}
+                accountName={`${u?.firstName ?? ''} ${u?.lastName ?? ''}`.trim()}
+                accountDob={u?.dob}
+              />
             ) : record.verificationData ? (
-              <VerificationDataCard data={record.verificationData as Record<string, unknown>} />
+              <VerificationDataCard
+                data={record.verificationData as Record<string, unknown>}
+                accountName={`${u?.firstName ?? ''} ${u?.lastName ?? ''}`.trim()}
+                accountDob={u?.dob}
+              />
             ) : (
-              <Text fz="sm" c="dimmed">No Mono verification data yet.</Text>
+              <Text fz="sm" c="dimmed">No stored identity verification evidence yet.</Text>
             )}
 
             {record.rejectionReason && (
@@ -358,6 +532,56 @@ function KycDetailDrawer({
           </Stack>
         )}
       </Drawer>
+
+      <Modal opened={reverifyModal} onClose={closeReverify} title="Run a new Mono Lookup" size="sm">
+        <Stack gap="md">
+          <Alert color="yellow" title="This can incur a Mono charge">
+            Only run another Lookup when the stored evidence is insufficient or identity details must be checked again.
+          </Alert>
+          {reverifyError && <Alert color="red">{reverifyError}</Alert>}
+          <Select
+            label="Verification level"
+            value={reverifyLevel}
+            onChange={(value) => setReverifyLevel(value === '2' ? '2' : '1')}
+            data={[
+              { value: '1', label: 'Level 1 - NIN + BVN Mashup Lookup' },
+              { value: '2', label: 'Level 2 - Government ID Lookup' },
+            ]}
+          />
+          {reverifyLevel === '2' && (
+            <>
+              <Select
+                label="Government ID type"
+                value={reverifyDocumentType}
+                onChange={(value) =>
+                  setReverifyDocumentType(
+                    value as 'drivers_license' | 'international_passport' | null,
+                  )
+                }
+                data={[
+                  { value: 'drivers_license', label: "Driver's Licence" },
+                  { value: 'international_passport', label: 'International Passport' },
+                ]}
+              />
+              <TextInput
+                label="Government ID number"
+                value={reverifyDocumentNumber}
+                onChange={(event) =>
+                  setReverifyDocumentNumber(
+                    event.currentTarget.value.replace(/[^A-Za-z0-9-]/g, '').slice(0, 30),
+                  )
+                }
+              />
+            </>
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={closeReverify}>Cancel</Button>
+            <Button color="blue" loading={reverifyLoading} onClick={handleReverify}>
+              Confirm & Run Lookup
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       <Modal opened={rejectModal} onClose={closeReject} title="Reject KYC" size="sm">
         <Stack gap="md">
