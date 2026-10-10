@@ -736,6 +736,7 @@ export function GroupDetail() {
         {/* ── Payouts Tab ── */}
         <Tabs.Panel value="payouts" pt="lg">
           <GroupPayoutsTab
+            circleId={id!}
             payouts={payouts}
             payoutsLoading={payoutsLoading}
             payoutError={payoutError}
