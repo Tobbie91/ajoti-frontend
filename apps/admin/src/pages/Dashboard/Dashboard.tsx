@@ -25,7 +25,6 @@ import {
   IconShieldCheck,
   IconTarget,
   IconUsersGroup,
-  IconWallet,
 } from '@tabler/icons-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { StatsCard } from '@/components/StatsCard'
@@ -33,7 +32,6 @@ import { TrustScoreCard, CreditScoreCard } from '@/components/ScoreCards'
 import { QuickActions } from '@/components/QuickActions'
 import { SummaryCard } from '@/components/SumaryCard'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
-import { WalletReservations } from '@/components/WalletReservations'
 import {
   getTrustScore,
   getWalletBalance,
@@ -66,7 +64,6 @@ export function Dashboard() {
   const [circles, setCircles] = useState<RoscaCircle[]>([])
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([])
 
-  const [reservedOpen, setReservedOpen] = useState(false)
   const [trustOpen, setTrustOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
 
@@ -187,7 +184,7 @@ export function Dashboard() {
           <IconTile
             icon={<IconLock size={20} />}
             label="Where it's reserved"
-            onClick={() => setReservedOpen(true)}
+            onClick={() => navigate('/wallet/reservations')}
           />
           <IconTile
             icon={<IconShieldCheck size={20} />}
@@ -337,21 +334,6 @@ export function Dashboard() {
       </Grid>
 
       {/* ─── Modals (icon-strip targets) ──────────────────────────── */}
-      <Modal
-        opened={reservedOpen}
-        onClose={() => setReservedOpen(false)}
-        title={
-          <Group gap="xs">
-            <IconWallet size={18} color={PRIMARY} />
-            <Text fw={700}>Where your money is reserved</Text>
-          </Group>
-        }
-        size="lg"
-        centered
-      >
-        <WalletReservations />
-      </Modal>
-
       <Modal
         opened={trustOpen}
         onClose={() => setTrustOpen(false)}

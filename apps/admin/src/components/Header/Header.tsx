@@ -224,7 +224,6 @@ export function Header({ opened, onToggle }: HeaderProps) {
             size="lg"
             radius="xl"
             onClick={handleBack}
-            hiddenFrom="sm"
             aria-label="Back"
           >
             <IconArrowLeft size={20} stroke={1.8} />

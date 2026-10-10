@@ -24,8 +24,9 @@ import {
 
 type Participation = RoscaCircle;
 
-// Discover tabs only — Joined is now rendered above the tab bar as its own section.
-const TABS = ["All Groups", "Open Groups", "Invite-Only"] as const;
+// Joined is the first tab (land here when the member already belongs to groups);
+// the remaining three are Discover filters.
+const TABS = ["Joined", "All Groups", "Open Groups", "Invite-Only"] as const;
 
 type GroupStatus = "Open" | "Invite Only";
 
@@ -278,11 +279,13 @@ export function Rosca() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const admin = isCircleAdmin();
-  // "Joined" is no longer a tab; if an old deep-link lands here with ?tab=joined
-  // we treat it as the default All Groups discover view (the Joined section is
-  // always visible at the top anyway).
-  const initialTab = searchParams.get("tab") === "joined" ? "All Groups" : "All Groups";
-  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  // Default landing: Joined when deep-linked with ?tab=joined, otherwise
+  // we'll flip to Joined on first paint if the user has any joined groups
+  // (see effect further down).
+  const [activeTab, setActiveTab] = useState<string>(
+    searchParams.get("tab") === "joined" ? "Joined" : "All Groups",
+  );
+  const [hasAutoLandedOnJoined, setHasAutoLandedOnJoined] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -426,6 +429,19 @@ export function Rosca() {
       .finally(() => setJoinedLoading(false));
   }, [refreshVersion]);
 
+  // When the user has joined groups and hasn't been deep-linked to a specific
+  // tab, land on the Joined tab the first time the data resolves. Fires once.
+  useEffect(() => {
+    if (hasAutoLandedOnJoined) return;
+    if (joinedLoading) return;
+    if (searchParams.get("tab")) {
+      setHasAutoLandedOnJoined(true);
+      return;
+    }
+    if (joinedGroups.length > 0) setActiveTab("Joined");
+    setHasAutoLandedOnJoined(true);
+  }, [joinedLoading, joinedGroups.length, hasAutoLandedOnJoined, searchParams]);
+
   // Discover list filtering
   const filtered = groups.filter((g) => {
     if (joinedIds.has(g.id)) return false;
@@ -498,29 +514,93 @@ export function Rosca() {
           </div>
         </div>
 
-        {/* ─── Your groups (always on top, when non-empty) ─────────────────── */}
-        {joinedLoading ? (
-          <div className="flex justify-center py-6">
-            <Loader color="#02A36E" size="sm" />
+        {/* ─── Tab bar — Joined first, then Discover filters ─────────────── */}
+        <div>
+          {/* Desktop 4-tab bar */}
+          <div className="hidden sm:block">
+            <Tabs
+              value={activeTab}
+              onChange={(v) => {
+                setActiveTab(v || "Joined");
+                setShowAll(false);
+              }}
+              variant="default"
+              styles={{
+                list: { display: "flex", justifyContent: "flex-start" },
+                tab: {
+                  fontWeight: 500,
+                  fontSize: 14,
+                  padding: "10px 20px",
+                  color: "#9CA3AF",
+                },
+              }}
+            >
+              <Tabs.List>
+                {TABS.map((tab) => (
+                  <Tabs.Tab key={tab} value={tab}>
+                    {tab}
+                    {tab === "Joined" && hasJoined && (
+                      <span
+                        className="ml-2 inline-flex items-center justify-center rounded-full bg-[#E7F4EE] px-2 text-[11px] font-bold text-[#056148]"
+                        style={{ height: 18, minWidth: 20 }}
+                      >
+                        {joinedGroups.length}
+                      </span>
+                    )}
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs>
           </div>
-        ) : hasJoined ? (
-          <section>
-            <div className="mb-3 flex items-end justify-between gap-3">
-              <div>
-                <Text fw={700} className="text-[18px] text-[#0F172A]">
-                  Your groups
-                </Text>
-                <Text className="text-[12px] text-[#64748B]">
-                  Groups you've joined · pay contributions and track progress
-                </Text>
-              </div>
-              <Text
-                className="hidden text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF] sm:block"
-                style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
-              >
-                {joinedGroups.length} active
-              </Text>
+
+          {/* Mobile 2-pill toggle (Joined / Discover) */}
+          <div className="sm:hidden grid grid-cols-2 rounded-xl bg-[#EEF3F1] p-1" aria-label="Ajo view">
+            <button
+              type="button"
+              onClick={() => { setActiveTab("Joined"); setShowAll(false); }}
+              className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+                activeTab === "Joined"
+                  ? "bg-white text-[#0B6B55] shadow-sm"
+                  : "text-[#667085]"
+              }`}
+            >
+              Joined{hasJoined ? ` (${joinedGroups.length})` : ""}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab("All Groups"); setShowAll(false); }}
+              className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+                activeTab !== "Joined"
+                  ? "bg-white text-[#0B6B55] shadow-sm"
+                  : "text-[#667085]"
+              }`}
+            >
+              Discover
+            </button>
+          </div>
+        </div>
+
+        {/* ─── JOINED TAB CONTENT ─────────────────────────────────────────── */}
+        {activeTab === "Joined" ? (
+          joinedLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader color="#02A36E" size="md" />
             </div>
+          ) : !hasJoined ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <Text fw={600} className="text-[#374151]">No joined groups yet</Text>
+              <Text size="sm" className="text-[#9CA3AF]">
+                Discover and join an ajo circle to see it here.
+              </Text>
+              <button
+                type="button"
+                onClick={() => { setActiveTab("All Groups"); setShowAll(false); }}
+                className="mt-2 cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2 text-sm font-semibold text-white"
+              >
+                Browse ajo groups
+              </button>
+            </div>
+          ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {joinedGroups.map((group) => (
                 <JoinedGroupCard
@@ -545,11 +625,11 @@ export function Rosca() {
                 />
               ))}
             </div>
-          </section>
+          )
         ) : null}
 
-        {/* ─── Become-admin promo (desktop only) ──────────────────────────── */}
-        {!admin && (
+        {/* ─── Become-admin promo (desktop only, only on Discover tabs) ──── */}
+        {!admin && activeTab !== "Joined" && (
           <div className="hidden items-center justify-between rounded-xl border border-[#D1FAE5] bg-[#F0FDF4] px-6 py-4 sm:flex">
             <div>
               <Text fw={600} size="sm" className="text-[#0F172A]">
@@ -568,50 +648,9 @@ export function Rosca() {
           </div>
         )}
 
-        {/* ─── Discover section header + tab filter ───────────────────────── */}
-        <div>
-          <div className="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <Text fw={700} className="text-[18px] text-[#0F172A]">
-                {hasJoined ? "Discover more groups" : "Discover groups"}
-              </Text>
-              <Text className="text-[12px] text-[#64748B]">
-                Browse public circles or filter by invite-only
-              </Text>
-            </div>
-          </div>
-
-          {/* Desktop 3-tab filter */}
-          <div className="hidden sm:block">
-            <Tabs
-              value={activeTab}
-              onChange={(v) => {
-                setActiveTab(v || "All Groups");
-                setShowAll(false);
-              }}
-              variant="default"
-              styles={{
-                list: { display: "flex", justifyContent: "flex-start" },
-                tab: {
-                  fontWeight: 500,
-                  fontSize: 14,
-                  padding: "10px 20px",
-                  color: "#9CA3AF",
-                },
-              }}
-            >
-              <Tabs.List>
-                {TABS.map((tab) => (
-                  <Tabs.Tab key={tab} value={tab}>
-                    {tab}
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-            </Tabs>
-          </div>
-        </div>
-
-        {/* ─── Desktop search + my-requests ───────────────────────────────── */}
+        {/* ─── DISCOVER TAB CONTENT (search + grid) ───────────────────────── */}
+        {activeTab !== "Joined" && (<>
+        {/* Desktop search + my-requests */}
         <div className="hidden items-center gap-3 sm:flex">
           <TextInput
             placeholder="Search groups or admins..."
@@ -795,6 +834,7 @@ export function Rosca() {
             </button>
           </div>
         )}
+        </>)}
       </div>
 
       {!admin && (
