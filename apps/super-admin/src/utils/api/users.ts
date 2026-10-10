@@ -227,3 +227,19 @@ export function getProviderIdentity(
 ): Promise<Record<string, unknown>> {
   return authRequest(`/api/superadmin/kyc/identity/${userId}`, {});
 }
+
+export function reverifyProviderIdentity(
+  userId: string,
+  payload:
+    | { level: 1 }
+    | {
+        level: 2;
+        documentType: "drivers_license" | "international_passport";
+        documentNumber: string;
+      },
+): Promise<Record<string, unknown>> {
+  return authRequest(`/api/superadmin/kyc/identity/${userId}/reverify`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
