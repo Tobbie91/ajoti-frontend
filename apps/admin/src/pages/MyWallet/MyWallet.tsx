@@ -121,7 +121,7 @@ export function MyWallet() {
   const navigate = useNavigate()
   const { hidden, toggle } = useWalletPrivacy()
   const admin = isCircleAdmin()
-  const [balance, setBalance] = useState<number | null>(null)
+  const [wallet, setWallet] = useState<{ total: number; available: number; reserved: number } | null>(null)
   const [transactions, setTransactions] = useState<Tx[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTx, setSelectedTx] = useState<Tx | null>(null)
@@ -132,15 +132,33 @@ export function MyWallet() {
   useEffect(() => {
     const fetchBalance = admin && userId
       ? getAdminWalletBalance(userId)
-          .then((data) => setBalance(data.available ?? data.total ?? 0))
+          .then((data) =>
+            setWallet({
+              total: Number(data.total ?? data.available ?? 0),
+              available: Number(data.available ?? 0),
+              reserved: Number(data.reserved ?? 0),
+            }),
+          )
           .catch(() =>
             getWalletBalance()
-              .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
-              .catch(() => setBalance(0)),
+              .then((data) =>
+                setWallet({
+                  total: Number(data.total ?? 0) / 100,
+                  available: Number(data.available ?? 0) / 100,
+                  reserved: Number(data.reserved ?? 0) / 100,
+                }),
+              )
+              .catch(() => setWallet({ total: 0, available: 0, reserved: 0 })),
           )
       : getWalletBalance()
-          .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
-          .catch(() => setBalance(0))
+          .then((data) =>
+            setWallet({
+              total: Number(data.total ?? 0) / 100,
+              available: Number(data.available ?? 0) / 100,
+              reserved: Number(data.reserved ?? 0) / 100,
+            }),
+          )
+          .catch(() => setWallet({ total: 0, available: 0, reserved: 0 }))
 
     Promise.all([
       fetchBalance,
@@ -155,7 +173,7 @@ export function MyWallet() {
       {/* Balance card */}
       <div className="mb-6 rounded-2xl bg-[#02A36E] px-6 py-6">
         <div className="flex items-center gap-2">
-          <Text fw={400} fz={12} c="white" opacity={0.75}>Wallet Balance</Text>
+          <Text fw={400} fz={12} c="white" opacity={0.75}>Total Balance</Text>
           <ActionIcon
             variant="subtle"
             aria-label={hidden ? 'Show wallet balance and transactions' : 'Hide wallet balance and transactions'}
@@ -179,9 +197,21 @@ export function MyWallet() {
           />
         ) : (
           <Text fw={600} fz={32} c="white" mb={16}>
-            ₦{(balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+            ₦{(wallet?.total ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
           </Text>
         )}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <WalletSublineDark
+            label="Available"
+            amount={`₦${(wallet?.available ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`}
+            hidden={hidden}
+          />
+          <WalletSublineDark
+            label="Reserved"
+            amount={`₦${(wallet?.reserved ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`}
+            hidden={hidden}
+          />
+        </div>
         <div className="flex gap-3">
           <Button
             radius="md"
@@ -274,6 +304,32 @@ export function MyWallet() {
       </div>
 
       <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
+    </div>
+  )
+}
+
+function WalletSublineDark({ label, amount, hidden }: { label: string; amount: string; hidden: boolean }) {
+  return (
+    <div
+      style={{
+        background: 'rgba(255,255,255,0.14)',
+        borderRadius: 10,
+        padding: '10px 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      <Text fz={10.5} fw={600} style={{ color: 'rgba(255,255,255,0.78)', letterSpacing: 0.3, textTransform: 'uppercase' }}>
+        {label}
+      </Text>
+      {hidden ? (
+        <IconLock size={16} color="white" aria-label={`${label} balance hidden`} />
+      ) : (
+        <Text fw={700} fz={15} c="white" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {amount}
+        </Text>
+      )}
     </div>
   )
 }

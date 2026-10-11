@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader, Text, TextInput } from '@mantine/core'
-import { IconSend, IconMessages, IconSearch } from '@tabler/icons-react'
+import { IconSend, IconMessages, IconSearch, IconArrowLeft } from '@tabler/icons-react'
 import { useSearchParams } from 'react-router-dom'
 import { getChatCircles, type ChatCircle } from '@/utils/api'
 import { useChat } from '@/hooks/useChat'
@@ -67,7 +67,7 @@ function CircleListItem({ circle, active, onClick }: { circle: ChatCircle; activ
   )
 }
 
-function ChatThread({ circleId, circleName, currentUserId }: { circleId: string; circleName: string; currentUserId: string }) {
+function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId: string; circleName: string; currentUserId: string; onBack?: () => void }) {
   const { messages, loading, sending, error, sendMessage } = useChat(circleId)
   const [draft, setDraft] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -89,9 +89,22 @@ function ChatThread({ circleId, circleName, currentUserId }: { circleId: string;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', background: '#fff' }}>
-        <Text fw={700} fz={16} style={{ color: '#0F172A' }}>{circleName}</Text>
-        <Text fz={12} c="dimmed">Group chat</Text>
+      <div style={{ padding: '14px 16px', borderBottom: '1px solid #F3F4F6', background: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to circles"
+            className="flex sm:hidden"
+            style={{ background: 'transparent', border: 'none', padding: 4, cursor: 'pointer', color: '#374151' }}
+          >
+            <IconArrowLeft size={20} />
+          </button>
+        )}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Text fw={700} fz={16} style={{ color: '#0F172A' }} truncate="end">{circleName}</Text>
+          <Text fz={12} c="dimmed">Group chat</Text>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -187,10 +200,22 @@ function GroupMessages() {
   const filtered = circles.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
   const selectedCircle = circles.find((c) => c.id === selectedId) ?? null
 
+  const [mobileView, setMobileView] = useState<'list' | 'thread'>('list')
+
+  // Entering a thread on mobile swaps to the thread pane; desktop keeps both.
+  useEffect(() => {
+    if (selectedId) setMobileView('thread')
+  }, [selectedId])
+
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 80px)', background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
-      {/* Circle list */}
-      <div style={{ width: 300, borderRight: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+    <div
+      className="flex overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white"
+      style={{ height: 'calc(100vh - 160px)', minHeight: 420 }}
+    >
+      {/* Circle list — full-width on mobile, 300px side on desktop */}
+      <div
+        className={`${mobileView === 'thread' ? 'hidden' : 'flex'} sm:flex w-full flex-col sm:w-[300px] sm:flex-shrink-0 sm:border-r sm:border-[#F3F4F6]`}
+      >
         <div style={{ padding: '16px 16px 8px' }}>
           <Text fw={700} fz={18} style={{ color: '#0F172A', marginBottom: 10 }}>Messages</Text>
           <TextInput
@@ -215,16 +240,32 @@ function GroupMessages() {
             </div>
           ) : (
             filtered.map((c) => (
-              <CircleListItem key={c.id} circle={c} active={c.id === selectedId} onClick={() => setSelectedId(c.id)} />
+              <CircleListItem
+                key={c.id}
+                circle={c}
+                active={c.id === selectedId}
+                onClick={() => {
+                  setSelectedId(c.id)
+                  setMobileView('thread')
+                }}
+              />
             ))
           )}
         </div>
       </div>
 
-      {/* Chat thread */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Chat thread — full-width on mobile when active, right pane on desktop */}
+      <div
+        className={`${mobileView === 'list' ? 'hidden' : 'flex'} sm:flex w-full flex-col sm:flex-1 sm:min-w-0`}
+      >
         {selectedCircle ? (
-          <ChatThread key={selectedCircle.id} circleId={selectedCircle.id} circleName={selectedCircle.name} currentUserId={currentUserId} />
+          <ChatThread
+            key={selectedCircle.id}
+            circleId={selectedCircle.id}
+            circleName={selectedCircle.name}
+            currentUserId={currentUserId}
+            onBack={() => setMobileView('list')}
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, opacity: 0.4 }}>
             <IconMessages size={48} color="#9CA3AF" />

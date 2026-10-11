@@ -7,8 +7,6 @@ import explore from "@/assets/Explore_default.svg";
 import explorePressed from "@/assets/Explore_press.svg";
 import withdraw from "@/assets/Withdraw_default.svg";
 import withdrawPressed from "@/assets/Withdraw_press.svg";
-import joinRosca from "@/assets/JoinROSCA_default.svg";
-import joinRoscaPressed from "@/assets/JoinROSCA_press.svg";
 import IconButton from "@/components/Icon";
 import transctionIcon from "@/assets/Transaction_Icon.svg";
 import { MyDashboard } from "@/components/MyDashBoard/MyDashboard";
@@ -224,14 +222,6 @@ export function Home() {
                 alt="Explore"
                 onClick={() => navigate("/rosca/how-it-works")}
                 width={106}
-                height={118}
-              />
-              <IconButton
-                defaultIcon={joinRosca}
-                pressedIcon={joinRoscaPressed}
-                alt="Join an ajo"
-                onClick={() => navigate("/rosca")}
-                width={107}
                 height={118}
               />
               <UnstyledButton

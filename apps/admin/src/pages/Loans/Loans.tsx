@@ -300,7 +300,7 @@ export function Loans() {
                 <Paper p="md" radius="md" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
                   <Group gap="sm">
                     <IconAlertTriangle size={16} color="#EF4444" />
-                    <Text fz="sm" style={{ color: '#B91C1C' }}>{eligibility.reason ?? 'Not eligible for this group.'}</Text>
+                    <Text fz="sm" style={{ color: '#B91C1C' }}>{eligibility.ineligibilityReason ?? eligibility.reason ?? 'Not eligible for this group.'}</Text>
                   </Group>
                 </Paper>
               ) : (
