@@ -29,8 +29,11 @@ export function getLedger(params: {
   walletId?: string;
   reference?: string;
   sourceType?: string;
-  from?: string;
-  to?: string;
+  status?: "PENDING" | "SUCCESS" | "FAILED" | "STOPPED";
+  startDate?: string;
+  endDate?: string;
+  minAmountKobo?: string;
+  maxAmountKobo?: string;
 }): Promise<PaginatedResponse<LedgerRow>> {
   const q = new URLSearchParams(
     Object.fromEntries(

@@ -127,6 +127,19 @@ const SOURCE_OPTIONS = [
   { value: 'FUNDING', label: 'Funding' },
 ]
 
+const STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'SUCCESS', label: 'Successful' },
+  { value: 'FAILED', label: 'Failed' },
+  { value: 'STOPPED', label: 'Stopped' },
+]
+
+function amountToKobo(value: string): string | undefined {
+  if (!value.trim()) return undefined
+  const amount = Number(value)
+  return Number.isFinite(amount) && amount >= 0 ? String(Math.round(amount * 100)) : undefined
+}
+
 const LIMIT = 20
 
 export function Transactions() {
@@ -141,6 +154,11 @@ export function Transactions() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [sourceType, setSourceType] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [minAmount, setMinAmount] = useState('')
+  const [maxAmount, setMaxAmount] = useState('')
 
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -186,11 +204,16 @@ export function Transactions() {
       limit: LIMIT,
       ...(search.trim() ? { reference: search.trim() } : {}),
       ...(sourceType ? { sourceType } : {}),
+      ...(status ? { status: status as 'PENDING' | 'SUCCESS' | 'FAILED' | 'STOPPED' } : {}),
+      ...(startDate ? { startDate } : {}),
+      ...(endDate ? { endDate } : {}),
+      ...(amountToKobo(minAmount) ? { minAmountKobo: amountToKobo(minAmount) } : {}),
+      ...(amountToKobo(maxAmount) ? { maxAmountKobo: amountToKobo(maxAmount) } : {}),
     })
       .then(setLedger)
       .catch((e) => setLedgerError(e instanceof Error ? e.message : 'Failed to load ledger'))
       .finally(() => setLedgerLoading(false))
-  }, [page, search, sourceType])
+  }, [page, search, sourceType, status, startDate, endDate, minAmount, maxAmount])
 
   useEffect(() => { fetchLedger() }, [fetchLedger])
 
@@ -309,7 +332,7 @@ export function Transactions() {
       </div>
 
       {/* Ledger filters */}
-      <Group gap="sm">
+      <Group gap="sm" wrap="wrap">
         <TextInput
           placeholder="Search by reference..."
           leftSection={<IconSearch size={16} />}
@@ -319,13 +342,60 @@ export function Transactions() {
           radius="md"
         />
         <Select
-          placeholder="Source type"
+          placeholder="Transaction type"
           data={SOURCE_OPTIONS}
           value={sourceType}
           onChange={(v) => { setSourceType(v); setPage(1) }}
           clearable
           radius="md"
           style={{ width: 200 }}
+        />
+        <Select
+          placeholder="Status"
+          data={STATUS_OPTIONS}
+          value={status}
+          onChange={(v) => { setStatus(v); setPage(1) }}
+          clearable
+          radius="md"
+          style={{ width: 150 }}
+        />
+        <TextInput
+          type="date"
+          aria-label="From date"
+          value={startDate}
+          onChange={(e) => { setStartDate(e.currentTarget.value); setPage(1) }}
+          style={{ width: 160 }}
+          radius="md"
+        />
+        <TextInput
+          type="date"
+          aria-label="To date"
+          value={endDate}
+          onChange={(e) => { setEndDate(e.currentTarget.value); setPage(1) }}
+          style={{ width: 160 }}
+          radius="md"
+        />
+        <TextInput
+          type="number"
+          min={0}
+          step="0.01"
+          placeholder="Min amount (₦)"
+          aria-label="Minimum amount in naira"
+          value={minAmount}
+          onChange={(e) => { setMinAmount(e.currentTarget.value); setPage(1) }}
+          style={{ width: 160 }}
+          radius="md"
+        />
+        <TextInput
+          type="number"
+          min={0}
+          step="0.01"
+          placeholder="Max amount (₦)"
+          aria-label="Maximum amount in naira"
+          value={maxAmount}
+          onChange={(e) => { setMaxAmount(e.currentTarget.value); setPage(1) }}
+          style={{ width: 160 }}
+          radius="md"
         />
         <ActionIcon variant="default" size="lg" radius="md" onClick={fetchLedger} title="Refresh">
           <IconRefresh size={16} />
