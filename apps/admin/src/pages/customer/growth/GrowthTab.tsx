@@ -44,6 +44,7 @@ export function GrowthTab({
   circleStatus,
   nextCycleNumber,
   nextDeadline,
+  autoOpenPay = false,
   openContributionOnLoad = false,
 }: {
   trustPercent: number;
@@ -58,6 +59,7 @@ export function GrowthTab({
   circleStatus: string;
   nextCycleNumber?: number;
   nextDeadline?: string;
+  autoOpenPay?: boolean;
   openContributionOnLoad?: boolean;
 }) {
   const navigate = useNavigate();
@@ -87,11 +89,16 @@ export function GrowthTab({
       .catch(() => setWalletAvailable(0));
   }
 
+  // Deep-link entry: when ?pay=1 (or legacy ?action=contribute) arrives, auto-open
+  // the pay modal once we know the user is actually allowed to contribute.
+  // Fires exactly once per mount thanks to the ref guard.
+  const [autoPayFired, setAutoPayFired] = useState(false);
   useEffect(() => {
-    if (!openContributionOnLoad || !canContribute) return;
+    if (autoPayFired || !canContribute) return;
+    if (!autoOpenPay && !openContributionOnLoad) return;
+    setAutoPayFired(true);
     openModal();
-  }, [openContributionOnLoad, canContribute]);
-
+  }, [autoOpenPay, openContributionOnLoad, autoPayFired, canContribute]);
 
   async function handleConfirm() {
     if (nextCycleNumber == null) return;

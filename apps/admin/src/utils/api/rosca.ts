@@ -273,6 +273,7 @@ export function createRoscaCircle(
 // payoutLogic is deliberately NOT here - use updatePayoutConfig instead, the
 // dedicated endpoint (backend rejects payoutLogic on this DTO entirely).
 export interface UpdateRoscaPayload {
+  contributionCutoffTime?: string;
   name?: string;
   description?: string;
   contributionAmount?: string;
