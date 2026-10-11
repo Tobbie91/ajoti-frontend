@@ -25,6 +25,7 @@ import {
 import {
   IconAlertTriangle,
   IconCheck,
+  IconChevronDown,
   IconCopy,
   IconEye,
   IconEyeOff,
@@ -74,6 +75,33 @@ function countPeriods(maturityDate: string, frequency: string) {
     (maturity.getUTCMonth() - startDate.getUTCMonth());
   if (maturity.getUTCDate() > startDate.getUTCDate()) months += 1;
   return Math.max(1, months);
+}
+
+type MetricTone = "brand" | "accent" | "blue" | "muted";
+const METRIC_TONES: Record<MetricTone, { bg: string; border: string; fg: string; number: string }> = {
+  brand:  { bg: "#E7F4EE", border: "#BFE0CC", fg: "#047857", number: "#0B6B55" },
+  accent: { bg: "#0B6B55", border: "#0B6B55", fg: "rgba(255,255,255,0.85)", number: "#FFFFFF" },
+  blue:   { bg: "#DBEAFE", border: "#BFDBFE", fg: "#1E40AF", number: "#1E40AF" },
+  muted:  { bg: "#F1F3EF", border: "#E4E6E1", fg: "#64748B", number: "#0F172A" },
+};
+
+function MetricTile({ label, value, tone = "muted" }: { label: string; value: string; tone?: MetricTone }) {
+  const t = METRIC_TONES[tone];
+  return (
+    <div style={{
+      padding: "12px 14px",
+      background: t.bg,
+      borderRadius: 10,
+      border: `1px solid ${t.border}`,
+    }}>
+      <Text style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: t.fg }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 18, fontWeight: 700, color: t.number, marginTop: 4, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>
+        {value}
+      </Text>
+    </div>
+  );
 }
 
 function GroupRules({ plan }: { plan?: TargetSavingsPlan | null }) {
@@ -218,6 +246,7 @@ export function TargetSavings() {
       return next;
     });
   };
+  const [search, setSearch] = useState("");
   const [sandboxStagingAvailable, setSandboxStagingAvailable] = useState(false);
   const [sandboxFunding, setSandboxFunding] = useState(false);
   const [sandboxWallet, setSandboxWallet] = useState<string | null>(null);
@@ -246,6 +275,52 @@ export function TargetSavings() {
     plannedContributionCount > 0 && form.contributionAmount > 0
       ? form.contributionAmount * plannedContributionCount
       : 0;
+
+  // ─── My Savings metrics + name filter + Active/Completed split ──────────
+  const planMetrics = useMemo(() => {
+    const naira = (koboStr: string | undefined) => Number(koboStr ?? 0) / 100;
+    let totalContributed = 0;
+    let activeCount = 0;
+    let completedCount = 0;
+    let privateCount = 0;
+    let publicCount = 0;
+    let soonest: Date | null = null;
+
+    for (const p of plans) {
+      totalContributed += naira((p as unknown as { totalSavedKobo?: string }).totalSavedKobo ?? "0");
+      const status = (p.status ?? "").toUpperCase();
+      if (status === "COMPLETED" || status === "MATURED") completedCount += 1;
+      else activeCount += 1;
+      if (p.type === "GROUP") {
+        if (p.isPublic) publicCount += 1;
+        else privateCount += 1;
+      }
+      if (status === "ACTIVE" && p.maturityDate) {
+        const d = new Date(p.maturityDate);
+        if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now()) {
+          if (!soonest || d < soonest) soonest = d;
+        }
+      }
+    }
+
+    return {
+      totalContributed,
+      activeCount,
+      completedCount,
+      privateCount,
+      publicCount,
+      nextDue: soonest ? soonest.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : null,
+    };
+  }, [plans]);
+
+  const filteredPlans = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return plans;
+    return plans.filter((p) => p.name.toLowerCase().includes(needle));
+  }, [plans, search]);
+
+  const activePlans = filteredPlans.filter((p) => !["COMPLETED", "MATURED"].includes((p.status ?? "").toUpperCase()));
+  const completedPlans = filteredPlans.filter((p) => ["COMPLETED", "MATURED"].includes((p.status ?? "").toUpperCase()));
 
   const load = () =>
     Promise.all([getMyTargetSavings(), getPublicTargetSavings()]).then(([m, p]) => {
@@ -404,9 +479,82 @@ export function TargetSavings() {
             </Card>
           )}
 
-          {plans.map((p) => (
-            <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
-          ))}
+          {plans.length > 0 && (
+            <>
+              {/* Metrics strip — scannable breakdown of the user's savings portfolio */}
+              <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs">
+                <MetricTile label="Active" value={String(planMetrics.activeCount)} tone="brand" />
+                <MetricTile label="Completed" value={String(planMetrics.completedCount)} tone="blue" />
+                <MetricTile label="Private groups" value={String(planMetrics.privateCount)} tone="muted" />
+                <MetricTile label="Public groups" value={String(planMetrics.publicCount)} tone="muted" />
+                <MetricTile
+                  label="Total contributed"
+                  value={showAmounts ? `₦${planMetrics.totalContributed.toLocaleString("en-NG", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "₦••••••"}
+                  tone="accent"
+                />
+              </SimpleGrid>
+
+              {planMetrics.nextDue && (
+                <div className="flex items-center gap-2 rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-2.5">
+                  <IconInfoCircle size={16} color="#92400E" />
+                  <Text className="text-[12.5px] text-[#92400E]">
+                    Next contribution deadline: <strong>{planMetrics.nextDue}</strong>
+                  </Text>
+                </div>
+              )}
+
+              {/* Name filter */}
+              <TextInput
+                placeholder="Filter savings by name"
+                value={search}
+                onChange={(e) => setSearch(e.currentTarget.value)}
+                radius="md"
+                aria-label="Search savings plans"
+              />
+            </>
+          )}
+
+          {search.trim() && filteredPlans.length === 0 && (
+            <Card withBorder>
+              <Text fw={600}>No matches</Text>
+              <Text size="sm" c="dimmed">
+                No savings plans match "{search.trim()}". Clear the filter to see all plans.
+              </Text>
+              <Button variant="light" size="xs" mt="sm" onClick={() => setSearch("")}>Clear filter</Button>
+            </Card>
+          )}
+
+          {activePlans.length > 0 && (
+            <div>
+              <Group justify="space-between" align="baseline" mb="xs">
+                <Text fw={700} className="text-[15px] text-[#0F172A]">Active savings</Text>
+                <Text className="text-[11.5px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {activePlans.length} plan{activePlans.length === 1 ? "" : "s"}
+                </Text>
+              </Group>
+              <Stack gap="xs">
+                {activePlans.map((p) => (
+                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
+                ))}
+              </Stack>
+            </div>
+          )}
+
+          {completedPlans.length > 0 && (
+            <div>
+              <Group justify="space-between" align="baseline" mb="xs">
+                <Text fw={700} className="text-[15px] text-[#0F172A]">Completed savings</Text>
+                <Text className="text-[11.5px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {completedPlans.length} plan{completedPlans.length === 1 ? "" : "s"}
+                </Text>
+              </Group>
+              <Stack gap="xs">
+                {completedPlans.map((p) => (
+                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
+                ))}
+              </Stack>
+            </div>
+          )}
 
           {sandboxStagingAvailable && (
             <Accordion variant="separated" mt="md">
@@ -657,6 +805,83 @@ export function TargetSavings() {
           </Stack>
         )}
       </Modal>
+    </div>
+  );
+}
+
+// Compact one-line row that reveals the full CustomerTargetCard below on click.
+// Default is collapsed so the My Savings tab shows a scannable list even when
+// the user has many plans.
+function TargetPlanRow({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const savedKobo = BigInt(plan.myMembership?.savedAmountKobo ?? "0");
+  const targetKobo = BigInt(plan.targetAmountKobo ?? "0");
+  const pct = targetKobo > 0n ? Math.min(100, Number((savedKobo * 100n) / targetKobo)) : 0;
+  const status = (plan.status ?? "").toUpperCase();
+  const toneLabel =
+    status === "COMPLETED" || status === "MATURED" ? "Completed"
+    : status === "CANCELLED" ? "Cancelled"
+    : status === "ACTIVE" || status === "STARTED" ? "Active"
+    : "Draft";
+  const toneColor =
+    toneLabel === "Active" ? { bg: "#E7F4EE", fg: "#056148", bar: "#02A36E" }
+    : toneLabel === "Completed" ? { bg: "#DBEAFE", fg: "#1E40AF", bar: "#1E40AF" }
+    : toneLabel === "Cancelled" ? { bg: "#FEE2E2", fg: "#991B1B", bar: "#9CA3AF" }
+    : { bg: "#FEF3C7", fg: "#92400E", bar: "#D97706" };
+  const groupLabel = plan.type === "GROUP" ? (plan.isPublic ? "Public group" : "Private group") : "Individual";
+  const matures = plan.maturityDate
+    ? new Date(plan.maturityDate).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })
+    : "—";
+  const fmt = (kobo: bigint | string) => showAmounts ? `₦${(Number(BigInt(kobo.toString())) / 100).toLocaleString("en-NG", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "₦••••";
+
+  return (
+    <div id={`target-plan-${plan.id}`} className="overflow-hidden rounded-xl border border-[#E4E6E1] bg-white">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex w-full cursor-pointer items-center gap-3 p-4 text-left transition-colors hover:bg-[#F8FAF9]"
+      >
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md" style={{ background: toneColor.bg, color: toneColor.fg, fontSize: 11, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase" }}>
+          {toneLabel.slice(0, 1)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Text fw={700} className="truncate text-[14.5px] text-[#0F172A]">{plan.name}</Text>
+            <span style={{ background: toneColor.bg, color: toneColor.fg, fontSize: 10, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase", padding: "2px 6px", borderRadius: 3 }}>
+              {toneLabel}
+            </span>
+          </div>
+          <Text className="mt-0.5 text-[11.5px] text-[#64748B]">
+            {groupLabel} · Matures {matures}
+          </Text>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F1F3EF]">
+              <div style={{ width: `${pct}%`, height: "100%", background: toneColor.bar, borderRadius: 999 }} />
+            </div>
+            <Text className="text-[11px] font-bold" style={{ color: toneColor.bar, fontVariantNumeric: "tabular-nums" }}>
+              {pct}%
+            </Text>
+          </div>
+        </div>
+        <div className="hidden text-right sm:block">
+          <Text fw={700} className="text-[14px] text-[#0F172A]" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {fmt(savedKobo.toString())}
+          </Text>
+          <Text className="text-[11px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
+            of {fmt(targetKobo.toString())}
+          </Text>
+        </div>
+        <IconChevronDown
+          size={18}
+          style={{ color: "#9CA3AF", transition: "transform 0.15s", transform: expanded ? "rotate(180deg)" : "none", flexShrink: 0 }}
+        />
+      </button>
+      {expanded && (
+        <div className="border-t border-[#F1F3EF] bg-[#FAFAF7] p-4">
+          <CustomerTargetCard plan={plan} onChanged={onChanged} kycReady={kycReady} showAmounts={showAmounts} />
+        </div>
+      )}
     </div>
   );
 }

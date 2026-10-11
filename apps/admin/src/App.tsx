@@ -11,6 +11,7 @@ import {
   Loans, MyDebts, MyWallet, FundWallet, WithdrawFunds, Transactions, Login, VerifyOtp,
   Kyc, MyProfile, FundWalletCallback, SetPin, Messages, Support, SupportTicket, Maintenance,
   TargetSavings,
+  WalletReservationsPage,
   Signup,
 } from '@/pages'
 import {
@@ -75,6 +76,7 @@ function App() {
           <Route path="/createNewWallet2" element={<CreateNewWallet2 />} />
           <Route path="/investments" element={<Investments />} />
           <Route path="/target-savings" element={<TargetSavings />} />
+          <Route path="/wallet/reservations" element={<WalletReservationsPage />} />
           <Route path="/loans" element={<Loans />} />
           <Route path="/debts" element={<MyDebts />} />
           <Route path="/my-wallet" element={<MyWallet />} />
