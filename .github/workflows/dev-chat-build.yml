@@ -1,5 +1,7 @@
 name: Dev app builds
 on:
+  pull_request:
+    branches: [dev]
   push:
     branches: [dev]
   workflow_dispatch:

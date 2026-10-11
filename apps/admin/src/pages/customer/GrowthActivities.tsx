@@ -68,11 +68,15 @@ export function GrowthActivities() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  // Deep-link support: ?tab=<slug> seeds the active tab, ?pay=1 auto-opens the
+  // pay modal, ?action=contribute (older link style) also lands on the growth tab.
   const initialTabSlug = searchParams.get("tab") ?? "";
+  const contributionShortcut = searchParams.get("action") === "contribute";
   const [activeTab, setActiveTab] = useState<string>(
-    TAB_SLUG[initialTabSlug.toLowerCase()] ?? "Overview",
+    TAB_SLUG[initialTabSlug.toLowerCase()]
+      ?? (contributionShortcut ? "Growth & Activities" : "Overview"),
   );
-  const autoPay = searchParams.get("pay") === "1";
+  const autoPay = searchParams.get("pay") === "1" || contributionShortcut;
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -290,6 +294,7 @@ export function GrowthActivities() {
               nextSchedule?.contributionDeadline as string | undefined
             }
             autoOpenPay={autoPay}
+            openContributionOnLoad={contributionShortcut}
           />
         )}
         {activeTab === "Peer Reviews" && (

@@ -325,13 +325,18 @@ function KycDetailDrawer({
     }
   }
 
+  const savedDocument = record?.verificationData?.submittedDocument as
+    | { type?: string; encryptedNumber?: string }
+    | undefined
+  const hasSavedDocument = typeof savedDocument?.encryptedNumber === 'string'
+
   async function handleReverify() {
     if (!record) return
     if (
-      reverifyLevel === '2' &&
+      reverifyLevel === '2' && !hasSavedDocument &&
       (!reverifyDocumentType || reverifyDocumentNumber.trim().length < 5)
     ) {
-      setReverifyError('Select an ID type and enter the government ID number.')
+      setReverifyError('No saved document is available. Enter the government ID details.')
       return
     }
     setReverifyLoading(true)
@@ -342,8 +347,9 @@ function KycDetailDrawer({
           ? await reverifyProviderIdentity(record.userId, { level: 1 })
           : await reverifyProviderIdentity(record.userId, {
               level: 2,
-              documentType: reverifyDocumentType!,
-              documentNumber: reverifyDocumentNumber.trim().toUpperCase(),
+              ...(reverifyDocumentType ? { documentType: reverifyDocumentType } : {}),
+              ...(reverifyDocumentNumber.trim()
+                ? { documentNumber: reverifyDocumentNumber.trim().toUpperCase() } : {}),
             })
       setMonoLiveData(data)
       closeReverify()
@@ -550,6 +556,12 @@ function KycDetailDrawer({
           />
           {reverifyLevel === '2' && (
             <>
+              {hasSavedDocument && (
+                <Alert color="blue" variant="light">
+                  A saved {savedDocument?.type?.replaceAll('_', ' ') ?? 'government ID'} is available.
+                  Leave the fields blank to verify it again, or enter corrected details below.
+                </Alert>
+              )}
               <Select
                 label="Government ID type"
                 value={reverifyDocumentType}

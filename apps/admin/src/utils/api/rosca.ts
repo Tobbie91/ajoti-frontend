@@ -463,7 +463,7 @@ export function processPayout(
   circleId: string,
   cycleNumber: number,
 ): Promise<{ message: string }> {
-  return authRequest(`/api/admin/payouts/${circleId}/process/${cycleNumber}`, {
+  return authRequest(`/api/rosca/${circleId}/payouts/process/${cycleNumber}`, {
     method: "POST",
   });
 }
