@@ -1330,13 +1330,8 @@ export function GroupDetail() {
                   .map(p => existingAssignments.find(a => a.userId === p.recipientId)?.position)
                   .filter(Boolean)
               )
-              const takenPositions = new Set(
-                existingAssignments
-                  .filter(a => a.userId !== assignMember?.userId && a.position != null)
-                  .map(a => a.position)
-              )
               const availablePositions = Array.from({ length: totalSlots }, (_, i) => i + 1)
-                .filter(pos => !paidPositions.has(pos) && !takenPositions.has(pos))
+                .filter(pos => !paidPositions.has(pos))
               return (
                 <Stack gap={8}>
                   <Text fz="sm" fw={500}>Select Position</Text>
