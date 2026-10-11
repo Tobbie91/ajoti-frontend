@@ -164,6 +164,15 @@ export function GrowthActivities() {
       (s) => ["IN_PROGRESS", "UPCOMING"].includes((s.status ?? "").toUpperCase()),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
+  const paidCycleNumbers = new Set(contributions.map((contribution) => contribution.cycleNumber));
+  const nextUnpaidSchedule = schedules
+    .filter(
+      (schedule) =>
+        ["IN_PROGRESS", "UPCOMING"].includes((schedule.status ?? "").toUpperCase()) &&
+        schedule.cycleNumber != null &&
+        !paidCycleNumbers.has(schedule.cycleNumber),
+    )
+    .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
   const nextPaymentDate = nextSchedule?.payoutDate
     ? new Date(nextSchedule.payoutDate as string).toLocaleDateString("en-NG", {
         day: "numeric",
@@ -171,9 +180,13 @@ export function GrowthActivities() {
         year: "numeric",
       })
     : circle.status === "COMPLETED" ? "All payouts completed" : "Schedule unavailable";
-  const nextContributionDate = nextSchedule?.contributionDeadline
-    ? new Date(nextSchedule.contributionDeadline).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })
-    : "Not scheduled";
+  const nextContributionDate = nextUnpaidSchedule?.contributionDeadline
+    ? new Date(nextUnpaidSchedule.contributionDeadline).toLocaleDateString("en-NG", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "No unpaid cycle scheduled";
 
   const totalContributed = contributions.reduce(
     (s, c) => s + Number(c.amount),
