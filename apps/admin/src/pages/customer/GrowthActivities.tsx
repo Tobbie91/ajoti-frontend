@@ -200,27 +200,25 @@ export function GrowthActivities() {
           <button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="ml-auto cursor-pointer text-sm font-semibold text-[#02A36E]">Refresh</button>
         </div>
 
-        {/* ─── Pill tabs at the top ─────────────────────────────────────── */}
-        <div className="-mx-2 overflow-x-auto px-2" style={{ scrollbarWidth: "none" }}>
-          <div className="inline-flex items-center gap-2 rounded-xl bg-[#F1F3EF] p-1">
-            {GROUP_TABS.map((tab) => {
-              const active = activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`cursor-pointer whitespace-nowrap rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors ${
-                    active
-                      ? "bg-[#0B6B55] text-white shadow-sm"
-                      : "text-[#64748B] hover:bg-white hover:text-[#0F172A]"
-                  }`}
-                >
-                  {tab === "Growth & Activities" ? "Growth" : tab}
-                </button>
-              );
-            })}
-          </div>
+        {/* ─── Pill tabs at the top — full width, bold ──────────────────── */}
+        <div className="grid grid-cols-5 gap-1.5 rounded-xl bg-[#F1F3EF] p-1">
+          {GROUP_TABS.map((tab) => {
+            const active = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`cursor-pointer whitespace-nowrap rounded-lg px-2 py-2.5 text-[12px] font-bold transition-colors sm:text-[14px] ${
+                  active
+                    ? "bg-[#0B6B55] text-white shadow-sm"
+                    : "text-[#64748B] hover:bg-white hover:text-[#0F172A]"
+                }`}
+              >
+                {tab === "Growth & Activities" ? "Growth" : tab === "Peer Reviews" ? "Peers" : tab}
+              </button>
+            );
+          })}
         </div>
 
         {/* ─── Prominent Make-a-contribution button (visible on every tab) ── */}

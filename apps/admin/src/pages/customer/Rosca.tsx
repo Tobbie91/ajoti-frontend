@@ -279,13 +279,16 @@ export function Rosca() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const admin = isCircleAdmin();
-  // Default landing: Joined when deep-linked with ?tab=joined, otherwise
-  // we'll flip to Joined on first paint if the user has any joined groups
-  // (see effect further down).
-  const [activeTab, setActiveTab] = useState<string>(
-    searchParams.get("tab") === "joined" ? "Joined" : "All Groups",
-  );
-  const [hasAutoLandedOnJoined, setHasAutoLandedOnJoined] = useState(false);
+  // Joined is the default landing tab so the member sees their own groups
+  // first. A deep-link like ?tab=open overrides. No post-load auto-flip —
+  // that caused a visible "All Groups → Joined" flash.
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const slug = (searchParams.get("tab") ?? "").toLowerCase();
+    if (slug === "open" || slug === "open-groups") return "Open Groups";
+    if (slug === "invite" || slug === "invite-only") return "Invite-Only";
+    if (slug === "all" || slug === "all-groups") return "All Groups";
+    return "Joined";
+  });
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -429,19 +432,6 @@ export function Rosca() {
       .finally(() => setJoinedLoading(false));
   }, [refreshVersion]);
 
-  // When the user has joined groups and hasn't been deep-linked to a specific
-  // tab, land on the Joined tab the first time the data resolves. Fires once.
-  useEffect(() => {
-    if (hasAutoLandedOnJoined) return;
-    if (joinedLoading) return;
-    if (searchParams.get("tab")) {
-      setHasAutoLandedOnJoined(true);
-      return;
-    }
-    if (joinedGroups.length > 0) setActiveTab("Joined");
-    setHasAutoLandedOnJoined(true);
-  }, [joinedLoading, joinedGroups.length, hasAutoLandedOnJoined, searchParams]);
-
   // Discover list filtering
   const filtered = groups.filter((g) => {
     if (joinedIds.has(g.id)) return false;
@@ -516,52 +506,51 @@ export function Rosca() {
 
         {/* ─── Tab bar — Joined first, then Discover filters ─────────────── */}
         <div>
-          {/* Desktop 4-tab bar */}
+          {/* Desktop 4-tab bar — full-width, bold, pill-style */}
           <div className="hidden sm:block">
-            <Tabs
-              value={activeTab}
-              onChange={(v) => {
-                setActiveTab(v || "Joined");
-                setShowAll(false);
-              }}
-              variant="default"
-              styles={{
-                list: { display: "flex", justifyContent: "flex-start" },
-                tab: {
-                  fontWeight: 500,
-                  fontSize: 14,
-                  padding: "10px 20px",
-                  color: "#9CA3AF",
-                },
-              }}
-            >
-              <Tabs.List>
-                {TABS.map((tab) => (
-                  <Tabs.Tab key={tab} value={tab}>
+            <div className="grid grid-cols-4 gap-2 rounded-xl bg-[#F1F3EF] p-1">
+              {TABS.map((tab) => {
+                const active = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab);
+                      setShowAll(false);
+                    }}
+                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[14px] font-bold transition-colors ${
+                      active
+                        ? "bg-[#0B6B55] text-white shadow-sm"
+                        : "text-[#64748B] hover:bg-white hover:text-[#0F172A]"
+                    }`}
+                  >
                     {tab}
                     {tab === "Joined" && hasJoined && (
                       <span
-                        className="ml-2 inline-flex items-center justify-center rounded-full bg-[#E7F4EE] px-2 text-[11px] font-bold text-[#056148]"
+                        className={`inline-flex items-center justify-center rounded-full px-2 text-[11px] font-bold ${
+                          active ? "bg-white/20 text-white" : "bg-[#E7F4EE] text-[#056148]"
+                        }`}
                         style={{ height: 18, minWidth: 20 }}
                       >
                         {joinedGroups.length}
                       </span>
                     )}
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-            </Tabs>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Mobile 2-pill toggle (Joined / Discover) */}
-          <div className="sm:hidden grid grid-cols-2 rounded-xl bg-[#EEF3F1] p-1" aria-label="Ajo view">
+          <div className="sm:hidden grid grid-cols-2 rounded-xl bg-[#F1F3EF] p-1" aria-label="Ajo view">
             <button
               type="button"
               onClick={() => { setActiveTab("Joined"); setShowAll(false); }}
-              className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+              className={`rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${
                 activeTab === "Joined"
-                  ? "bg-white text-[#0B6B55] shadow-sm"
-                  : "text-[#667085]"
+                  ? "bg-[#0B6B55] text-white shadow-sm"
+                  : "text-[#64748B]"
               }`}
             >
               Joined{hasJoined ? ` (${joinedGroups.length})` : ""}
@@ -569,10 +558,10 @@ export function Rosca() {
             <button
               type="button"
               onClick={() => { setActiveTab("All Groups"); setShowAll(false); }}
-              className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+              className={`rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${
                 activeTab !== "Joined"
-                  ? "bg-white text-[#0B6B55] shadow-sm"
-                  : "text-[#667085]"
+                  ? "bg-[#0B6B55] text-white shadow-sm"
+                  : "text-[#64748B]"
               }`}
             >
               Discover
