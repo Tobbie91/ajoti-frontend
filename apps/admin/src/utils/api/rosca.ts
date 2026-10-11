@@ -280,6 +280,7 @@ export interface UpdateRoscaPayload {
   frequency?: "MONTHLY" | "WEEKLY" | "BI_WEEKLY";
   visibility?: string;
   initialContributionDeadline?: string;
+  contributionCutoffTime?: string;
   payoutTime?: string;
 }
 
