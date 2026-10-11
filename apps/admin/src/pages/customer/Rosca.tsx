@@ -21,6 +21,7 @@ import {
   type RoscaCircle,
   type MyJoinRequest,
 } from "@/utils/api";
+import { PayContributionModal } from "./growth/PayContributionModal";
 
 type Participation = RoscaCircle;
 
@@ -53,6 +54,8 @@ interface JoinedGroup {
   circleStatus: string;
   frequency: string;
   contributionAmountNaira: number;
+  contributionAmountKobo: string;
+  nextDeadlineRaw?: string;
   memberCount: number;
   currentCycle: number;
 }
@@ -297,6 +300,7 @@ export function Rosca() {
   const [joinedGroups, setJoinedGroups] = useState<JoinedGroup[]>([]);
   const [joinedLoading, setJoinedLoading] = useState(true);
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [payPlan, setPayPlan] = useState<JoinedGroup | null>(null);
 
   // ─── Fetch discover list + joined-ID set ────────────────────────────────
   useEffect(() => {
@@ -374,6 +378,8 @@ export function Rosca() {
         circleStatus: (circle.status as string) ?? "",
         frequency: (circle.frequency as string) ?? "",
         contributionAmountNaira: Number(circle.contributionAmount ?? 0) / 100,
+        contributionAmountKobo: String(circle.contributionAmount ?? "0"),
+        nextDeadlineRaw: circle.nextContributionDeadline ?? undefined,
         memberCount: Number(circle.filledSlots ?? 0),
         currentCycle: Number(circle.currentCycle ?? 0),
       };
@@ -399,6 +405,8 @@ export function Rosca() {
         circleStatus: c.status ?? "",
         frequency: c.frequency ?? "",
         contributionAmountNaira: Number(c.contributionAmount ?? 0) / 100,
+        contributionAmountKobo: String(c.contributionAmount ?? "0"),
+        nextDeadlineRaw: c.nextContributionDeadline ?? undefined,
         memberCount: Number(c.filledSlots ?? 0),
         currentCycle: Number(c.currentCycle ?? 0),
       };
@@ -596,9 +604,7 @@ export function Rosca() {
                   key={group.id}
                   group={group}
                   onView={() => navigate(`/rosca/${group.id}/activities`)}
-                  onPay={() =>
-                    navigate(`/rosca/${group.id}/activities?tab=growth&pay=1`)
-                  }
+                  onPay={() => setPayPlan(group)}
                   onChat={() =>
                     navigate(`/messages?circleId=${encodeURIComponent(group.id)}`)
                   }
@@ -841,6 +847,22 @@ export function Rosca() {
           </button>
         </div>
       )}
+
+      {/* Shared pay-contribution modal — opens from the joined card Pay CTA
+          without navigating away from the Ajo page. */}
+      <PayContributionModal
+        opened={payPlan !== null}
+        onClose={() => setPayPlan(null)}
+        circleId={payPlan?.id ?? ""}
+        nextCycleNumber={payPlan?.currentCycle || undefined}
+        contributionAmountKobo={payPlan?.contributionAmountKobo ?? "0"}
+        nextDeadline={payPlan?.nextDeadlineRaw}
+        nextPaymentFallback={payPlan?.nextContribution}
+        onPaid={() => {
+          setPayPlan(null);
+          setRefreshVersion((v) => v + 1);
+        }}
+      />
     </div>
   );
 }

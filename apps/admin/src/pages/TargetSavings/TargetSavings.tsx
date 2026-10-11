@@ -25,6 +25,7 @@ import {
 import {
   IconAlertTriangle,
   IconCheck,
+  IconChevronDown,
   IconCopy,
   IconEye,
   IconEyeOff,
@@ -531,9 +532,9 @@ export function TargetSavings() {
                   {activePlans.length} plan{activePlans.length === 1 ? "" : "s"}
                 </Text>
               </Group>
-              <Stack gap="md">
+              <Stack gap="xs">
                 {activePlans.map((p) => (
-                  <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
+                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
                 ))}
               </Stack>
             </div>
@@ -547,9 +548,9 @@ export function TargetSavings() {
                   {completedPlans.length} plan{completedPlans.length === 1 ? "" : "s"}
                 </Text>
               </Group>
-              <Stack gap="md">
+              <Stack gap="xs">
                 {completedPlans.map((p) => (
-                  <CustomerTargetCard key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
+                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
                 ))}
               </Stack>
             </div>
@@ -804,6 +805,83 @@ export function TargetSavings() {
           </Stack>
         )}
       </Modal>
+    </div>
+  );
+}
+
+// Compact one-line row that reveals the full CustomerTargetCard below on click.
+// Default is collapsed so the My Savings tab shows a scannable list even when
+// the user has many plans.
+function TargetPlanRow({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const savedKobo = BigInt(plan.myMembership?.savedAmountKobo ?? "0");
+  const targetKobo = BigInt(plan.targetAmountKobo ?? "0");
+  const pct = targetKobo > 0n ? Math.min(100, Number((savedKobo * 100n) / targetKobo)) : 0;
+  const status = (plan.status ?? "").toUpperCase();
+  const toneLabel =
+    status === "COMPLETED" || status === "MATURED" ? "Completed"
+    : status === "CANCELLED" ? "Cancelled"
+    : status === "ACTIVE" || status === "STARTED" ? "Active"
+    : "Draft";
+  const toneColor =
+    toneLabel === "Active" ? { bg: "#E7F4EE", fg: "#056148", bar: "#02A36E" }
+    : toneLabel === "Completed" ? { bg: "#DBEAFE", fg: "#1E40AF", bar: "#1E40AF" }
+    : toneLabel === "Cancelled" ? { bg: "#FEE2E2", fg: "#991B1B", bar: "#9CA3AF" }
+    : { bg: "#FEF3C7", fg: "#92400E", bar: "#D97706" };
+  const groupLabel = plan.type === "GROUP" ? (plan.isPublic ? "Public group" : "Private group") : "Individual";
+  const matures = plan.maturityDate
+    ? new Date(plan.maturityDate).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })
+    : "—";
+  const fmt = (kobo: bigint | string) => showAmounts ? `₦${(Number(BigInt(kobo.toString())) / 100).toLocaleString("en-NG", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "₦••••";
+
+  return (
+    <div id={`target-plan-${plan.id}`} className="overflow-hidden rounded-xl border border-[#E4E6E1] bg-white">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex w-full cursor-pointer items-center gap-3 p-4 text-left transition-colors hover:bg-[#F8FAF9]"
+      >
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md" style={{ background: toneColor.bg, color: toneColor.fg, fontSize: 11, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase" }}>
+          {toneLabel.slice(0, 1)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Text fw={700} className="truncate text-[14.5px] text-[#0F172A]">{plan.name}</Text>
+            <span style={{ background: toneColor.bg, color: toneColor.fg, fontSize: 10, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase", padding: "2px 6px", borderRadius: 3 }}>
+              {toneLabel}
+            </span>
+          </div>
+          <Text className="mt-0.5 text-[11.5px] text-[#64748B]">
+            {groupLabel} · Matures {matures}
+          </Text>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F1F3EF]">
+              <div style={{ width: `${pct}%`, height: "100%", background: toneColor.bar, borderRadius: 999 }} />
+            </div>
+            <Text className="text-[11px] font-bold" style={{ color: toneColor.bar, fontVariantNumeric: "tabular-nums" }}>
+              {pct}%
+            </Text>
+          </div>
+        </div>
+        <div className="hidden text-right sm:block">
+          <Text fw={700} className="text-[14px] text-[#0F172A]" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {fmt(savedKobo.toString())}
+          </Text>
+          <Text className="text-[11px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
+            of {fmt(targetKobo.toString())}
+          </Text>
+        </div>
+        <IconChevronDown
+          size={18}
+          style={{ color: "#9CA3AF", transition: "transform 0.15s", transform: expanded ? "rotate(180deg)" : "none", flexShrink: 0 }}
+        />
+      </button>
+      {expanded && (
+        <div className="border-t border-[#F1F3EF] bg-[#FAFAF7] p-4">
+          <CustomerTargetCard plan={plan} onChanged={onChanged} kycReady={kycReady} showAmounts={showAmounts} />
+        </div>
+      )}
     </div>
   );
 }
