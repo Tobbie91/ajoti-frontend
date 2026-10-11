@@ -12,10 +12,9 @@ import {
   IconLockOpen,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getWalletTransactions, getWalletBalance, getAdminWalletBalance } from '@/utils/api'
+import { getWalletTransactions, getWalletBalance } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
-import { isCircleAdmin } from '@/utils/auth-role'
 
 type Transaction = {
   id: string
@@ -153,7 +152,6 @@ const CATEGORY_OPTIONS = ['All', 'Transfer', 'Funding', 'ROSCA', 'Investment']
 export function Transactions() {
   const navigate = useNavigate()
   const { hidden, toggle } = useWalletPrivacy()
-  const admin = isCircleAdmin()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [walletBalance, setWalletBalance] = useState('₦0.00')
   const [loading, setLoading] = useState(true)
@@ -163,38 +161,19 @@ export function Transactions() {
   const [category, setCategory] = useState<string | null>('All')
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
 
-  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}')
-  const userId = storedUser.id ?? storedUser._id ?? ''
-
   useEffect(() => {
-    const balanceFetch = admin && userId
-      ? getAdminWalletBalance(userId)
-          .then((data) => {
-            const bal = data.available ?? data.total ?? 0
-            setWalletBalance(`₦${Number(bal).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
-          })
-          .catch(() =>
-            getWalletBalance()
-              .then((data) => {
-                const bal = Number(data.available ?? data.total ?? 0) / 100
-                setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
-              })
-              .catch(() => setWalletBalance('₦0.00')),
-          )
-      : getWalletBalance()
-          .then((data) => {
-            const bal = Number(data.available ?? data.total ?? 0) / 100
-            setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
-          })
-          .catch(() => setWalletBalance('₦0.00'))
-
     Promise.all([
-      balanceFetch,
+      getWalletBalance()
+        .then((data) => {
+          const bal = Number(data.available ?? data.total ?? 0) / 100
+          setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+        })
+        .catch(() => setWalletBalance('₦0.00')),
       getWalletTransactions()
         .then((txns) => setTransactions(txns.map(mapApiTxn)))
         .catch(() => {}),
     ]).finally(() => setLoading(false))
-  }, [admin, userId])
+  }, [])
 
   const filtered = transactions.filter((tx) => {
     if (search && !tx.name.toLowerCase().includes(search.toLowerCase())) return false

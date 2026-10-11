@@ -10,10 +10,9 @@ import {
   IconLockOpen,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getAdminWalletBalance, getWalletBalance, getWalletTransactions } from '@/utils/api'
+import { getWalletBalance, getWalletTransactions } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
-import { isCircleAdmin } from '@/utils/auth-role'
 import { RoscaCommitments } from '@/components/RoscaCommitments'
 
 // Friendly overrides for sourceTypes whose humanized enum name reads awkwardly
@@ -120,35 +119,21 @@ interface Tx extends WalletTransaction {}
 export function MyWallet() {
   const navigate = useNavigate()
   const { hidden, toggle } = useWalletPrivacy()
-  const admin = isCircleAdmin()
   const [balance, setBalance] = useState<number | null>(null)
   const [transactions, setTransactions] = useState<Tx[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTx, setSelectedTx] = useState<Tx | null>(null)
 
-  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}')
-  const userId = storedUser.id ?? storedUser._id ?? ''
-
   useEffect(() => {
-    const fetchBalance = admin && userId
-      ? getAdminWalletBalance(userId)
-          .then((data) => setBalance(data.available ?? data.total ?? 0))
-          .catch(() =>
-            getWalletBalance()
-              .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
-              .catch(() => setBalance(0)),
-          )
-      : getWalletBalance()
-          .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
-          .catch(() => setBalance(0))
-
     Promise.all([
-      fetchBalance,
+      getWalletBalance()
+        .then((data) => setBalance(Number(data.available ?? data.total ?? 0) / 100))
+        .catch(() => setBalance(0)),
       getWalletTransactions()
         .then((txns) => setTransactions(txns.slice(0, 5)))
         .catch(() => {}),
     ]).finally(() => setLoading(false))
-  }, [admin, userId])
+  }, [])
 
   return (
     <div className="mx-auto w-full max-w-[700px] px-6 py-8">
