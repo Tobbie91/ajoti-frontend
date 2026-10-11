@@ -136,8 +136,8 @@ export function Home() {
           onTransfer={() => navigate("/withdraw")}
         />
 
-        {/* ─── Wallet trio (one responsive surface, stacks on mobile) ──── */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+        {/* ─── Single wallet surface: hero Total + Available/Reserved subrows ─── */}
+        <div className="flex flex-col gap-3">
           <SummaryCard
             title="Total Balance"
             amount={walletBalance ? money(walletBalance.total) : "-"}
@@ -146,18 +146,18 @@ export function Home() {
             hidden={hidden}
             onToggleHidden={toggle}
           />
-          <SummaryCard
-            title="Available"
-            amount={walletBalance ? money(walletBalance.available) : "-"}
-            gradient="linear-gradient(135deg,#9EB6E5 0%,#D6E4FF 100%)"
-            hidden={hidden}
-          />
-          <SummaryCard
-            title="Reserved"
-            amount={walletBalance ? money(walletBalance.reserved) : "-"}
-            gradient="linear-gradient(135deg,#A8D8B9 0%,#DFF3E7 100%)"
-            hidden={hidden}
-          />
+          <SimpleGrid cols={2} spacing="xs">
+            <WalletSubline
+              label="Available"
+              amount={walletBalance ? money(walletBalance.available) : "-"}
+              hidden={hidden}
+            />
+            <WalletSubline
+              label="Reserved"
+              amount={walletBalance ? money(walletBalance.reserved) : "-"}
+              hidden={hidden}
+            />
+          </SimpleGrid>
         </div>
 
         {/* ─── At-a-glance stats row ──────────────────────────────────── */}
@@ -390,6 +390,23 @@ export function Home() {
 }
 
 // ─── Home-only helpers ───────────────────────────────────────────────
+
+function WalletSubline({ label, amount, hidden }: { label: string; amount: string; hidden: boolean }) {
+  return (
+    <Paper withBorder radius="md" p="sm" style={{ background: "#FFFFFF" }}>
+      <Text style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", color: "#64748B" }}>
+        {label}
+      </Text>
+      <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, color: "#0F172A", fontWeight: 700, fontSize: 16, fontVariantNumeric: "tabular-nums" }}>
+        {hidden ? (
+          <IconLock size={18} aria-label={`${label} balance hidden`} />
+        ) : (
+          <span>{amount}</span>
+        )}
+      </div>
+    </Paper>
+  );
+}
 
 function HomeStatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
