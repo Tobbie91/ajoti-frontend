@@ -42,6 +42,11 @@ export function Login() {
         navigate(defaultAuthenticatedPath(role))
       }
     } catch (err) {
+      if (err instanceof Error && err.message === 'Email not verified') {
+        sessionStorage.setItem('verify_email', email.trim())
+        navigate('/verify-otp')
+        return
+      }
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setLoading(false)
