@@ -56,13 +56,13 @@ export function Sidebar({ onClose }: SidebarProps) {
           active={isActive('/my-wallet')} onClick={onClose} styles={commonStyle(isActive('/my-wallet'))} />
         <NavLink component={RouterNavLink} to="/transactions" label="Transactions" leftSection={<IconReceipt2 size={19} stroke={1.5} />}
           active={isActive('/transactions')} onClick={onClose} styles={commonStyle(isActive('/transactions'))} />
-        <NavLink component={RouterNavLink} to="/loans" label="Loans" leftSection={<IconCash size={19} stroke={1.5} />}
+        <NavLink component={RouterNavLink} to="/loans" label="Early Payout" leftSection={<IconCash size={19} stroke={1.5} />}
           active={isActive('/loans')} onClick={onClose} styles={commonStyle(isActive('/loans'))} />
         <NavLink component={RouterNavLink} to="/debts" label="Debts" leftSection={<IconAlertTriangle size={19} stroke={1.5} />}
           active={isActive('/debts')} onClick={onClose} styles={commonStyle(isActive('/debts'))} />
         <NavLink component={RouterNavLink} to="/messages" label="Messages" leftSection={<IconMessageCircle size={19} stroke={1.5} />}
           active={isActive('/messages')} onClick={onClose} styles={commonStyle(isActive('/messages'))} />
-        <NavLink component={RouterNavLink} to="/support" label="Supportt" leftSection={<IconHeadset size={19} stroke={1.5} />}
+        <NavLink component={RouterNavLink} to="/support" label="Support" leftSection={<IconHeadset size={19} stroke={1.5} />}
           active={isActive('/support')} onClick={onClose} styles={commonStyle(isActive('/support'))} />
         <Divider my="xs" />
         <NavLink component={RouterNavLink} to="/my-profile" label="My Profile" leftSection={<IconUserCircle size={19} stroke={1.5} />}

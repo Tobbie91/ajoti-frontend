@@ -18,6 +18,7 @@ import {
   IconCheck,
   IconChevronRight,
   IconClockPause,
+  IconCompass,
   IconGauge,
   IconLock,
   IconPlayerPlay,
@@ -170,7 +171,7 @@ export function Dashboard() {
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm">
-        <SimpleGrid cols={{ base: 3, sm: 5 }} spacing="xs">
+        <SimpleGrid cols={{ base: 3, sm: 6 }} spacing="xs">
           <IconTile
             icon={<IconPlus size={20} />}
             label="Fund wallet"
@@ -180,6 +181,11 @@ export function Dashboard() {
             icon={<IconArrowUpRight size={20} />}
             label="Withdraw"
             onClick={() => navigate('/withdraw')}
+          />
+          <IconTile
+            icon={<IconCompass size={20} />}
+            label="Explore"
+            onClick={() => navigate('/rosca/how-it-works')}
           />
           <IconTile
             icon={<IconLock size={20} />}
