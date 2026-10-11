@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Button, Card, Text, PinInput, Loader, Alert } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { verifyEmail, resendOtp } from '@/utils/api'
@@ -9,6 +9,7 @@ export function VerifyOtp() {
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'input' | 'verifying'>('input')
   const [resent, setResent] = useState(false)
+  const [resending, setResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const email = sessionStorage.getItem('verify_email') || ''
@@ -28,15 +29,21 @@ export function VerifyOtp() {
   }
 
   async function handleResend() {
-    if (!email) return
+    if (!email || resending) return
+    setError(null)
+    setResending(true)
     try {
       await resendOtp(email)
       setResent(true)
       setTimeout(() => setResent(false), 3000)
-    } catch {
-      // ignore resend errors
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not resend the code. Please try again.')
+    } finally {
+      setResending(false)
     }
   }
+
+  if (!email) return <Navigate to="/login" replace />
 
   return (
     <div className="min-h-screen bg-[#F7FBF9] flex items-center justify-center px-4">
@@ -97,15 +104,21 @@ export function VerifyOtp() {
                 </Text>
               ) : (
                 <Text
+                  component="button"
+                  type="button"
+                  disabled={resending}
                   size="sm"
                   fw={600}
                   className="cursor-pointer text-[#0B6B55]"
                   onClick={handleResend}
                 >
-                  Resend
+                  {resending ? 'Sending...' : 'Resend'}
                 </Text>
               )}
             </div>
+            <Button variant="subtle" onClick={() => navigate('/login')}>
+              Back to login
+            </Button>
           </div>
         )}
 
