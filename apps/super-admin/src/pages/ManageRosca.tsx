@@ -174,7 +174,7 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
   }
 
   const circle = detail as Record<string, unknown> | null
-  const members = (circle?.members as unknown[] | undefined) ?? []
+  const members = (circle?.memberships as unknown[] | undefined) ?? []
   const admin = circle?.admin as { firstName?: string; lastName?: string; email?: string } | undefined
 
   return (
@@ -219,7 +219,7 @@ function CircleDetailDrawer({ circleId, opened, onClose, onCancelled }: CircleDe
                 <InfoItem label="Contribution" value={formatNaira(String(circle.contributionAmount ?? 0))} />
                 <InfoItem label="Frequency" value={String(circle.frequency ?? '-')} />
                 <InfoItem label="Cycle" value={`${String(circle.currentCycle ?? 0)} / ${String(circle.durationCycles ?? 0)}`} />
-                <InfoItem label="Members" value={String(circle.memberCount ?? 0)} />
+                <InfoItem label="Members" value={String(members.length)} />
               </div>
             </Paper>
 
