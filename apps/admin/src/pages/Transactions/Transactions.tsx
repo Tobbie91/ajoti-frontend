@@ -10,6 +10,7 @@ import {
   IconEyeOff,
   IconLock,
   IconLockOpen,
+  IconDownload,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { getWalletTransactions, getWalletBalance } from '@/utils/api'
@@ -161,6 +162,35 @@ export function Transactions() {
   const [category, setCategory] = useState<string | null>('All')
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
 
+  function downloadRecentTransactions() {
+    const csvCell = (value: unknown) => {
+      let text = String(value ?? '')
+      if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`
+      return `"${text.replace(/"/g, '""')}"`
+    }
+    const rows = [
+      ['Date', 'Description', 'Type', 'Movement', 'Bucket', 'Amount (NGN)', 'Balance Before (NGN)', 'Balance After (NGN)', 'Reference'],
+      ...transactions.map(({ raw }) => [
+        raw.createdAt,
+        raw.description ?? raw.movementType ?? raw.entryType,
+        raw.entryType,
+        raw.movementType,
+        raw.bucketType ?? '',
+        Number(raw.amount) / 100,
+        raw.balanceBefore == null ? '' : Number(raw.balanceBefore) / 100,
+        raw.balanceAfter == null ? '' : Number(raw.balanceAfter) / 100,
+        raw.id,
+      ]),
+    ]
+    const csv = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}`
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'ajoti-transaction-history.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   useEffect(() => {
     Promise.all([
       getWalletBalance()
@@ -229,7 +259,19 @@ export function Transactions() {
         <IconArrowLeft size={18} /> Back
       </button>
 
-      <Text fw={700} className="mb-6 text-[24px] text-[#0F172A]">Transactions</Text>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <Text fw={700} className="text-[24px] text-[#0F172A]">Transactions</Text>
+        {!hidden && (
+          <button
+            type="button"
+            onClick={downloadRecentTransactions}
+            disabled={loading || transactions.length === 0}
+            className="flex items-center gap-2 rounded-lg border border-[#02A36E] px-3 py-2 text-sm font-medium text-[#02A36E] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <IconDownload size={16} /> Download recent (up to 50)
+          </button>
+        )}
+      </div>
 
       {hidden ? (
         <div className="flex min-h-48 items-center justify-center rounded-xl border border-[#F3F4F6] bg-white">
