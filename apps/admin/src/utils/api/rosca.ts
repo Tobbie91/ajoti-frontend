@@ -19,6 +19,8 @@ export interface RoscaCircle {
   durationCycles: number;
   currentCycle?: number;
   initialContributionDeadline?: string | null;
+  payoutTime?: string | null;
+  contributionCutoffTime?: string | null;
   nextContributionDeadline?: string | null;
   maxSlots: number;
   totalSlots: number;
@@ -253,6 +255,8 @@ export interface CreateRoscaPayload {
   durationCycles: number;
   maxSlots: number;
   payoutLogic: string;
+  payoutTime?: string;
+  contributionCutoffTime?: string;
   visibility: string;
 }
 
@@ -276,6 +280,8 @@ export interface UpdateRoscaPayload {
   frequency?: "MONTHLY" | "WEEKLY" | "BI_WEEKLY";
   visibility?: string;
   initialContributionDeadline?: string;
+  contributionCutoffTime?: string;
+  payoutTime?: string;
 }
 
 export function updateRoscaCircle(

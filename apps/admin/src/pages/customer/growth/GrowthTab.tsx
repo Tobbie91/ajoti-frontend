@@ -60,6 +60,7 @@ export function GrowthTab({
   autoOpenPay?: boolean;
   openContributionOnLoad?: boolean;
 }) {
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
 
   const isActive = circleStatus.toUpperCase() === "ACTIVE";
@@ -68,6 +69,16 @@ export function GrowthTab({
     contributions.some((c) => c.cycleNumber === nextCycleNumber);
   const canContribute =
     isActive && nextCycleNumber != null && !alreadyContributed;
+  const deadlineFormatted = nextDeadline
+    ? new Date(nextDeadline).toLocaleString("en-NG", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : nextPaymentDate;
 
   function openModal() {
     setModalOpen(true);
