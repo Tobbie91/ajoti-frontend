@@ -90,7 +90,13 @@ export function WithdrawFunds() {
   function loadAccounts() {
     setLoadingAccounts(true);
     listBankAccounts()
-      .then((res) => setSavedAccounts(res.data ?? []))
+      .then((res) => {
+        const accounts = res.data ?? [];
+        setSavedAccounts(accounts);
+        setSelectedAccount(
+          (current) => current ?? accounts.find((account) => account.isDefault) ?? null,
+        );
+      })
       .catch(() => {})
       .finally(() => setLoadingAccounts(false));
   }
