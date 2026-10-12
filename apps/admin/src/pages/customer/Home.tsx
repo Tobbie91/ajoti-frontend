@@ -1,13 +1,6 @@
 import { Title, Text, Card, Box, Modal, Paper, SimpleGrid, UnstyledButton } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
-import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconGauge, IconLock, IconLockOpen, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
-import addFunds from "@/assets/AddFunds_default.svg";
-import addFundsPressed from "@/assets/AddFunds_press.svg";
-import explore from "@/assets/Explore_default.svg";
-import explorePressed from "@/assets/Explore_press.svg";
-import withdraw from "@/assets/Withdraw_default.svg";
-import withdrawPressed from "@/assets/Withdraw_press.svg";
-import IconButton from "@/components/Icon";
+import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconCompass, IconGauge, IconLock, IconLockOpen, IconPlus, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
 import transctionIcon from "@/assets/Transaction_Icon.svg";
 import { MyDashboard } from "@/components/MyDashBoard/MyDashboard";
 import { QuickCard } from "@/components/QuickCard";
@@ -202,29 +195,20 @@ export function Home() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-7">
             <div className="hidden flex-wrap gap-3 sm:flex sm:gap-5">
-              <IconButton
-                defaultIcon={addFunds}
-                pressedIcon={addFundsPressed}
-                alt="Add Funds"
+              <HomeQuickTile
+                icon={<IconPlus size={22} />}
+                label="Add funds"
                 onClick={() => navigate("/create-wallet")}
-                width={100}
-                height={118}
               />
-              <IconButton
-                defaultIcon={withdraw}
-                pressedIcon={withdrawPressed}
-                alt="Withdraw"
+              <HomeQuickTile
+                icon={<IconArrowUpRight size={22} />}
+                label="Withdraw"
                 onClick={() => navigate("/withdraw")}
-                width={104}
-                height={118}
               />
-              <IconButton
-                defaultIcon={explore}
-                pressedIcon={explorePressed}
-                alt="Explore"
+              <HomeQuickTile
+                icon={<IconCompass size={22} />}
+                label="Explore"
                 onClick={() => navigate("/rosca/how-it-works")}
-                width={106}
-                height={118}
               />
               <HomeQuickTile
                 icon={<IconLock size={22} />}
