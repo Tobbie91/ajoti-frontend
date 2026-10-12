@@ -273,6 +273,7 @@ export function createRoscaCircle(
 // payoutLogic is deliberately NOT here - use updatePayoutConfig instead, the
 // dedicated endpoint (backend rejects payoutLogic on this DTO entirely).
 export interface UpdateRoscaPayload {
+  contributionCutoffTime?: string;
   name?: string;
   description?: string;
   contributionAmount?: string;
@@ -280,7 +281,6 @@ export interface UpdateRoscaPayload {
   frequency?: "MONTHLY" | "WEEKLY" | "BI_WEEKLY";
   visibility?: string;
   initialContributionDeadline?: string;
-  contributionCutoffTime?: string;
   payoutTime?: string;
 }
 
@@ -313,8 +313,21 @@ export function closeRoscaCircle(
 }
 
 // GET /api/admin/rosca/dashboard - admin dashboard stats
+export interface DashboardCircle {
+  id: string; name: string; status: string; filledSlots: number;
+  maxSlots: number; durationCycles: number; createdAt: string;
+}
+
 export interface AdminDashboard {
   totalGroups: number;
+  groupCounts?: { active: number; ready: number; notReady: number; completed: number };
+  categories?: {
+    activeGroups: DashboardCircle[];
+    readyGroups: DashboardCircle[];
+    notReadyGroups: DashboardCircle[];
+    completedGroups: DashboardCircle[];
+    targetSavings: { id: string; name: string; status: string; targetAmount: string; createdAt: string }[];
+  };
   nextDeadline: { groupName: string; deadline: string } | null;
   pendingJoinRequests: {
     total: number;
@@ -440,6 +453,49 @@ export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
     `/api/rosca/${circleId}/schedules`,
     { method: "GET" },
   ).then((res) => (Array.isArray(res) ? res : (res.data ?? [])));
+}
+
+// ── Per-group contribution payment preference ────────────────────────────────
+export type ContributionPaymentMethod = "MANUAL" | "AUTOMATIC";
+
+export async function getContributionPaymentPreference(circleId: string): Promise<ContributionPaymentMethod> {
+  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+    `/api/rosca/${circleId}/contributions/payment-preference`,
+    { method: "GET" },
+  );
+  return response.data.paymentMethod;
+}
+
+export async function setContributionPaymentPreference(
+  circleId: string,
+  paymentMethod: ContributionPaymentMethod,
+): Promise<ContributionPaymentMethod> {
+  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+    `/api/rosca/${circleId}/contributions/payment-preference`,
+    { method: "PATCH", body: JSON.stringify({ paymentMethod }) },
+  );
+  return response.data.paymentMethod;
+}
+
+export interface CircleEarlyPayout {
+  id: string;
+  userId: string;
+  memberName: string;
+  status: string;
+  expectedPayout: string;
+  advanceReceived: string;
+  companyFee: string;
+  projectedRemainingPayout: string;
+  requestedAt: string;
+  repaidAt: string | null;
+}
+
+export async function getCircleEarlyPayouts(circleId: string): Promise<CircleEarlyPayout[]> {
+  const result = await authRequest<{ data: CircleEarlyPayout[] }>(
+    `/api/admin/rosca/${circleId}/early-payouts`,
+    { method: "GET" },
+  );
+  return result.data;
 }
 
 // ── Payouts ──────────────────────────────────────────────────────────────────

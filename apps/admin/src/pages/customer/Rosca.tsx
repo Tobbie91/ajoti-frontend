@@ -18,6 +18,7 @@ import {
   listRoscaCircles,
   getMyJoinRequests,
   getMyParticipations,
+  getRoscaSchedules,
   type RoscaCircle,
   type MyJoinRequest,
 } from "@/utils/api";
@@ -49,6 +50,8 @@ interface JoinedGroup {
   completionRate: number;
   completedCycles: number;
   totalCycles: number;
+  filledSlots: number;
+  maxSlots: number;
   nextContribution: string;
   admin: string;
   circleStatus: string;
@@ -373,6 +376,8 @@ export function Rosca() {
         completionRate,
         completedCycles: completed,
         totalCycles: total,
+        filledSlots: Number(circle.filledSlots ?? 0),
+        maxSlots: Number(circle.maxSlots ?? 0),
         nextContribution: contributionDate(circle),
         admin: adminName,
         circleStatus: (circle.status as string) ?? "",
@@ -400,6 +405,8 @@ export function Rosca() {
         completionRate,
         completedCycles: completed,
         totalCycles: total,
+        filledSlots: Number(c.filledSlots ?? 0),
+        maxSlots: Number(c.maxSlots ?? 0),
         nextContribution: contributionDate(c),
         admin: adminName,
         circleStatus: c.status ?? "",
@@ -435,7 +442,20 @@ export function Rosca() {
             merged.push(mapJoinRequest(r));
           }
         }
-        setJoinedGroups(merged);
+        void Promise.all(merged.map(async (group) => {
+          try {
+            const schedules = await getRoscaSchedules(group.id);
+            if (schedules.length === 0) return group;
+            const completedCycles = schedules.filter((schedule) => schedule.status === 'COMPLETED').length;
+            const totalCycles = schedules.length;
+            return {
+              ...group, completedCycles, totalCycles,
+              completionRate: Math.round((completedCycles / totalCycles) * 100),
+            };
+          } catch {
+            return group;
+          }
+        })).then(setJoinedGroups);
       })
       .finally(() => setJoinedLoading(false));
   }, [refreshVersion]);
