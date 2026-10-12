@@ -1,24 +1,21 @@
 ﻿import { useState, useEffect } from 'react'
 import { ActionIcon, Text, TextInput, Select, Loader, Modal, Badge, Divider } from '@mantine/core'
-import { DateInput } from '@mantine/dates'
 import {
   IconArrowLeft,
   IconSearch,
   IconArrowUpRight,
   IconArrowDownLeft,
-  IconCalendar,
   IconPlus,
   IconEye,
   IconEyeOff,
   IconLock,
   IconLockOpen,
-  IconX,
+  IconDownload,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getWalletTransactions, getWalletBalance, getAdminWalletBalance } from '@/utils/api'
+import { getWalletTransactions, getWalletBalance } from '@/utils/api'
 import type { WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
-import { isCircleAdmin } from '@/utils/auth-role'
 
 type Transaction = {
   id: string
@@ -156,78 +153,63 @@ const CATEGORY_OPTIONS = ['All', 'Transfer', 'Funding', 'ROSCA', 'Investment']
 export function Transactions() {
   const navigate = useNavigate()
   const { hidden, toggle } = useWalletPrivacy()
-  const admin = isCircleAdmin()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [wallet, setWallet] = useState<{ total: number; available: number; reserved: number } | null>(null)
+  const [walletBalance, setWalletBalance] = useState('₦0.00')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string | null>('All')
   const [type, setType] = useState<string | null>('All')
   const [category, setCategory] = useState<string | null>('All')
-  const [fromDate, setFromDate] = useState<Date | null>(null)
-  const [toDate, setToDate] = useState<Date | null>(null)
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
 
-  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}')
-  const userId = storedUser.id ?? storedUser._id ?? ''
+  function downloadRecentTransactions() {
+    const csvCell = (value: unknown) => {
+      let text = String(value ?? '')
+      if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`
+      return `"${text.replace(/"/g, '""')}"`
+    }
+    const rows = [
+      ['Date', 'Description', 'Type', 'Movement', 'Bucket', 'Amount (NGN)', 'Balance Before (NGN)', 'Balance After (NGN)', 'Reference'],
+      ...transactions.map(({ raw }) => [
+        raw.createdAt,
+        raw.description ?? raw.movementType ?? raw.entryType,
+        raw.entryType,
+        raw.movementType,
+        raw.bucketType ?? '',
+        Number(raw.amount) / 100,
+        raw.balanceBefore == null ? '' : Number(raw.balanceBefore) / 100,
+        raw.balanceAfter == null ? '' : Number(raw.balanceAfter) / 100,
+        raw.id,
+      ]),
+    ]
+    const csv = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}`
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'ajoti-transaction-history.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   useEffect(() => {
-    const balanceFetch = admin && userId
-      ? getAdminWalletBalance(userId)
-          .then((data) =>
-            setWallet({
-              total: Number(data.total ?? data.available ?? 0),
-              available: Number(data.available ?? 0),
-              reserved: Number(data.reserved ?? 0),
-            }),
-          )
-          .catch(() =>
-            getWalletBalance()
-              .then((data) =>
-                setWallet({
-                  total: Number(data.total ?? 0) / 100,
-                  available: Number(data.available ?? 0) / 100,
-                  reserved: Number(data.reserved ?? 0) / 100,
-                }),
-              )
-              .catch(() => setWallet({ total: 0, available: 0, reserved: 0 })),
-          )
-      : getWalletBalance()
-          .then((data) =>
-            setWallet({
-              total: Number(data.total ?? 0) / 100,
-              available: Number(data.available ?? 0) / 100,
-              reserved: Number(data.reserved ?? 0) / 100,
-            }),
-          )
-          .catch(() => setWallet({ total: 0, available: 0, reserved: 0 }))
-
     Promise.all([
-      balanceFetch,
+      getWalletBalance()
+        .then((data) => {
+          const bal = Number(data.available ?? data.total ?? 0) / 100
+          setWalletBalance(`₦${bal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
+        })
+        .catch(() => setWalletBalance('₦0.00')),
       getWalletTransactions()
         .then((txns) => setTransactions(txns.map(mapApiTxn)))
         .catch(() => {}),
     ]).finally(() => setLoading(false))
-  }, [admin, userId])
+  }, [])
 
   const filtered = transactions.filter((tx) => {
     if (search && !tx.name.toLowerCase().includes(search.toLowerCase())) return false
     if (type && type !== 'All') {
       if (type === 'Credit' && tx.direction !== 'credit') return false
       if (type === 'Debit' && tx.direction !== 'debit') return false
-    }
-    if (fromDate || toDate) {
-      const txDate = new Date(tx.raw.createdAt)
-      if (fromDate) {
-        const from = new Date(fromDate)
-        from.setHours(0, 0, 0, 0)
-        if (txDate < from) return false
-      }
-      if (toDate) {
-        const to = new Date(toDate)
-        to.setHours(23, 59, 59, 999)
-        if (txDate > to) return false
-      }
     }
     return true
   })
@@ -240,50 +222,34 @@ export function Transactions() {
 
   return (
     <div className="mx-auto w-full max-w-[700px] px-6 py-8">
-      {/* Wallet balance banner — hero total + Available/Reserved subrows */}
-      <div className="mb-6 rounded-2xl bg-[#02A36E] px-6 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Text fw={400} fz={12} c="white" opacity={0.75}>Total Balance</Text>
-              <ActionIcon
-                variant="subtle"
-                aria-label={hidden ? 'Show wallet balance and transactions' : 'Hide wallet balance and transactions'}
-                onClick={toggle}
-                style={{ color: 'white' }}
-              >
-                {hidden ? <IconEye size={18} /> : <IconEyeOff size={18} />}
-              </ActionIcon>
-            </div>
-            {loading ? (
-              <Loader size="sm" color="white" />
-            ) : hidden ? (
-              <IconLock size={25} color="white" aria-label="Wallet balance hidden" />
-            ) : (
-              <Text fw={600} fz={24} c="white">
-                ₦{(wallet?.total ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-              </Text>
-            )}
+      {/* Wallet balance banner */}
+      <div className="mb-6 flex items-center justify-between rounded-2xl bg-[#02A36E] px-6 py-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Text fw={400} fz={12} c="white" opacity={0.75}>Wallet Balance</Text>
+            <ActionIcon
+              variant="subtle"
+              aria-label={hidden ? 'Show wallet balance and transactions' : 'Hide wallet balance and transactions'}
+              onClick={toggle}
+              style={{ color: 'white' }}
+            >
+              {hidden ? <IconEye size={18} /> : <IconEyeOff size={18} />}
+            </ActionIcon>
           </div>
-          <button
-            onClick={() => navigate('/fund-wallet')}
-            className="flex cursor-pointer items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm hover:bg-white/30"
-          >
-            <IconPlus size={16} /> Add money
-          </button>
+          {loading ? (
+            <Loader size="sm" color="white" />
+          ) : hidden ? (
+            <IconLock size={25} color="white" aria-label="Wallet balance hidden" />
+          ) : (
+            <Text fw={600} fz={24} c="white">{walletBalance}</Text>
+          )}
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <TxnWalletSubline
-            label="Available"
-            amount={`₦${(wallet?.available ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`}
-            hidden={hidden}
-          />
-          <TxnWalletSubline
-            label="Reserved"
-            amount={`₦${(wallet?.reserved ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`}
-            hidden={hidden}
-          />
-        </div>
+        <button
+          onClick={() => navigate('/fund-wallet')}
+          className="flex cursor-pointer items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm hover:bg-white/30"
+        >
+          <IconPlus size={16} /> Add money
+        </button>
       </div>
 
       <button
@@ -293,7 +259,19 @@ export function Transactions() {
         <IconArrowLeft size={18} /> Back
       </button>
 
-      <Text fw={700} className="mb-6 text-[24px] text-[#0F172A]">Transactions</Text>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <Text fw={700} className="text-[24px] text-[#0F172A]">Transactions</Text>
+        {!hidden && (
+          <button
+            type="button"
+            onClick={downloadRecentTransactions}
+            disabled={loading || transactions.length === 0}
+            className="flex items-center gap-2 rounded-lg border border-[#02A36E] px-3 py-2 text-sm font-medium text-[#02A36E] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <IconDownload size={16} /> Download recent (up to 50)
+          </button>
+        )}
+      </div>
 
       {hidden ? (
         <div className="flex min-h-48 items-center justify-center rounded-xl border border-[#F3F4F6] bg-white">
@@ -302,53 +280,11 @@ export function Transactions() {
       ) : (
         <>
       {/* Filters */}
-      <div className="mb-3 grid grid-cols-3 gap-2">
+      <div className="mb-4 grid grid-cols-3 gap-2">
         <Select data={STATUS_OPTIONS} value={status} onChange={setStatus} placeholder="Status" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
         <Select data={TYPE_OPTIONS} value={type} onChange={setType} placeholder="Type" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
         <Select data={CATEGORY_OPTIONS} value={category} onChange={setCategory} placeholder="Category" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
       </div>
-
-      {/* Date range filter */}
-      <div className="mb-4 grid grid-cols-2 gap-2">
-        <DateInput
-          value={fromDate}
-          onChange={(v) => setFromDate(v ? new Date(v) : null)}
-          placeholder="From"
-          clearable
-          maxDate={toDate ?? undefined}
-          leftSection={<IconCalendar size={14} />}
-          radius="lg"
-          size="xs"
-          styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }}
-          valueFormat="DD MMM YYYY"
-        />
-        <DateInput
-          value={toDate}
-          onChange={(v) => setToDate(v ? new Date(v) : null)}
-          placeholder="To"
-          clearable
-          minDate={fromDate ?? undefined}
-          leftSection={<IconCalendar size={14} />}
-          radius="lg"
-          size="xs"
-          styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }}
-          valueFormat="DD MMM YYYY"
-        />
-      </div>
-      {(fromDate || toDate) && (
-        <div className="mb-3 flex items-center justify-between rounded-lg bg-[#F0FDF4] px-3 py-2">
-          <Text fz={12} fw={500} c="#065F46">
-            {fromDate ? fromDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '…'} → {toDate ? toDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '…'}
-          </Text>
-          <button
-            type="button"
-            onClick={() => { setFromDate(null); setToDate(null) }}
-            className="flex items-center gap-1 text-[11px] font-semibold text-[#065F46]"
-          >
-            <IconX size={12} /> Clear
-          </button>
-        </div>
-      )}
 
       <TextInput
         placeholder="Search transactions"
@@ -416,32 +352,6 @@ export function Transactions() {
       )}
 
       {!hidden && <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />}
-    </div>
-  )
-}
-
-function TxnWalletSubline({ label, amount, hidden }: { label: string; amount: string; hidden: boolean }) {
-  return (
-    <div
-      style={{
-        background: 'rgba(255,255,255,0.14)',
-        borderRadius: 10,
-        padding: '8px 12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-      }}
-    >
-      <Text fz={10.5} fw={600} style={{ color: 'rgba(255,255,255,0.78)', letterSpacing: 0.3, textTransform: 'uppercase' }}>
-        {label}
-      </Text>
-      {hidden ? (
-        <IconLock size={16} color="white" aria-label={`${label} balance hidden`} />
-      ) : (
-        <Text fw={700} fz={14} c="white" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {amount}
-        </Text>
-      )}
     </div>
   )
 }

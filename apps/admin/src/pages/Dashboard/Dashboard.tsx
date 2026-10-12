@@ -230,7 +230,7 @@ export function Dashboard() {
         <StatsCard
           title="Total Groups"
           value={dashStats ? String(dashStats.totalGroups) : unavailableValue}
-          subtitle="Active"
+          subtitle="Excludes cancelled groups"
           withBar
         />
         <StatsCard
