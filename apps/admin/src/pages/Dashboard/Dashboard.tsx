@@ -13,8 +13,10 @@ import {
   UnstyledButton,
 } from '@mantine/core'
 import {
+  IconAlertTriangle,
   IconArrowUpRight,
   IconBookmarks,
+  IconCash,
   IconCheck,
   IconChevronRight,
   IconClockPause,
@@ -171,7 +173,7 @@ export function Dashboard() {
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm">
-        <SimpleGrid cols={{ base: 3, sm: 6 }} spacing="xs">
+        <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs">
           <IconTile
             icon={<IconPlus size={20} />}
             label="Fund wallet"
@@ -191,6 +193,16 @@ export function Dashboard() {
             icon={<IconLock size={20} />}
             label="Where it's reserved"
             onClick={() => navigate('/wallet/reservations')}
+          />
+          <IconTile
+            icon={<IconCash size={20} />}
+            label="Early Payout"
+            onClick={() => navigate('/loans')}
+          />
+          <IconTile
+            icon={<IconAlertTriangle size={20} />}
+            label="Debts"
+            onClick={() => navigate('/debts')}
           />
           <IconTile
             icon={<IconShieldCheck size={20} />}

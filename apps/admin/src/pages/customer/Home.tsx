@@ -1,6 +1,6 @@
-import { Title, Text, Card, Box, Paper, SimpleGrid, UnstyledButton } from "@mantine/core";
+import { Title, Text, Card, Box, Modal, Paper, SimpleGrid, UnstyledButton } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
-import { IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconLock, IconLockOpen, IconTarget, IconUsersGroup } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconGauge, IconLock, IconLockOpen, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
 import addFunds from "@/assets/AddFunds_default.svg";
 import addFundsPressed from "@/assets/AddFunds_press.svg";
 import explore from "@/assets/Explore_default.svg";
@@ -43,6 +43,8 @@ export function Home() {
   const [trustData, setTrustData] = useState<TrustScore | null>(null);
   const [creditScore, setCreditScore] = useState<number | null>(null);
   const [participations, setParticipations] = useState<RoscaCircle[]>([]);
+  const [trustOpen, setTrustOpen] = useState(false);
+  const [creditOpen, setCreditOpen] = useState(false);
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([]);
   useEffect(() => {
     Promise.allSettled([
@@ -134,29 +136,29 @@ export function Home() {
           onTransfer={() => navigate("/withdraw")}
         />
 
-        {/* ─── Single wallet surface: hero Total + Available/Reserved subrows ─── */}
-        <div className="flex flex-col gap-3">
+        {/* ─── Wallet trio (matches admin Dashboard) ───────────────────── */}
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <SummaryCard
             title="Total Balance"
             amount={walletBalance ? money(walletBalance.total) : "-"}
-            gradient="linear-gradient(135deg,#1F4037 0%,#99F2C8 100%)"
+            gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
             hideable
             hidden={hidden}
             onToggleHidden={toggle}
           />
-          <SimpleGrid cols={2} spacing="xs">
-            <WalletSubline
-              label="Available"
-              amount={walletBalance ? money(walletBalance.available) : "-"}
-              hidden={hidden}
-            />
-            <WalletSubline
-              label="Reserved"
-              amount={walletBalance ? money(walletBalance.reserved) : "-"}
-              hidden={hidden}
-            />
-          </SimpleGrid>
-        </div>
+          <SummaryCard
+            title="Available"
+            amount={walletBalance ? money(walletBalance.available) : "-"}
+            gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
+            hidden={hidden}
+          />
+          <SummaryCard
+            title="Reserved"
+            amount={walletBalance ? money(walletBalance.reserved) : "-"}
+            gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
+            hidden={hidden}
+          />
+        </SimpleGrid>
 
         {/* ─── At-a-glance stats row ──────────────────────────────────── */}
         <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs">
@@ -224,44 +226,33 @@ export function Home() {
                 width={106}
                 height={118}
               />
-              <UnstyledButton
+              <HomeQuickTile
+                icon={<IconLock size={22} />}
+                label="Where it's reserved"
                 onClick={() => navigate("/wallet/reservations")}
-                aria-label="Where your money is reserved"
-                style={{
-                  width: 106,
-                  height: 118,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  padding: 6,
-                  borderRadius: 12,
-                  background: "#F8FAF9",
-                  border: "1px solid #E7F4EE",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#E7F4EE")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#F8FAF9")}
-              >
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: "50%",
-                    background: "#E7F4EE",
-                    color: "#0B6B55",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <IconLock size={22} />
-                </div>
-                <Text size="xs" fw={600} ta="center" style={{ color: "#0F172A", lineHeight: 1.25 }}>
-                  Where it's reserved
-                </Text>
-              </UnstyledButton>
+              />
+              <HomeQuickTile
+                icon={<IconCash size={22} />}
+                label="Early Payout"
+                onClick={() => navigate("/loans")}
+              />
+              <HomeQuickTile
+                icon={<IconAlertTriangle size={22} />}
+                label="Debts"
+                onClick={() => navigate("/debts")}
+              />
+              <HomeQuickTile
+                icon={<IconShieldCheck size={22} />}
+                label="Trust score"
+                badge={trustScore !== null ? String(trustScore) : undefined}
+                onClick={() => setTrustOpen(true)}
+              />
+              <HomeQuickTile
+                icon={<IconGauge size={22} />}
+                label="Credit score"
+                badge={creditScore !== null ? String(creditScore) : undefined}
+                onClick={() => setCreditOpen(true)}
+              />
             </div>
             <div>
               <Text fw={500} fz={24} mb={16}>
@@ -366,35 +357,109 @@ export function Home() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-          <TrustScoreCard
-            score={trustScore}
-            breakdown={trustData?.atiBreakdown ?? null}
-          />
-          <CreditScoreCard score={creditScore ?? 0} />
-        </div>
-
       </div>
+
+      {/* ─── Score modals (open from the icon strip) ─────────────────── */}
+      <Modal
+        opened={trustOpen}
+        onClose={() => setTrustOpen(false)}
+        title="Trust Score"
+        size="lg"
+        centered
+      >
+        <TrustScoreCard
+          score={trustScore}
+          breakdown={trustData?.atiBreakdown ?? null}
+        />
+      </Modal>
+      <Modal
+        opened={creditOpen}
+        onClose={() => setCreditOpen(false)}
+        title="Credit Score"
+        size="lg"
+        centered
+      >
+        <CreditScoreCard score={creditScore ?? 0} />
+      </Modal>
     </div>
   );
 }
 
 // ─── Home-only helpers ───────────────────────────────────────────────
 
-function WalletSubline({ label, amount, hidden }: { label: string; amount: string; hidden: boolean }) {
+function HomeQuickTile({
+  icon,
+  label,
+  badge,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  badge?: string;
+  onClick: () => void;
+}) {
   return (
-    <Paper withBorder radius="md" p="sm" style={{ background: "#FFFFFF" }}>
-      <Text style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", color: "#64748B" }}>
+    <UnstyledButton
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        width: 106,
+        height: 118,
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        padding: 6,
+        borderRadius: 12,
+        background: "#F8FAF9",
+        border: "1px solid #E7F4EE",
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#E7F4EE")}
+      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#F8FAF9")}
+    >
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: "50%",
+          background: "#E7F4EE",
+          color: "#0B6B55",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {icon}
+      </div>
+      <Text size="xs" fw={600} ta="center" style={{ color: "#0F172A", lineHeight: 1.25 }}>
         {label}
       </Text>
-      <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, color: "#0F172A", fontWeight: 700, fontSize: 16, fontVariantNumeric: "tabular-nums" }}>
-        {hidden ? (
-          <IconLock size={18} aria-label={`${label} balance hidden`} />
-        ) : (
-          <span>{amount}</span>
-        )}
-      </div>
-    </Paper>
+      {badge && (
+        <span
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 6,
+            minWidth: 22,
+            height: 18,
+            padding: "0 6px",
+            borderRadius: 9,
+            background: "#02A36E",
+            color: "white",
+            fontSize: 10,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {badge}
+        </span>
+      )}
+    </UnstyledButton>
   );
 }
 
