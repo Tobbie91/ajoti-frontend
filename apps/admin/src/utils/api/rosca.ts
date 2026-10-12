@@ -37,6 +37,7 @@ export interface RoscaCircle {
     email?: string;
   };
   isRequestingUserAdmin?: boolean;
+  previewOnly?: boolean;
   hasInvite?: boolean;
   canViewDetails?: boolean;
   discoveryAccess?: "OPEN" | "INVITE_ONLY";
