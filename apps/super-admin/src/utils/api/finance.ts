@@ -146,6 +146,203 @@ export function capitalizeLoanFloat(
   );
 }
 
+export interface FinanceDateWindow {
+  startDate: string;
+  endDate: string;
+  asOf?: string;
+}
+
+export interface AcquisitionSourceRow {
+  id: string;
+  name: string;
+  trackingCode: string;
+  isActive: boolean;
+}
+
+export interface FinanceExpenseCategoryRow {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface FinanceExpenseRow {
+  id: string;
+  amountKobo: string;
+  incurredAt: string;
+  description: string;
+  paymentMethod: string;
+  externalReference: string | null;
+  categoryId: string;
+  category: { id: string; name: string };
+  sourceId: string | null;
+  source: { id: string; name: string; trackingCode: string } | null;
+  createdAt: string;
+  voidedAt: string | null;
+  voidReason: string | null;
+}
+
+export interface CampaignCacRow {
+  sourceId: string;
+  sourceName: string;
+  trackingCode: string | null;
+  isActive: boolean;
+  spendKobo: string;
+  registrations: number;
+  verifiedRegistrations: number;
+  registrationCacKobo: string | null;
+  verifiedCacKobo: string | null;
+}
+
+export interface FinanceReport {
+  startDate: string;
+  endDate: string;
+  asOf: string;
+  platformRevenueCreditsKobo: string;
+  platformRevenueDebitsKobo: string;
+  platformRevenueNetKobo: string;
+  reportedExpensesKobo: string;
+  operatingResultKobo: string;
+  expensesByCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    amountKobo: string;
+  }>;
+  campaigns: CampaignCacRow[];
+  unattributedRegistrations: number;
+  unattributedVerifiedRegistrations: number;
+}
+
+export async function getFinanceReport(
+  params: FinanceDateWindow,
+): Promise<FinanceReport> {
+  const q = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params).filter(
+        ([, value]) => value !== undefined && value !== "",
+      ),
+    ) as Record<string, string>,
+  ).toString();
+  const res = await authRequest<{ success: boolean; data: FinanceReport }>(
+    `/api/superadmin/finance/reports?${q}`,
+    { method: "GET" },
+  );
+  return res.data;
+}
+
+export async function listFinanceExpenses(
+  params: FinanceDateWindow,
+): Promise<FinanceExpenseRow[]> {
+  const q = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params).filter(
+        ([, value]) => value !== undefined && value !== "",
+      ),
+    ) as Record<string, string>,
+  ).toString();
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseRow[];
+  }>(`/api/superadmin/finance/expenses?${q}`, { method: "GET" });
+  return res.data;
+}
+
+export async function listAcquisitionSources(): Promise<
+  AcquisitionSourceRow[]
+> {
+  const res = await authRequest<{
+    success: boolean;
+    data: AcquisitionSourceRow[];
+  }>("/api/superadmin/finance/sources", { method: "GET" });
+  return res.data;
+}
+
+export async function createAcquisitionSource(input: {
+  name: string;
+  trackingCode: string;
+}) {
+  const res = await authRequest<{
+    success: boolean;
+    data: AcquisitionSourceRow;
+  }>("/api/superadmin/finance/sources", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return res.data;
+}
+
+export async function deactivateAcquisitionSource(
+  sourceId: string,
+  reason: string,
+) {
+  const res = await authRequest<{
+    success: boolean;
+    data: AcquisitionSourceRow;
+  }>(`/api/superadmin/finance/sources/${sourceId}/deactivate`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+  return res.data;
+}
+
+export async function listFinanceExpenseCategories(): Promise<
+  FinanceExpenseCategoryRow[]
+> {
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseCategoryRow[];
+  }>("/api/superadmin/finance/expense-categories", { method: "GET" });
+  return res.data;
+}
+
+export async function createFinanceExpenseCategory(input: { name: string }) {
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseCategoryRow;
+  }>("/api/superadmin/finance/expense-categories", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return res.data;
+}
+
+export async function deactivateFinanceExpenseCategory(
+  categoryId: string,
+  reason: string,
+) {
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseCategoryRow;
+  }>(`/api/superadmin/finance/expense-categories/${categoryId}/deactivate`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+  return res.data;
+}
+
+export async function createFinanceExpense(input: {
+  amountKobo: string;
+  incurredAt: string;
+  description: string;
+  paymentMethod: string;
+  externalReference?: string;
+  categoryId: string;
+  sourceId?: string;
+}) {
+  const res = await authRequest<{ success: boolean; data: FinanceExpenseRow }>(
+    "/api/superadmin/finance/expenses",
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  return res.data;
+}
+
+export async function voidFinanceExpense(expenseId: string, reason: string) {
+  const res = await authRequest<{ success: boolean; data: FinanceExpenseRow }>(
+    `/api/superadmin/finance/expenses/${expenseId}/void`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+  return res.data;
+}
+
 // ── Payout Fee Settings - SYSTEM_CONFIG (SUPERADMIN only) ──────────────────────
 
 export interface PayoutFeeSettingMeta {
