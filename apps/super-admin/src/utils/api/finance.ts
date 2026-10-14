@@ -94,6 +94,9 @@ export interface WalletRow {
   createdAt: string;
   balanceKobo: string;
   balanceNaira: string;
+  reservedKobo: string;
+  availableKobo: string;
+  availableNaira: string;
   lastActivityAt: string | null;
   user: {
     id: string;
@@ -118,6 +121,15 @@ export interface SystemAccountRow {
   createdAt: string;
   balanceKobo: string;
   balanceNaira: string;
+  providerAccount?: {
+    environment: "SANDBOX" | "PRODUCTION";
+    status: string;
+    accountReference: string | null;
+    staticAccountNumber: string | null;
+    bankName: string | null;
+    accountName: string;
+    email: string;
+  } | null;
 }
 
 export function listSystemAccounts(): Promise<{
@@ -130,19 +142,105 @@ export function listSystemAccounts(): Promise<{
   );
 }
 
+export interface ProviderActivityRow {
+  id: string | null;
+  reference: string | null;
+  amountMinor: string | null;
+  currency: string | null;
+  status: string | null;
+  type: string | null;
+  narration: string | null;
+  createdAt: string | null;
+}
+
+export interface SystemWalletReconciliation {
+  environment: "SANDBOX" | "PRODUCTION";
+  mode: "MOCK" | "PROVIDER_READ_ONLY";
+  period: { from: string; to: string; page: number; pageSize: number };
+  policy: string;
+  merchant: {
+    localBalanceMinor: string;
+    providerBalanceMinor: string | null;
+    differenceMinor: string | null;
+    reconciliationStatus: string;
+    collections: ProviderActivityRow[];
+    transfers: ProviderActivityRow[];
+    collectionPage: unknown;
+    transferPage: unknown;
+    errorCode: string | null;
+  };
+  systemAccounts: Array<{
+    accountType: SystemAccountType;
+    environment: string;
+    localBalanceMinor: string;
+    providerBalanceMinor: string | null;
+    differenceMinor: string | null;
+    reconciliationStatus: string;
+    transactions: ProviderActivityRow[];
+    transactionPage: unknown;
+    errorCode: string | null;
+  }>;
+}
+
+export function getSystemAccountReconciliation(
+  from: string,
+  to: string,
+  page = 1,
+): Promise<{ success: boolean; data: SystemWalletReconciliation }> {
+  const query = new URLSearchParams({ from, to, page: String(page) });
+  return authRequest<{ success: boolean; data: SystemWalletReconciliation }>(
+    `/api/superadmin/finance/system-accounts/reconciliation?${query.toString()}`,
+    { method: "GET" },
+  );
+}
+
 export interface CapitalizeResult {
-  capitalizationId: string;
+  receiptId: string;
+  providerReference: string;
   amountKobo: string;
   floatBalanceKobo: string;
+  ledgerEntryId: string;
+  bankTransferReference: string;
 }
 
 export function capitalizeLoanFloat(
-  amountKobo: number,
+  receiptId: string,
   note: string,
+  bankTransferReference: string,
 ): Promise<{ success: boolean; data: CapitalizeResult }> {
   return authRequest<{ success: boolean; data: CapitalizeResult }>(
     "/api/superadmin/finance/loan-float/capitalize",
-    { method: "POST", body: JSON.stringify({ amountKobo, note }) },
+    { method: "POST", body: JSON.stringify({ receiptId, note, bankTransferReference }) },
+  );
+}
+
+export interface SystemWalletFundingReceiptRow {
+  id: string;
+  environment: "SANDBOX" | "PRODUCTION";
+  providerReference: string;
+  providerTransactionId: string | null;
+  receivingAccountNumber: string;
+  amountMinor: string;
+  currency: string;
+  providerStatus: string;
+  status: "PENDING" | "CONFIRMED" | "REJECTED" | "APPLIED" | "REVERSED";
+  rejectionCode: string | null;
+  receivedAt: string;
+  appliedAt: string | null;
+  appliedBy: string | null;
+  capitalizationNote: string | null;
+  externalBankTransferReference: string | null;
+  matchedBy: string | null;
+  matchedAt: string | null;
+}
+
+export function getLoanFloatFundingReceipts(): Promise<{
+  success: boolean;
+  data: SystemWalletFundingReceiptRow[];
+}> {
+  return authRequest<{ success: boolean; data: SystemWalletFundingReceiptRow[] }>(
+    "/api/superadmin/finance/loan-float/funding-receipts",
+    { method: "GET" },
   );
 }
 

@@ -8,23 +8,28 @@ import {
   Group,
   Button,
   Modal,
-  NumberInput,
+  Select,
   Textarea,
   Alert,
   Skeleton,
   Drawer,
   Divider,
   ScrollArea,
+  TextInput,
 } from '@mantine/core'
 import { IconAlertCircle, IconCoin } from '@tabler/icons-react'
 import { useState, useEffect, useCallback } from 'react'
 import {
   listSystemAccounts,
+  getLoanFloatFundingReceipts,
   capitalizeLoanFloat,
+  getSystemAccountReconciliation,
   getLedger,
   type SystemAccountRow,
   type SystemAccountType,
   type LedgerRow,
+  type SystemWalletFundingReceiptRow,
+  type SystemWalletReconciliation,
 } from '@/utils/api'
 import { getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
@@ -61,6 +66,7 @@ export function SystemAccounts() {
   const canManage = hasPermission(staffRole, 'MANAGE_SYSTEM_ACCOUNTS')
 
   const [accounts, setAccounts] = useState<SystemAccountRow[]>([])
+  const [fundingReceipts, setFundingReceipts] = useState<SystemWalletFundingReceiptRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -69,17 +75,26 @@ export function SystemAccounts() {
   const [ledgerLoading, setLedgerLoading] = useState(false)
 
   const [capitalizeOpened, setCapitalizeOpened] = useState(false)
-  const [amountNaira, setAmountNaira] = useState<number | ''>('')
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null)
   const [note, setNote] = useState('')
+  const [bankTransferReference, setBankTransferReference] = useState('')
   const [capitalizing, setCapitalizing] = useState(false)
   const [capitalizeError, setCapitalizeError] = useState<string | null>(null)
+  const [reconciliation, setReconciliation] = useState<SystemWalletReconciliation | null>(null)
+  const [reconciliationLoading, setReconciliationLoading] = useState(false)
+  const [reconciliationError, setReconciliationError] = useState<string | null>(null)
+  const [reconciliationTo, setReconciliationTo] = useState(() => new Date().toISOString().slice(0, 10))
+  const [reconciliationFrom, setReconciliationFrom] = useState(() =>
+    new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10),
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
     try {
-      const res = await listSystemAccounts()
+      const [res, receipts] = await Promise.all([listSystemAccounts(), getLoanFloatFundingReceipts()])
       setAccounts(res.data)
+      setFundingReceipts(receipts.data)
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Failed to load system accounts')
     } finally {
@@ -104,14 +119,15 @@ export function SystemAccounts() {
   }
 
   const handleCapitalize = async () => {
-    if (!amountNaira || amountNaira <= 0 || !note.trim()) return
+    if (!selectedReceiptId || !note.trim() || !bankTransferReference.trim()) return
     setCapitalizing(true)
     setCapitalizeError(null)
     try {
-      await capitalizeLoanFloat(Math.round(amountNaira * 100), note.trim())
+      await capitalizeLoanFloat(selectedReceiptId, note.trim(), bankTransferReference.trim())
       setCapitalizeOpened(false)
-      setAmountNaira('')
+      setSelectedReceiptId(null)
       setNote('')
+      setBankTransferReference('')
       void load()
       if (selected?.type === 'LOAN_FLOAT') await openDrawer(selected)
     } catch (e) {
@@ -120,6 +136,24 @@ export function SystemAccounts() {
       setCapitalizing(false)
     }
   }
+
+  const handleReconciliation = async () => {
+    setReconciliationLoading(true)
+    setReconciliationError(null)
+    try {
+      const result = await getSystemAccountReconciliation(reconciliationFrom, reconciliationTo)
+      setReconciliation(result.data)
+    } catch (e) {
+      setReconciliationError(e instanceof Error ? e.message : 'Failed to load provider reconciliation')
+    } finally {
+      setReconciliationLoading(false)
+    }
+  }
+
+  const floatEnvironment = accounts.find((account) => account.type === 'LOAN_FLOAT')?.providerAccount?.environment
+  const capitalizableReceipts = fundingReceipts.filter((receipt) =>
+    receipt.status === 'CONFIRMED' && receipt.environment === floatEnvironment,
+  )
 
   return (
     <Stack mt="xl" gap="lg">
@@ -191,25 +225,126 @@ export function SystemAccounts() {
         </Table.ScrollContainer>
       </Paper>
 
+      <Paper withBorder radius="md" p="md">
+        <Stack gap="sm">
+          <Group justify="space-between" align="flex-end">
+            <div>
+              <Title order={4}>Provider reconciliation</Title>
+              <Text size="sm" c="dimmed">Read-only balance comparison and recent provider activity. Differences are never adjusted automatically.</Text>
+            </div>
+            <Group align="flex-end">
+              <TextInput label="From" type="date" value={reconciliationFrom} onChange={(e) => setReconciliationFrom(e.currentTarget.value)} />
+              <TextInput label="To" type="date" value={reconciliationTo} onChange={(e) => setReconciliationTo(e.currentTarget.value)} />
+              <Button onClick={() => void handleReconciliation()} loading={reconciliationLoading} disabled={!reconciliationFrom || !reconciliationTo}>
+                Compare provider balances
+              </Button>
+            </Group>
+          </Group>
+          {reconciliationError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
+              {reconciliationError}
+            </Alert>
+          )}
+          {reconciliation && (
+            <>
+              <Text size="xs" c="dimmed">
+                {reconciliation.environment} · {reconciliation.mode} · {reconciliation.period.from} to {reconciliation.period.to}. {reconciliation.policy}
+              </Text>
+              <Table.ScrollContainer minWidth={900}>
+                <Table striped withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Provider account</Table.Th>
+                      <Table.Th>Local balance / liability</Table.Th>
+                      <Table.Th>Provider available</Table.Th>
+                      <Table.Th>Difference</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    <Table.Tr>
+                      <Table.Td>Merchant · member wallet backing</Table.Td>
+                      <Table.Td>{fmtKobo(reconciliation.merchant.localBalanceMinor)}</Table.Td>
+                      <Table.Td>{reconciliation.merchant.providerBalanceMinor ? fmtKobo(reconciliation.merchant.providerBalanceMinor) : '—'}</Table.Td>
+                      <Table.Td>{reconciliation.merchant.differenceMinor ? fmtKobo(reconciliation.merchant.differenceMinor) : '—'}</Table.Td>
+                      <Table.Td><Badge color={reconciliation.merchant.reconciliationStatus === 'MATCH' ? 'green' : reconciliation.merchant.reconciliationStatus === 'DIFFERENCE' ? 'orange' : 'gray'}>{reconciliation.merchant.reconciliationStatus}</Badge></Table.Td>
+                    </Table.Tr>
+                    {reconciliation.systemAccounts.map((account) => (
+                      <Table.Tr key={account.accountType}>
+                        <Table.Td>{ACCOUNT_LABELS[account.accountType]?.title ?? account.accountType}</Table.Td>
+                        <Table.Td>{fmtKobo(account.localBalanceMinor)}</Table.Td>
+                        <Table.Td>{account.providerBalanceMinor ? fmtKobo(account.providerBalanceMinor) : '—'}</Table.Td>
+                        <Table.Td>{account.differenceMinor ? fmtKobo(account.differenceMinor) : '—'}</Table.Td>
+                        <Table.Td><Badge color={account.reconciliationStatus === 'MATCH' ? 'green' : account.reconciliationStatus === 'DIFFERENCE' ? 'orange' : 'gray'}>{account.reconciliationStatus}</Badge></Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+              {reconciliation.systemAccounts.some((account) => account.errorCode) && (
+                <Text size="xs" c="orange.8">Some provider account reads failed; see account statuses and retry the comparison.</Text>
+              )}
+              <Divider label="Provider activity (first page)" labelPosition="left" />
+              <ScrollArea h={320}>
+                <Stack gap="xs">
+                  {[...reconciliation.merchant.collections.map((item) => ({ account: 'Merchant collection', item })),
+                    ...reconciliation.merchant.transfers.map((item) => ({ account: 'Merchant transfer', item })),
+                    ...reconciliation.systemAccounts.flatMap((account) => account.transactions.map((item) => ({
+                      account: ACCOUNT_LABELS[account.accountType]?.title ?? account.accountType,
+                      item,
+                    })))].map(({ account, item }, index) => (
+                    <Paper key={`${account}-${item.id ?? item.reference ?? index}`} withBorder p="xs">
+                      <Group justify="space-between" wrap="nowrap">
+                        <div>
+                          <Text size="sm" fw={500}>{account} · {item.type ?? item.status ?? 'Activity'}</Text>
+                          <Text size="xs" c="dimmed">{item.reference ?? item.id ?? 'No reference'} · {item.narration ?? '—'}</Text>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <Text size="sm" fw={600}>{item.amountMinor ? fmtKobo(item.amountMinor) : '—'}</Text>
+                          <Text size="xs" c="dimmed">{item.status ?? '—'} · {fmtDate(item.createdAt)}</Text>
+                        </div>
+                      </Group>
+                    </Paper>
+                  ))}
+                  {reconciliation.merchant.collections.length + reconciliation.merchant.transfers.length + reconciliation.systemAccounts.reduce((sum, account) => sum + account.transactions.length, 0) === 0 && (
+                    <Text size="sm" c="dimmed" ta="center" py="md">No provider activity returned for this date range.</Text>
+                  )}
+                </Stack>
+              </ScrollArea>
+            </>
+          )}
+        </Stack>
+      </Paper>
+
       <Modal opened={capitalizeOpened} onClose={() => setCapitalizeOpened(false)} title="Capitalize Loan Float" centered size="sm">
         <Stack gap="sm">
           <Text size="sm" c="dimmed">
-            Records real money committed as lending capital. The actual bank transfer happens
-            outside the platform - this only creates the matching ledger entry.
+            Select a confirmed LOAN_FLOAT receipt and enter the matching Ajoti company-bank debit reference.
+            This records the matched capitalization; it does not move provider funds.
           </Text>
           {capitalizeError && (
             <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">
               {capitalizeError}
             </Alert>
           )}
-          <NumberInput
-            label="Amount (₦)"
-            placeholder="50000"
-            min={0.01}
-            value={amountNaira}
-            onChange={(v) => setAmountNaira(typeof v === 'number' ? v : '')}
-            thousandSeparator=","
-            decimalScale={2}
+          <Select
+            label="Confirmed funding receipt"
+            placeholder={capitalizableReceipts.length ? 'Choose a receipt' : 'No confirmed receipts available'}
+            data={capitalizableReceipts.map((receipt) => ({
+              value: receipt.id,
+              label: `${fmtKobo(receipt.amountMinor)} · ${receipt.providerReference} · ${fmtDate(receipt.receivedAt)}`,
+            }))}
+            value={selectedReceiptId}
+            onChange={setSelectedReceiptId}
+            searchable
+            nothingFoundMessage="No confirmed receipts"
+          />
+          <TextInput
+            label="Ajoti company-bank transfer reference"
+            placeholder="BANK-TRANSFER-REF-20261014-01"
+            value={bankTransferReference}
+            onChange={(e) => setBankTransferReference(e.currentTarget.value)}
+            maxLength={160}
           />
           <Textarea
             label="Note"
@@ -223,7 +358,7 @@ export function SystemAccounts() {
             <Button
               onClick={() => void handleCapitalize()}
               loading={capitalizing}
-              disabled={!amountNaira || amountNaira <= 0 || !note.trim()}
+              disabled={!selectedReceiptId || !note.trim() || !bankTransferReference.trim()}
             >
               Record Capitalization
             </Button>
