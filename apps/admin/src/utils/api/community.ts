@@ -6,7 +6,7 @@ import {
   parseJsonSafely,
   request,
 } from "./client";
-import type { RoscaCircle } from "./rosca";
+import type { RoscaCircle, RoscaTermsAcceptance } from "./rosca";
 
 // ── Circle Invites ─────────────────────────────────────────────────────────────
 
@@ -395,8 +395,12 @@ export function leaveRoscaCircle(
 
 export function joinRoscaCircle(
   circleId: string,
+  acceptance: RoscaTermsAcceptance,
 ): Promise<{ message: string }> {
-  return authRequest(`/api/rosca/${circleId}/join`, { method: "POST" });
+  return authRequest(`/api/rosca/${circleId}/join`, {
+    method: "POST",
+    body: JSON.stringify(acceptance),
+  });
 }
 
 export async function getRoscaCircle(circleId: string): Promise<RoscaCircle> {

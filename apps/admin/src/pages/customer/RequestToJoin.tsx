@@ -9,11 +9,13 @@ import { IconArrowLeft, IconAlertCircle } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useRoscaJoinEligibility } from "@/hooks/useRoscaJoinEligibility";
 import {
-  getCircleRules,
+  ApiError,
+  getRoscaJoinTerms,
   getWalletBalance,
   joinRoscaCircle,
   listRoscaCircles,
 } from "@/utils/api";
+import type { RoscaJoinTerms } from "@/utils/api";
 
 export function RequestToJoin() {
   const navigate = useNavigate();
@@ -26,20 +28,23 @@ export function RequestToJoin() {
   const [error, setError] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [agreementError, setAgreementError] = useState<string | null>(null);
-  const [contributionKobo, setContributionKobo] = useState(0);
-  const [collateralPercent, setCollateralPercent] = useState(0);
+  const [joinTerms, setJoinTerms] = useState<RoscaJoinTerms | null>(null);
   const [availableKobo, setAvailableKobo] = useState(0);
 
   useEffect(() => {
     let active = true;
-    Promise.all([listRoscaCircles(), getCircleRules(), getWalletBalance()])
-      .then(([circles, rules, balance]) => {
+    if (!id) {
+      setError("Group not found.");
+      setDetailsLoading(false);
+      return;
+    }
+    Promise.all([listRoscaCircles(), getRoscaJoinTerms(id), getWalletBalance()])
+      .then(([circles, terms, balance]) => {
         if (!active) return;
         const circle = circles.find((item) => item.id === id);
         if (!circle) throw new Error("Group not found.");
         setIsOrganiser(circle.isRequestingUserAdmin ?? false);
-        setContributionKobo(Number(circle.contributionAmount));
-        setCollateralPercent(rules.data.collateralRatioPercent);
+        setJoinTerms(terms);
         setAvailableKobo(Number(balance.available ?? balance.total ?? 0));
         setRequirementsLoaded(true);
       })
@@ -56,17 +61,22 @@ export function RequestToJoin() {
     };
   }, [id]);
 
-  const requiredCollateralKobo = Math.floor(
-    (contributionKobo * collateralPercent) / 100,
-  );
+  const terms = joinTerms?.snapshot;
+  const contributionKobo = Number(terms?.circle.contributionAmountKobo ?? 0);
+  const requiredCollateralKobo = Number(terms?.collateral.amountKobo ?? 0);
+  const collateralPercent = (terms?.collateral.ratioBps ?? 0) / 100;
   const shortfallKobo = Math.max(requiredCollateralKobo - availableKobo, 0);
   const hasSufficientBalance =
-    requirementsLoaded && availableKobo >= requiredCollateralKobo;
+    requirementsLoaded && Boolean(joinTerms) && availableKobo >= requiredCollateralKobo;
   const formatNaira = (kobo: number) =>
     `₦${(kobo / 100).toLocaleString("en-NG", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
+
+  const formatWAT = (value: string | null) => value
+    ? `${new Date(value).toLocaleString("en-NG", { timeZone: "Africa/Lagos" })} WAT`
+    : "Not set yet";
 
   const handleSubmit = async () => {
     if (!eligibility?.canJoin) return;
@@ -84,10 +94,22 @@ export function RequestToJoin() {
     setError(null);
     setLoading(true);
     try {
-      await joinRoscaCircle(id!);
+      if (!joinTerms) throw new Error("Current group terms are not available.");
+      await joinRoscaCircle(id!, { accepted: true, termsHash: joinTerms.hash });
       navigate(isOrganiser ? `/rosca/groups/${id}` : `/rosca/${id}/summary`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to join group.");
+      const message = err instanceof Error ? err.message : "Failed to join group.";
+      if (err instanceof ApiError && err.appCode === "ROSCA_TERMS_CHANGED" && id) {
+        try {
+          setJoinTerms(await getRoscaJoinTerms(id));
+          setAgreed(false);
+          setError("The group terms changed. Review the updated terms and accept them again.");
+        } catch {
+          setError(message);
+        }
+      } else {
+        setError(message);
+      }
       setLoading(false);
     }
   };
@@ -155,7 +177,7 @@ export function RequestToJoin() {
               Refundable collateral required: {formatNaira(requiredCollateralKobo)}
             </Text>
             <Text fw={400} className="mt-1 text-[13px] text-[#4B5563]">
-              This is {collateralPercent}% of the {formatNaira(contributionKobo)} contribution. {isOrganiser ? 'Joining reserves this collateral and adds you as an active member. Managing a group alone does not give you a member slot.' : 'It will be reserved while your request is reviewed and returned if the request is rejected or cancelled.'}
+              This is {collateralPercent}% of the {formatNaira(contributionKobo)} contribution. {isOrganiser ? 'Joining reserves this collateral and adds you as an active member. Managing a group alone does not give you a member slot.' : 'It is reserved when you submit your request; see the release and exit conditions below.'}
             </Text>
             <div className="mt-3 flex flex-col gap-1 text-[13px]">
               <Text>Available balance: <strong>{formatNaira(availableKobo)}</strong></Text>
@@ -165,12 +187,27 @@ export function RequestToJoin() {
             </div>
           </div>
 
-          <Text fw={400} className="text-[13px] text-[#6B7280]">
-            A flat fee also applies to each payout you receive from this group.
-          </Text>
+          {terms && (
+            <div className="rounded-xl border border-[#E5E7EB] bg-white px-5 py-4">
+              <Text fw={700} className="text-[15px] text-[#0F172A]">Group terms</Text>
+              <div className="mt-3 flex flex-col gap-2 text-[13px] text-[#4B5563]">
+                <Text>Contribution: {formatNaira(contributionKobo)} every {terms.circle.frequency.toLowerCase()} for {terms.circle.durationCycles} cycles.</Text>
+                <Text>First contribution deadline: {formatWAT(terms.circle.firstContributionDeadline)}. Admin-set cutoff: {terms.circle.contributionCutoffTime ?? "not set"}. Payout: {terms.circle.payoutTime}.</Text>
+                <Text>{terms.collateral.reservation}</Text>
+                <Text>{terms.collateral.beforeStart}</Text>
+                <Text>Configured post-start exit share: {(terms.collateral.postStartExitPenaltyBps / 100).toFixed(2)}%. {terms.collateral.afterStart}</Text>
+                <Text>{terms.collateral.lateFeeShortfall}</Text>
+                <Text>Payout fee: {formatNaira(Number(terms.payoutFee.flatFeeKobo))}. {terms.payoutFee.note}</Text>
+                <Text>{terms.missedContribution.afterCutoffBeforeMidnight}</Text>
+                <Text>{terms.missedContribution.afterMidnight}</Text>
+                <Text>{terms.missedContribution.bridge}</Text>
+                <Text>{terms.missedContribution.repeatDefault}</Text>
+              </div>
+            </div>
+          )}
 
           <Checkbox
-            label="I agree to the group rules and payout structure."
+            label="I have read and accept these group terms and payout rules."
             checked={agreed}
             onChange={(event) => {
               setAgreed(event.currentTarget.checked);

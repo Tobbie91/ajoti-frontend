@@ -8,6 +8,55 @@ import {
 import type { CircleContribution } from "./community";
 import type { CircleMember } from "./member-wallet";
 
+export interface RoscaJoinTermsSnapshot {
+  version: number;
+  circle: {
+    id: string;
+    name: string;
+    contributionAmountKobo: string;
+    currency: string;
+    frequency: string;
+    durationCycles: number;
+    firstContributionDeadline: string | null;
+    contributionCutoffTime: string | null;
+    payoutTime: string;
+  };
+  collateral: {
+    ratioBps: number;
+    amountKobo: string;
+    reservation: string;
+    beforeStart: string;
+    afterStart: string;
+    lateFeeShortfall: string;
+    postStartExitPenaltyBps: number;
+  };
+  payoutFee: { flatFeeKobo: string; note: string };
+  missedContribution: {
+    afterCutoffBeforeMidnight: string;
+    afterMidnight: string;
+    bridge: string;
+    repeatDefault: string;
+  };
+}
+
+export interface RoscaJoinTerms {
+  hash: string;
+  snapshot: RoscaJoinTermsSnapshot;
+}
+
+export interface RoscaTermsAcceptance {
+  accepted: boolean;
+  termsHash: string;
+}
+
+export async function getRoscaJoinTerms(circleId: string): Promise<RoscaJoinTerms> {
+  const response = await authRequest<{ data: RoscaJoinTerms }>(
+    `/api/rosca/${circleId}/join-terms`,
+    { method: "GET" },
+  );
+  return response.data;
+}
+
 // ── ROSCA (admin) ───────────────────────────────────────────────────────────
 
 export interface RoscaCircle {

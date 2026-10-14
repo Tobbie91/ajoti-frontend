@@ -6,6 +6,7 @@ import {
   request,
 } from "./client";
 import type { WalletBalance } from "./finance";
+import type { RoscaJoinTerms, RoscaTermsAcceptance } from "./rosca";
 import { getRoscaCircle, type PeerReview } from "./community";
 import { storeCachedCustomerUser } from "../customer-storage";
 
@@ -190,6 +191,7 @@ export interface InvitePreview {
     filledSlots: number;
     adminName: string;
   };
+  terms: RoscaJoinTerms;
 }
 
 export async function getInvitePreview(token: string): Promise<InvitePreview> {
@@ -202,10 +204,11 @@ export async function getInvitePreview(token: string): Promise<InvitePreview> {
 
 export async function joinByInvite(
   token: string,
+  acceptance: RoscaTermsAcceptance,
 ): Promise<{ message: string }> {
   return authRequest("/api/rosca/join-by-invite", {
     method: "POST",
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, ...acceptance }),
   });
 }
 
