@@ -16,7 +16,7 @@ import {
 } from '@mantine/core'
 import { IconAlertCircle, IconAlertTriangle } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
-import { getLoanDetail, getLoans, type LoanDetail, type LoanRow, type LoanStatus, type PaginatedResponse } from '@/utils/api'
+import { getLoanDetail, getLoans, type LoanDetail, type LoanLedgerActivity, type LoanRow, type LoanStatus, type PaginatedResponse } from '@/utils/api'
 import { SortableTh } from '@/components/SortableTh'
 import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
@@ -53,6 +53,21 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
       <Text size="sm" c="dimmed">{label}</Text>
       <Text size="sm" fw={600} component="span">{value}</Text>
     </Group>
+  )
+}
+
+function LoanActivityRow({ entry }: { entry: LoanLedgerActivity }) {
+  return (
+    <Paper withBorder radius="sm" p="sm">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <div>
+          <Text size="sm" fw={600}>{entry.label}</Text>
+          <Text size="xs" c="dimmed">{entry.entryType} · {entry.account}</Text>
+          <Text size="xs" c="dimmed">{new Date(entry.occurredAt).toLocaleString('en-NG')}</Text>
+        </div>
+        <Text size="sm" fw={600} ta="right">{formatNaira(entry.amount)}</Text>
+      </Group>
+    </Paper>
   )
 }
 
@@ -131,6 +146,27 @@ function LoanDetailDrawer({
           <DetailRow label="Company fee" value={formatNaira(detail.companyFee)} />
           <DetailRow label="Gross (advance + fee)" value={formatNaira(detail.grossAmount)} />
           <DetailRow label="Projected remaining payout" value={formatNaira(detail.finalPayout)} />
+
+          <Divider label="Loan ledger activity" labelPosition="left" />
+          {detail.ledgerActivity.length ? (
+            <Stack gap="xs">
+              {detail.ledgerActivity.map((entry) => <LoanActivityRow key={entry.id} entry={entry} />)}
+            </Stack>
+          ) : (
+            <Text size="sm" c="dimmed">No loan ledger entries recorded.</Text>
+          )}
+
+          <Divider label="Matching group payout" labelPosition="left" />
+          {detail.matchingPayout ? (
+            <Stack gap="xs">
+              <DetailRow label={`Cycle ${detail.matchingPayout.cycleNumber} payout`} value={<Badge color="green" variant="light" size="sm">{detail.matchingPayout.status}</Badge>} />
+              <DetailRow label="Net payout to member" value={formatNaira(detail.matchingPayout.amount)} />
+              <DetailRow label="Processed" value={detail.matchingPayout.processedAt ? new Date(detail.matchingPayout.processedAt).toLocaleString('en-NG') : '-'} />
+              {detail.matchingPayout.ledgerActivity.map((entry) => <LoanActivityRow key={entry.id} entry={entry} />)}
+            </Stack>
+          ) : (
+            <Text size="sm" c="dimmed">No completed payout to this borrower has been recorded since the advance.</Text>
+          )}
 
           <Divider label="Eligibility snapshot" labelPosition="left" />
           <DetailRow label="Credit score used" value={detail.creditScoreUsed} />

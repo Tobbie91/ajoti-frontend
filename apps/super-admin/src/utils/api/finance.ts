@@ -309,6 +309,24 @@ export interface LoanRow {
 
 export interface LoanDetail extends LoanRow {
   circle: { name: string; status: string };
+  ledgerActivity: LoanLedgerActivity[];
+  matchingPayout: {
+    id: string;
+    amount: string;
+    status: "COMPLETED";
+    cycleNumber: number;
+    processedAt: string | null;
+    ledgerActivity: LoanLedgerActivity[];
+  } | null;
+}
+
+export interface LoanLedgerActivity {
+  id: string;
+  label: string;
+  entryType: "CREDIT" | "DEBIT" | "RESERVE" | "RELEASE";
+  account: string;
+  amount: string;
+  occurredAt: string;
 }
 
 export function getLoans(
