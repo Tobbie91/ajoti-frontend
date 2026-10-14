@@ -26,8 +26,12 @@ function DebtCard({ debt, onRepaid }: { debt: Debt; onRepaid: () => void }) {
   async function handleRepay(amountKobo?: number) {
     setRepaying(true)
     setError(null)
+    const pendingKey = `ajoti:debt-repayment:${debt.id}:${amountKobo ?? 'full'}`
+    const idempotencyKey = sessionStorage.getItem(pendingKey) ?? crypto.randomUUID()
+    sessionStorage.setItem(pendingKey, idempotencyKey)
     try {
-      await repayDebt(debt.id, amountKobo)
+      await repayDebt(debt.id, idempotencyKey, amountKobo)
+      sessionStorage.removeItem(pendingKey)
       onRepaid()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Repayment failed. Please try again.')

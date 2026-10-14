@@ -267,6 +267,7 @@ export async function getMyDebts(): Promise<Debt[]> {
 
 export async function repayDebt(
   debtId: string,
+  idempotencyKey: string,
   amountKobo?: number,
 ): Promise<Debt> {
   const res = await authRequest<{
@@ -275,7 +276,10 @@ export async function repayDebt(
     data: Debt;
   }>(`/api/debts/${debtId}/repay`, {
     method: "POST",
-    body: JSON.stringify(amountKobo !== undefined ? { amountKobo } : {}),
+    body: JSON.stringify({
+      ...(amountKobo !== undefined ? { amountKobo } : {}),
+      idempotencyKey,
+    }),
   });
   return res.data;
 }
