@@ -114,6 +114,7 @@ export function MembersTab({
                     <td className="px-3 py-3.5 sm:px-5">
                       <div className="flex items-center gap-2">
                         <Avatar
+                          src={member.avatarUrl || undefined}
                           size={28}
                           radius="xl"
                           color="teal"

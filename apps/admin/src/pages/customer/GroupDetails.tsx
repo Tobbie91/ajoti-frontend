@@ -270,6 +270,7 @@ export function GroupDetails() {
                   return (
                     <Avatar
                       key={m.userId}
+                      src={m.avatarUrl || undefined}
                       size={40}
                       radius="xl"
                       color="teal"

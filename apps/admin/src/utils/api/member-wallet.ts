@@ -230,6 +230,7 @@ export interface CircleMember {
   status?: string;
   joinedAt?: string;
   trustScore?: number;
+  avatarUrl?: string | null;
   [key: string]: unknown;
 }
 

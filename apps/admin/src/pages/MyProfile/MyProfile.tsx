@@ -11,6 +11,7 @@ import {
     PinInput,
     PasswordInput,
     Checkbox,
+    FileButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -38,6 +39,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
     logout as logoutApi,
     getUserProfile,
+    getMyAvatar,
+    uploadMyAvatar,
     updateUserProfile,
     verifyPendingEmailChange,
     deleteMyAccount,
@@ -141,6 +144,8 @@ export function MyProfile() {
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
 
     const [kycStatus, setKycStatus] = useState<KycStatus | null>(null);
     const kycApproved = (kycStatus?.kycLevel ?? 0) >= 1;
@@ -222,6 +227,10 @@ export function MyProfile() {
             .catch(() => {})
             .finally(() => setProfileLoading(false));
 
+        getMyAvatar()
+            .then((avatar) => setAvatarUrl(avatar.avatarUrl))
+            .catch(() => {});
+
         getKycStatus()
             .then(setKycStatus)
             .catch(() => {});
@@ -285,6 +294,28 @@ export function MyProfile() {
             });
         } finally {
             setSettingDefault(null);
+        }
+    }
+
+    async function handleAvatarUpload(file: File | null) {
+        if (!file) return;
+        setAvatarUploading(true);
+        try {
+            const avatar = await uploadMyAvatar(file);
+            setAvatarUrl(avatar.avatarUrl);
+            notifications.show({
+                message: "Profile photo updated",
+                color: "green",
+                autoClose: 3000,
+            });
+        } catch (err) {
+            notifications.show({
+                message: err instanceof Error ? err.message : "Profile photo upload failed",
+                color: "red",
+                autoClose: 4000,
+            });
+        } finally {
+            setAvatarUploading(false);
         }
     }
 
@@ -493,9 +524,24 @@ export function MyProfile() {
 
             <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-6">
                 <div className="flex items-center gap-4">
-                    <Avatar size={64} radius="xl" style={{ background: "#0B6B55", color: "white", fontWeight: 700, fontSize: 20, flexShrink: 0 }}>
-                        {initials}
-                    </Avatar>
+                    <div className="relative shrink-0">
+                        <Avatar src={avatarUrl || undefined} size={64} radius="xl" style={{ background: "#0B6B55", color: "white", fontWeight: 700, fontSize: 20, flexShrink: 0 }}>
+                            {initials}
+                        </Avatar>
+                        <FileButton onChange={handleAvatarUpload} accept="image/png,image/jpeg,image/webp">
+                            {(props) => (
+                                <button
+                                    {...props}
+                                    type="button"
+                                    disabled={avatarUploading}
+                                    aria-label="Change profile photo"
+                                    className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-[#0B6B55] text-white disabled:opacity-60"
+                                >
+                                    <IconEdit size={14} />
+                                </button>
+                            )}
+                        </FileButton>
+                    </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                             <Text fw={700} className="truncate text-[18px] text-[#0F172A]">{fullName}</Text>
