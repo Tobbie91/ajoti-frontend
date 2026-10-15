@@ -358,6 +358,8 @@ export function closeMyTicket(
 export interface ProveInitiateResult {
   monoUrl: string | null; // null = test bypass (auto-verified, skip widget)
   reference: string;
+  provider?: 'DOJAH' | 'SMILE_ID';
+  launchConfig?: Record<string, unknown>;
 }
 
 export function resendResetOtp(email: string): Promise<{ message: string }> {

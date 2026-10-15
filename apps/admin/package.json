@@ -17,6 +17,7 @@
     "@mantine/dates": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
     "@mantine/notifications": "^8.3.18",
+    "@smileid/web-components": "11.6.2",
     "@tabler/icons-react": "^3.46.0",
     "dayjs": "^1.11.23",
     "react": "^19.2.8",

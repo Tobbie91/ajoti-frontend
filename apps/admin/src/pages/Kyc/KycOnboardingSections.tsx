@@ -15,6 +15,7 @@ import {
   proveInitiate,
   preSubmitNok,
   submitNok,
+  type KycStatus,
 } from "@/utils/api";
 import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
@@ -23,6 +24,7 @@ import { normalizePhoneForComparison, PERSON_NAME_REGEX, validatePhone } from "@
 const RELATIONSHIP_OPTIONS = ["Father", "Mother", "Sister", "Brother", "Cousin", "Spouse"];
 
 import { LimitCard, VerificationDataCard } from "./KycStatusSections";
+import { openDojahWidget } from "./dojah-widget";
 
 type OnboardingStep = 1 | 2 | 3;
 
@@ -35,11 +37,15 @@ const ONBOARDING_LABELS = ["Identity", "Next of Kin", "Verify"];
 export function OnboardingFlow({
   rejectionReason,
   onComplete,
+  onProviderComplete,
+  provider = "MONO",
   identityVerified = false,
   recovery = false,
 }: {
   rejectionReason?: string | null;
   onComplete: () => void;
+  onProviderComplete?: () => void;
+  provider?: KycStatus["provider"];
   identityVerified?: boolean;
   recovery?: boolean;
 }) {
@@ -147,9 +153,23 @@ export function OnboardingFlow({
     setInitiating(true);
     setVerifyCooldown(60);
     try {
-      const result = await proveInitiate({ nin: nin.trim(), bvn: bvn.trim() });
+      const result = await proveInitiate({
+        nin: nin.trim(),
+        bvn: bvn.trim(),
+        consentConfirmed:
+          provider === "DOJAH" || provider === "SMILE_ID" ? confirmed : undefined,
+      });
       if (result.monoUrl) {
         window.location.assign(result.monoUrl);
+        return;
+      } else if (result.provider === "DOJAH" && result.launchConfig) {
+        await openDojahWidget(result.launchConfig, {
+          onSuccess: () => onProviderComplete?.(),
+          onError: () => setError("Dojah could not complete verification. Please try again."),
+        });
+        return;
+      } else if (result.provider === "SMILE_ID" && result.launchConfig) {
+        onProviderComplete?.();
         return;
       } else {
         await submitNok({
@@ -428,7 +448,11 @@ export function OnboardingFlow({
                   Verify Identity
                 </Text>
                 <Text fw={400} className="text-[13px] text-[#6B7280]">
-                  We will verify your BVN, NIN, and date of birth with Mono.
+                  {provider === "DOJAH"
+                    ? "Dojah will guide you through identity and selfie verification."
+                    : provider === "SMILE_ID"
+                      ? "Smile ID will guide you through identity and biometric verification."
+                      : "We will verify your BVN, NIN, and date of birth with Mono."}
                 </Text>
               </div>
             </div>
@@ -437,7 +461,11 @@ export function OnboardingFlow({
                 fw={400}
                 className="text-[13px] leading-[1.6] text-[#1E40AF]"
               >
-                Ajoti will securely send the BVN and NIN you entered to Mono and compare the returned identity with your account details. No selfie is required.
+                {provider === "DOJAH"
+                  ? "Ajoti shares your NIN, BVN, date of birth, and account identity details with Dojah. Dojah may capture your ID and a selfie with liveness checks. Your verification only completes after Dojah confirms the result to Ajoti."
+                  : provider === "SMILE_ID"
+                    ? "Ajoti shares your identity details with Smile ID. Smile ID captures a selfie and liveness images, then checks them against the identity authority. Your verification only completes after Smile ID confirms the result to Ajoti."
+                    : "Ajoti will securely send the BVN and NIN you entered to Mono and compare the returned identity with your account details. No selfie is required."}
               </Text>
             </div>
             <Checkbox
@@ -448,7 +476,11 @@ export function OnboardingFlow({
                   fw={400}
                   className="text-[12px] leading-normal text-[#374151]"
                 >
-                  I consent to Ajoti verifying the BVN, NIN, and date of birth I provided through Mono Lookup.
+                  {provider === "DOJAH"
+                    ? "I consent to Ajoti sharing my identity details with Dojah for identity and biometric verification."
+                    : provider === "SMILE_ID"
+                      ? "I consent to Ajoti sharing my identity details with Smile ID for identity and biometric verification."
+                      : "I consent to Ajoti verifying the BVN, NIN, and date of birth I provided through Mono Lookup."}
                 </Text>
               }
               styles={{ input: { borderColor: "#D1D5DB" } }}
