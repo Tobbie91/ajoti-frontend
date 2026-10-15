@@ -154,7 +154,7 @@ export function Home() {
         </SimpleGrid>
 
         {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}
-        <div className="flex flex-wrap justify-center gap-3 sm:justify-start sm:gap-5">
+        <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs">
           <HomeQuickTile
             icon={<IconCompass size={22} />}
             label="Explore"
@@ -197,7 +197,7 @@ export function Home() {
             badge={creditScore !== null ? String(creditScore) : undefined}
             onClick={() => setCreditOpen(true)}
           />
-        </div>
+        </SimpleGrid>
 
         {/* ─── At-a-glance stats row ──────────────────────────────────── */}
         <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs">
@@ -389,7 +389,7 @@ function HomeQuickTile({
       onClick={onClick}
       aria-label={label}
       style={{
-        width: 106,
+        width: "100%",
         height: 118,
         position: "relative",
         display: "flex",
