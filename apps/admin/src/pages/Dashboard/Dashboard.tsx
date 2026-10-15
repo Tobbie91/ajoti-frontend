@@ -192,7 +192,7 @@ export function Dashboard() {
           <IconTile
             icon={<IconUsersGroup size={20} />}
             label="Ajo"
-            onClick={() => navigate('/rosca/groups')}
+            onClick={() => navigate('/rosca')}
           />
           <IconTile
             icon={<IconTarget size={20} />}
