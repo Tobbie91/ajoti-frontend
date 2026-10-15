@@ -153,6 +153,62 @@ export function Home() {
           />
         </SimpleGrid>
 
+        {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}
+        <div className="hidden flex-wrap gap-3 sm:flex sm:gap-5">
+          <HomeQuickTile
+            icon={<IconPlus size={22} />}
+            label="Add funds"
+            onClick={() => navigate("/create-wallet")}
+          />
+          <HomeQuickTile
+            icon={<IconArrowUpRight size={22} />}
+            label="Withdraw"
+            onClick={() => navigate("/withdraw")}
+          />
+          <HomeQuickTile
+            icon={<IconCompass size={22} />}
+            label="Explore"
+            onClick={() => navigate("/rosca/how-it-works")}
+          />
+          <HomeQuickTile
+            icon={<IconUsersGroup size={22} />}
+            label="Ajo"
+            onClick={() => navigate("/rosca")}
+          />
+          <HomeQuickTile
+            icon={<IconTarget size={22} />}
+            label="Target Savings"
+            onClick={() => navigate("/target-savings")}
+          />
+          <HomeQuickTile
+            icon={<IconLock size={22} />}
+            label="Where it's reserved"
+            onClick={() => navigate("/wallet/reservations")}
+          />
+          <HomeQuickTile
+            icon={<IconCash size={22} />}
+            label="Early Payout"
+            onClick={() => navigate("/loans")}
+          />
+          <HomeQuickTile
+            icon={<IconAlertTriangle size={22} />}
+            label="Debts"
+            onClick={() => navigate("/debts")}
+          />
+          <HomeQuickTile
+            icon={<IconShieldCheck size={22} />}
+            label="Trust score"
+            badge={trustScore !== null ? String(trustScore) : undefined}
+            onClick={() => setTrustOpen(true)}
+          />
+          <HomeQuickTile
+            icon={<IconGauge size={22} />}
+            label="Credit score"
+            badge={creditScore !== null ? String(creditScore) : undefined}
+            onClick={() => setCreditOpen(true)}
+          />
+        </div>
+
         {/* ─── At-a-glance stats row ──────────────────────────────────── */}
         <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs">
           <HomeStatTile label="Joined groups" value={stats.joined} />
@@ -194,50 +250,6 @@ export function Home() {
         />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-7">
-            <div className="hidden flex-wrap gap-3 sm:flex sm:gap-5">
-              <HomeQuickTile
-                icon={<IconPlus size={22} />}
-                label="Add funds"
-                onClick={() => navigate("/create-wallet")}
-              />
-              <HomeQuickTile
-                icon={<IconArrowUpRight size={22} />}
-                label="Withdraw"
-                onClick={() => navigate("/withdraw")}
-              />
-              <HomeQuickTile
-                icon={<IconCompass size={22} />}
-                label="Explore"
-                onClick={() => navigate("/rosca/how-it-works")}
-              />
-              <HomeQuickTile
-                icon={<IconLock size={22} />}
-                label="Where it's reserved"
-                onClick={() => navigate("/wallet/reservations")}
-              />
-              <HomeQuickTile
-                icon={<IconCash size={22} />}
-                label="Early Payout"
-                onClick={() => navigate("/loans")}
-              />
-              <HomeQuickTile
-                icon={<IconAlertTriangle size={22} />}
-                label="Debts"
-                onClick={() => navigate("/debts")}
-              />
-              <HomeQuickTile
-                icon={<IconShieldCheck size={22} />}
-                label="Trust score"
-                badge={trustScore !== null ? String(trustScore) : undefined}
-                onClick={() => setTrustOpen(true)}
-              />
-              <HomeQuickTile
-                icon={<IconGauge size={22} />}
-                label="Credit score"
-                badge={creditScore !== null ? String(creditScore) : undefined}
-                onClick={() => setCreditOpen(true)}
-              />
-            </div>
             <div>
               <Text fw={500} fz={24} mb={16}>
                 What would you like to do?

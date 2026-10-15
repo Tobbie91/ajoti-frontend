@@ -173,7 +173,7 @@ export function Dashboard() {
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm">
-        <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs">
+        <SimpleGrid cols={{ base: 3, sm: 5, md: 10 }} spacing="xs">
           <IconTile
             icon={<IconPlus size={20} />}
             label="Fund wallet"
@@ -188,6 +188,16 @@ export function Dashboard() {
             icon={<IconCompass size={20} />}
             label="Explore"
             onClick={() => navigate('/rosca/how-it-works')}
+          />
+          <IconTile
+            icon={<IconUsersGroup size={20} />}
+            label="Ajo"
+            onClick={() => navigate('/rosca/groups')}
+          />
+          <IconTile
+            icon={<IconTarget size={20} />}
+            label="Target Savings"
+            onClick={() => navigate('/target-savings')}
           />
           <IconTile
             icon={<IconLock size={20} />}
