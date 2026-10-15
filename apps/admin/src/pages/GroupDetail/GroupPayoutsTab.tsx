@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { getCircleEarlyPayouts, type CircleEarlyPayout } from '@/utils/api/rosca'
 import { Stack, Paper, Text, Group, Button, TextInput, Table, Avatar, Badge, Loader } from '@mantine/core'
 import { IconPlayerPlay, IconRefresh, IconArrowBackUp } from '@tabler/icons-react'
 import type { Payout } from '@/utils/api'
@@ -5,6 +7,7 @@ import type { Payout } from '@/utils/api'
 const PRIMARY = '#0b6b55'
 
 interface GroupPayoutsTabProps {
+  circleId: string
   payouts: Payout[]
   payoutsLoading: boolean
   payoutError: string | null
@@ -18,6 +21,7 @@ interface GroupPayoutsTabProps {
 }
 
 export function GroupPayoutsTab({
+  circleId,
   payouts,
   payoutsLoading,
   payoutError,
@@ -29,6 +33,13 @@ export function GroupPayoutsTab({
   onRetryPayout,
   onReverseClick,
 }: GroupPayoutsTabProps) {
+  const [earlyPayouts, setEarlyPayouts] = useState<CircleEarlyPayout[]>([])
+  const [earlyPayoutError, setEarlyPayoutError] = useState<string | null>(null)
+  useEffect(() => {
+    getCircleEarlyPayouts(circleId).then(setEarlyPayouts).catch(err =>
+      setEarlyPayoutError(err instanceof Error ? err.message : 'Could not load early payouts'),
+    )
+  }, [circleId])
   return (
     <Stack gap="lg">
       {/* Trigger payout action */}
@@ -61,6 +72,24 @@ export function GroupPayoutsTab({
         )}
       </Paper>
 
+      <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
+        <Text fw={600} fz="md" mb="xs">Member Early Payouts</Text>
+        <Text size="xs" c="dimmed" mb="sm">Amounts already advanced are deducted from the scheduled payout.</Text>
+        {earlyPayoutError && <Text c="red" size="sm">{earlyPayoutError}</Text>}
+        {!earlyPayoutError && earlyPayouts.length === 0 && <Text c="dimmed" size="sm">No early payouts recorded for this group.</Text>}
+        {earlyPayouts.map(loan => (
+          <Group key={loan.id} justify="space-between" wrap="wrap" py="xs">
+            <div>
+              <Text fw={500} size="sm">{loan.memberName}</Text>
+              <Text size="xs" c="dimmed">{loan.status} · {new Date(loan.requestedAt).toLocaleDateString('en-NG')}</Text>
+            </div>
+            <div>
+              <Text size="sm">Advanced: ₦{(Number(loan.advanceReceived) / 100).toLocaleString('en-NG')}</Text>
+              <Text size="xs" c="dimmed">Fee: ₦{(Number(loan.companyFee) / 100).toLocaleString('en-NG')} · Projected remainder: ₦{(Number(loan.projectedRemainingPayout) / 100).toLocaleString('en-NG')}</Text>
+            </div>
+          </Group>
+        ))}
+      </Paper>
       {/* Payout History */}
       <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
         <Group justify="space-between" align="center" px="lg" py="md">

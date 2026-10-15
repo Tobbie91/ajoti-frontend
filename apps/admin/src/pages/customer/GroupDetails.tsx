@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Text, Avatar, Badge, Table, Textarea, Loader } from "@mantine/core";
+import { Text, Avatar, Badge, Table, Textarea, Loader, Select, Button } from "@mantine/core";
 import {
   IconArrowLeft,
   IconUsers,
@@ -11,6 +11,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { RoscaCommitments } from "@/components/RoscaCommitments";
 import { RoscaJoinAction } from "@/components/RoscaJoinAction";
+import { getContributionPaymentPreference, setContributionPaymentPreference, type ContributionPaymentMethod } from "@/utils/api/rosca";
 import {
   getRoscaCircle,
   getRoscaSchedules,
@@ -38,6 +39,7 @@ interface GroupData {
   adminBio: string;
   completionRate: string;
   isCurrentUserAdmin: boolean;
+  previewOnly: boolean;
 }
 
 interface ScheduleRow {
@@ -52,6 +54,9 @@ export function GroupDetails() {
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [circleStatus, setCircleStatus] = useState<string>("");
+  const [paymentPreference, setPaymentPreference] = useState<ContributionPaymentMethod>('MANUAL');
+  const [paymentPreferenceSaving, setPaymentPreferenceSaving] = useState(false);
+  const [paymentPreferenceMessage, setPaymentPreferenceMessage] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -79,17 +84,26 @@ export function GroupDetails() {
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
+      setGroup(null);
+      setMembers([]);
+      setMembersLoaded(false);
+      setExistingReviews([]);
+      setSchedule([]);
       try {
-        const [circle, schedules] = await Promise.all([
-          getRoscaCircle(id!),
-          getRoscaSchedules(id!).catch(() => [] as RoscaSchedule[]),
-        ]);
+        const circle = await getRoscaCircle(id!);
+        const previewOnly = circle.previewOnly === true;
+        const schedules = previewOnly
+          ? []
+          : await getRoscaSchedules(id!).catch(() => [] as RoscaSchedule[]);
         // Fetch members and existing reviews in background
         setMembers(circle.members ?? []);
         setMembersLoaded(true);
-        getCirclePeerReviews(id!)
-          .then(setExistingReviews)
-          .catch(() => {});
+        if (!previewOnly) {
+          getCirclePeerReviews(id!)
+            .then(setExistingReviews)
+            .catch(() => {});
+        }
         if (circle) {
           setCircleStatus(circle.status ?? "");
           const slotsLeft = (circle.maxSlots ?? 0) - (circle.filledSlots ?? 0);
@@ -126,6 +140,7 @@ export function GroupDetails() {
             ),
             completionRate: `${circle.durationCycles > 0 ? Math.round(((circle.status === "COMPLETED" ? circle.durationCycles : Math.max(0, (circle.currentCycle ?? 1) - 1)) / circle.durationCycles) * 100) : 0}%`,
             isCurrentUserAdmin: circle.isRequestingUserAdmin ?? false,
+            previewOnly,
           });
         }
         setSchedule(
@@ -145,6 +160,13 @@ export function GroupDetails() {
     }
     fetchData();
   }, [id, refreshVersion]);
+
+  useEffect(() => {
+    if (!id || !membersLoaded || !members.some(m => m.userId === currentUserId)) return;
+    getContributionPaymentPreference(id)
+      .then(setPaymentPreference)
+      .catch(() => setPaymentPreferenceMessage('Unable to load payment preference'));
+  }, [id, membersLoaded, members, currentUserId]);
 
   if (loading) {
     return (
@@ -209,21 +231,23 @@ export function GroupDetails() {
                 {group.name}
               </Text>
               <div className="mt-1 flex items-center gap-3">
-                <Badge
-                  size="md"
-                  radius="xl"
-                  styles={{
-                    root: {
-                      backgroundColor: isInviteOnly ? "#F97316" : "#02A36E",
-                      color: "#FFFFFF",
-                      textTransform: "none",
-                      fontWeight: 600,
-                      fontSize: 12,
-                    },
-                  }}
-                >
-                  {group.completionRate} Completion Rate
-                </Badge>
+                {!group.previewOnly && (
+                  <Badge
+                    size="md"
+                    radius="xl"
+                    styles={{
+                      root: {
+                        backgroundColor: isInviteOnly ? "#F97316" : "#02A36E",
+                        color: "#FFFFFF",
+                        textTransform: "none",
+                        fontWeight: 600,
+                        fontSize: 12,
+                      },
+                    }}
+                  >
+                    {group.completionRate} Completion Rate
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
@@ -266,7 +290,9 @@ export function GroupDetails() {
         </div>
 
         {/* Private Group Notice */}
-        <RoscaCommitments circleId={id} refreshVersion={refreshVersion} />
+        {!group.previewOnly && (
+          <RoscaCommitments circleId={id} refreshVersion={refreshVersion} />
+        )}
         {isInviteOnly && (
           <div className="flex items-start gap-3 rounded-xl border border-[#FBBF24] bg-[#FFFBEB] px-5 py-4">
             <IconLock
@@ -279,7 +305,9 @@ export function GroupDetails() {
                 This is a private group.
               </Text>
               <Text fw={500} className="mt-0.5 text-[13px] text-[#B45309]">
-                Join requests are reviewed and approved or rejected by the group admin.
+                {group.previewOnly
+                  ? "You’re viewing a preview. Member details and payout schedules are available to group members; joining follows this group’s invite and approval rules."
+                  : "Join requests are reviewed and approved or rejected by the group admin."}
               </Text>
             </div>
           </div>
@@ -404,6 +432,11 @@ export function GroupDetails() {
             <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">
               Payout Timeline
             </Text>
+            {group.previewOnly ? (
+              <Text fw={400} className="text-[13px] text-[#6B7280]">
+                The member list and payout schedule are available to group members.
+              </Text>
+            ) : (
             <Table
               verticalSpacing="sm"
               styles={{
@@ -448,6 +481,7 @@ export function GroupDetails() {
                 ))}
               </Table.Tbody>
             </Table>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -471,6 +505,39 @@ export function GroupDetails() {
             )}
             {isCurrentUserAdmin && !isMember && (
               <RoscaJoinAction circleId={id!} label="Join as a member" unavailableReason={circleStatus !== "DRAFT" ? "This group is no longer accepting members." : Number(group.slotsLeft) <= 0 ? "This group is full." : undefined} />
+            )}
+            {isMember && circleStatus === 'ACTIVE' && (
+              <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+                <Text fw={600} size="sm" mb="xs">Contribution payment method</Text>
+                <Select
+                  aria-label="Contribution payment method"
+                  value={paymentPreference}
+                  onChange={(value) => setPaymentPreference(value === 'AUTOMATIC' ? 'AUTOMATIC' : 'MANUAL')}
+                  data={[
+                    { value: 'MANUAL', label: 'Manual: I will pay each contribution' },
+                    { value: 'AUTOMATIC', label: 'Automatic: deduct from my Ajoti wallet' },
+                  ]}
+                  allowDeselect={false}
+                />
+                <Text size="xs" c="dimmed" mt="xs">
+                  Automatic deductions use your Ajoti wallet before the contribution cutoff. Keep sufficient funds available.
+                </Text>
+                <Button mt="sm" loading={paymentPreferenceSaving} onClick={async () => {
+                  if (!id) return;
+                  setPaymentPreferenceSaving(true);
+                  setPaymentPreferenceMessage(null);
+                  try {
+                    const updated = await setContributionPaymentPreference(id, paymentPreference);
+                    setPaymentPreference(updated);
+                    setPaymentPreferenceMessage('Payment preference saved');
+                  } catch (error) {
+                    setPaymentPreferenceMessage(error instanceof Error ? error.message : 'Unable to save preference');
+                  } finally {
+                    setPaymentPreferenceSaving(false);
+                  }
+                }}>Save payment preference</Button>
+                {paymentPreferenceMessage && <Text size="sm" mt="xs">{paymentPreferenceMessage}</Text>}
+              </div>
             )}
             {canRequestExit && (
               <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">

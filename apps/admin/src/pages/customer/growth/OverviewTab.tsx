@@ -223,7 +223,7 @@ export function OverviewTab({
               radius="sm"
               style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}
             >
-              {paidCount} / {totalMembers} paid
+              {allContribsAccess === "granted" ? `${paidCount} / ${totalMembers} paid` : "Group payment status unavailable"}
             </Badge>
           </div>
 
@@ -266,7 +266,7 @@ export function OverviewTab({
               <IconLock size={14} color="#94A3B8" className="mt-0.5 flex-shrink-0" />
               <Text className="text-[11.5px] leading-snug text-[#64748B]">
                 Only your own payment status is shown — group-wide payment visibility is
-                limited for this circle. The organiser can enable full peer transparency.
+                limited to the circle organiser.
               </Text>
             </div>
           )}
@@ -307,7 +307,7 @@ export function OverviewTab({
                   )}
                   {!r.paid && (
                     <Text className="text-[11px] text-[#9CA3AF]">
-                      Not paid yet
+                      {allContribsAccess === "granted" || r.isSelf ? "Not paid yet" : "Payment status unavailable"}
                     </Text>
                   )}
                 </div>
