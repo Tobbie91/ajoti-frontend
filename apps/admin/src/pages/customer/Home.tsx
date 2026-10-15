@@ -1,6 +1,6 @@
 import { Title, Text, Card, Box, Modal, Paper, SimpleGrid, UnstyledButton } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
-import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconCompass, IconGauge, IconLock, IconLockOpen, IconPlus, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconCompass, IconGauge, IconLock, IconLockOpen, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
 import transctionIcon from "@/assets/Transaction_Icon.svg";
 import { MyDashboard } from "@/components/MyDashBoard/MyDashboard";
 import { QuickCard } from "@/components/QuickCard";
@@ -154,17 +154,7 @@ export function Home() {
         </SimpleGrid>
 
         {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}
-        <div className="hidden flex-wrap gap-3 sm:flex sm:gap-5">
-          <HomeQuickTile
-            icon={<IconPlus size={22} />}
-            label="Add funds"
-            onClick={() => navigate("/create-wallet")}
-          />
-          <HomeQuickTile
-            icon={<IconArrowUpRight size={22} />}
-            label="Withdraw"
-            onClick={() => navigate("/withdraw")}
-          />
+        <div className="flex flex-wrap justify-center gap-3 sm:justify-start sm:gap-5">
           <HomeQuickTile
             icon={<IconCompass size={22} />}
             label="Explore"
