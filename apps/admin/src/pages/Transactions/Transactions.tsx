@@ -13,8 +13,14 @@ import {
   IconDownload,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
-import { getWalletTransactions, getWalletBalance } from '@/utils/api'
-import type { WalletTransaction } from '@/utils/api'
+import {
+  getActiveTransactionExport,
+  getTransactionExportStatus,
+  getWalletTransactions,
+  getWalletBalance,
+  requestTransactionExport,
+} from '@/utils/api'
+import type { TransactionExportStatus, WalletTransaction } from '@/utils/api'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 
 type Transaction = {
@@ -161,6 +167,11 @@ export function Transactions() {
   const [type, setType] = useState<string | null>('All')
   const [category, setCategory] = useState<string | null>('All')
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+  const [exportFromDate, setExportFromDate] = useState('')
+  const [exportToDate, setExportToDate] = useState('')
+  const [exportJob, setExportJob] = useState<TransactionExportStatus | null>(null)
+  const [exportRequesting, setExportRequesting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   function downloadRecentTransactions() {
     const csvCell = (value: unknown) => {
@@ -192,6 +203,7 @@ export function Transactions() {
   }
 
   useEffect(() => {
+    let active = true
     Promise.all([
       getWalletBalance()
         .then((data) => {
@@ -203,7 +215,47 @@ export function Transactions() {
         .then((txns) => setTransactions(txns.map(mapApiTxn)))
         .catch(() => {}),
     ]).finally(() => setLoading(false))
+    getActiveTransactionExport()
+      .then((job) => {
+        if (active) setExportJob(job)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
   }, [])
+
+  useEffect(() => {
+    if (!exportJob || !['QUEUED', 'PROCESSING'].includes(exportJob.status)) return
+    let active = true
+    const timer = window.setInterval(() => {
+      getTransactionExportStatus(exportJob.id)
+        .then((status) => {
+          if (active) setExportJob(status)
+        })
+        .catch(() => {})
+    }, 5000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [exportJob?.id, exportJob?.status])
+
+  async function emailTransactionHistory() {
+    setExportRequesting(true)
+    setExportError(null)
+    try {
+      const job = await requestTransactionExport({
+        ...(exportFromDate && { fromDate: exportFromDate }),
+        ...(exportToDate && { toDate: exportToDate }),
+      })
+      setExportJob(job)
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Could not request the export.')
+    } finally {
+      setExportRequesting(false)
+    }
+  }
 
   const filtered = transactions.filter((tx) => {
     if (search && !tx.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -272,6 +324,55 @@ export function Transactions() {
           </button>
         )}
       </div>
+
+      {!hidden && (
+        <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-4">
+          <Text fw={600} fz={14} c="#0F172A">Email a larger transaction history</Text>
+          <Text fz={12} c="dimmed" mt={4}>
+            Leave dates blank for all history. Exports are limited to 25,000 rows or 10 MB; choose a narrower date range if your history is larger. The private download link expires after 24 hours and the file is deleted after 48 hours.
+          </Text>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs text-[#667085]">
+              From date (inclusive, WAT)
+              <input
+                aria-label="Export start date"
+                type="date"
+                value={exportFromDate}
+                onChange={(event) => setExportFromDate(event.currentTarget.value)}
+                className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm text-[#344054]"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-[#667085]">
+              To date (inclusive, WAT)
+              <input
+                aria-label="Export end date"
+                type="date"
+                value={exportToDate}
+                onChange={(event) => setExportToDate(event.currentTarget.value)}
+                className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm text-[#344054]"
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={emailTransactionHistory}
+            disabled={exportRequesting || Boolean(exportJob && ['QUEUED', 'PROCESSING'].includes(exportJob.status))}
+            className="mt-3 rounded-lg bg-[#02A36E] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {exportRequesting ? 'Requesting export…' : 'Email my CSV'}
+          </button>
+          {exportError && <Text role="alert" c="red" fz={12} mt={8}>{exportError}</Text>}
+          {exportJob && (
+            <Text role="status" fz={12} c="dimmed" mt={8}>
+              {exportJob.status === 'QUEUED' || exportJob.status === 'PROCESSING'
+                ? 'Your export is being prepared. We will email you when it is ready.'
+                : exportJob.status === 'READY'
+                  ? `Your export is ready and the email is queued${exportJob.rowCount == null ? '.' : ` (${exportJob.rowCount.toLocaleString()} rows).`}`
+                  : exportJob.errorMessage ?? `Export status: ${exportJob.status.toLowerCase().replace('_', ' ')}.`}
+            </Text>
+          )}
+        </div>
+      )}
 
       {hidden ? (
         <div className="flex min-h-48 items-center justify-center rounded-xl border border-[#F3F4F6] bg-white">

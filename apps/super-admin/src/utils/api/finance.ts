@@ -94,6 +94,9 @@ export interface WalletRow {
   createdAt: string;
   balanceKobo: string;
   balanceNaira: string;
+  reservedKobo: string;
+  availableKobo: string;
+  availableNaira: string;
   lastActivityAt: string | null;
   user: {
     id: string;
@@ -118,6 +121,15 @@ export interface SystemAccountRow {
   createdAt: string;
   balanceKobo: string;
   balanceNaira: string;
+  providerAccount?: {
+    environment: "SANDBOX" | "PRODUCTION";
+    status: string;
+    accountReference: string | null;
+    staticAccountNumber: string | null;
+    bankName: string | null;
+    accountName: string;
+    email: string;
+  } | null;
 }
 
 export function listSystemAccounts(): Promise<{
@@ -130,20 +142,303 @@ export function listSystemAccounts(): Promise<{
   );
 }
 
+export interface ProviderActivityRow {
+  id: string | null;
+  reference: string | null;
+  amountMinor: string | null;
+  currency: string | null;
+  status: string | null;
+  type: string | null;
+  narration: string | null;
+  createdAt: string | null;
+}
+
+export interface SystemWalletReconciliation {
+  environment: "SANDBOX" | "PRODUCTION";
+  mode: "MOCK" | "PROVIDER_READ_ONLY";
+  period: { from: string; to: string; page: number; pageSize: number };
+  policy: string;
+  merchant: {
+    localBalanceMinor: string;
+    providerBalanceMinor: string | null;
+    differenceMinor: string | null;
+    reconciliationStatus: string;
+    collections: ProviderActivityRow[];
+    transfers: ProviderActivityRow[];
+    collectionPage: unknown;
+    transferPage: unknown;
+    errorCode: string | null;
+  };
+  systemAccounts: Array<{
+    accountType: SystemAccountType;
+    environment: string;
+    localBalanceMinor: string;
+    providerBalanceMinor: string | null;
+    differenceMinor: string | null;
+    reconciliationStatus: string;
+    transactions: ProviderActivityRow[];
+    transactionPage: unknown;
+    errorCode: string | null;
+  }>;
+}
+
+export function getSystemAccountReconciliation(
+  from: string,
+  to: string,
+  page = 1,
+): Promise<{ success: boolean; data: SystemWalletReconciliation }> {
+  const query = new URLSearchParams({ from, to, page: String(page) });
+  return authRequest<{ success: boolean; data: SystemWalletReconciliation }>(
+    `/api/superadmin/finance/system-accounts/reconciliation?${query.toString()}`,
+    { method: "GET" },
+  );
+}
+
 export interface CapitalizeResult {
-  capitalizationId: string;
+  receiptId: string;
+  providerReference: string;
   amountKobo: string;
   floatBalanceKobo: string;
+  ledgerEntryId: string;
+  bankTransferReference: string;
 }
 
 export function capitalizeLoanFloat(
-  amountKobo: number,
+  receiptId: string,
   note: string,
+  bankTransferReference: string,
 ): Promise<{ success: boolean; data: CapitalizeResult }> {
   return authRequest<{ success: boolean; data: CapitalizeResult }>(
     "/api/superadmin/finance/loan-float/capitalize",
-    { method: "POST", body: JSON.stringify({ amountKobo, note }) },
+    { method: "POST", body: JSON.stringify({ receiptId, note, bankTransferReference }) },
   );
+}
+
+export interface SystemWalletFundingReceiptRow {
+  id: string;
+  environment: "SANDBOX" | "PRODUCTION";
+  providerReference: string;
+  providerTransactionId: string | null;
+  receivingAccountNumber: string;
+  amountMinor: string;
+  currency: string;
+  providerStatus: string;
+  status: "PENDING" | "CONFIRMED" | "REJECTED" | "APPLIED" | "REVERSED";
+  rejectionCode: string | null;
+  receivedAt: string;
+  appliedAt: string | null;
+  appliedBy: string | null;
+  capitalizationNote: string | null;
+  externalBankTransferReference: string | null;
+  matchedBy: string | null;
+  matchedAt: string | null;
+}
+
+export function getLoanFloatFundingReceipts(): Promise<{
+  success: boolean;
+  data: SystemWalletFundingReceiptRow[];
+}> {
+  return authRequest<{ success: boolean; data: SystemWalletFundingReceiptRow[] }>(
+    "/api/superadmin/finance/loan-float/funding-receipts",
+    { method: "GET" },
+  );
+}
+
+export interface FinanceDateWindow {
+  startDate: string;
+  endDate: string;
+  asOf?: string;
+}
+
+export interface AcquisitionSourceRow {
+  id: string;
+  name: string;
+  trackingCode: string;
+  isActive: boolean;
+}
+
+export interface FinanceExpenseCategoryRow {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface FinanceExpenseRow {
+  id: string;
+  amountKobo: string;
+  incurredAt: string;
+  description: string;
+  paymentMethod: string;
+  externalReference: string | null;
+  categoryId: string;
+  category: { id: string; name: string };
+  sourceId: string | null;
+  source: { id: string; name: string; trackingCode: string } | null;
+  createdAt: string;
+  voidedAt: string | null;
+  voidReason: string | null;
+}
+
+export interface CampaignCacRow {
+  sourceId: string;
+  sourceName: string;
+  trackingCode: string | null;
+  isActive: boolean;
+  spendKobo: string;
+  registrations: number;
+  verifiedRegistrations: number;
+  registrationCacKobo: string | null;
+  verifiedCacKobo: string | null;
+}
+
+export interface FinanceReport {
+  startDate: string;
+  endDate: string;
+  asOf: string;
+  platformRevenueCreditsKobo: string;
+  platformRevenueDebitsKobo: string;
+  platformRevenueNetKobo: string;
+  reportedExpensesKobo: string;
+  operatingResultKobo: string;
+  expensesByCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    amountKobo: string;
+  }>;
+  campaigns: CampaignCacRow[];
+  unattributedRegistrations: number;
+  unattributedVerifiedRegistrations: number;
+}
+
+export async function getFinanceReport(
+  params: FinanceDateWindow,
+): Promise<FinanceReport> {
+  const q = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params).filter(
+        ([, value]) => value !== undefined && value !== "",
+      ),
+    ) as Record<string, string>,
+  ).toString();
+  const res = await authRequest<{ success: boolean; data: FinanceReport }>(
+    `/api/superadmin/finance/reports?${q}`,
+    { method: "GET" },
+  );
+  return res.data;
+}
+
+export async function listFinanceExpenses(
+  params: FinanceDateWindow,
+): Promise<FinanceExpenseRow[]> {
+  const q = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params).filter(
+        ([, value]) => value !== undefined && value !== "",
+      ),
+    ) as Record<string, string>,
+  ).toString();
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseRow[];
+  }>(`/api/superadmin/finance/expenses?${q}`, { method: "GET" });
+  return res.data;
+}
+
+export async function listAcquisitionSources(): Promise<
+  AcquisitionSourceRow[]
+> {
+  const res = await authRequest<{
+    success: boolean;
+    data: AcquisitionSourceRow[];
+  }>("/api/superadmin/finance/sources", { method: "GET" });
+  return res.data;
+}
+
+export async function createAcquisitionSource(input: {
+  name: string;
+  trackingCode: string;
+}) {
+  const res = await authRequest<{
+    success: boolean;
+    data: AcquisitionSourceRow;
+  }>("/api/superadmin/finance/sources", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return res.data;
+}
+
+export async function deactivateAcquisitionSource(
+  sourceId: string,
+  reason: string,
+) {
+  const res = await authRequest<{
+    success: boolean;
+    data: AcquisitionSourceRow;
+  }>(`/api/superadmin/finance/sources/${sourceId}/deactivate`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+  return res.data;
+}
+
+export async function listFinanceExpenseCategories(): Promise<
+  FinanceExpenseCategoryRow[]
+> {
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseCategoryRow[];
+  }>("/api/superadmin/finance/expense-categories", { method: "GET" });
+  return res.data;
+}
+
+export async function createFinanceExpenseCategory(input: { name: string }) {
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseCategoryRow;
+  }>("/api/superadmin/finance/expense-categories", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return res.data;
+}
+
+export async function deactivateFinanceExpenseCategory(
+  categoryId: string,
+  reason: string,
+) {
+  const res = await authRequest<{
+    success: boolean;
+    data: FinanceExpenseCategoryRow;
+  }>(`/api/superadmin/finance/expense-categories/${categoryId}/deactivate`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+  return res.data;
+}
+
+export async function createFinanceExpense(input: {
+  amountKobo: string;
+  incurredAt: string;
+  description: string;
+  paymentMethod: string;
+  externalReference?: string;
+  categoryId: string;
+  sourceId?: string;
+}) {
+  const res = await authRequest<{ success: boolean; data: FinanceExpenseRow }>(
+    "/api/superadmin/finance/expenses",
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  return res.data;
+}
+
+export async function voidFinanceExpense(expenseId: string, reason: string) {
+  const res = await authRequest<{ success: boolean; data: FinanceExpenseRow }>(
+    `/api/superadmin/finance/expenses/${expenseId}/void`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+  return res.data;
 }
 
 // ── Payout Fee Settings - SYSTEM_CONFIG (SUPERADMIN only) ──────────────────────
@@ -309,6 +604,24 @@ export interface LoanRow {
 
 export interface LoanDetail extends LoanRow {
   circle: { name: string; status: string };
+  ledgerActivity: LoanLedgerActivity[];
+  matchingPayout: {
+    id: string;
+    amount: string;
+    status: "COMPLETED";
+    cycleNumber: number;
+    processedAt: string | null;
+    ledgerActivity: LoanLedgerActivity[];
+  } | null;
+}
+
+export interface LoanLedgerActivity {
+  id: string;
+  label: string;
+  entryType: "CREDIT" | "DEBIT" | "RESERVE" | "RELEASE";
+  account: string;
+  amount: string;
+  occurredAt: string;
 }
 
 export function getLoans(

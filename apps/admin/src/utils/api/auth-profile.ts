@@ -16,6 +16,7 @@ export interface RegisterPayload {
   gender: "MALE" | "FEMALE";
   phone: string;
   password: string;
+  trackingCode?: string;
 }
 
 export interface RegisterResponse {
@@ -189,6 +190,27 @@ export async function getUserProfile(): Promise<UserProfile> {
     { method: "GET" },
   );
   return ("data" in res && res.data ? res.data : res) as UserProfile;
+}
+
+export async function getMyAvatar(): Promise<{ avatarUrl: string | null }> {
+  const res = await authRequest<{ data?: { avatarUrl: string | null } }>(
+    "/api/users/me/avatar",
+    { method: "GET" },
+  );
+  return res.data ?? { avatarUrl: null };
+}
+
+export async function uploadMyAvatar(file: File): Promise<{
+  avatarUrl: string | null;
+  expiresAt: string;
+}> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await authRequest<{
+    data?: { avatarUrl: string | null; expiresAt: string };
+  }>("/api/users/me/avatar", { method: "POST", body: form });
+  if (!res.data) throw new Error("Profile photo upload returned no result");
+  return res.data;
 }
 
 export function updateUserProfile(

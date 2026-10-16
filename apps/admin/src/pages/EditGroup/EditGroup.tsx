@@ -45,7 +45,6 @@ export function EditGroup() {
   const [groupDescription, setGroupDescription] = useState('')
   const [contributionAmount, setContributionAmount] = useState<number | ''>('')
   const [frequency, setFrequency] = useState<string | null>(null)
-  const [payoutTime, setPayoutTime] = useState<string | null>('18:00')
   const [contributionCutoffTime, setContributionCutoffTime] = useState<string | null>('18:00')
   const [visibility, setVisibility] = useState<string | null>(null)
   const [maxSlots, setMaxSlots] = useState<number | ''>('')
@@ -65,7 +64,6 @@ export function EditGroup() {
         setGroupDescription(data.description ?? '')
         setContributionAmount(Number(data.contributionAmount ?? 0) / 100)
         setFrequency(data.frequency)
-        setPayoutTime(data.payoutTime ?? '18:00')
         setContributionCutoffTime(data.contributionCutoffTime ?? '18:00')
         setVisibility(data.visibility)
         setMaxSlots(data.maxSlots)
@@ -93,7 +91,6 @@ export function EditGroup() {
         contributionAmount: String(Math.round(Number(contributionAmount) * 100)),
         maxSlots: Number(maxSlots),
         frequency: frequency as 'MONTHLY' | 'WEEKLY' | 'BI_WEEKLY',
-        payoutTime: payoutTime ?? undefined,
         contributionCutoffTime: contributionCutoffTime ?? undefined,
         visibility: visibility ?? undefined,
       })
@@ -211,19 +208,10 @@ export function EditGroup() {
             </Group>
             <Select
               label="Contribution cutoff time (WAT)"
+              description="Payout is scheduled automatically for 11:59 PM WAT on the same day."
               value={contributionCutoffTime}
               onChange={setContributionCutoffTime}
               data={Array.from({ length: 24 }, (_, hour) => ({ value: String(hour).padStart(2, '0') + ':00', label: new Date(Date.UTC(2026, 0, 1, hour)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) }))}
-              disabled={!isDraft}
-              mt="md"
-              styles={inputStyles}
-            />
-            <Select
-              label="Automatic payout time (WAT)"
-              description="Locked after group activation. Payouts remain at least 24 hours after the contribution deadline."
-              value={payoutTime}
-              onChange={setPayoutTime}
-              data={[{ value: '09:00', label: '9:00 AM' }, { value: '12:00', label: '12:00 PM' }, { value: '15:00', label: '3:00 PM' }, { value: '18:00', label: '6:00 PM' }, { value: '21:00', label: '9:00 PM' }]}
               disabled={!isDraft}
               mt="md"
               styles={inputStyles}

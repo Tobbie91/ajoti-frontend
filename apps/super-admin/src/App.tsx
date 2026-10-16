@@ -4,7 +4,7 @@ import { RequireAuth, RequirePermission } from '@/components/RequireAuth/Require
 import {
   Dashboard, ManageUsers, ManageRosca, Transactions, SettingsLogs, Login, ForgotPassword,
   ResetPassword, ChangePasswordRequired, KycApprovals, TrustScores, Wallets,
-  SystemAccounts, LoansList, DebtsList, PayoutFeeSettings, LoanSettings, CircleRulesSettings,
+  SystemAccounts, FinanceReports, LoansList, DebtsList, PayoutFeeSettings, LoanSettings, CircleRulesSettings,
   SupportInbox, SupportTicketDetail, ContactDetailsCorrection, StaffManagement, StaffSetup, Maintenance, AccountClosures,
 } from '@/pages'
 import { FixedSavings } from '@/pages/savings/FixedSavings'
@@ -54,6 +54,7 @@ function App() {
             </Route>
             <Route element={<RequirePermission permission="VIEW_SYSTEM_ACCOUNTS" />}>
               <Route path="/system-accounts" element={<SystemAccounts />} />
+              <Route path="/finance-reports" element={<FinanceReports />} />
               <Route path="/loans" element={<LoansList />} />
               <Route path="/debts" element={<DebtsList />} />
             </Route>

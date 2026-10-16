@@ -481,7 +481,7 @@ export function GroupDetail() {
     }
   }
 
-  type ApiMember = { userId: string; name: string; status: string; position: number | null; joinedAt: string }
+  type ApiMember = { userId: string; name: string; status: string; position: number | null; joinedAt: string; avatarUrl?: string | null }
   const apiMembers: ApiMember[] = ((circleData as Record<string, unknown>)?.members as ApiMember[]) ?? []
   const filteredMembers = apiMembers.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase()),
