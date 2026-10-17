@@ -208,7 +208,7 @@ export function EditGroup() {
             </Group>
             <Select
               label="Contribution cutoff time (WAT)"
-              description="Payout is scheduled automatically for 11:59 PM WAT on the same day."
+              description="Payout is scheduled automatically for 12:00 AM WAT the following day."
               value={contributionCutoffTime}
               onChange={setContributionCutoffTime}
               data={Array.from({ length: 24 }, (_, hour) => ({ value: String(hour).padStart(2, '0') + ':00', label: new Date(Date.UTC(2026, 0, 1, hour)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) }))}
