@@ -86,7 +86,7 @@ export function QuickActions() {
       onClick: () => navigate('/rosca/how-it-works'),
     },
     {
-      label: 'Manage Join Request',
+      label: 'Review people requesting to join',
       icon: IconUserCheck,
       onClick: () => navigate('/manage-join-request'),
     },

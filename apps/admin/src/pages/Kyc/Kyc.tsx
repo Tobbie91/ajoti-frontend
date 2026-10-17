@@ -1,10 +1,12 @@
 import { PendingReviewScreen, FullyVerifiedScreen } from "./KycStatusSections";
 import { ProvePendingScreen, UpgradePage } from "./KycUpgradeSections";
 import { OnboardingFlow, OnboardingDoneScreen } from "./KycOnboardingSections";
+import { SmileIdCapture } from "./SmileIdCapture";
 import { useCallback, useEffect, useState } from "react";
 import { Loader } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
-import { getKycStatus, resubmitKyc, type KycStatus } from "@/utils/api";
+import { getKycStatus, proveInitiate, resubmitKyc, type KycStatus } from "@/utils/api";
+import { openDojahWidget } from "./dojah-widget";
 
 type PageView =
   | "loading"
@@ -12,6 +14,7 @@ type PageView =
   | "rejected-l1"
   | "error"
   | "prove-pending"
+  | "smile-capture"
   | "onboarding-done"
   | "upgrade-l2"
   | "pending-l2"
@@ -29,6 +32,7 @@ const PROVE_PENDING_STEPS = new Set([
 
 function resolveView(kyc: KycStatus | null): PageView {
   if (!kyc) return "onboarding";
+  if (kyc.provider === "SMILE_ID" && kyc.providerCaptureRequired) return "smile-capture";
   const { kycLevel, status, step } = kyc;
   if (kyc.requiresIdentityCompletion) {
     if (step && PROVE_PENDING_STEPS.has(step)) return "prove-pending";
@@ -65,6 +69,7 @@ export function Kyc() {
   const [kycData, setKycData] = useState<KycStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [restarting, setRestarting] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -78,6 +83,22 @@ export function Kyc() {
       setView("error");
     }
   }, []);
+
+  const resumeDojah = useCallback(async () => {
+    setResumeError(null);
+    try {
+      const session = await proveInitiate({});
+      if (session.provider !== "DOJAH" || !session.launchConfig) {
+        throw new Error("Your Dojah session is not ready yet. Please try again shortly.");
+      }
+      await openDojahWidget(session.launchConfig, {
+        onSuccess: () => void loadStatus(),
+        onError: () => setResumeError("Dojah could not resume verification. Please try again."),
+      });
+    } catch (error) {
+      setResumeError(error instanceof Error ? error.message : "Unable to resume Dojah verification.");
+    }
+  }, [loadStatus]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -171,12 +192,25 @@ export function Kyc() {
     return (
       <ProvePendingScreen
         awaitingReview={kycData?.providerStatus === "ambiguous"}
+        provider={kycData?.provider}
+        actionError={resumeError}
         onContinue={
           kycData?.monoUrl
             ? () => window.location.assign(kycData.monoUrl as string)
-            : undefined
+            : kycData?.provider === "DOJAH" && kycData.providerStatus !== "ambiguous"
+              ? resumeDojah
+              : undefined
         }
         onVerified={loadStatus}
+      />
+    );
+  }
+
+  if (view === "smile-capture") {
+    return (
+      <SmileIdCapture
+        onSubmitted={loadStatus}
+        onCancel={() => navigate("/home")}
       />
     );
   }
@@ -185,6 +219,8 @@ export function Kyc() {
     return (
       <OnboardingFlow
         recovery={kycData?.requiresIdentityCompletion ?? false}
+        provider={kycData?.provider ?? "MONO"}
+        onProviderComplete={loadStatus}
         rejectionReason={
           kycData?.kycLevel === 0 ? (kycData.rejectionReason ?? null) : null
         }

@@ -6,7 +6,7 @@ import {
   parseJsonSafely,
   request,
 } from "./client";
-import type { RoscaCircle } from "./rosca";
+import type { RoscaCircle, RoscaTermsAcceptance } from "./rosca";
 
 // ── Circle Invites ─────────────────────────────────────────────────────────────
 
@@ -358,6 +358,8 @@ export function closeMyTicket(
 export interface ProveInitiateResult {
   monoUrl: string | null; // null = test bypass (auto-verified, skip widget)
   reference: string;
+  provider?: 'DOJAH' | 'SMILE_ID';
+  launchConfig?: Record<string, unknown>;
 }
 
 export function resendResetOtp(email: string): Promise<{ message: string }> {
@@ -395,8 +397,12 @@ export function leaveRoscaCircle(
 
 export function joinRoscaCircle(
   circleId: string,
+  acceptance: RoscaTermsAcceptance,
 ): Promise<{ message: string }> {
-  return authRequest(`/api/rosca/${circleId}/join`, { method: "POST" });
+  return authRequest(`/api/rosca/${circleId}/join`, {
+    method: "POST",
+    body: JSON.stringify(acceptance),
+  });
 }
 
 export async function getRoscaCircle(circleId: string): Promise<RoscaCircle> {
@@ -420,6 +426,6 @@ export async function getCircleContributions(
 ): Promise<CircleContribution[]> {
   const res = await authRequest<
     { data?: CircleContribution[] } | CircleContribution[]
-  >(`/api/rosca/${circleId}/contributions`, { method: "GET" });
+  >(`/api/rosca/${circleId}/contributions?limit=100`, { method: "GET" });
   return Array.isArray(res) ? res : (res.data ?? []);
 }

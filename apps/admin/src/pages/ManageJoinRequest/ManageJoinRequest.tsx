@@ -177,7 +177,7 @@ export function ManageJoinRequest() {
     <Stack gap="lg">
       {/* Header */}
       <Box>
-        <Text fz={22} fw={700} mb={2}>Pending Join Request</Text>
+        <Text fz={22} fw={700} mb={2}>People requesting to join your groups</Text>
         <Text fz="sm" c="dimmed">
           {totalPending} pending request{totalPending !== 1 ? 's' : ''} across {circles.length} group{circles.length !== 1 ? 's' : ''}
         </Text>

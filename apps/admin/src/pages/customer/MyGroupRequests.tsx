@@ -113,7 +113,7 @@ export function MyGroupRequests() {
             <IconArrowLeft size={18} color="#374151" />
           </button>
           <Text fw={700} className="text-[22px] text-[#0F172A]">
-            My Group Requests
+            Groups I want to join
           </Text>
         </div>
 

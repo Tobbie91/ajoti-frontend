@@ -24,7 +24,6 @@ import {
   IconCalendar,
   IconShieldCheck,
   IconWallet,
-  IconCheck,
   IconCash,
 } from "@tabler/icons-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -164,13 +163,19 @@ export function GrowthActivities() {
       (s) => ["IN_PROGRESS", "UPCOMING"].includes((s.status ?? "").toUpperCase()),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
-  const paidCycleNumbers = new Set(contributions.map((contribution) => contribution.cycleNumber));
+  const contributedByCycle = new Map<number, number>();
+  for (const contribution of contributions) {
+    contributedByCycle.set(
+      contribution.cycleNumber,
+      (contributedByCycle.get(contribution.cycleNumber) ?? 0) + Number(contribution.amount),
+    );
+  }
   const nextUnpaidSchedule = schedules
     .filter(
       (schedule) =>
         ["IN_PROGRESS", "UPCOMING"].includes((schedule.status ?? "").toUpperCase()) &&
         schedule.cycleNumber != null &&
-        !paidCycleNumbers.has(schedule.cycleNumber),
+        (contributedByCycle.get(schedule.cycleNumber) ?? 0) < Number(circle.contributionAmount),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
   const nextPaymentDate = nextSchedule?.payoutDate
@@ -193,6 +198,7 @@ export function GrowthActivities() {
     0,
   );
   const statusBadge = circleStatusBadge((circle as any).status ?? "");
+  const currentCycleNumber = Number(circle.currentCycle ?? 1);
 
   return (
     <div className="mx-auto w-full max-w-[900px] px-6 py-6">
@@ -235,29 +241,16 @@ export function GrowthActivities() {
         </div>
 
         {/* ─── Prominent Make-a-contribution button (visible on every tab) ── */}
-        {circle.status === "ACTIVE" && nextSchedule && (() => {
-          const nextCycle = nextSchedule.cycleNumber;
-          const alreadyPaid = nextCycle != null && contributions.some(c => c.cycleNumber === nextCycle);
-          if (alreadyPaid) {
-            return (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <IconCheck size={20} color="#02A36E" />
-                  <div>
-                    <Text fw={700} className="text-[14px] text-[#065F46]">Cycle {nextCycle} paid</Text>
-                    <Text className="text-[12px] text-[#047857]">Thanks — you're clear until the next cycle opens.</Text>
-                  </div>
-                </div>
-              </div>
-            );
-          }
+        {circle.status === "ACTIVE" && nextUnpaidSchedule && (() => {
+          const nextCycle = nextUnpaidSchedule.cycleNumber;
+          if (nextCycle == null) return null;
           return (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-5 py-3">
               <div className="flex items-center gap-3">
                 <IconCash size={22} color="#B45309" />
                 <div>
                   <Text fw={700} className="text-[14px] text-[#92400E]">
-                    Cycle {nextCycle} contribution due
+                    {nextCycle > currentCycleNumber ? `Pay Cycle ${nextCycle} Early` : `Cycle ${nextCycle} contribution`}
                   </Text>
                   <Text className="text-[12px] text-[#92400E]">
                     Pay by {nextContributionDate}
@@ -273,7 +266,7 @@ export function GrowthActivities() {
                 }}
                 className="cursor-pointer rounded-lg bg-[#0B6B55] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#095C49]"
               >
-                Make a contribution
+                {nextCycle > currentCycleNumber ? "Pay next cycle early" : "Make a contribution"}
               </button>
             </div>
           );
@@ -303,7 +296,7 @@ export function GrowthActivities() {
             cycles={cycles}
             members={members}
             currentUserId={currentUserId}
-            currentCycleNumber={nextSchedule?.cycleNumber}
+            currentCycleNumber={currentCycleNumber}
             ownContributions={contributions}
             refreshVersion={refreshVersion}
           />
@@ -328,15 +321,17 @@ export function GrowthActivities() {
           <GrowthTab
             trustPercent={trustPercent}
             trustScore={userTrustScore}
-            nextPaymentDate={nextContributionDate}
+            nextContributionDate={nextContributionDate}
             contributions={contributions}
             setContributions={setContributions}
             contributionAmountKobo={circle.contributionAmount}
             circleId={id!}
             circleStatus={(circle as any).status ?? ""}
-            nextCycleNumber={nextSchedule?.cycleNumber}
+            currentCycleNumber={currentCycleNumber}
+            onContributionPaid={() => setRefreshVersion((v) => v + 1)}
+            nextCycleNumber={nextUnpaidSchedule?.cycleNumber}
             nextDeadline={
-              nextSchedule?.contributionDeadline as string | undefined
+              nextUnpaidSchedule?.contributionDeadline as string | undefined
             }
             autoOpenPay={autoPay}
             openContributionOnLoad={contributionShortcut}

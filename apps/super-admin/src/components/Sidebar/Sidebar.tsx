@@ -4,7 +4,7 @@ import { NavLink, Stack, Text, Box, Badge, ScrollArea } from '@mantine/core'
 import {
   IconLayoutDashboard, IconUsers, IconTopologyRing, IconPigMoney, IconChartLine, IconTarget,
   IconReceipt, IconSettings, IconShieldCheck, IconAward, IconWallet, IconHeadset,
-  IconUsersGroup, IconBuildingBank, IconCoin, IconFileInvoice, IconAddressBook,
+  IconUsersGroup, IconBuildingBank, IconCoin, IconFileInvoice, IconAddressBook, IconChartBar,
 } from '@tabler/icons-react'
 import { type Permission, getStaffRoleFromStorage, hasPermission } from '@/utils/permissions'
 
@@ -18,6 +18,7 @@ const mainLinks: NavLink_[] = [
   { label: 'Manage ajo', icon: IconTopologyRing, path: '/manage-rosca', permission: 'MANAGE_CIRCLES' },
   { label: 'Wallets', icon: IconWallet, path: '/wallets', permission: 'VIEW_LEDGER' },
   { label: 'Platform Accounts', icon: IconBuildingBank, path: '/system-accounts', permission: 'VIEW_SYSTEM_ACCOUNTS' },
+  { label: 'Finance Reports', icon: IconChartBar, path: '/finance-reports', permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Loans', icon: IconCoin, path: '/loans', permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Debts', icon: IconFileInvoice, path: '/debts', permission: 'VIEW_SYSTEM_ACCOUNTS' },
   { label: 'Trust Scores', icon: IconAward, path: '/trust-scores', permission: null },

@@ -14,6 +14,7 @@ import {
   getTrustScore,
   getCreditScore,
   getMyParticipations,
+  getMyJoinRequests,
   type RoscaCircle,
 } from "@/utils/api";
 import { getMyTargetSavings, type TargetSavingsPlan } from "@/utils/targetSavingsApi";
@@ -36,6 +37,7 @@ export function Home() {
   const [trustData, setTrustData] = useState<TrustScore | null>(null);
   const [creditScore, setCreditScore] = useState<number | null>(null);
   const [participations, setParticipations] = useState<RoscaCircle[]>([]);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState(0);
   const [trustOpen, setTrustOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([]);
@@ -72,6 +74,9 @@ export function Home() {
       getMyParticipations()
         .then((rows) => setParticipations(Array.isArray(rows) ? rows : []))
         .catch(() => setParticipations([])),
+      getMyJoinRequests()
+        .then((rows) => setPendingJoinRequests(rows.filter((row) => (row.status ?? "").toUpperCase() === "PENDING").length))
+        .catch(() => setPendingJoinRequests(0)),
       getMyTargetSavings()
         .then((rows) => setTargetPlans(Array.isArray(rows) ? rows : []))
         .catch(() => setTargetPlans([])),
@@ -206,6 +211,51 @@ export function Home() {
           <HomeStatTile label="Active" value={stats.active} />
           <HomeStatTile label="Completed" value={stats.completed} />
           <HomeStatTile label="Next target due" value={stats.nextTarget} />
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <Card
+            withBorder
+            radius="lg"
+            p="md"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate("/rosca")}
+            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate("/rosca"); }}
+            style={{ cursor: "pointer", borderColor: "#D1FAE5" }}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Text fw={700} c="#0F172A">Groups I’ve joined</Text>
+                <Text size="sm" c="dimmed">View and manage your member groups.</Text>
+              </div>
+              <div className="flex items-center gap-2">
+                <Text fw={700} c="#047857">{stats.joined} groups</Text>
+                <IconArrowRight size={18} color="#047857" />
+              </div>
+            </div>
+          </Card>
+          <Card
+            withBorder
+            radius="lg"
+            p="md"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate("/rosca/requests")}
+            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate("/rosca/requests"); }}
+            style={{ cursor: "pointer", borderColor: "#D1FAE5" }}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Text fw={700} c="#0F172A">Groups I want to join</Text>
+                <Text size="sm" c="dimmed">Track requests you’ve sent to other admins.</Text>
+              </div>
+              <div className="flex items-center gap-2">
+                <Text fw={700} c="#047857">{pendingJoinRequests} pending</Text>
+                <IconArrowRight size={18} color="#047857" />
+              </div>
+            </div>
+          </Card>
         </SimpleGrid>
 
         {/* ─── Advert board — rotates between 3 slides ────────────────── */}
