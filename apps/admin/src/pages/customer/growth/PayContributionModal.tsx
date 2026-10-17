@@ -11,8 +11,10 @@ export interface PayContributionModalProps {
   opened: boolean;
   onClose: () => void;
   circleId: string;
+  currentCycleNumber?: number;
   nextCycleNumber?: number;
   contributionAmountKobo: string | number;
+  amountAlreadyPaidKobo?: string | number;
   nextDeadline?: string;
   nextPaymentFallback?: string;
   /** Fires with the fresh contribution the backend returned, for parent list refresh. */
@@ -23,8 +25,10 @@ export function PayContributionModal({
   opened,
   onClose,
   circleId,
+  currentCycleNumber,
   nextCycleNumber,
   contributionAmountKobo,
+  amountAlreadyPaidKobo = 0,
   nextDeadline,
   nextPaymentFallback,
   onPaid,
@@ -33,10 +37,13 @@ export function PayContributionModal({
   const [step, setStep] = useState<Step>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [walletAvailable, setWalletAvailable] = useState<number | null>(null);
+  const [submittedCycleNumber, setSubmittedCycleNumber] = useState<number | null>(null);
 
   const amountKobo = Number(contributionAmountKobo);
   const hasSufficientFunds =
     walletAvailable !== null && walletAvailable >= amountKobo / 100;
+  const isEarlyPayment = nextCycleNumber != null && currentCycleNumber != null && nextCycleNumber > currentCycleNumber;
+  const displayedCycleNumber = step === "done" ? submittedCycleNumber ?? nextCycleNumber : nextCycleNumber;
 
   const deadlineFormatted = nextDeadline
     ? new Date(nextDeadline).toLocaleString("en-NG", {
@@ -54,6 +61,7 @@ export function PayContributionModal({
     if (!opened) return;
     setStep("idle");
     setErrorMsg("");
+    setSubmittedCycleNumber(null);
     setWalletAvailable(null);
     getWalletBalance()
       .then((b) => setWalletAvailable(Number(b.available) / 100))
@@ -62,9 +70,11 @@ export function PayContributionModal({
 
   async function handleConfirm() {
     if (nextCycleNumber == null) return;
+    const cycleBeingPaid = nextCycleNumber;
+    setSubmittedCycleNumber(cycleBeingPaid);
     setStep("submitting");
     try {
-      const contribution = await makeContribution(circleId, nextCycleNumber);
+      const contribution = await makeContribution(circleId, cycleBeingPaid);
       if (onPaid) onPaid(contribution);
       setStep("done");
     } catch (e: unknown) {
@@ -79,7 +89,7 @@ export function PayContributionModal({
       onClose={() => {
         if (step !== "submitting") onClose();
       }}
-      title={step === "done" ? "Contribution Successful" : "Make Contribution"}
+      title={step === "done" ? "Contribution Successful" : isEarlyPayment ? `Pay Cycle ${nextCycleNumber} Early` : "Make Contribution"}
       centered
       radius="md"
     >
@@ -92,7 +102,7 @@ export function PayContributionModal({
             Payment confirmed!
           </Text>
           <Text fw={400} className="text-center text-[13px] text-[#6B7280]">
-            Your contribution for Cycle {nextCycleNumber} has been recorded.
+            Your contribution for Cycle {displayedCycleNumber} has been recorded.
           </Text>
           <button
             onClick={onClose}
@@ -104,7 +114,9 @@ export function PayContributionModal({
       ) : (
         <div className="flex flex-col gap-4">
           <Text size="sm" c="dimmed">
-            You can pay this cycle before its deadline. Review the cycle and amount, then confirm to continue. Your next contribution will move to the following unpaid cycle after payment is recorded.
+            {isEarlyPayment
+              ? `Cycle ${currentCycleNumber} is fully paid. This payment will be recorded for Cycle ${nextCycleNumber}; its deadline and payout order will not change.`
+              : `Review the cycle and amount before confirming. Your payment will be recorded only for Cycle ${nextCycleNumber ?? "—"}.`}
           </Text>
           <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
             <div className="flex justify-between py-1">
@@ -114,11 +126,19 @@ export function PayContributionModal({
               </Text>
             </div>
             <div className="flex justify-between py-1">
-              <Text fw={500} className="text-[13px] text-[#6B7280]">Amount</Text>
+              <Text fw={500} className="text-[13px] text-[#6B7280]">Amount to pay now</Text>
               <Text fw={700} className="text-[13px] text-[#0F172A]">
                 {formatNaira(contributionAmountKobo)}
               </Text>
             </div>
+            {Number(amountAlreadyPaidKobo) > 0 && (
+              <div className="flex justify-between py-1">
+                <Text fw={500} className="text-[13px] text-[#6B7280]">Already paid toward this cycle</Text>
+                <Text fw={700} className="text-[13px] text-[#0F172A]">
+                  {formatNaira(amountAlreadyPaidKobo)}
+                </Text>
+              </div>
+            )}
             <div className="flex justify-between py-1">
               <Text fw={500} className="text-[13px] text-[#6B7280]">Deadline</Text>
               <Text fw={700} className="text-[13px] text-[#0F172A]">

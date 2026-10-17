@@ -426,6 +426,6 @@ export async function getCircleContributions(
 ): Promise<CircleContribution[]> {
   const res = await authRequest<
     { data?: CircleContribution[] } | CircleContribution[]
-  >(`/api/rosca/${circleId}/contributions`, { method: "GET" });
+  >(`/api/rosca/${circleId}/contributions?limit=100`, { method: "GET" });
   return Array.isArray(res) ? res : (res.data ?? []);
 }

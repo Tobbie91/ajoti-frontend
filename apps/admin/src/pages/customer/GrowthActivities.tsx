@@ -198,6 +198,7 @@ export function GrowthActivities() {
     0,
   );
   const statusBadge = circleStatusBadge((circle as any).status ?? "");
+  const currentCycleNumber = Number(circle.currentCycle ?? 1);
 
   return (
     <div className="mx-auto w-full max-w-[900px] px-6 py-6">
@@ -249,7 +250,7 @@ export function GrowthActivities() {
                 <IconCash size={22} color="#B45309" />
                 <div>
                   <Text fw={700} className="text-[14px] text-[#92400E]">
-                    Cycle {nextCycle} contribution
+                    {nextCycle > currentCycleNumber ? `Pay Cycle ${nextCycle} Early` : `Cycle ${nextCycle} contribution`}
                   </Text>
                   <Text className="text-[12px] text-[#92400E]">
                     Pay by {nextContributionDate}
@@ -265,7 +266,7 @@ export function GrowthActivities() {
                 }}
                 className="cursor-pointer rounded-lg bg-[#0B6B55] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#095C49]"
               >
-                Make a contribution
+                {nextCycle > currentCycleNumber ? "Pay next cycle early" : "Make a contribution"}
               </button>
             </div>
           );
@@ -295,7 +296,7 @@ export function GrowthActivities() {
             cycles={cycles}
             members={members}
             currentUserId={currentUserId}
-            currentCycleNumber={nextSchedule?.cycleNumber}
+            currentCycleNumber={currentCycleNumber}
             ownContributions={contributions}
             refreshVersion={refreshVersion}
           />
@@ -320,12 +321,14 @@ export function GrowthActivities() {
           <GrowthTab
             trustPercent={trustPercent}
             trustScore={userTrustScore}
-            nextPaymentDate={nextContributionDate}
+            nextContributionDate={nextContributionDate}
             contributions={contributions}
             setContributions={setContributions}
             contributionAmountKobo={circle.contributionAmount}
             circleId={id!}
             circleStatus={(circle as any).status ?? ""}
+            currentCycleNumber={currentCycleNumber}
+            onContributionPaid={() => setRefreshVersion((v) => v + 1)}
             nextCycleNumber={nextUnpaidSchedule?.cycleNumber}
             nextDeadline={
               nextUnpaidSchedule?.contributionDeadline as string | undefined

@@ -89,8 +89,8 @@ export function OverviewTab({
   // scroll back through completed cycles.
   const [rosterCycle, setRosterCycle] = useState<number | undefined>(currentCycleNumber);
   useEffect(() => {
-    if (rosterCycle == null && currentCycleNumber != null) setRosterCycle(currentCycleNumber);
-  }, [currentCycleNumber, rosterCycle]);
+    if (currentCycleNumber != null) setRosterCycle(currentCycleNumber);
+  }, [currentCycleNumber]);
 
   const availableCycles = (() => {
     const set = new Set<number>();
@@ -152,6 +152,7 @@ export function OverviewTab({
   const paidCount = roster.filter((r) => r.paid).length;
   const partialCount = roster.filter((r) => r.partial).length;
   const totalMembers = roster.length;
+  const pendingCount = Math.max(0, totalMembers - paidCount - partialCount);
   const isHistoricalCycle = activeCycle != null && currentCycleNumber != null && activeCycle < currentCycleNumber;
 
   function fmtWhen(iso: string | undefined): string {
@@ -227,7 +228,7 @@ export function OverviewTab({
               radius="sm"
               style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}
             >
-              {allContribsAccess === "granted" ? `${paidCount} paid · ${partialCount} partial · ${totalMembers} members` : "Group payment status unavailable"}
+              {allContribsAccess === "granted" ? `${paidCount} paid · ${partialCount} partial · ${pendingCount} pending` : "Group payment status unavailable"}
             </Badge>
           </div>
 
