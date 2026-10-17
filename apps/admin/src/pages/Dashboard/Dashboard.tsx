@@ -13,11 +13,14 @@ import {
   UnstyledButton,
 } from '@mantine/core'
 import {
+  IconAlertTriangle,
   IconArrowUpRight,
   IconBookmarks,
+  IconCash,
   IconCheck,
   IconChevronRight,
   IconClockPause,
+  IconCompass,
   IconGauge,
   IconLock,
   IconPlayerPlay,
@@ -170,7 +173,7 @@ export function Dashboard() {
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm">
-        <SimpleGrid cols={{ base: 3, sm: 5 }} spacing="xs">
+        <SimpleGrid cols={{ base: 3, sm: 5, md: 10 }} spacing="xs">
           <IconTile
             icon={<IconPlus size={20} />}
             label="Fund wallet"
@@ -182,9 +185,34 @@ export function Dashboard() {
             onClick={() => navigate('/withdraw')}
           />
           <IconTile
+            icon={<IconCompass size={20} />}
+            label="Explore"
+            onClick={() => navigate('/rosca/how-it-works')}
+          />
+          <IconTile
+            icon={<IconUsersGroup size={20} />}
+            label="Ajo"
+            onClick={() => navigate('/rosca')}
+          />
+          <IconTile
+            icon={<IconTarget size={20} />}
+            label="Target Savings"
+            onClick={() => navigate('/target-savings')}
+          />
+          <IconTile
             icon={<IconLock size={20} />}
             label="Where it's reserved"
             onClick={() => navigate('/wallet/reservations')}
+          />
+          <IconTile
+            icon={<IconCash size={20} />}
+            label="Early Payout"
+            onClick={() => navigate('/loans')}
+          />
+          <IconTile
+            icon={<IconAlertTriangle size={20} />}
+            label="Debts"
+            onClick={() => navigate('/debts')}
           />
           <IconTile
             icon={<IconShieldCheck size={20} />}

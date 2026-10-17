@@ -21,7 +21,7 @@ import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
 import { normalizePhoneForComparison, PERSON_NAME_REGEX, validatePhone } from "@ajoti/shared";
 
-const RELATIONSHIP_OPTIONS = ["Father", "Mother", "Sister", "Brother", "Cousin", "Spouse"];
+const RELATIONSHIP_OPTIONS = ["Father", "Mother", "Son", "Daughter", "Sister", "Brother", "Cousin", "Spouse"];
 
 import { LimitCard, VerificationDataCard } from "./KycStatusSections";
 import { openDojahWidget } from "./dojah-widget";
