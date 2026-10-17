@@ -628,8 +628,9 @@ export interface Contribution {
 export async function getAllCircleContributions(
   circleId: string,
 ): Promise<Contribution[]> {
+  // Circle members and admins can read the roster; outsiders are rejected server-side.
   const res = await authRequest<{ data?: Contribution[] }>(
-    `/api/admin/rosca/${circleId}/contributions-all`,
+    `/api/rosca/${circleId}/contributions/roster`,
     { method: "GET" },
   );
   return (res as { data?: Contribution[] }).data ?? [];

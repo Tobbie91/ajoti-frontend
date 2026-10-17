@@ -19,6 +19,7 @@ import {
   getMyJoinRequests,
   getMyParticipations,
   getRoscaSchedules,
+  getCircleContributions,
   type RoscaCircle,
   type MyJoinRequest,
 } from "@/utils/api";
@@ -59,6 +60,8 @@ interface JoinedGroup {
   contributionAmountNaira: number;
   contributionAmountKobo: string;
   nextDeadlineRaw?: string;
+  nextContributionCycle?: number;
+  nextContributionAmountKobo?: string;
   memberCount: number;
   currentCycle: number;
 }
@@ -110,7 +113,7 @@ interface JoinedGroupCardProps {
 function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGroupCardProps) {
   const tone = cardToneFor(group.circleStatus);
   const t = CARD_TONE[tone];
-  const canPay = tone === "active";
+  const canPay = tone === "active" && group.nextContributionCycle != null;
   const canExit = ["DRAFT", "ACTIVE"].includes(group.circleStatus);
   const pct = Math.max(0, Math.min(100, group.totalCycles > 0 ? Math.round((group.completedCycles / group.totalCycles) * 100) : 0));
   const ringDeg = (pct / 100) * 360;
@@ -119,7 +122,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
     if (tone === "completed") return "All cycles complete";
     if (tone === "cancelled") return "Group cancelled";
     if (tone === "notready")  return "Starts when the organiser activates the group";
-    return `Cycle ${group.currentCycle || "—"} contribution`;
+    return `Cycle ${(group.nextContributionCycle ?? group.currentCycle) || "—"} contribution`;
   })();
 
   const cycleStripSubtle = (() => {
@@ -252,7 +255,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
               : "cursor-not-allowed border border-[#E5E7EB] bg-[#F3F4F6] text-[#9CA3AF]"
           }`}
         >
-          Pay contribution
+          Pay next contribution
         </button>
       </div>
 
@@ -444,13 +447,39 @@ export function Rosca() {
         }
         void Promise.all(merged.map(async (group) => {
           try {
-            const schedules = await getRoscaSchedules(group.id);
+            const [schedules, contributions] = await Promise.all([
+              getRoscaSchedules(group.id),
+              getCircleContributions(group.id),
+            ]);
             if (schedules.length === 0) return group;
             const completedCycles = schedules.filter((schedule) => schedule.status === 'COMPLETED').length;
             const totalCycles = schedules.length;
+            const paidByCycle = new Map<number, number>();
+            for (const contribution of contributions) {
+              paidByCycle.set(
+                contribution.cycleNumber,
+                (paidByCycle.get(contribution.cycleNumber) ?? 0) + Number(contribution.amount),
+              );
+            }
+            const nextSchedule = schedules
+              .filter((schedule) => ['IN_PROGRESS', 'UPCOMING'].includes((schedule.status ?? '').toUpperCase()))
+              .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))
+              .find((schedule) =>
+                schedule.cycleNumber != null &&
+                (paidByCycle.get(schedule.cycleNumber) ?? 0) < Number(group.contributionAmountKobo),
+              );
+            const nextCycle = nextSchedule?.cycleNumber;
+            const paidTowardNextCycle = nextCycle == null ? 0 : paidByCycle.get(nextCycle) ?? 0;
+            const amountDue = Math.max(0, Number(group.contributionAmountKobo) - paidTowardNextCycle);
             return {
               ...group, completedCycles, totalCycles,
               completionRate: Math.round((completedCycles / totalCycles) * 100),
+              nextContributionCycle: nextCycle,
+              nextContributionAmountKobo: String(amountDue),
+              nextDeadlineRaw: nextSchedule?.contributionDeadline,
+              nextContribution: nextSchedule?.contributionDeadline
+                ? new Date(nextSchedule.contributionDeadline).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                : group.nextContribution,
             };
           } catch {
             return group;
@@ -874,8 +903,8 @@ export function Rosca() {
         opened={payPlan !== null}
         onClose={() => setPayPlan(null)}
         circleId={payPlan?.id ?? ""}
-        nextCycleNumber={payPlan?.currentCycle || undefined}
-        contributionAmountKobo={payPlan?.contributionAmountKobo ?? "0"}
+        nextCycleNumber={payPlan?.nextContributionCycle}
+        contributionAmountKobo={payPlan?.nextContributionAmountKobo ?? payPlan?.contributionAmountKobo ?? "0"}
         nextDeadline={payPlan?.nextDeadlineRaw}
         nextPaymentFallback={payPlan?.nextContribution}
         onPaid={() => {

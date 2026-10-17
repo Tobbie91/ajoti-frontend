@@ -103,6 +103,9 @@ export function PayContributionModal({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
+          <Text size="sm" c="dimmed">
+            You can pay this cycle before its deadline. Review the cycle and amount, then confirm to continue. Your next contribution will move to the following unpaid cycle after payment is recorded.
+          </Text>
           <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
             <div className="flex justify-between py-1">
               <Text fw={500} className="text-[13px] text-[#6B7280]">Cycle</Text>

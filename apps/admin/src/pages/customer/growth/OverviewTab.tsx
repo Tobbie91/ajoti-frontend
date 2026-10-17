@@ -8,7 +8,6 @@ import {
   IconInfoCircle,
   IconCheck,
   IconClock,
-  IconLock,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -64,8 +63,8 @@ export function OverviewTab({
   const navigate = useNavigate();
   const canRequestExit = userStatus === "ACTIVE" && (circleStatus === "DRAFT" || circleStatus === "ACTIVE");
 
-  // Transparency: fetch all members' contributions. Backend may 403 for
-  // non-admins — in that case we fall back to showing current user only.
+  // Circle members and admins can read cycle contributions; non-members fall
+  // back to their own payment history only.
   const [allContribs, setAllContribs] = useState<Contribution[] | null>(null);
   const [allContribsAccess, setAllContribsAccess] = useState<"loading" | "granted" | "denied">("loading");
 
@@ -101,10 +100,11 @@ export function OverviewTab({
   })();
 
   // Build the selected-cycle paid/unpaid roster.
-  type RosterRow = { userId: string; name: string; isSelf: boolean; paid: boolean; paidAt?: string; isLate?: boolean; amount?: string };
+  type RosterRow = { userId: string; name: string; isSelf: boolean; paid: boolean; partial: boolean; paidAt?: string; isLate?: boolean; amount?: string };
   const activeCycle = rosterCycle ?? currentCycleNumber;
   const roster: RosterRow[] = members.map((m) => {
     let paid = false;
+    let partial = false;
     let paidAt: string | undefined;
     let isLate: boolean | undefined;
     let amount: string | undefined;
@@ -115,18 +115,20 @@ export function OverviewTab({
           (c) => c.userId === m.userId && c.cycleNumber === activeCycle && c.paidAt,
         );
         if (row) {
-          paid = true;
+          amount = row.amount;
+          paid = BigInt(row.amount) >= BigInt(contributionAmountKobo);
+          partial = !paid;
           paidAt = row.paidAt ?? undefined;
           isLate = row.isLate;
-          amount = row.amount;
         }
       } else if (m.userId === currentUserId) {
         // At least we always know our own status via ownContributions.
         const row = ownContributions.find((c) => c.cycleNumber === activeCycle);
         if (row) {
-          paid = true;
-          paidAt = row.paidAt;
           amount = row.amount;
+          paid = BigInt(row.amount) >= BigInt(contributionAmountKobo);
+          partial = !paid;
+          paidAt = row.paidAt;
         }
       }
     }
@@ -135,6 +137,7 @@ export function OverviewTab({
       name: m.name || `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || "Member",
       isSelf: m.userId === currentUserId,
       paid,
+      partial,
       paidAt,
       isLate,
       amount,
@@ -147,6 +150,7 @@ export function OverviewTab({
   });
 
   const paidCount = roster.filter((r) => r.paid).length;
+  const partialCount = roster.filter((r) => r.partial).length;
   const totalMembers = roster.length;
   const isHistoricalCycle = activeCycle != null && currentCycleNumber != null && activeCycle < currentCycleNumber;
 
@@ -213,7 +217,7 @@ export function OverviewTab({
                 )}
               </Text>
               <Text className="text-[12px] text-[#64748B]">
-                Transparent view for peer review. Timestamps are server-recorded.
+                Members can see each cycle’s payment status, amount, and recorded time.
               </Text>
             </div>
             <Badge
@@ -223,7 +227,7 @@ export function OverviewTab({
               radius="sm"
               style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}
             >
-              {allContribsAccess === "granted" ? `${paidCount} / ${totalMembers} paid` : "Group payment status unavailable"}
+              {allContribsAccess === "granted" ? `${paidCount} paid · ${partialCount} partial · ${totalMembers} members` : "Group payment status unavailable"}
             </Badge>
           </div>
 
@@ -261,16 +265,6 @@ export function OverviewTab({
             </div>
           )}
 
-          {allContribsAccess === "denied" && (
-            <div className="mt-3 flex items-start gap-2 rounded-lg bg-[#F9FAFB] px-3 py-2">
-              <IconLock size={14} color="#94A3B8" className="mt-0.5 flex-shrink-0" />
-              <Text className="text-[11.5px] leading-snug text-[#64748B]">
-                Only your own payment status is shown — group-wide payment visibility is
-                limited to the circle organiser.
-              </Text>
-            </div>
-          )}
-
           <div className="mt-4 flex flex-col divide-y divide-[#F1F3EF]">
             {roster.map((r) => (
               <div key={r.userId} className="flex items-center gap-3 py-2.5">
@@ -299,13 +293,13 @@ export function OverviewTab({
                       </span>
                     )}
                   </div>
-                  {r.paid && r.paidAt && (
+                  {(r.paid || r.partial) && r.paidAt && (
                     <Text className="text-[11px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                      Paid {fmtWhen(r.paidAt)}
+                      {r.partial ? "Partial payment" : "Paid"} {fmtWhen(r.paidAt)}
                       {r.amount && ` · ${formatNaira(r.amount)}`}
                     </Text>
                   )}
-                  {!r.paid && (
+                  {!r.paid && !r.partial && (
                     <Text className="text-[11px] text-[#9CA3AF]">
                       {allContribsAccess === "granted" || r.isSelf ? "Not paid yet" : "Payment status unavailable"}
                     </Text>

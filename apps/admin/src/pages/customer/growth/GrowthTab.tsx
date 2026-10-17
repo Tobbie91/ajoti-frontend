@@ -14,7 +14,6 @@ import {
   IconMessageCircle,
   IconCalendar,
   IconShieldCheck,
-  IconWallet,
   IconCheck,
   IconCash,
 } from "@tabler/icons-react";
@@ -64,9 +63,13 @@ export function GrowthTab({
   const [modalOpen, setModalOpen] = useState(false);
 
   const isActive = circleStatus.toUpperCase() === "ACTIVE";
-  const alreadyContributed =
-    nextCycleNumber != null &&
-    contributions.some((c) => c.cycleNumber === nextCycleNumber);
+  const contributedAmount = nextCycleNumber == null
+    ? 0
+    : contributions
+        .filter((c) => c.cycleNumber === nextCycleNumber)
+        .reduce((sum, c) => sum + Number(c.amount), 0);
+  const remainingAmountKobo = Math.max(0, Number(contributionAmountKobo) - contributedAmount);
+  const alreadyContributed = remainingAmountKobo === 0;
   const canContribute =
     isActive && nextCycleNumber != null && !alreadyContributed;
   const deadlineFormatted = nextDeadline
@@ -103,10 +106,13 @@ export function GrowthTab({
         onClose={() => setModalOpen(false)}
         circleId={circleId}
         nextCycleNumber={nextCycleNumber}
-        contributionAmountKobo={contributionAmountKobo}
+        contributionAmountKobo={remainingAmountKobo}
         nextDeadline={nextDeadline}
         nextPaymentFallback={nextPaymentDate}
-        onPaid={(contribution) => setContributions((prev) => [contribution, ...prev])}
+        onPaid={(contribution) => setContributions((prev) => [
+          contribution,
+          ...prev.filter((existing) => existing.id !== contribution.id),
+        ])}
       />
 
 
@@ -148,11 +154,11 @@ export function GrowthTab({
             Next Contribution
           </Text>
           <button
-            onClick={() => navigate("/fund-wallet")}
+            onClick={openModal}
             className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
           >
-            <IconWallet size={16} />
-            Fund Wallet
+            <IconCash size={16} />
+            Pay next contribution
           </button>
         </div>
       </div>
@@ -162,10 +168,10 @@ export function GrowthTab({
         <div className="flex flex-col gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Text fw={700} className="text-[14px] text-[#15803D]">
-              Cycle {nextCycleNumber} contribution due
+              Cycle {nextCycleNumber} contribution
             </Text>
             <Text fw={500} className="text-[12px] text-[#166534]">
-              {formatNaira(contributionAmountKobo)} · Deadline{" "}
+              {formatNaira(remainingAmountKobo)} remaining · Deadline{" "}
               {deadlineFormatted}
             </Text>
           </div>
