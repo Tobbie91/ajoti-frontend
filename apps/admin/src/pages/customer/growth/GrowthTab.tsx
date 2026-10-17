@@ -205,7 +205,10 @@ export function GrowthTab({
         <Text fw={500} className="text-[13px] leading-relaxed text-[#0C4A6E]">
           Your trust score is based on your payment history. Consistent on-time
           payments increase your score. Late or missed payments reduce it.
-          Late-payment fees are paid to your circle admin.{" "}
+          Late contributions after the deadline incur a 1.5% fee. If a missed
+          contribution remains unpaid after 23:59 WAT, its outstanding principal
+          is recalculated at 4%; this replaces the 1.5% and does not stack. Fees
+          go to Ajoti platform revenue.{" "}
           <button
             onClick={() => navigate("/debts")}
             className="cursor-pointer font-semibold underline"
@@ -234,7 +237,7 @@ export function GrowthTab({
                   Amount
                 </th>
                 <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">
-                  Penalty
+                  Late fee
                 </th>
                 <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">
                   Status
@@ -286,7 +289,12 @@ export function GrowthTab({
                           fw={500}
                           className={`text-[13px] ${penalty > 0 ? "text-[#EF4444]" : "text-[#6B7280]"}`}
                         >
-                          {penalty > 0 ? formatNaira(c.penaltyAmount) : "-"}
+                          {penalty > 0 ? (
+                            <>
+                              {formatNaira(c.penaltyAmount)}
+                              <span className="mt-0.5 block text-[10px] text-[#6B7280]">1.5% after deadline</span>
+                            </>
+                          ) : "-"}
                         </Text>
                       </td>
                       <td className="px-3 py-3.5 sm:px-5">

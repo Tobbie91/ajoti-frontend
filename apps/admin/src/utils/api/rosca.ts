@@ -252,6 +252,7 @@ export interface Debt {
     collateral: string;
     penalty: string;
   };
+  lateFeeRateBps?: number | null;
   blocksLoanEligibility: boolean;
   createdAt: string;
   settledAt: string | null;

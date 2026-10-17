@@ -62,6 +62,17 @@ function DebtCard({ debt, onRepaid }: { debt: Debt; onRepaid: () => void }) {
         <Text fw={700} className="text-[15px] text-[#0F172A]">{formatNaira(debt.outstandingTotal)}</Text>
       </div>
 
+      {debt.lateFeeRateBps != null && outstanding > 0 && (
+        <div className="mt-3 rounded-xl bg-[#F0F9FF] px-3 py-2">
+          <Text fw={600} className="text-[11px] text-[#0C4A6E]">
+            Current late fee rate: {debt.lateFeeRateBps / 100}%
+          </Text>
+          <Text className="mt-0.5 text-[11px] leading-relaxed text-[#0C4A6E]">
+            After 23:59 WAT, the rate changes from 1.5% to 4% of outstanding principal. The 4% replaces the 1.5%; it does not stack.
+          </Text>
+        </div>
+      )}
+
       {debt.blocksLoanEligibility && (
         <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#FEF3C7] px-3 py-2">
           <IconAlertTriangle size={14} color="#92400E" className="mt-0.5 flex-shrink-0" />
