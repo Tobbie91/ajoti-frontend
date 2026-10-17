@@ -40,11 +40,11 @@ const ACCOUNT_LABELS: Record<SystemAccountType, { title: string; description: st
   },
   PLATFORM_REVENUE: {
     title: 'Platform Revenue',
-    description: "Ajoti revenue, including its 2% share of early-payout fees.",
+    description: 'Ajoti revenue, including the full early-payout fee collected at repayment.',
   },
   LOAN_FLOAT: {
     title: 'Loan Float',
-    description: 'Early-payout lending capital, principal repayments, and provider 2% fee share.',
+    description: 'Early-payout lending capital. Repaid principal returns to this account.',
   },
 }
 
