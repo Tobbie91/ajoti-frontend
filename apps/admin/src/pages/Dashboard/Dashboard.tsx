@@ -229,8 +229,8 @@ export function Dashboard() {
         </SimpleGrid>
       </Paper>
 
-      {/* ─── Create-pair ──────────────────────────────────────────── */}
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+      {/* ─── Create-pair + jump-to My Groups ──────────────────────── */}
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <CreateCard
           icon={<IconUsersGroup size={22} />}
           title="Create an Ajo group"
@@ -244,6 +244,13 @@ export function Dashboard() {
           subtitle="Lock funds toward a specific goal"
           cta="Create"
           onClick={() => navigate('/target-savings?create=1')}
+        />
+        <CreateCard
+          icon={<IconBookmarks size={22} />}
+          title="My Groups"
+          subtitle="View and manage the groups you created"
+          cta="Open"
+          onClick={() => navigate('/rosca/groups')}
         />
       </SimpleGrid>
 

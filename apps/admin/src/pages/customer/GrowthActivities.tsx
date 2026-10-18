@@ -3,7 +3,7 @@ import { MembersTab } from "./growth/MembersTab";
 import { AdminTab } from "./growth/AdminTab";
 import { GrowthTab } from "./growth/GrowthTab";
 import { PeerReviewsTab } from "./growth/PeerReviewsTab";
-import { circleStatusBadge, mapSchedulesToCycles } from "./growth/utils";
+import { circleStatusBadge, formatNaira, mapSchedulesToCycles } from "./growth/utils";
 import type { CycleRow } from "./growth/utils";
 import { useState, useEffect } from "react";
 import {
@@ -83,6 +83,7 @@ export function GrowthActivities() {
   const [schedules, setSchedules] = useState<RoscaSchedule[]>([]);
   const [contributions, setContributions] = useState<CircleContribution[]>([]);
   const [userTrustScore, setUserTrustScore] = useState(0);
+  const [receiptRow, setReceiptRow] = useState<CircleContribution | null>(null);
 
   const currentUserId = (() => {
     try {
@@ -237,17 +238,38 @@ export function GrowthActivities() {
         {/* ─── Prominent Make-a-contribution button (visible on every tab) ── */}
         {circle.status === "ACTIVE" && nextSchedule && (() => {
           const nextCycle = nextSchedule.cycleNumber;
-          const alreadyPaid = nextCycle != null && contributions.some(c => c.cycleNumber === nextCycle);
-          if (alreadyPaid) {
+          const paidRow = nextCycle != null
+            ? contributions.find((c) => c.cycleNumber === nextCycle)
+            : undefined;
+          if (paidRow) {
+            const paidWhen = paidRow.paidAt
+              ? new Date(paidRow.paidAt).toLocaleString("en-NG", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
             return (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <IconCheck size={20} color="#02A36E" />
+              <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-3">
+                <div className="flex items-start gap-3">
+                  <IconCheck size={20} color="#02A36E" className="mt-0.5" />
                   <div>
                     <Text fw={700} className="text-[14px] text-[#065F46]">Cycle {nextCycle} paid</Text>
-                    <Text className="text-[12px] text-[#047857]">Thanks — you're clear until the next cycle opens.</Text>
+                    <Text className="text-[12px] text-[#047857]">
+                      {formatNaira(paidRow.amount)}{paidWhen && ` · ${paidWhen}`} · recorded by the server
+                    </Text>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setReceiptRow(paidRow)}
+                  className="cursor-pointer whitespace-nowrap text-[12.5px] font-semibold text-[#065F46] underline"
+                >
+                  View receipt
+                </button>
               </div>
             );
           }
@@ -352,6 +374,61 @@ export function GrowthActivities() {
           />
         )}
       </div>
+
+      {/* Receipt modal — opened from the "Cycle N paid" banner. */}
+      <Modal
+        opened={!!receiptRow}
+        onClose={() => setReceiptRow(null)}
+        title="Contribution receipt"
+        centered
+        radius="md"
+        size="sm"
+      >
+        {receiptRow && (
+          <div className="flex flex-col">
+            <ReceiptRow label="Group" value={circle.name} />
+            <ReceiptRow label="Cycle" value={`Cycle ${receiptRow.cycleNumber}`} />
+            <ReceiptRow label="Amount" value={formatNaira(receiptRow.amount)} />
+            {Number(receiptRow.penaltyAmount ?? 0) > 0 && (
+              <ReceiptRow label="Penalty" value={formatNaira(receiptRow.penaltyAmount)} />
+            )}
+            <ReceiptRow
+              label="Paid at"
+              value={new Date(receiptRow.paidAt).toLocaleString("en-NG", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            />
+            <ReceiptRow label="Reference" value={receiptRow.id} mono />
+            <Text className="mt-2 text-center text-[11px] text-[#94A3B8]">
+              Recorded by the server. This record is immutable.
+            </Text>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function ReceiptRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-[#F3F4F6] py-2 last:border-b-0">
+      <Text className="text-[12px] text-[#6B7280]">{label}</Text>
+      <Text
+        fw={600}
+        className="text-right text-[12.5px] text-[#0F172A]"
+        style={{
+          fontVariantNumeric: "tabular-nums",
+          wordBreak: "break-all",
+          fontFamily: mono ? "ui-monospace, SFMono-Regular, Menlo, monospace" : undefined,
+        }}
+      >
+        {value}
+      </Text>
     </div>
   );
 }

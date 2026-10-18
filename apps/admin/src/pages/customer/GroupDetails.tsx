@@ -17,10 +17,12 @@ import {
   getRoscaSchedules,
   submitPeerReview,
   getCirclePeerReviews,
+  type RoscaCircle,
   type RoscaSchedule,
   type CircleMember,
   type PeerReview,
 } from "@/utils/api";
+import { AjoGuidelines } from "@/components/AjoGuidelines";
 
 type GroupStatus = "Open" | "Invite Only";
 
@@ -53,6 +55,7 @@ export function GroupDetails() {
   const { id } = useParams();
 
   const [group, setGroup] = useState<GroupData | null>(null);
+  const [rawCircle, setRawCircle] = useState<RoscaCircle | null>(null);
   const [circleStatus, setCircleStatus] = useState<string>("");
   const [paymentPreference, setPaymentPreference] = useState<ContributionPaymentMethod>('MANUAL');
   const [paymentPreferenceSaving, setPaymentPreferenceSaving] = useState(false);
@@ -105,6 +108,7 @@ export function GroupDetails() {
             .catch(() => {});
         }
         if (circle) {
+          setRawCircle(circle);
           setCircleStatus(circle.status ?? "");
           const slotsLeft = (circle.maxSlots ?? 0) - (circle.filledSlots ?? 0);
           const adminName = circle.admin
@@ -424,6 +428,21 @@ export function GroupDetails() {
             </Text>
           </div>
         </div>
+
+        {/* Ajo Group Guidelines — full-width prospective-member preview. */}
+        {!isMember && !isCurrentUserAdmin && rawCircle && (
+          <AjoGuidelines
+            circleName={rawCircle.name}
+            contributionAmount={Number(rawCircle.contributionAmount ?? 0)}
+            frequency={rawCircle.frequency}
+            durationCycles={rawCircle.durationCycles}
+            payoutTime={rawCircle.payoutTime}
+            initialContributionDeadline={rawCircle.initialContributionDeadline}
+            collateralPercentage={rawCircle.collateralPercentage}
+            latePenaltyPercent={rawCircle.latePenaltyPercent}
+            adminName={`${rawCircle.admin?.firstName ?? ""} ${rawCircle.admin?.lastName ?? ""}`.trim() || undefined}
+          />
+        )}
 
         {/* Bottom Section */}
         <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_280px] md:gap-5">
