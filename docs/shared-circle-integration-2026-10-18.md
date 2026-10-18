@@ -50,5 +50,5 @@ Integrate and browser-test the above contracts once implemented. Full shared fin
 - `pnpm --filter ajoti-admin exec tsc -b --force`: pass.
 - Clean customer production build and staff production build: pass; existing bundle-size warnings remain.
 - `node --experimental-strip-types --test tests/circle-access.test.mjs`: 4 pass.
-- Shared-circle Playwright coverage: 22 desktop/mobile cases pass across the shared-page, management, and completed-list checks. Existing duration/deadline/navigation regressions were updated for canonical routes, current labels, and authoritative schedule fixtures.
+- Shared-circle Playwright coverage: 22 desktop/mobile cases pass across the shared-page, management, and completed-list checks. All 12 existing duration/deadline/navigation cases pass after updating canonical routes, current labels, authoritative schedule fixtures, and navigation readiness assertions.
 - Browser checks use system `/usr/bin/chromium` through an untracked local config, with video disabled because the bundled Chromium/ffmpeg were unavailable. Tests use API fixtures; no live backend or database integration is claimed.
