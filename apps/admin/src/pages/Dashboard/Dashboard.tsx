@@ -47,6 +47,7 @@ import {
 } from '@/utils/api'
 import { getMyTargetSavings, type TargetSavingsPlan } from '@/utils/targetSavingsApi'
 import { getGroupDisplayStatus } from '@/utils/group-display'
+import { circleDeadlineLabel, getCircleDeadlineState } from '@/utils/circle-deadline'
 
 const PRIMARY = '#0b6b55'
 const unavailableValue = <Text component="span" c="dimmed">—</Text>
@@ -67,6 +68,8 @@ export function Dashboard() {
   const [dashboardError, setDashboardError] = useState(false)
   const [dashStats, setDashStats] = useState<AdminDashboard | null>(null)
   const [circles, setCircles] = useState<RoscaCircle[]>([])
+  const [circlesLoading, setCirclesLoading] = useState(true)
+  const [circlesError, setCirclesError] = useState(false)
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([])
 
   const [trustOpen, setTrustOpen] = useState(false)
@@ -112,9 +115,11 @@ export function Dashboard() {
           const arr = Array.isArray(res)
             ? res
             : ((res as unknown as { data?: RoscaCircle[] } | null)?.data ?? [])
-          setCircles(arr)
+          setCircles([...new Map(arr.filter(circle => circle?.id).map(circle => [circle.id, circle])).values()])
+          setCirclesError(false)
         })
-        .catch(() => setCircles([])),
+        .catch(() => { setCircles([]); setCirclesError(true) })
+        .finally(() => setCirclesLoading(false)),
       getMyTargetSavings()
         .then((res) => setTargetPlans(Array.isArray(res) ? res : []))
         .catch(() => setTargetPlans([])),
@@ -123,7 +128,7 @@ export function Dashboard() {
 
   const bucketCounts = useMemo(() => {
     const counts = { Active: 0, 'Not Ready': 0, Ready: 0, Completed: 0 } as Record<string, number>
-    const safeCircles = Array.isArray(circles) ? circles : []
+    const safeCircles = (Array.isArray(circles) ? circles : []).filter(c => (c.status ?? '').toUpperCase() !== 'CANCELLED')
     for (const c of safeCircles) {
       const status = getGroupDisplayStatus(c)
       counts[status] = (counts[status] ?? 0) + 1
@@ -133,9 +138,24 @@ export function Dashboard() {
       notReady: counts['Not Ready'],
       ready: counts.Ready,
       completed: counts.Completed,
+      total: safeCircles.length,
       targetSavings: Array.isArray(targetPlans) ? targetPlans.length : 0,
     }
   }, [circles, targetPlans])
+
+  const nonCancelledCircles = circles.filter((circle) => circle.status?.toUpperCase() !== 'CANCELLED')
+  const allCirclesCompleted = nonCancelledCircles.length > 0 && nonCancelledCircles.every((circle) => circle.status?.toUpperCase() === 'COMPLETED')
+  const circlesArePlanned = nonCancelledCircles.length > 0 && nonCancelledCircles.every((circle) => circle.status?.toUpperCase() === 'DRAFT')
+  const deadlineState = getCircleDeadlineState({
+    circleStatus: dashStats?.nextDeadline ? 'ACTIVE' : allCirclesCompleted ? 'COMPLETED' : circlesArePlanned ? 'DRAFT' : undefined,
+    deadline: dashStats?.nextDeadline?.deadline,
+    failed: dashboardError,
+  })
+  const formattedDeadline = dashStats?.nextDeadline && ['upcoming', 'overdue'].includes(deadlineState)
+    ? new Date(dashStats.nextDeadline.deadline).toLocaleString('en-NG', {
+        timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      })
+    : null
 
   return (
     <Stack gap="lg">
@@ -232,7 +252,7 @@ export function Dashboard() {
       </Paper>
 
       {/* ─── Create-pair + jump-to My Groups ──────────────────────── */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
         <CreateCard
           icon={<IconUsersGroup size={22} />}
           title="Create an Ajo group"
@@ -249,10 +269,17 @@ export function Dashboard() {
         />
         <CreateCard
           icon={<IconBookmarks size={22} />}
-          title="My Groups"
-          subtitle="View and manage the groups you created"
+          title="Groups I manage"
+          subtitle="View circles you administer"
           cta="Open"
           onClick={() => navigate('/rosca/groups')}
+        />
+        <CreateCard
+          icon={<IconUsersGroup size={22} />}
+          title="Groups I’ve joined"
+          subtitle="Open joined circles and completed history"
+          cta="View"
+          onClick={() => navigate('/rosca?tab=joined')}
         />
       </SimpleGrid>
 
@@ -262,18 +289,14 @@ export function Dashboard() {
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <StatsCard
           title="Total Groups"
-          value={dashStats ? String(dashStats.totalGroups) : unavailableValue}
-          subtitle="Excludes cancelled groups"
+          value={circlesLoading ? unavailableValue : circlesError ? unavailableValue : String(bucketCounts.total)}
+          subtitle={circlesError ? 'Failed to load administered circles' : 'Unique administered circles · excludes cancelled'}
           withBar
         />
         <StatsCard
           title="Next Deadline"
-          value={
-            dashStats?.nextDeadline
-              ? new Date(dashStats.nextDeadline.deadline).toLocaleDateString('en-NG')
-              : unavailableValue
-          }
-          subtitle={dashboardError ? 'Failed to load' : dashStats?.nextDeadline?.groupName ?? (dashStats ? 'No scheduled deadline' : 'Loading…')}
+          value={formattedDeadline ?? (deadlineState === 'completed' ? 'Completed' : deadlineState === 'planned' ? 'Not scheduled' : unavailableValue)}
+          subtitle={deadlineState === 'failed' ? 'Failed to load' : dashStats?.nextDeadline ? `${dashStats.nextDeadline.groupName} · ${circleDeadlineLabel[deadlineState]}` : circleDeadlineLabel[deadlineState]}
         />
         <StatsCard
           title="People requesting to join"
@@ -284,6 +307,7 @@ export function Dashboard() {
         />
       </SimpleGrid>
 
+      {circlesError && <Text role="alert" c="red">Unable to load administered circle counts. Try refreshing the page.</Text>}
       {/* ─── Group buckets ────────────────────────────────────────── */}
       <Box>
         <Group justify="space-between" align="flex-end" mb="sm">
@@ -306,7 +330,7 @@ export function Dashboard() {
             tone="active"
             icon={<IconPlayerPlay size={14} />}
             label="Active"
-            count={bucketCounts.active}
+            count={circlesLoading || circlesError ? null : bucketCounts.active}
             context="Running now"
             onClick={() => navigate('/rosca/groups?status=active')}
           />
@@ -314,7 +338,7 @@ export function Dashboard() {
             tone="notready"
             icon={<IconClockPause size={14} />}
             label="Not Ready"
-            count={bucketCounts.notReady}
+            count={circlesLoading || circlesError ? null : bucketCounts.notReady}
             context="Waiting for members"
             onClick={() => navigate('/rosca/groups?status=not-ready')}
           />
@@ -322,7 +346,7 @@ export function Dashboard() {
             tone="ready"
             icon={<IconBookmarks size={14} />}
             label="Ready"
-            count={bucketCounts.ready}
+            count={circlesLoading || circlesError ? null : bucketCounts.ready}
             context="All slots filled — activate"
             onClick={() => navigate('/rosca/groups?status=ready')}
           />
@@ -330,7 +354,7 @@ export function Dashboard() {
             tone="completed"
             icon={<IconCheck size={14} />}
             label="Completed"
-            count={bucketCounts.completed}
+            count={circlesLoading || circlesError ? null : bucketCounts.completed}
             context="Finished cycles"
             onClick={() => navigate('/rosca/groups?status=completed')}
           />
@@ -555,7 +579,7 @@ function BucketTile({
   tone: keyof typeof BUCKET_TONES
   icon: React.ReactNode
   label: string
-  count: number
+  count: number | null
   context: string
   onClick: () => void
 }) {
@@ -563,7 +587,7 @@ function BucketTile({
   return (
     <UnstyledButton
       onClick={onClick}
-      aria-label={`${label} — ${count}`}
+      aria-label={`${label} — ${count === null ? 'count unavailable' : count}`}
       style={{
         padding: '16px 14px 14px',
         background: '#FFFFFF',
@@ -622,7 +646,7 @@ function BucketTile({
           letterSpacing: '-0.015em',
         }}
       >
-        {count}
+        {count === null ? '—' : count}
       </Text>
       <Text fz="xs" c="dimmed" lh={1.3}>
         {context}
