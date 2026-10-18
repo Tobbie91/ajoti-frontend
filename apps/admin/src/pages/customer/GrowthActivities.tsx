@@ -1,3 +1,6 @@
+import { ContributionPaymentPreference } from './growth/ContributionPaymentPreference';
+import { circleAccess } from '@/utils/circle-access';
+import { GroupContributionsTab } from '../GroupDetail/GroupContributionsTab';
 import { OverviewTab } from "./growth/OverviewTab";
 import { MembersTab } from "./growth/MembersTab";
 import { AdminTab } from "./growth/AdminTab";
@@ -44,6 +47,7 @@ import {
 
 const GROUP_TABS = [
   "Overview",
+  "Contributions",
   "Members",
   "Admin",
   "Growth & Activities",
@@ -54,6 +58,7 @@ const GROUP_TABS = [
 
 const TAB_SLUG: Record<string, string> = {
   overview: "Overview",
+  contributions: "Contributions",
   members: "Members",
   admin: "Admin",
   growth: "Growth & Activities",
@@ -97,16 +102,19 @@ export function GrowthActivities() {
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
-    Promise.all([
-      getRoscaCircle(id),
-      getRoscaSchedules(id),
-      getCircleContributions(id),
-      getTrustScore().catch(
-        () => ({ trustScore: 0 }) as { trustScore: number },
-      ),
-    ])
+    getRoscaCircle(id).then(async c => {
+      const access = circleAccess(c, currentUserId);
+      if (!access.view) throw new Error('Group activity is unavailable for this membership.');
+      const [s, contrib, ts] = await Promise.all([
+        getRoscaSchedules(id),
+        access.approvedMember ? getCircleContributions(id) : Promise.resolve([]),
+        getTrustScore().catch(() => ({ trustScore: 0 })),
+      ]);
+      return [c, s, contrib, ts] as const;
+    })
       .then(([c, s, contrib, ts]) => {
         if (cancelled) return;
+        if (c.previewOnly === true) { setLoadError("Group activity is unavailable for this membership."); return; }
         setCircle(c);
         setSchedules(s);
         setContributions(contrib);
@@ -117,7 +125,7 @@ export function GrowthActivities() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [id, refreshVersion]);
+  }, [id, refreshVersion, currentUserId]);
 
   if (loading) {
     return (
@@ -144,7 +152,8 @@ export function GrowthActivities() {
     );
   }
 
-  const members = ((circle as any).members as CircleMember[]) ?? [];
+  const { approvedMember, manage } = circleAccess(circle, currentUserId);
+  const members = circle.members ?? [];
   const adminName = circle.admin
     ? `${circle.admin.firstName} ${circle.admin.lastName}`.trim()
     : "Admin";
@@ -210,7 +219,7 @@ export function GrowthActivities() {
             className="flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm"
           >
             <IconArrowLeft size={18} color="#374151" />
-            Back
+            Back to joined groups
           </button>
           <Text fw={700} className="text-[22px] text-[#0F172A]">
             {circle.name}
@@ -218,9 +227,14 @@ export function GrowthActivities() {
           <button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="ml-auto cursor-pointer text-sm font-semibold text-[#02A36E]">Refresh</button>
         </div>
 
+        <div className="flex flex-wrap gap-3">
+          {manage && <button type="button" className="text-sm font-semibold text-[#0B6B55]" onClick={() => navigate(`/rosca/${id}?view=manage`)}>Manage Group</button>}
+          {approvedMember && <button type="button" className="text-sm font-semibold text-[#0B6B55]" onClick={() => navigate(`/messages?circleId=${id}`)}>Group chat{circle.status === 'COMPLETED' ? ' history' : ''}</button>}
+        </div>
+        {circle.status === 'COMPLETED' && <Text size="sm" c="dimmed">This group is completed. Financial history and previous chat remain available; new contributions and chat messages are closed.</Text>}
         {/* ─── Pill tabs at the top — full width, bold ──────────────────── */}
-        <div className="grid grid-cols-5 gap-1.5 rounded-xl bg-[#F1F3EF] p-1">
-          {GROUP_TABS.map((tab) => {
+        <div className="flex overflow-x-auto gap-1.5 rounded-xl bg-[#F1F3EF] p-1">
+          {GROUP_TABS.filter(tab => approvedMember || !["Growth & Activities", "Peer Reviews"].includes(tab)).map((tab) => {
             const active = activeTab === tab;
             return (
               <button
@@ -240,7 +254,7 @@ export function GrowthActivities() {
         </div>
 
         {/* ─── Prominent Make-a-contribution button (visible on every tab) ── */}
-        {circle.status === "ACTIVE" && nextUnpaidSchedule && (() => {
+        {approvedMember && circle.status === "ACTIVE" && nextUnpaidSchedule && (() => {
           const nextCycle = nextUnpaidSchedule.cycleNumber;
           if (nextCycle == null) return null;
           return (
@@ -287,7 +301,7 @@ export function GrowthActivities() {
             nextPaymentDate={nextPaymentDate}
             contributionAmountKobo={circle.contributionAmount}
             frequency={(circle as any).frequency ?? ""}
-            userStatus={(circle as any).userMembershipStatus ?? "ACTIVE"}
+            userStatus={String(circle.userMembershipStatus ?? (approvedMember ? "ACTIVE" : "ADMIN"))}
             totalContributedKobo={totalContributed}
             completedCycles={completedCycles}
             totalCycles={totalCycles}
@@ -300,6 +314,7 @@ export function GrowthActivities() {
             refreshVersion={refreshVersion}
           />
         )}
+        {activeTab === "Contributions" && <GroupContributionsTab circleId={id} isActive />}
         {activeTab === "Members" && (
           <MembersTab
             circleName={circle.name}
@@ -316,7 +331,8 @@ export function GrowthActivities() {
             adminBio={(circle as any).description ?? ""}
           />
         )}
-        {activeTab === "Growth & Activities" && (
+        {activeTab === "Growth & Activities" && approvedMember && circle.status === "ACTIVE" && <ContributionPaymentPreference circleId={id!} />}
+        {activeTab === "Growth & Activities" && approvedMember && (
           <GrowthTab
             trustPercent={trustPercent}
             trustScore={userTrustScore}
@@ -336,7 +352,7 @@ export function GrowthActivities() {
             openContributionOnLoad={contributionShortcut}
           />
         )}
-        {activeTab === "Peer Reviews" && (
+        {activeTab === "Peer Reviews" && approvedMember && (
           <PeerReviewsTab
             circleId={id!}
             circleName={circle.name}

@@ -62,6 +62,7 @@ export function PeerReviewsTab({
   const [submitStep, setSubmitStep] = useState<"idle" | "submitting" | "done">(
     "idle",
   );
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
 
   const isCompleted = circleStatus.toUpperCase() === "COMPLETED";
@@ -89,6 +90,7 @@ export function PeerReviewsTab({
   async function handleSubmit() {
     if (!selectedMember || rating === 0) return;
     setSubmitStep("submitting");
+    setSubmitError(null);
     try {
       await submitPeerReview(circleId, {
         revieweeId: selectedMember.userId,
@@ -96,8 +98,10 @@ export function PeerReviewsTab({
         comment: message.trim() || undefined,
       });
       setSubmitted((prev) => new Set([...prev, selectedMember.userId]));
-    } catch {
-      /* still mark as done */
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to submit review. Please try again.");
+      setSubmitStep("idle");
+      return;
     }
     setSubmitStep("done");
   }
@@ -105,6 +109,7 @@ export function PeerReviewsTab({
   if (selectedMember) {
     return (
       <div className="flex flex-col gap-6">
+        {submitError && <Text role="alert" c="red">{submitError}</Text>}
         <div className="flex items-center gap-3">
           <button
             onClick={() => {

@@ -31,7 +31,7 @@ function initials(name: string): string {
 function fmtDateShort(iso?: string | null): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+    return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Lagos" });
   } catch {
     return "—";
   }
@@ -248,11 +248,8 @@ export function OverviewTab({
     .pop();
 
   // "Due" line text for the active cycle.
-  const dueDateStr = activeCycle === currentCycleNumber
-    ? nextPaymentDate
-    : (cycles.find((c) => c.cycle === activeCycle)?.payoutDate
-        ? fmtDateShort(cycles.find((c) => c.cycle === activeCycle)?.payoutDate)
-        : "—");
+  const dueDateStr = fmtDateShort(cycles.find(c => c.cycle === activeCycle)?.contributionDeadline);
+
 
   return (
     <div className="flex flex-col gap-5">
@@ -296,7 +293,8 @@ export function OverviewTab({
       </div>
 
       {/* ─── Cycle contributions card ──────────────────────────────── */}
-      {activeCycle != null && members.length > 0 && (
+      {allContribsAccess !== "granted" && <Text role="status" c={allContribsAccess === "denied" ? "red" : "dimmed"}>{allContribsAccess === "loading" ? "Loading circle payment progress…" : "Unable to load circle payment progress. Refresh to try again."}</Text>}
+      {allContribsAccess === "granted" && activeCycle != null && members.length > 0 && (
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
           {/* Header: title + per-member + due + last-updated | cycle pills */}
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -318,7 +316,7 @@ export function OverviewTab({
                 <Text className="text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
                   Cycle
                 </Text>
-                <div className="flex gap-1.5">
+                <div className="flex max-w-[65vw] gap-1.5 overflow-x-auto">
                   {availableCycles.map((n) => {
                     const isActive = n === activeCycle;
                     return (
@@ -365,7 +363,7 @@ export function OverviewTab({
           </div>
 
           {/* Who's paid table */}
-          <div className="mt-5">
+          <div className="mt-5 overflow-x-auto">
             <div className="flex items-center justify-between">
               <Text fw={600} className="text-[13.5px] text-[#0F172A]">
                 Who's paid
@@ -435,7 +433,7 @@ export function OverviewTab({
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: "Total Contributed", value: formatNaira(totalContributedKobo) },
+          { label: "Total Contributed", value: userStatus === "ADMIN" ? "Not a member" : formatNaira(totalContributedKobo) },
           { label: `${frequency || "Per Cycle"} Due`, value: formatNaira(contributionAmountKobo) },
           { label: "Frequency", value: frequency },
           { label: "Your Status", value: userStatus === "ACTIVE" ? "Active" : userStatus, isGreen: userStatus === "ACTIVE" },
@@ -528,7 +526,7 @@ export function OverviewTab({
       </div>
 
       {/* Compact collateral — bottom of Overview, not a page-level block anymore */}
-      <RoscaCommitments circleId={circleId} refreshVersion={refreshVersion} />
+      {userStatus !== "ADMIN" && <RoscaCommitments circleId={circleId} refreshVersion={refreshVersion} />}
 
       {canRequestExit && (
         <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">

@@ -5,13 +5,14 @@ export interface CycleRow {
   recipientName: string;
   status: "Completed" | "Current" | "Upcoming";
   payoutDate?: string;
+  contributionDeadline?: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 export function formatNaira(kobo: string | number): string {
   const n = Number(kobo) / 100;
-  return `₦${n.toLocaleString("en-NG", { minimumFractionDigits: 0 })}`;
+  return `₦${n.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function getRatingColor(value: number): string {
@@ -67,6 +68,7 @@ export function mapSchedulesToCycles(
       recipientName,
       status: rowStatus,
       payoutDate: s.payoutDate,
+      contributionDeadline: s.contributionDeadline,
     };
   });
 }

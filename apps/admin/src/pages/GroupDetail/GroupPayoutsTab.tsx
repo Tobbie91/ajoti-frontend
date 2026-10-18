@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCircleEarlyPayouts, type CircleEarlyPayout } from '@/utils/api/rosca'
 import { Stack, Paper, Text, Group, Button, TextInput, Table, Avatar, Badge, Loader } from '@mantine/core'
-import { IconPlayerPlay, IconRefresh, IconArrowBackUp } from '@tabler/icons-react'
+import { IconPlayerPlay, IconRefresh } from '@tabler/icons-react'
 import type { Payout } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
@@ -16,8 +16,6 @@ interface GroupPayoutsTabProps {
   processingCycle: number | null
   onProcessPayout: () => void
   onRefresh: () => void
-  onRetryPayout: (payoutId: string) => void
-  onReverseClick: (payout: Payout) => void
 }
 
 export function GroupPayoutsTab({
@@ -30,8 +28,6 @@ export function GroupPayoutsTab({
   processingCycle,
   onProcessPayout,
   onRefresh,
-  onRetryPayout,
-  onReverseClick,
 }: GroupPayoutsTabProps) {
   const [earlyPayouts, setEarlyPayouts] = useState<CircleEarlyPayout[]>([])
   const [earlyPayoutError, setEarlyPayoutError] = useState<string | null>(null)
@@ -106,7 +102,7 @@ export function GroupPayoutsTab({
           </Button>
         </Group>
 
-        {payoutsLoading ? (
+        {payoutError ? <Text role="alert" c="red" p="lg">{payoutError}</Text> : payoutsLoading ? (
           <Group justify="center" py="xl">
             <Loader size="sm" color={PRIMARY} />
           </Group>
@@ -119,13 +115,12 @@ export function GroupPayoutsTab({
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
-                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}></Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {payouts.length === 0 && (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={5}>
                     <Text c="dimmed" ta="center" py="xl" fz="sm">No payouts found for this circle</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -170,38 +165,7 @@ export function GroupPayoutsTab({
                         {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG') : '-'}
                       </Text>
                     </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        {p.status === 'FAILED' && (
-                          <Button
-                            variant="subtle"
-                            size="xs"
-                            px="xs"
-                            leftSection={<IconRefresh size={12} />}
-                            style={{ color: '#e67e22' }}
-                            onClick={() => onRetryPayout(p.id)}
-                          >
-                            Retry
-                          </Button>
-                        )}
-                        {/* Reversal is an admin recovery tool for a payout still
-                            stuck mid-flight (PENDING/PROCESSING). A COMPLETED/settled
-                            payout is not reversible - the backend rejects it too, this
-                            isn't just a hidden-but-callable button. */}
-                          {(p.status === 'PENDING' || p.status === 'PROCESSING') && (
-                          <Button
-                            variant="subtle"
-                            size="xs"
-                            px="xs"
-                            leftSection={<IconArrowBackUp size={12} />}
-                            style={{ color: '#e74c3c' }}
-                            onClick={() => onReverseClick(p)}
-                          >
-                            Reverse
-                          </Button>
-                        )}
-                      </Group>
-                    </Table.Td>
+
                   </Table.Tr>
                 )
               })}

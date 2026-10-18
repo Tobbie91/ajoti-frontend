@@ -40,8 +40,6 @@ import {
 import {
   getPayoutHistory,
   processPayout,
-  retryPayout,
-  reversePayout,
   getAdminCircleDetail,
   activateRoscaCircle,
   updatePayoutConfig,
@@ -52,7 +50,6 @@ import {
   getFinancialHealth,
   getCircleJoinRequests,
   closeRoscaCircle,
-  extendCycleDeadline,
   type Payout,
   type RoscaCircle,
   type PayoutAssignment,
@@ -358,15 +355,9 @@ export function GroupDetail() {
   const [payoutError, setPayoutError] = useState<string | null>(null)
   const [processingCycle, setProcessingCycle] = useState<number | null>(null)
   const [processCycleInput, setProcessCycleInput] = useState('')
-  const [reverseModal, setReverseModal] = useState(false)
-  const [reversePayout_, setReversePayout_] = useState<Payout | null>(null)
-  const [reverseReason, setReverseReason] = useState('')
-  const [reverseLoading, setReverseLoading] = useState(false)
-
   // Payment Oversight state
   const [extendModal, setExtendModal] = useState<{ cycleNumber: number } | null>(null)
   const [extendDate, setExtendDate] = useState<string | null>(null)
-  const [extendLoading, setExtendLoading] = useState(false)
   const [extendError, setExtendError] = useState<string | null>(null)
   const [paymentsRefreshToken, setPaymentsRefreshToken] = useState(0)
 
@@ -375,8 +366,8 @@ export function GroupDetail() {
     if (id && !payoutsFetched.current) {
       payoutsFetched.current = true
       getPayoutHistory(id)
-        .then(setPayouts)
-        .catch(() => setPayouts([]))
+        .then(value => { setPayouts(value); setPayoutError(null) })
+        .catch(() => setPayoutError('Unable to load payout history. Refresh to try again.'))
     }
   }, [id])
 
@@ -384,8 +375,8 @@ export function GroupDetail() {
     if (activeTab === 'payouts' && id) {
       setPayoutsLoading(true)
       getPayoutHistory(id)
-        .then(setPayouts)
-        .catch(() => setPayouts([]))
+        .then(value => { setPayouts(value); setPayoutError(null) })
+        .catch(() => setPayoutError('Unable to load payout history. Refresh to try again.'))
         .finally(() => setPayoutsLoading(false))
     }
     if (activeTab === 'payments' && id) {
@@ -402,24 +393,6 @@ export function GroupDetail() {
       loadInvites()
     }
   }, [activeTab, id])
-
-  async function handleExtendDeadline() {
-    if (!id || !extendModal || !extendDate) return
-    setExtendLoading(true)
-    setExtendError(null)
-    try {
-      await extendCycleDeadline(id, extendModal.cycleNumber, new Date(extendDate).toISOString())
-      setExtendModal(null)
-      setExtendDate(null)
-      const updatedHealth = await getFinancialHealth(id)
-      setFinancialHealth(updatedHealth)
-      setPaymentsRefreshToken((t) => t + 1)
-    } catch (err) {
-      setExtendError(err instanceof Error ? err.message : 'Failed to extend deadline')
-    } finally {
-      setExtendLoading(false)
-    }
-  }
 
   async function handleProcessPayout() {
     const cycleNum = parseInt(processCycleInput)
@@ -440,47 +413,6 @@ export function GroupDetail() {
     }
   }
 
-  async function handleRetryPayout(payoutId: string) {
-    try {
-      await retryPayout(payoutId)
-      if (id) {
-        const updated = await getPayoutHistory(id)
-        setPayouts(updated)
-        setRefreshVersion(v => v + 1)
-        setPaymentsRefreshToken(v => v + 1)
-      }
-    } catch (err) {
-      setPayoutError(err instanceof Error ? err.message : 'Failed to retry payout')
-    }
-  }
-
-  async function handleReversePayout() {
-    if (!reversePayout_) return
-    setReverseLoading(true)
-    try {
-      await reversePayout({
-        originalPayoutId: reversePayout_.id,
-        recipientId: String(reversePayout_.recipientId ?? ''),
-        scheduleId: String(reversePayout_.scheduleId ?? ''),
-        amount: String(reversePayout_.amount),
-        reason: reverseReason,
-      })
-      setReverseModal(false)
-      setReversePayout_(null)
-      setReverseReason('')
-      if (id) {
-        const updated = await getPayoutHistory(id)
-        setPayouts(updated)
-        setRefreshVersion(v => v + 1)
-        setPaymentsRefreshToken(v => v + 1)
-      }
-    } catch (err) {
-      setPayoutError(err instanceof Error ? err.message : 'Failed to reverse payout')
-    } finally {
-      setReverseLoading(false)
-    }
-  }
-
   type ApiMember = { userId: string; name: string; status: string; position: number | null; joinedAt: string; avatarUrl?: string | null }
   const apiMembers: ApiMember[] = ((circleData as Record<string, unknown>)?.members as ApiMember[]) ?? []
   const filteredMembers = apiMembers.filter((m) =>
@@ -491,12 +423,19 @@ export function GroupDetail() {
   })()
   const hasOwnMembership = apiMembers.some(m => m.userId === currentUserId && (m.status === 'ACTIVE' || m.status === 'PENDING'))
 
+  const selectedDeadline = extendDate ? new Date(`${extendDate.slice(0, 10)}T23:59:59+01:00`) : null
+  const selectedCycle = financialHealth?.cycles?.find(cycle => cycle.cycleNumber === extendModal?.cycleNumber)
+  const followingCycle = financialHealth?.cycles?.find(cycle => cycle.cycleNumber === (extendModal?.cycleNumber ?? 0) + 1)
+  const invalidExtension = selectedDeadline && selectedCycle?.contributionDeadline
+    ? selectedDeadline <= new Date(selectedCycle.contributionDeadline)
+    : false
+
   if (circleLoading) return <Group justify="center" py="xl"><Loader color={PRIMARY} aria-label="Loading group" /></Group>
   if (circleError || !circleData) return <Stack><Alert color="red">{circleError ?? 'Group not found.'}</Alert><Button onClick={() => setRefreshVersion(v => v + 1)}>Try again</Button><Button variant="subtle" onClick={() => navigate('/rosca/groups')}>Back to groups</Button></Stack>
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between"><Button variant="subtle" onClick={() => navigate('/rosca/groups')}>Back to groups</Button><Button variant="light" leftSection={<IconRefresh size={14} />} onClick={() => { setRefreshVersion(v => v + 1); setPaymentsRefreshToken(v => v + 1) }}>Refresh group</Button></Group>
+      <Group justify="space-between"><Button variant="subtle" onClick={() => navigate(`/rosca/${id}`)}>View shared group information</Button><Button variant="light" leftSection={<IconRefresh size={14} />} onClick={() => { setRefreshVersion(v => v + 1); setPaymentsRefreshToken(v => v + 1) }}>Refresh group</Button></Group>
       {circleLoading && (
         <Group justify="center" py="xl">
           <Loader size="md" color={PRIMARY} />
@@ -747,14 +686,9 @@ export function GroupDetail() {
             onRefresh={() => {
               if (!id) return
               setPayoutsLoading(true)
-              getPayoutHistory(id).then(setPayouts).catch(() => {}).finally(() => setPayoutsLoading(false))
+              getPayoutHistory(id).then(value => { setPayouts(value); setPayoutError(null) }).catch(() => setPayoutError('Unable to load payout history. Refresh to try again.')).finally(() => setPayoutsLoading(false))
             }}
-            onRetryPayout={handleRetryPayout}
-            onReverseClick={(payout) => {
-              setReversePayout_(payout)
-              setReverseReason('')
-              setReverseModal(true)
-            }}
+
           />
         </Tabs.Panel>
 
@@ -770,68 +704,6 @@ export function GroupDetail() {
       </Tabs>
       )}
 
-      {/* Reverse Payout Modal */}
-      <Modal
-        opened={reverseModal}
-        onClose={() => setReverseModal(false)}
-        centered
-        radius="md"
-        size="sm"
-        title={<Text fw={700} fz="md">Reverse Payout</Text>}
-      >
-        <Stack gap="md">
-          {reversePayout_ && (
-            <Paper p="md" radius="md" style={{ background: '#f8f9fa' }}>
-              <Group justify="space-between" mb="xs">
-                <Text fz="sm" c="dimmed">Payout ID</Text>
-                <Text fz="sm" fw={500} style={{ fontFamily: 'monospace', fontSize: 11 }}>{reversePayout_.id}</Text>
-              </Group>
-              <Group justify="space-between" mb="xs">
-                <Text fz="sm" c="dimmed">Cycle</Text>
-                <Text fz="sm" fw={600}>Cycle {reversePayout_.cycleNumber}</Text>
-              </Group>
-              <Group justify="space-between">
-                <Text fz="sm" c="dimmed">Amount</Text>
-                <Text fz="sm" fw={600} c="red">₦{(Number(reversePayout_.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text>
-              </Group>
-            </Paper>
-          )}
-          <TextInput
-            label="Reason for reversal"
-            placeholder="e.g. Bank transfer failed: Account invalid"
-            radius="md"
-            size="sm"
-            value={reverseReason}
-            onChange={(e) => setReverseReason(e.currentTarget.value)}
-            styles={{ input: { border: '1px solid #dee2e6' } }}
-          />
-          {payoutError && <Text fz="sm" c="red">{payoutError}</Text>}
-          <Group gap="sm">
-            <Button
-              variant="outline"
-              radius="md"
-              size="sm"
-              flex={1}
-              style={{ borderColor: '#dee2e6', color: '#495057' }}
-              onClick={() => setReverseModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              radius="md"
-              size="sm"
-              flex={1}
-              color="red"
-              loading={reverseLoading}
-              disabled={!reverseReason.trim()}
-              onClick={handleReversePayout}
-            >
-              Confirm Reverse
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-
       {/* Extend Deadline Modal */}
       <Modal
         opened={extendModal !== null}
@@ -843,10 +715,10 @@ export function GroupDetail() {
       >
         <Stack gap="md">
           <Text fz="sm" c="dimmed">
-            Set a new payout date for cycle <b>{extendModal?.cycleNumber}</b>. All subsequent cycles will also shift forward by the same amount.
+            Select a new contribution deadline for cycle <b>{extendModal?.cycleNumber}</b>. Future cycle dates remain unchanged.
           </Text>
           <DateInput
-            label="New Payout Date"
+            label="New contribution deadline (WAT)"
             placeholder="Pick a date"
             value={extendDate}
             onChange={setExtendDate}
@@ -854,6 +726,10 @@ export function GroupDetail() {
             radius="md"
             size="sm"
           />
+          {extendDate && <Text size="sm">Corresponding payout: {new Date(new Date(`${extendDate.slice(0, 10)}T00:00:00+01:00`).getTime() + 86400000).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'long', year: 'numeric' })} at 00:00 WAT.</Text>}
+          {invalidExtension && <Alert color="red">Choose a date after this cycle's current contribution deadline.</Alert>}
+          {selectedDeadline && followingCycle?.contributionDeadline && <Alert color="yellow">This extension compresses the time before cycle {followingCycle.cycleNumber}. Its deadline remains {new Date(followingCycle.contributionDeadline).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })} WAT. Overlapping dates may be rejected.</Alert>}
+          <Alert color="yellow">Submission is unavailable until the independent-cycle backend contract, cutoff time, validation and conflict responses are verified.</Alert>
           {extendError && <Text fz="sm" c="red">{extendError}</Text>}
           <Group justify="flex-end" gap="sm" mt="xs">
             <Button
@@ -868,11 +744,9 @@ export function GroupDetail() {
               radius="md"
               size="sm"
               color="orange"
-              loading={extendLoading}
-              disabled={!extendDate}
-              onClick={handleExtendDeadline}
+              disabled
             >
-              Confirm Extension
+              Extension integration pending
             </Button>
           </Group>
         </Stack>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Paper, Group, Text, Button, Loader, Table, Avatar, Badge } from '@mantine/core'
 import { IconRefresh } from '@tabler/icons-react'
 import { getAllCircleContributions, type Contribution as ApiContribution } from '@/utils/api'
@@ -13,24 +13,23 @@ interface GroupContributionsTabProps {
 export function GroupContributionsTab({ circleId, isActive }: GroupContributionsTabProps) {
   const [contributions, setContributions] = useState<ApiContribution[]>([])
   const [contribLoading, setContribLoading] = useState(false)
-  const contribsFetched = useRef(false)
+  const [error, setError] = useState<string | null>(null)
+  const [version, setVersion] = useState(0)
 
   useEffect(() => {
-    if (isActive && circleId && !contribsFetched.current) {
-      contribsFetched.current = true
-      setContribLoading(true)
-      getAllCircleContributions(circleId)
-        .then((data) => setContributions(data))
-        .catch(() => setContributions([]))
-        .finally(() => setContribLoading(false))
-    }
-  }, [isActive, circleId])
-
-  function refresh() {
-    if (!circleId) return
+    if (!isActive || !circleId) return
+    let active = true
     setContribLoading(true)
-    getAllCircleContributions(circleId).then((data) => setContributions(data)).catch(() => {}).finally(() => setContribLoading(false))
-  }
+    setError(null)
+    setContributions([])
+    getAllCircleContributions(circleId)
+      .then(data => { if (active) setContributions(data) })
+      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load contributions.') })
+      .finally(() => { if (active) setContribLoading(false) })
+    return () => { active = false }
+  }, [isActive, circleId, version])
+
+  function refresh() { setVersion(v => v + 1) }
 
   return (
     <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
@@ -48,7 +47,7 @@ export function GroupContributionsTab({ circleId, isActive }: GroupContributions
         </Button>
       </Group>
 
-      {contribLoading ? (
+      {error ? <Text role="alert" c="red" p="lg">{error}</Text> : contribLoading ? (
         <Group justify="center" py="xl">
           <Loader size="sm" color={PRIMARY} />
         </Group>

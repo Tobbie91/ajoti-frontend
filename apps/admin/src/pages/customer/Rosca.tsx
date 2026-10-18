@@ -374,7 +374,7 @@ export function Rosca() {
       }
       if (joinRes.status === "fulfilled") {
         joinRes.value
-          .filter((r) => ["ACTIVE", "STARTED"].includes((r.status ?? "").toUpperCase()))
+          .filter((r) => ["ACTIVE", "STARTED", "COMPLETED"].includes((r.status ?? "").toUpperCase()))
           .forEach((r) => ids.add(r.circleId));
       }
       setJoinedIds(ids);
@@ -458,7 +458,7 @@ export function Rosca() {
         const participations = partRes.status === "fulfilled" ? partRes.value : [];
 
         const approvedRequests = joinRequests.filter((r) =>
-          ["ACTIVE", "STARTED"].includes((r.status ?? "").toUpperCase()),
+          ["ACTIVE", "STARTED", "COMPLETED"].includes((r.status ?? "").toUpperCase()),
         );
 
         const seenIds = new Set<string>();
@@ -482,7 +482,7 @@ export function Rosca() {
               getCircleContributions(group.id),
             ]);
             if (schedules.length === 0) {
-              return { ...group, progressUnavailable: ["ACTIVE", "STARTED"].includes(group.circleStatus.toUpperCase()) };
+              return { ...group, progressUnavailable: ["ACTIVE", "STARTED", "COMPLETED"].includes(group.circleStatus.toUpperCase()) };
             }
             const completedCycles = schedules.filter((schedule) => schedule.status === 'COMPLETED').length;
             const totalCycles = schedules.length;
@@ -692,7 +692,7 @@ export function Rosca() {
                 <JoinedGroupCard
                   key={group.id}
                   group={group}
-                  onView={() => navigate(`/rosca/${group.id}/activities`)}
+                  onView={() => navigate(`/rosca/${group.id}`)}
                   onPay={() => setPayPlan(group)}
                   onChat={() =>
                     navigate(`/messages?circleId=${encodeURIComponent(group.id)}`)

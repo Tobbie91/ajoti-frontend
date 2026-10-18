@@ -1,8 +1,9 @@
+import { circleAccess } from '@/utils/circle-access'
 import { useState, useEffect, useRef } from 'react'
 import { Loader, Text, TextInput } from '@mantine/core'
 import { IconSend, IconMessages, IconSearch, IconArrowLeft } from '@tabler/icons-react'
 import { useSearchParams } from 'react-router-dom'
-import { getChatCircles, type ChatCircle } from '@/utils/api'
+import { getRoscaCircle, getChatCircles, type ChatCircle } from '@/utils/api'
 import { useChat } from '@/hooks/useChat'
 import { DirectMessages } from './DirectMessages'
 
@@ -70,6 +71,15 @@ function CircleListItem({ circle, active, onClick }: { circle: ChatCircle; activ
 function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId: string; circleName: string; currentUserId: string; onBack?: () => void }) {
   const { messages, loading, sending, error, sendMessage } = useChat(circleId)
   const [draft, setDraft] = useState('')
+  const [canSend, setCanSend] = useState(false)
+  useEffect(() => {
+    let active = true
+    setCanSend(false)
+    getRoscaCircle(circleId).then(circle => {
+      if (active) setCanSend(circleAccess(circle, currentUserId).sendChat)
+    }).catch(() => { /* history remains readable; sending stays disabled */ })
+    return () => { active = false }
+  }, [circleId, currentUserId])
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -78,7 +88,7 @@ function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId:
 
   async function handleSend() {
     const text = draft.trim()
-    if (!text || sending) return
+    if (!text || sending || !canSend) return
     try {
       await sendMessage(text)
       setDraft('')
@@ -150,7 +160,8 @@ function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId:
           {error}
         </Text>
       )}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', background: '#fff', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+      {!canSend && <Text size="sm" c="dimmed" p="md">Chat is read-only. Sending is available to active members of an active group.</Text>}
+      {canSend && <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', background: '#fff', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
         <TextInput
           style={{ flex: 1 }}
           placeholder="Type a message…"
@@ -166,7 +177,7 @@ function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId:
         >
           <IconSend size={18} color={draft.trim() ? '#fff' : '#9CA3AF'} />
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

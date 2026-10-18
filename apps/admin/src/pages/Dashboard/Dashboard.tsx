@@ -63,6 +63,8 @@ export function Dashboard() {
   const [creditScore, setCreditScore] = useState<number | null>(null)
   const [wallet, setWallet] = useState<{ total: number; available: number; reserved: number } | null>(null)
   const { hidden, toggle } = useWalletPrivacy()
+  const [walletError, setWalletError] = useState(false)
+  const [dashboardError, setDashboardError] = useState(false)
   const [dashStats, setDashStats] = useState<AdminDashboard | null>(null)
   const [circles, setCircles] = useState<RoscaCircle[]>([])
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([])
@@ -77,7 +79,7 @@ export function Dashboard() {
 
   useEffect(() => {
     Promise.allSettled([
-      getAdminDashboard().then(setDashStats),
+      getAdminDashboard().then(setDashStats).catch(() => setDashboardError(true)),
       getTrustScore()
         .then(setTrustScoreData)
         .catch(() => setTrustScoreData({ trustScore: 0 })),
@@ -102,7 +104,7 @@ export function Dashboard() {
             reserved: toNaira(data.reserved ?? '0'),
           }),
         )
-        .catch(() => setWallet({ total: 0, available: 0, reserved: 0 })),
+        .catch(() => { setWallet(null); setWalletError(true) }),
       listAllRoscaCircles()
         .then((res) => {
           // Backend sometimes returns a `{ data: [...] }` wrapper; sometimes a bare
@@ -254,6 +256,8 @@ export function Dashboard() {
         />
       </SimpleGrid>
 
+      {walletError && <Text role="alert" c="red">Unable to load wallet balances. Refresh to try again.</Text>}
+      {dashboardError && <Text role="alert" c="red">Unable to load group dashboard and deadlines. Refresh to try again.</Text>}
       {/* ─── 3-stat row (unchanged) ───────────────────────────────── */}
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <StatsCard
@@ -269,7 +273,7 @@ export function Dashboard() {
               ? new Date(dashStats.nextDeadline.deadline).toLocaleDateString('en-NG')
               : unavailableValue
           }
-          subtitle={dashStats?.nextDeadline?.groupName ?? ''}
+          subtitle={dashboardError ? 'Failed to load' : dashStats?.nextDeadline?.groupName ?? (dashStats ? 'No scheduled deadline' : 'Loading…')}
         />
         <StatsCard
           title="People requesting to join"
