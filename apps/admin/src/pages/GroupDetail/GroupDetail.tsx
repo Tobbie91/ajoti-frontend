@@ -38,6 +38,7 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react'
 import {
+  ApiError,
   getPayoutHistory,
   processPayout,
   getAdminCircleDetail,
@@ -50,6 +51,7 @@ import {
   getFinancialHealth,
   getCircleJoinRequests,
   closeRoscaCircle,
+  extendCycleDeadline,
   type Payout,
   type RoscaCircle,
   type PayoutAssignment,
@@ -66,6 +68,7 @@ import { RoscaJoinAction } from '@/components/RoscaJoinAction'
 import { GroupFinancialSummary } from './GroupFinancialSummary'
 
 const PRIMARY = '#0b6b55'
+const canSubmitDeadlineExtensions = import.meta.env.DEV && import.meta.env.VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION === 'true'
 
 function getStatusBadge(status: string) {
   if (status === 'Active') return { bg: '#e6f5f1', color: PRIMARY }
@@ -359,6 +362,7 @@ export function GroupDetail() {
   const [extendModal, setExtendModal] = useState<{ cycleNumber: number } | null>(null)
   const [extendDate, setExtendDate] = useState<string | null>(null)
   const [extendError, setExtendError] = useState<string | null>(null)
+  const [extendSubmitting, setExtendSubmitting] = useState(false)
   const [paymentsRefreshToken, setPaymentsRefreshToken] = useState(0)
 
   // Load payouts eagerly so Member Management tab can check who's been paid
@@ -426,9 +430,62 @@ export function GroupDetail() {
   const selectedDeadline = extendDate ? new Date(`${extendDate.slice(0, 10)}T23:59:59+01:00`) : null
   const selectedCycle = financialHealth?.cycles?.find(cycle => cycle.cycleNumber === extendModal?.cycleNumber)
   const followingCycle = financialHealth?.cycles?.find(cycle => cycle.cycleNumber === (extendModal?.cycleNumber ?? 0) + 1)
-  const invalidExtension = selectedDeadline && selectedCycle?.contributionDeadline
-    ? selectedDeadline <= new Date(selectedCycle.contributionDeadline)
-    : false
+  const currentCycleDeadline = selectedCycle?.contributionDeadline ? Date.parse(selectedCycle.contributionDeadline) : NaN
+  const selectedDeadlineTime = selectedDeadline?.getTime() ?? NaN
+  const invalidExtension = Boolean(extendDate) && (
+    !Number.isFinite(selectedDeadlineTime) ||
+    selectedDeadlineTime <= Date.now() ||
+    !Number.isFinite(currentCycleDeadline) ||
+    selectedDeadlineTime <= currentCycleDeadline
+  )
+
+  async function handleExtendDeadline() {
+    if (!id || !extendModal || !extendDate || !selectedCycle?.contributionDeadline) return
+    const date = extendDate.slice(0, 10)
+    const newContributionDeadline = `${date}T23:59:59+01:00`
+    const candidateTime = Date.parse(newContributionDeadline)
+    const existingTime = Date.parse(selectedCycle.contributionDeadline)
+    if (!Number.isFinite(candidateTime) || candidateTime <= Date.now()) {
+      setExtendError('Choose a valid deadline in the future.')
+      return
+    }
+    if (!Number.isFinite(existingTime) || candidateTime <= existingTime) {
+      setExtendError('Choose a deadline later than this cycle’s current contribution deadline.')
+      return
+    }
+
+    setExtendSubmitting(true)
+    setExtendError(null)
+    try {
+      await extendCycleDeadline(id, extendModal.cycleNumber, newContributionDeadline)
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 409) {
+        setExtendError('The schedule changed or conflicts with another cycle. Refresh the group schedules and choose another deadline.')
+      } else if (error instanceof ApiError && [400, 422].includes(error.code ?? 0)) {
+        setExtendError(error.message)
+      } else {
+        setExtendError(error instanceof Error ? error.message : 'Unable to extend this cycle deadline.')
+      }
+      setExtendSubmitting(false)
+      return
+    }
+
+    setExtendSubmitting(false)
+    setFinancialHealthLoading(true)
+    try {
+      const refreshedHealth = await getFinancialHealth(id)
+      setFinancialHealth(refreshedHealth)
+      setFinancialHealthError(null)
+    } catch {
+      setFinancialHealthError('Deadline extended, but the latest schedule could not be loaded. Refresh the group to confirm the updated deadline.')
+    } finally {
+      setFinancialHealthLoading(false)
+      setPaymentsRefreshToken(version => version + 1)
+      setExtendModal(null)
+      setExtendDate(null)
+      setExtendError(null)
+    }
+  }
 
   if (circleLoading) return <Group justify="center" py="xl"><Loader color={PRIMARY} aria-label="Loading group" /></Group>
   if (circleError || !circleData) return <Stack><Alert color="red">{circleError ?? 'Group not found.'}</Alert><Button onClick={() => setRefreshVersion(v => v + 1)}>Try again</Button><Button variant="subtle" onClick={() => navigate('/rosca/groups')}>Back to groups</Button></Stack>
@@ -721,15 +778,16 @@ export function GroupDetail() {
             label="New contribution deadline (WAT)"
             placeholder="Pick a date"
             value={extendDate}
-            onChange={setExtendDate}
+            onChange={(value) => { setExtendDate(value); setExtendError(null) }}
             minDate={new Date(Date.now() + 86400000)}
             radius="md"
             size="sm"
           />
           {extendDate && <Text size="sm">Corresponding payout: {new Date(new Date(`${extendDate.slice(0, 10)}T00:00:00+01:00`).getTime() + 86400000).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'long', year: 'numeric' })} at 00:00 WAT.</Text>}
-          {invalidExtension && <Alert color="red">Choose a date after this cycle's current contribution deadline.</Alert>}
+          {extendDate && !selectedCycle?.contributionDeadline && <Alert color="red">The current cycle deadline is unavailable, so this extension cannot be validated.</Alert>}
+          {extendDate && invalidExtension && selectedCycle?.contributionDeadline && <Alert color="red">Choose a valid future date after this cycle&apos;s current contribution deadline.</Alert>}
           {selectedDeadline && followingCycle?.contributionDeadline && <Alert color="yellow">This extension compresses the time before cycle {followingCycle.cycleNumber}. Its deadline remains {new Date(followingCycle.contributionDeadline).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })} WAT. Overlapping dates may be rejected.</Alert>}
-          <Alert color="yellow">Submission is unavailable until the independent-cycle backend contract, cutoff time, validation and conflict responses are verified.</Alert>
+          {!canSubmitDeadlineExtensions && <Alert color="yellow">Submission is disabled in deployed builds until the independent deadline-extension integration is available and verified.</Alert>}
           {extendError && <Text fz="sm" c="red">{extendError}</Text>}
           <Group justify="flex-end" gap="sm" mt="xs">
             <Button
@@ -744,9 +802,11 @@ export function GroupDetail() {
               radius="md"
               size="sm"
               color="orange"
-              disabled
+              disabled={!canSubmitDeadlineExtensions || !extendDate || invalidExtension || !selectedCycle?.contributionDeadline || extendSubmitting}
+              loading={extendSubmitting}
+              onClick={handleExtendDeadline}
             >
-              Extension integration pending
+              {canSubmitDeadlineExtensions ? 'Extend deadline' : 'Extension integration disabled'}
             </Button>
           </Group>
         </Stack>

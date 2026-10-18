@@ -1,0 +1,200 @@
+import { expect, test, type Page } from '@playwright/test'
+
+const circleId = 'extension-circle'
+const admin = { id: 'extension-admin', firstName: 'Circle', lastName: 'Admin', role: 'CIRCLE_ADMIN', status: 'ACTIVE' }
+const member = { id: 'extension-member', firstName: 'Circle', lastName: 'Member', role: 'MEMBER', status: 'ACTIVE' }
+
+type MockOptions = {
+  user?: typeof admin | typeof member
+  currentDeadline?: string
+  patchStatus?: number
+}
+
+type MockState = {
+  patches: Array<{ path: string; method: string; body: Record<string, unknown> }>
+  financialHealthReads: number
+  disbursementReads: number
+  updatedDeadline: string | null
+}
+
+function deadlineWithOffset(targetDate: string, offsetDays: number): string {
+  const day = new Date(`${targetDate}T12:00:00Z`)
+  day.setUTCDate(day.getUTCDate() + offsetDays)
+  return `${day.toISOString().slice(0, 10)}T23:59:59+01:00`
+}
+
+async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): Promise<MockState> {
+  const user = options.user ?? admin
+  const state: MockState = { patches: [], financialHealthReads: 0, disbursementReads: 0, updatedDeadline: null }
+  const circle = {
+    id: circleId,
+    name: 'Extension Circle',
+    status: 'ACTIVE',
+    visibility: 'PUBLIC',
+    frequency: 'WEEKLY',
+    contributionAmount: '100000',
+    durationCycles: 4,
+    currentCycle: 1,
+    maxSlots: 4,
+    filledSlots: 4,
+    payoutLogic: 'SEQUENTIAL',
+    isRequestingUserAdmin: user.role === 'CIRCLE_ADMIN',
+    userMembershipStatus: 'ACTIVE',
+    admin: { firstName: 'Circle', lastName: 'Admin' },
+    members: [{ userId: user.id, name: 'Circle User', status: 'ACTIVE', position: 1 }],
+  }
+  const currentDeadline = options.currentDeadline ?? '2020-01-01T23:59:59+01:00'
+
+  await page.addInitScript((cachedUser) => localStorage.setItem('user', JSON.stringify(cachedUser)), user)
+  await page.route('**/api/**', async (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    if (!path.startsWith('/api/')) return route.continue()
+    if (path === '/api/users/me') return route.fulfill({ json: { data: user } })
+    if (path === `/api/rosca/${circleId}`) return route.fulfill({ json: { data: circle } })
+    if (path === `/api/admin/rosca/${circleId}`) return route.fulfill({ json: { data: circle } })
+    if (path === `/api/admin/rosca/${circleId}/financial-health`) {
+      state.financialHealthReads += 1
+      return route.fulfill({ json: { data: {
+        totalCollected: '0',
+        remainingBalance: '400000',
+        cycles: [1, 2, 3, 4].map((cycleNumber) => ({
+          cycleNumber,
+          contributionDeadline: cycleNumber === 1 ? state.updatedDeadline ?? currentDeadline : '2030-01-01T23:59:59+01:00',
+          scheduleStatus: cycleNumber === 1 ? 'IN_PROGRESS' : 'UPCOMING',
+          expectedPot: '400000', collected: '0', outstanding: '400000', expectedCount: 4, collectedCount: 0,
+        })),
+      } } })
+    }
+    if (path === `/api/admin/rosca/${circleId}/schedules/1/extend` && request.method() === 'PATCH') {
+      const body = request.postDataJSON() as Record<string, unknown>
+      state.patches.push({ path, method: request.method(), body })
+      if (options.patchStatus === 409) {
+        return route.fulfill({ status: 409, json: { message: 'Schedule conflict' } })
+      }
+      if (options.patchStatus && options.patchStatus !== 200) {
+        return route.fulfill({ status: options.patchStatus, json: { message: 'Invalid contribution deadline' } })
+      }
+      state.updatedDeadline = String(body.newContributionDeadline ?? '')
+      return route.fulfill({ json: { message: 'Contribution deadline extended' } })
+    }
+    if (path === `/api/admin/rosca/${circleId}/disbursements`) {
+      state.disbursementReads += 1
+      return route.fulfill({ json: { data: { schedules: [{
+        cycleNumber: 1,
+        recipientId: 'member-1',
+        recipientName: 'Member One',
+        payoutDate: '2020-01-02T12:00:00Z',
+        contributionDeadline: state.updatedDeadline ?? currentDeadline,
+        scheduleStatus: 'UPCOMING',
+        payoutStatus: null,
+        amountPaidOut: null,
+        processedAt: null,
+      }] } } })
+    }
+    if (path === `/api/admin/rosca/${circleId}/join-requests`) return route.fulfill({ json: { data: [] } })
+    if (path === `/api/rosca/${circleId}/payouts`) return route.fulfill({ json: { data: [] } })
+    if (path === `/api/admin/rosca/${circleId}/contributions`) return route.fulfill({ json: { data: {
+      cycleNumber: 1, contributions: [], totalCollected: '0', totalPenalties: '0',
+    } } })
+    if (path.endsWith('/invites')) return route.fulfill({ json: { data: [] } })
+    if (path === '/api/notifications') return route.fulfill({ json: { data: [] } })
+    return route.fulfill({ json: { data: [] } })
+  })
+  return state
+}
+
+async function openExtensionForm(page: Page, targetDate: string) {
+  await page.goto(`/rosca/${circleId}?view=manage`)
+  await page.getByRole('tab', { name: 'Payment Oversight' }).click()
+  await page.getByRole('button', { name: 'Extend Deadline' }).click()
+  const input = page.getByLabel('New contribution deadline (WAT)')
+  await input.fill(targetDate)
+  await page.getByText('Extend Cycle Deadline', { exact: true }).click()
+}
+
+test('extension validates dates, sends the independent deadline payload, and handles HTTP 409', async ({ page }) => {
+  const targetDate = await page.evaluate(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 7)
+    return date.toISOString().slice(0, 10)
+  })
+  const conflictState = await mockDeadlineExtensionApi(page, { patchStatus: 409 })
+  await openExtensionForm(page, targetDate)
+  const healthReadsBeforePatch = conflictState.financialHealthReads
+  const submit = page.getByRole('button', { name: 'Extend deadline', exact: true })
+  await expect(submit).toBeEnabled()
+  await submit.click()
+  await expect(page.getByText(/schedule changed or conflicts with another cycle/i)).toBeVisible()
+  expect(conflictState.patches).toEqual([{
+    path: `/api/admin/rosca/${circleId}/schedules/1/extend`,
+    method: 'PATCH',
+    body: { newContributionDeadline: `${targetDate}T23:59:59+01:00` },
+  }])
+  expect(conflictState.financialHealthReads).toBe(healthReadsBeforePatch)
+})
+
+test('server-side deadline validation is shown without closing the form', async ({ page }) => {
+  const targetDate = await page.evaluate(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 7)
+    return date.toISOString().slice(0, 10)
+  })
+  const state = await mockDeadlineExtensionApi(page, { patchStatus: 422 })
+  await openExtensionForm(page, targetDate)
+  await page.getByRole('button', { name: 'Extend deadline', exact: true }).click()
+  await expect(page.getByText('Invalid contribution deadline')).toBeVisible()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  expect(state.patches).toHaveLength(1)
+})
+
+test('extension rejects a date that does not move the current deadline forward', async ({ page }) => {
+  const targetDate = await page.evaluate(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 5)
+    return date.toISOString().slice(0, 10)
+  })
+  const laterCurrentDeadline = deadlineWithOffset(targetDate, 2)
+  const state = await mockDeadlineExtensionApi(page, { currentDeadline: laterCurrentDeadline })
+  await openExtensionForm(page, targetDate)
+  await expect(page.getByText(/after this cycle.s current contribution deadline/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Extend deadline', exact: true })).toBeDisabled()
+  expect(state.patches).toHaveLength(0)
+})
+
+test('successful extension refreshes financial schedules and disbursement schedules', async ({ page }) => {
+  const targetDate = await page.evaluate(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 7)
+    return date.toISOString().slice(0, 10)
+  })
+  const state = await mockDeadlineExtensionApi(page)
+  await openExtensionForm(page, targetDate)
+  const healthReadsBeforePatch = state.financialHealthReads
+  const disbursementReadsBeforePatch = state.disbursementReads
+  await page.getByRole('button', { name: 'Extend deadline', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect.poll(() => state.financialHealthReads).toBeGreaterThan(healthReadsBeforePatch)
+  await expect.poll(() => state.disbursementReads).toBeGreaterThan(disbursementReadsBeforePatch)
+  expect(state.patches[0]?.body).toEqual({ newContributionDeadline: `${targetDate}T23:59:59+01:00` })
+  expect(state.updatedDeadline).toBe(`${targetDate}T23:59:59+01:00`)
+})
+
+test('non-admin members do not receive deadline extension controls', async ({ page }) => {
+  await mockDeadlineExtensionApi(page, { user: member })
+  await page.goto(`/rosca/${circleId}?view=manage`)
+  await expect(page.getByRole('button', { name: 'Extend Deadline' })).toHaveCount(0)
+})
+
+test('submission stays disabled unless the development-only contract flag is explicitly enabled', async ({ page }) => {
+  const targetDate = await page.evaluate(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 7)
+    return date.toISOString().slice(0, 10)
+  })
+  const state = await mockDeadlineExtensionApi(page)
+  await openExtensionForm(page, targetDate)
+  await expect(page.getByText(/disabled in deployed builds/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Extension integration disabled' })).toBeDisabled()
+  expect(state.patches).toHaveLength(0)
+})

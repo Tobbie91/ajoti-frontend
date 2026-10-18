@@ -666,13 +666,13 @@ export async function getAdminDisbursements(
 export function extendCycleDeadline(
   circleId: string,
   cycleNumber: number,
-  newPayoutDate: string,
+  newContributionDeadline: string,
 ): Promise<{ message: string }> {
   return authRequest(
     `/api/admin/rosca/${circleId}/schedules/${cycleNumber}/extend`,
     {
       method: "PATCH",
-      body: JSON.stringify({ newPayoutDate }),
+      body: JSON.stringify({ newContributionDeadline }),
     },
   );
 }
