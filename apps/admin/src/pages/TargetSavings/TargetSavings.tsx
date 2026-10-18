@@ -498,7 +498,7 @@ export function TargetSavings() {
                 <div className="flex items-center gap-2 rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-2.5">
                   <IconInfoCircle size={16} color="#92400E" />
                   <Text className="text-[12.5px] text-[#92400E]">
-                    Next contribution deadline: <strong>{planMetrics.nextDue}</strong>
+                    Next maturity: <strong>{planMetrics.nextDue}</strong>
                   </Text>
                 </div>
               )}

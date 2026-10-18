@@ -15,7 +15,6 @@ import {
   Textarea,
   Slider,
   Loader,
-  Modal,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -347,6 +346,7 @@ export function GrowthActivities() {
           />
         )}
       </div>
+
     </div>
   );
 }

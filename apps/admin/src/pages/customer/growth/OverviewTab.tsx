@@ -8,6 +8,7 @@ import {
   IconInfoCircle,
   IconCheck,
   IconClock,
+  IconMessageCircle,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -18,6 +19,72 @@ import {
 } from "@/utils/api";
 import { RoscaCommitments } from "@/components/RoscaCommitments";
 import { formatNaira, type CycleRow } from "./utils";
+
+type MemberStatus = "paid" | "partial" | "unpaid" | "defaulted";
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (name.slice(0, 2) || "?").toUpperCase();
+}
+
+function fmtDateShort(iso?: string | null): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+  } catch {
+    return "—";
+  }
+}
+
+function fmtTimeShort(iso?: string | null): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", hour12: false });
+  } catch {
+    return "—";
+  }
+}
+
+function fmtDateLong(iso?: string | null): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("en-NG", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function StatusPill({ status }: { status: MemberStatus }) {
+  const tones = {
+    paid: { bg: "#DCFCE7", color: "#065F46", label: "Paid" },
+    partial: { bg: "#DBEAFE", color: "#1E40AF", label: "Partial" },
+    unpaid: { bg: "#FEF3C7", color: "#92400E", label: "Unpaid" },
+    defaulted: { bg: "#B91C1C", color: "#FFFFFF", label: "Defaulted" },
+  }[status];
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        background: tones.bg,
+        color: tones.color,
+        fontSize: 10.5,
+        fontWeight: 700,
+        padding: "3px 10px",
+        borderRadius: 999,
+      }}
+    >
+      {tones.label}
+    </span>
+  );
+}
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 
@@ -99,9 +166,19 @@ export function OverviewTab({
     return Array.from(set).sort((a, b) => a - b);
   })();
 
-  // Build the selected-cycle paid/unpaid roster.
-  type RosterRow = { userId: string; name: string; isSelf: boolean; paid: boolean; partial: boolean; paidAt?: string; isLate?: boolean; amount?: string };
+  // Build the selected-cycle paid/partial/unpaid/defaulted roster.
+  type RosterRow = {
+    userId: string;
+    name: string;
+    isSelf: boolean;
+    status: MemberStatus;
+    paidAt?: string;
+    isLate?: boolean;
+    amount?: string;
+  };
   const activeCycle = rosterCycle ?? currentCycleNumber;
+  const isHistoricalCycle = activeCycle != null && currentCycleNumber != null && activeCycle < currentCycleNumber;
+
   const roster: RosterRow[] = members.map((m) => {
     let paid = false;
     let partial = false;
@@ -132,36 +209,50 @@ export function OverviewTab({
         }
       }
     }
+    // Status priority: paid (full) > partial (some paid) > defaulted (historical, nothing paid) > unpaid.
+    const status: MemberStatus = paid
+      ? "paid"
+      : partial
+        ? "partial"
+        : isHistoricalCycle
+          ? "defaulted"
+          : "unpaid";
     return {
       userId: m.userId,
       name: m.name || `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || "Member",
       isSelf: m.userId === currentUserId,
-      paid,
-      partial,
+      status,
       paidAt,
       isLate,
       amount,
     };
   }).sort((a, b) => {
-    if (a.paid !== b.paid) return a.paid ? -1 : 1;
+    const order = { paid: 0, partial: 1, unpaid: 2, defaulted: 3 } as const;
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
     if (a.isSelf) return -1;
     if (b.isSelf) return 1;
     return a.name.localeCompare(b.name);
   });
 
-  const paidCount = roster.filter((r) => r.paid).length;
-  const partialCount = roster.filter((r) => r.partial).length;
+  const paidCount = roster.filter((r) => r.status === "paid").length;
+  const partialCount = roster.filter((r) => r.status === "partial").length;
+  const unpaidCount = roster.filter((r) => r.status === "unpaid").length;
+  const defaultedCount = roster.filter((r) => r.status === "defaulted").length;
   const totalMembers = roster.length;
-  const pendingCount = Math.max(0, totalMembers - paidCount - partialCount);
-  const isHistoricalCycle = activeCycle != null && currentCycleNumber != null && activeCycle < currentCycleNumber;
 
-  function fmtWhen(iso: string | undefined): string {
-    if (!iso) return "";
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-    } catch { return ""; }
-  }
+  // Latest server-recorded timestamp across the roster, used for "Last updated".
+  const lastUpdatedIso: string | undefined = roster
+    .map((r) => r.paidAt)
+    .filter((v): v is string => Boolean(v))
+    .sort()
+    .pop();
+
+  // "Due" line text for the active cycle.
+  const dueDateStr = activeCycle === currentCycleNumber
+    ? nextPaymentDate
+    : (cycles.find((c) => c.cycle === activeCycle)?.payoutDate
+        ? fmtDateShort(cycles.find((c) => c.cycle === activeCycle)?.payoutDate)
+        : "—");
 
   return (
     <div className="flex flex-col gap-5">
@@ -204,110 +295,139 @@ export function OverviewTab({
         </Text>
       </div>
 
-      {/* ─── Cycle roster — paid / not paid transparency panel ──────────── */}
+      {/* ─── Cycle contributions card ──────────────────────────────── */}
       {activeCycle != null && members.length > 0 && (
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          {/* Header: title + per-member + due + last-updated | cycle pills */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <Text fw={700} className="text-[15px] text-[#0F172A]">
-                Cycle {activeCycle} · Who's paid
-                {isHistoricalCycle && (
-                  <span className="ml-2 rounded bg-[#DBEAFE] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#1E40AF]">
-                    History
-                  </span>
-                )}
+              <Text fw={700} className="text-[18px] text-[#0F172A]">
+                Cycle {activeCycle} contributions
               </Text>
-              <Text className="text-[12px] text-[#64748B]">
-                Members can see each cycle’s payment status, amount, and recorded time.
+              <Text className="mt-1 text-[12.5px] text-[#64748B]">
+                {formatNaira(contributionAmountKobo)} per member · {members.length} member{members.length === 1 ? "" : "s"} · Due {dueDateStr || "[DUE DATE]"}
               </Text>
+              {lastUpdatedIso && (
+                <Text className="mt-1 text-[11.5px] text-[#94A3B8]">
+                  Last updated {fmtDateLong(lastUpdatedIso)}
+                </Text>
+              )}
             </div>
-            <Badge
-              variant="light"
-              color="green"
-              size="lg"
-              radius="sm"
-              style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}
-            >
-              {allContribsAccess === "granted" ? `${paidCount} paid · ${partialCount} partial · ${pendingCount} pending` : "Group payment status unavailable"}
-            </Badge>
+            {availableCycles.length > 1 && (
+              <div className="flex items-center gap-2">
+                <Text className="text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                  Cycle
+                </Text>
+                <div className="flex gap-1.5">
+                  {availableCycles.map((n) => {
+                    const isActive = n === activeCycle;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setRosterCycle(n)}
+                        aria-label={`View cycle ${n}`}
+                        className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-[13px] font-bold transition-colors ${
+                          isActive
+                            ? "bg-[#0B6B55] text-white"
+                            : "border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F3F4F6]"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {availableCycles.length > 1 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Text className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">
-                View cycle:
+          {/* Circle progress bar */}
+          <div className="mt-5">
+            <div className="flex items-center justify-between">
+              <Text fw={600} className="text-[13.5px] text-[#0F172A]">
+                Circle progress
               </Text>
-              <div className="flex flex-wrap gap-1.5">
-                {availableCycles.map((n) => {
-                  const isActive = n === activeCycle;
-                  const isPast = currentCycleNumber != null && n < currentCycleNumber;
-                  const isCurrent = n === currentCycleNumber;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setRosterCycle(n)}
-                      className={`cursor-pointer rounded-md px-2.5 py-1 text-[11.5px] font-bold transition-colors ${
-                        isActive
-                          ? "bg-[#0B6B55] text-white"
-                          : isPast
-                            ? "bg-[#F1F3EF] text-[#374151] hover:bg-[#DBEAFE] hover:text-[#1E40AF]"
-                            : isCurrent
-                              ? "bg-[#FEF3C7] text-[#92400E] hover:bg-[#FDE68A]"
-                              : "bg-[#F1F3EF] text-[#9CA3AF] hover:bg-[#E5E7EB] hover:text-[#374151]"
-                      }`}
-                    >
-                      {n}
-                      {isCurrent && !isActive && " · now"}
-                    </button>
-                  );
-                })}
-              </div>
+              <Text className="text-[12px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {paidCount} paid · {partialCount} partial · {unpaidCount} unpaid · {defaultedCount} defaulted
+              </Text>
             </div>
-          )}
+            <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-[#E5E7EB]">
+              {totalMembers > 0 && (
+                <>
+                  <div style={{ width: `${(paidCount / totalMembers) * 100}%`, background: "#02A36E" }} />
+                  <div style={{ width: `${(partialCount / totalMembers) * 100}%`, background: "#60A5FA" }} />
+                  <div style={{ width: `${(unpaidCount / totalMembers) * 100}%`, background: "#FDE68A" }} />
+                  <div style={{ width: `${(defaultedCount / totalMembers) * 100}%`, background: "#F87171" }} />
+                </>
+              )}
+            </div>
+          </div>
 
-          <div className="mt-4 flex flex-col divide-y divide-[#F1F3EF]">
+          {/* Who's paid table */}
+          <div className="mt-5">
+            <div className="flex items-center justify-between">
+              <Text fw={600} className="text-[13.5px] text-[#0F172A]">
+                Who's paid
+              </Text>
+              <Text className="text-[11.5px] text-[#94A3B8]">
+                Visible to all members
+              </Text>
+            </div>
+            <div className="mt-3 grid grid-cols-[1fr_90px_60px_100px] gap-2 border-b border-[#E5E7EB] pb-2 sm:grid-cols-[1fr_110px_70px_110px]">
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Member</Text>
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Date</Text>
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Time</Text>
+              <Text className="text-right text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Status</Text>
+            </div>
             {roster.map((r) => (
-              <div key={r.userId} className="flex items-center gap-3 py-2.5">
-                <div
-                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
-                    r.paid
-                      ? "bg-[#02A36E] text-white"
-                      : "border border-[#E5E7EB] bg-white text-[#9CA3AF]"
-                  }`}
-                >
-                  {r.paid ? <IconCheck size={14} stroke={2.5} /> : <IconClock size={13} />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Text fw={600} className="truncate text-[13.5px] text-[#0F172A]">
-                      {r.name}
-                    </Text>
-                    {r.isSelf && (
-                      <span className="rounded bg-[#E7F4EE] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#056148]">
-                        You
-                      </span>
-                    )}
-                    {r.isLate && (
-                      <span className="rounded bg-[#FEF3C7] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#92400E]">
-                        Late
-                      </span>
-                    )}
+              <div
+                key={r.userId}
+                className="grid grid-cols-[1fr_90px_60px_100px] items-center gap-2 border-b border-[#F3F4F6] py-3 last:border-b-0 sm:grid-cols-[1fr_110px_70px_110px]"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold ${
+                      r.isSelf ? "bg-[#02A36E] text-white" : "bg-[#E5E7EB] text-[#6B7280]"
+                    }`}
+                  >
+                    {initials(r.name)}
                   </div>
-                  {(r.paid || r.partial) && r.paidAt && (
-                    <Text className="text-[11px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                      {r.partial ? "Partial payment" : "Paid"} {fmtWhen(r.paidAt)}
-                      {r.amount && ` · ${formatNaira(r.amount)}`}
-                    </Text>
+                  <Text fw={600} className="truncate text-[13px] text-[#0F172A]">
+                    {r.name}
+                  </Text>
+                  {r.isSelf && (
+                    <span className="rounded bg-[#DCFCE7] px-1.5 py-0.5 text-[9.5px] font-bold text-[#065F46]">
+                      YOU
+                    </span>
                   )}
-                  {!r.paid && !r.partial && (
-                    <Text className="text-[11px] text-[#9CA3AF]">
-                      {allContribsAccess === "granted" || r.isSelf ? "Not paid yet" : "Payment status unavailable"}
-                    </Text>
-                  )}
+                </div>
+                <Text className="text-[12px] text-[#374151]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {fmtDateShort(r.paidAt)}
+                </Text>
+                <Text className="text-[12px] text-[#374151]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {fmtTimeShort(r.paidAt)}
+                </Text>
+                <div className="flex justify-end">
+                  <StatusPill status={r.status} />
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Footer: disclosure + contact admin */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <Text className="max-w-[420px] text-[11.5px] leading-snug text-[#94A3B8]">
+              Every member of the circle sees this list. Dates and times are recorded by the server.
+            </Text>
+            <button
+              type="button"
+              onClick={() => navigate(`/messages?circleId=${circleId}`)}
+              className="flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-4 py-2 text-[12.5px] font-semibold text-white"
+            >
+              <IconMessageCircle size={16} />
+              Contact admin
+            </button>
           </div>
         </div>
       )}
