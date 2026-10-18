@@ -16,6 +16,7 @@ export interface RegisterPayload {
   gender: "MALE" | "FEMALE";
   phone: string;
   password: string;
+  trackingCode?: string;
 }
 
 export interface RegisterResponse {
@@ -104,6 +105,8 @@ export interface KycStatus {
   kycLevel: number; // 0 = none, 1 = NIN+BVN+NOK, 2 = +GovID, 3 = +ProofOfAddress
   rejectionReason?: string | null;
   providerStatus?: string | null;
+  provider?: "MONO" | "DOJAH" | "SMILE_ID";
+  providerCaptureRequired?: boolean;
   monoUrl?: string | null;
   verificationSummary?: {
     name?: string;
@@ -132,13 +135,29 @@ export function resubmitKyc(): Promise<KycStatus> {
 export interface ProveInitiatePayload {
   nin?: string;
   bvn?: string;
+  consentConfirmed?: boolean;
   documentType?: "drivers_license" | "international_passport";
   documentNumber?: string;
 }
 
+export function submitSmileCapture(formData: FormData): Promise<{
+  providerStatus: "pending" | "successful";
+  jobs: Array<{ idType: string; status: string }>;
+}> {
+  return authRequest("/api/kyc/smile/biometric", {
+    method: "POST",
+    body: formData,
+  });
+}
+
 export function proveInitiate(
   payload: ProveInitiatePayload,
-): Promise<{ monoUrl: string | null; reference: string }> {
+): Promise<{
+  monoUrl: string | null;
+  reference: string;
+  provider?: 'DOJAH' | 'SMILE_ID';
+  launchConfig?: Record<string, unknown>;
+}> {
   return authRequest("/api/kyc/lookup/verify", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -189,6 +208,27 @@ export async function getUserProfile(): Promise<UserProfile> {
     { method: "GET" },
   );
   return ("data" in res && res.data ? res.data : res) as UserProfile;
+}
+
+export async function getMyAvatar(): Promise<{ avatarUrl: string | null }> {
+  const res = await authRequest<{ data?: { avatarUrl: string | null } }>(
+    "/api/users/me/avatar",
+    { method: "GET" },
+  );
+  return res.data ?? { avatarUrl: null };
+}
+
+export async function uploadMyAvatar(file: File): Promise<{
+  avatarUrl: string | null;
+  expiresAt: string;
+}> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await authRequest<{
+    data?: { avatarUrl: string | null; expiresAt: string };
+  }>("/api/users/me/avatar", { method: "POST", body: form });
+  if (!res.data) throw new Error("Profile photo upload returned no result");
+  return res.data;
 }
 
 export function updateUserProfile(

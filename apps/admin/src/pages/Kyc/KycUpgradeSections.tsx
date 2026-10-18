@@ -225,10 +225,14 @@ export function ProvePendingScreen({
   onVerified,
   onContinue,
   awaitingReview,
+  provider = "MONO",
+  actionError,
 }: {
   onVerified: () => void;
-  onContinue?: () => void;
+  onContinue?: () => void | Promise<void>;
   awaitingReview: boolean;
+  provider?: KycStatus["provider"];
+  actionError?: string | null;
 }) {
   const navigate = useNavigate();
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
@@ -312,11 +316,16 @@ export function ProvePendingScreen({
           className="mb-6 text-[14px] leading-[1.6] text-[#6B7280]"
         >
           {awaitingReview
-            ? "Mono has received your identity check for manual review. You do not need to start again; this page will update when a final decision arrives."
+            ? `${provider === "DOJAH" ? "Dojah" : provider === "SMILE_ID" ? "Smile ID" : "Mono"} has received your identity check for manual review. You do not need to start again; this page will update when a final decision arrives.`
             : onContinue
-              ? "Your Mono session is still active. Continue the existing verification—starting another session is not necessary."
-              : "Your verification is being processed by Mono. This page will update automatically when a final result arrives."}
+              ? `Your ${provider === "DOJAH" ? "Dojah" : provider === "SMILE_ID" ? "Smile ID" : "Mono"} session is still active. Continue the existing verification—starting another session is not necessary.`
+              : `Your verification is being processed by ${provider === "DOJAH" ? "Dojah" : provider === "SMILE_ID" ? "Smile ID" : "Mono"}. This page will update automatically when a final result arrives.`}
         </Text>
+        {actionError && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" className="text-left">
+            {actionError}
+          </Alert>
+        )}
         {consecutiveErrors >= 3 && (
           <Alert
             icon={<IconAlertCircle size={16} />}
@@ -333,7 +342,7 @@ export function ProvePendingScreen({
         )}
         {onContinue && !awaitingReview && (
           <button
-            onClick={onContinue}
+            onClick={() => void onContinue()}
             className="mt-6 w-full cursor-pointer rounded-xl bg-[#02A36E] px-6 py-3 text-[14px] font-semibold text-white hover:bg-[#028a5b]"
           >
             Continue Verification

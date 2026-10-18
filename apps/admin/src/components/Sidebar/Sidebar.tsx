@@ -9,9 +9,9 @@ import {
 import { isCircleAdmin } from '@/utils/auth-role'
 
 const adminRoscaLinks = [
-  { label: 'Groups', path: '/rosca/groups', icon: IconUsers },
+  { label: 'Groups I manage', path: '/rosca/groups', icon: IconUsers },
   { label: 'Create Group', path: '/create-group', icon: IconCirclePlus },
-  { label: 'Join Requests', path: '/manage-join-request', icon: IconUserCheck },
+  { label: 'People requesting to join', path: '/manage-join-request', icon: IconUserCheck },
 ]
 
 interface SidebarProps { onClose?: () => void }
@@ -46,7 +46,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           />
         ))}
 
-        <NavLink component={RouterNavLink} to="/rosca" label="Ajo"
+        <NavLink component={RouterNavLink} to="/rosca" label="Groups I’ve joined"
           leftSection={<IconUsers size={19} stroke={1.5} />} active={ajoActive} onClick={onClose}
           styles={commonStyle(ajoActive)} />
         <NavLink component={RouterNavLink} to="/target-savings" label="Target Savings"

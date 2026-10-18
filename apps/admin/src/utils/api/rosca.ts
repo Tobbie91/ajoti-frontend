@@ -8,6 +8,55 @@ import {
 import type { CircleContribution } from "./community";
 import type { CircleMember } from "./member-wallet";
 
+export interface RoscaJoinTermsSnapshot {
+  version: number;
+  circle: {
+    id: string;
+    name: string;
+    contributionAmountKobo: string;
+    currency: string;
+    frequency: string;
+    durationCycles: number;
+    firstContributionDeadline: string | null;
+    contributionCutoffTime: string | null;
+    payoutTime: string;
+  };
+  collateral: {
+    ratioBps: number;
+    amountKobo: string;
+    reservation: string;
+    beforeStart: string;
+    afterStart: string;
+    lateFeeShortfall: string;
+    postStartExitPenaltyBps: number;
+  };
+  payoutFee: { flatFeeKobo: string; note: string };
+  missedContribution: {
+    afterCutoffBeforeMidnight: string;
+    afterMidnight: string;
+    bridge: string;
+    repeatDefault: string;
+  };
+}
+
+export interface RoscaJoinTerms {
+  hash: string;
+  snapshot: RoscaJoinTermsSnapshot;
+}
+
+export interface RoscaTermsAcceptance {
+  accepted: boolean;
+  termsHash: string;
+}
+
+export async function getRoscaJoinTerms(circleId: string): Promise<RoscaJoinTerms> {
+  const response = await authRequest<{ data: RoscaJoinTerms }>(
+    `/api/rosca/${circleId}/join-terms`,
+    { method: "GET" },
+  );
+  return response.data;
+}
+
 // ── ROSCA (admin) ───────────────────────────────────────────────────────────
 
 export interface RoscaCircle {
@@ -203,6 +252,7 @@ export interface Debt {
     collateral: string;
     penalty: string;
   };
+  lateFeeRateBps?: number | null;
   blocksLoanEligibility: boolean;
   createdAt: string;
   settledAt: string | null;
@@ -218,6 +268,7 @@ export async function getMyDebts(): Promise<Debt[]> {
 
 export async function repayDebt(
   debtId: string,
+  idempotencyKey: string,
   amountKobo?: number,
 ): Promise<Debt> {
   const res = await authRequest<{
@@ -226,7 +277,10 @@ export async function repayDebt(
     data: Debt;
   }>(`/api/debts/${debtId}/repay`, {
     method: "POST",
-    body: JSON.stringify(amountKobo !== undefined ? { amountKobo } : {}),
+    body: JSON.stringify({
+      ...(amountKobo !== undefined ? { amountKobo } : {}),
+      idempotencyKey,
+    }),
   });
   return res.data;
 }
@@ -256,7 +310,6 @@ export interface CreateRoscaPayload {
   durationCycles: number;
   maxSlots: number;
   payoutLogic: string;
-  payoutTime?: string;
   contributionCutoffTime?: string;
   visibility: string;
 }
@@ -282,7 +335,6 @@ export interface UpdateRoscaPayload {
   frequency?: "MONTHLY" | "WEEKLY" | "BI_WEEKLY";
   visibility?: string;
   initialContributionDeadline?: string;
-  payoutTime?: string;
 }
 
 export function updateRoscaCircle(
@@ -577,8 +629,9 @@ export interface Contribution {
 export async function getAllCircleContributions(
   circleId: string,
 ): Promise<Contribution[]> {
+  // Circle members and admins can read the roster; outsiders are rejected server-side.
   const res = await authRequest<{ data?: Contribution[] }>(
-    `/api/admin/rosca/${circleId}/contributions-all`,
+    `/api/rosca/${circleId}/contributions/roster`,
     { method: "GET" },
   );
   return (res as { data?: Contribution[] }).data ?? [];

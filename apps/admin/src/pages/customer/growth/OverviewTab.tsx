@@ -7,6 +7,7 @@ import {
 import {
   IconInfoCircle,
   IconCheck,
+  IconClock,
   IconMessageCircle,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -19,7 +20,7 @@ import {
 import { RoscaCommitments } from "@/components/RoscaCommitments";
 import { formatNaira, type CycleRow } from "./utils";
 
-type MemberStatus = "paid" | "unpaid" | "defaulted";
+type MemberStatus = "paid" | "partial" | "unpaid" | "defaulted";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -64,6 +65,7 @@ function fmtDateLong(iso?: string | null): string {
 function StatusPill({ status }: { status: MemberStatus }) {
   const tones = {
     paid: { bg: "#DCFCE7", color: "#065F46", label: "Paid" },
+    partial: { bg: "#DBEAFE", color: "#1E40AF", label: "Partial" },
     unpaid: { bg: "#FEF3C7", color: "#92400E", label: "Unpaid" },
     defaulted: { bg: "#B91C1C", color: "#FFFFFF", label: "Defaulted" },
   }[status];
@@ -128,8 +130,8 @@ export function OverviewTab({
   const navigate = useNavigate();
   const canRequestExit = userStatus === "ACTIVE" && (circleStatus === "DRAFT" || circleStatus === "ACTIVE");
 
-  // Transparency: fetch all members' contributions. Backend may 403 for
-  // non-admins — in that case we fall back to showing current user only.
+  // Circle members and admins can read cycle contributions; non-members fall
+  // back to their own payment history only.
   const [allContribs, setAllContribs] = useState<Contribution[] | null>(null);
   const [allContribsAccess, setAllContribsAccess] = useState<"loading" | "granted" | "denied">("loading");
 
@@ -154,8 +156,8 @@ export function OverviewTab({
   // scroll back through completed cycles.
   const [rosterCycle, setRosterCycle] = useState<number | undefined>(currentCycleNumber);
   useEffect(() => {
-    if (rosterCycle == null && currentCycleNumber != null) setRosterCycle(currentCycleNumber);
-  }, [currentCycleNumber, rosterCycle]);
+    if (currentCycleNumber != null) setRosterCycle(currentCycleNumber);
+  }, [currentCycleNumber]);
 
   const availableCycles = (() => {
     const set = new Set<number>();
@@ -164,7 +166,7 @@ export function OverviewTab({
     return Array.from(set).sort((a, b) => a - b);
   })();
 
-  // Build the selected-cycle paid/unpaid/defaulted roster.
+  // Build the selected-cycle paid/partial/unpaid/defaulted roster.
   type RosterRow = {
     userId: string;
     name: string;
@@ -179,6 +181,7 @@ export function OverviewTab({
 
   const roster: RosterRow[] = members.map((m) => {
     let paid = false;
+    let partial = false;
     let paidAt: string | undefined;
     let isLate: boolean | undefined;
     let amount: string | undefined;
@@ -189,24 +192,31 @@ export function OverviewTab({
           (c) => c.userId === m.userId && c.cycleNumber === activeCycle && c.paidAt,
         );
         if (row) {
-          paid = true;
+          amount = row.amount;
+          paid = BigInt(row.amount) >= BigInt(contributionAmountKobo);
+          partial = !paid;
           paidAt = row.paidAt ?? undefined;
           isLate = row.isLate;
-          amount = row.amount;
         }
       } else if (m.userId === currentUserId) {
         // At least we always know our own status via ownContributions.
         const row = ownContributions.find((c) => c.cycleNumber === activeCycle);
         if (row) {
-          paid = true;
-          paidAt = row.paidAt;
           amount = row.amount;
+          paid = BigInt(row.amount) >= BigInt(contributionAmountKobo);
+          partial = !paid;
+          paidAt = row.paidAt;
         }
       }
     }
-    // Unpaid rows for closed/historical cycles are counted as defaulted.
-    // For the current cycle, every unpaid member is still just "unpaid".
-    const status: MemberStatus = paid ? "paid" : isHistoricalCycle ? "defaulted" : "unpaid";
+    // Status priority: paid (full) > partial (some paid) > defaulted (historical, nothing paid) > unpaid.
+    const status: MemberStatus = paid
+      ? "paid"
+      : partial
+        ? "partial"
+        : isHistoricalCycle
+          ? "defaulted"
+          : "unpaid";
     return {
       userId: m.userId,
       name: m.name || `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || "Member",
@@ -217,7 +227,7 @@ export function OverviewTab({
       amount,
     };
   }).sort((a, b) => {
-    const order = { paid: 0, unpaid: 1, defaulted: 2 } as const;
+    const order = { paid: 0, partial: 1, unpaid: 2, defaulted: 3 } as const;
     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
     if (a.isSelf) return -1;
     if (b.isSelf) return 1;
@@ -225,6 +235,7 @@ export function OverviewTab({
   });
 
   const paidCount = roster.filter((r) => r.status === "paid").length;
+  const partialCount = roster.filter((r) => r.status === "partial").length;
   const unpaidCount = roster.filter((r) => r.status === "unpaid").length;
   const defaultedCount = roster.filter((r) => r.status === "defaulted").length;
   const totalMembers = roster.length;
@@ -338,13 +349,14 @@ export function OverviewTab({
                 Circle progress
               </Text>
               <Text className="text-[12px] text-[#64748B]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {paidCount} paid · {unpaidCount} unpaid · {defaultedCount} defaulted
+                {paidCount} paid · {partialCount} partial · {unpaidCount} unpaid · {defaultedCount} defaulted
               </Text>
             </div>
             <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-[#E5E7EB]">
               {totalMembers > 0 && (
                 <>
                   <div style={{ width: `${(paidCount / totalMembers) * 100}%`, background: "#02A36E" }} />
+                  <div style={{ width: `${(partialCount / totalMembers) * 100}%`, background: "#60A5FA" }} />
                   <div style={{ width: `${(unpaidCount / totalMembers) * 100}%`, background: "#FDE68A" }} />
                   <div style={{ width: `${(defaultedCount / totalMembers) * 100}%`, background: "#F87171" }} />
                 </>

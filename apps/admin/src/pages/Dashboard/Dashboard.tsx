@@ -272,11 +272,11 @@ export function Dashboard() {
           subtitle={dashStats?.nextDeadline?.groupName ?? ''}
         />
         <StatsCard
-          title="Pending Join Requests"
+          title="People requesting to join"
           value={
             dashStats ? String(dashStats.pendingJoinRequests.total) : unavailableValue
           }
-          subtitle=""
+          subtitle="Incoming requests for your groups"
         />
       </SimpleGrid>
 
@@ -347,8 +347,8 @@ export function Dashboard() {
           <Paper withBorder p="lg" radius="md">
             <Group justify="space-between" align="center" wrap="wrap" gap="md">
               <Box>
-                <Text fw={700} fz="sm">Need the full admin groups list?</Text>
-                <Text fz="xs" c="dimmed">Browse, filter, archive, invite, and manage every ajo circle you administer.</Text>
+                <Text fw={700} fz="sm">Manage your groups and incoming requests</Text>
+                <Text fz="xs" c="dimmed">These are groups you administer. Member groups and your own join requests are separate.</Text>
               </Box>
               <Button
                 component={Link}
@@ -358,7 +358,17 @@ export function Dashboard() {
                 color="green"
                 rightSection={<IconChevronRight size={16} />}
               >
-                Open admin groups
+                Groups I manage
+              </Button>
+              <Button
+                component={Link}
+                to="/manage-join-request"
+                size="sm"
+                variant="subtle"
+                color="green"
+                rightSection={<IconChevronRight size={16} />}
+              >
+                People requesting to join
               </Button>
             </Group>
           </Paper>

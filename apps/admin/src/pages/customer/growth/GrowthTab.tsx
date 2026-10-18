@@ -14,7 +14,6 @@ import {
   IconMessageCircle,
   IconCalendar,
   IconShieldCheck,
-  IconWallet,
   IconCheck,
   IconCash,
 } from "@tabler/icons-react";
@@ -34,12 +33,14 @@ import { PayContributionModal } from "./PayContributionModal";
 export function GrowthTab({
   trustPercent,
   trustScore,
-  nextPaymentDate,
+  nextContributionDate,
   contributions,
   setContributions,
   contributionAmountKobo,
   circleId,
   circleStatus,
+  currentCycleNumber,
+  onContributionPaid,
   nextCycleNumber,
   nextDeadline,
   autoOpenPay = false,
@@ -47,7 +48,7 @@ export function GrowthTab({
 }: {
   trustPercent: number;
   trustScore: number;
-  nextPaymentDate: string;
+  nextContributionDate: string;
   contributions: CircleContribution[];
   setContributions: (
     fn: (prev: CircleContribution[]) => CircleContribution[],
@@ -55,6 +56,8 @@ export function GrowthTab({
   contributionAmountKobo: string | number;
   circleId: string;
   circleStatus: string;
+  currentCycleNumber: number;
+  onContributionPaid: () => void;
   nextCycleNumber?: number;
   nextDeadline?: string;
   autoOpenPay?: boolean;
@@ -64,9 +67,14 @@ export function GrowthTab({
   const [modalOpen, setModalOpen] = useState(false);
 
   const isActive = circleStatus.toUpperCase() === "ACTIVE";
-  const alreadyContributed =
-    nextCycleNumber != null &&
-    contributions.some((c) => c.cycleNumber === nextCycleNumber);
+  const contributedAmount = nextCycleNumber == null
+    ? 0
+    : contributions
+        .filter((c) => c.cycleNumber === nextCycleNumber)
+        .reduce((sum, c) => sum + Number(c.amount), 0);
+  const remainingAmountKobo = Math.max(0, Number(contributionAmountKobo) - contributedAmount);
+  const alreadyContributed = remainingAmountKobo === 0;
+  const isEarlyPayment = nextCycleNumber != null && nextCycleNumber > currentCycleNumber;
   const canContribute =
     isActive && nextCycleNumber != null && !alreadyContributed;
   const deadlineFormatted = nextDeadline
@@ -78,7 +86,7 @@ export function GrowthTab({
         minute: "2-digit",
         hour12: true,
       })
-    : nextPaymentDate;
+    : nextContributionDate;
 
   function openModal() {
     setModalOpen(true);
@@ -102,11 +110,19 @@ export function GrowthTab({
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
         circleId={circleId}
+        currentCycleNumber={currentCycleNumber}
         nextCycleNumber={nextCycleNumber}
-        contributionAmountKobo={contributionAmountKobo}
+        contributionAmountKobo={remainingAmountKobo}
+        amountAlreadyPaidKobo={contributedAmount}
         nextDeadline={nextDeadline}
-        nextPaymentFallback={nextPaymentDate}
-        onPaid={(contribution) => setContributions((prev) => [contribution, ...prev])}
+        nextPaymentFallback={nextContributionDate}
+        onPaid={(contribution) => {
+          setContributions((prev) => [
+            contribution,
+            ...prev.filter((existing) => existing.id !== contribution.id),
+          ]);
+          onContributionPaid();
+        }}
       />
 
 
@@ -142,18 +158,21 @@ export function GrowthTab({
             fw={700}
             className="mt-3 text-center text-[18px] text-[#0F172A]"
           >
-            {nextPaymentDate}
+            {nextContributionDate}
           </Text>
           <Text fw={600} className="text-[14px] text-[#0F172A]">
             Next Contribution
           </Text>
-          <button
-            onClick={() => navigate("/fund-wallet")}
-            className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
-          >
-            <IconWallet size={16} />
-            Fund Wallet
-          </button>
+          {canContribute && (
+            <button
+              type="button"
+              onClick={openModal}
+              className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
+            >
+              <IconCash size={16} />
+              {isEarlyPayment ? `Pay Cycle ${nextCycleNumber} Early` : "Pay contribution"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -162,10 +181,10 @@ export function GrowthTab({
         <div className="flex flex-col gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Text fw={700} className="text-[14px] text-[#15803D]">
-              Cycle {nextCycleNumber} contribution due
+              {isEarlyPayment ? `Cycle ${nextCycleNumber} contribution · pay early` : `Cycle ${nextCycleNumber} contribution`}
             </Text>
             <Text fw={500} className="text-[12px] text-[#166534]">
-              {formatNaira(contributionAmountKobo)} · Deadline{" "}
+              {formatNaira(remainingAmountKobo)} remaining · Deadline{" "}
               {deadlineFormatted}
             </Text>
           </div>
@@ -183,8 +202,7 @@ export function GrowthTab({
         <div className="flex items-center gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4">
           <IconCheck size={20} color="#16a34a" />
           <Text fw={600} className="text-[13px] text-[#15803D]">
-            Cycle {nextCycleNumber} contribution received - you&rsquo;re all
-            set!
+            Cycle {nextCycleNumber} contribution received - you&rsquo;re all set!
           </Text>
         </div>
       )}
@@ -199,7 +217,10 @@ export function GrowthTab({
         <Text fw={500} className="text-[13px] leading-relaxed text-[#0C4A6E]">
           Your trust score is based on your payment history. Consistent on-time
           payments increase your score. Late or missed payments reduce it.
-          Late-payment fees are paid to your circle admin.{" "}
+          Late contributions after the deadline incur a 1.5% fee. If a missed
+          contribution remains unpaid after 23:59 WAT, its outstanding principal
+          is recalculated at 4%; this replaces the 1.5% and does not stack. Fees
+          go to Ajoti platform revenue.{" "}
           <button
             onClick={() => navigate("/debts")}
             className="cursor-pointer font-semibold underline"
@@ -228,7 +249,7 @@ export function GrowthTab({
                   Amount
                 </th>
                 <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">
-                  Penalty
+                  Late fee
                 </th>
                 <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">
                   Status
@@ -280,7 +301,12 @@ export function GrowthTab({
                           fw={500}
                           className={`text-[13px] ${penalty > 0 ? "text-[#EF4444]" : "text-[#6B7280]"}`}
                         >
-                          {penalty > 0 ? formatNaira(c.penaltyAmount) : "-"}
+                          {penalty > 0 ? (
+                            <>
+                              {formatNaira(c.penaltyAmount)}
+                              <span className="mt-0.5 block text-[10px] text-[#6B7280]">1.5% after deadline</span>
+                            </>
+                          ) : "-"}
                         </Text>
                       </td>
                       <td className="px-3 py-3.5 sm:px-5">

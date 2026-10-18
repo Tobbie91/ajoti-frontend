@@ -48,7 +48,6 @@ export function CreateGroup() {
   const [amount, setAmount] = useState('10,000')
   const [frequency, setFrequency] = useState<string[]>([])
   const [payoutStructure, setPayoutStructure] = useState('SEQUENTIAL')
-  const [payoutTime, setPayoutTime] = useState('18:00')
   const [contributionCutoffTime, setContributionCutoffTime] = useState('18:00')
 
   // Step 3 state
@@ -272,19 +271,11 @@ export function CreateGroup() {
 
             <Select
               label="Contribution cutoff time (WAT)"
-              description="Selected cutoff is applied to the contribution date for each cycle."
+              description="This cutoff applies on each contribution date. Payout is scheduled automatically for 11:59 PM WAT that day."
               value={contributionCutoffTime}
               onChange={(value) => setContributionCutoffTime(value ?? '18:00')}
               data={Array.from({ length: 24 }, (_, hour) => ({ value: String(hour).padStart(2, '0') + ':00', label: new Date(Date.UTC(2026, 0, 1, hour)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }) }))}
             />
-            <Select
-              label="Automatic payout time (WAT)"
-              description="Payouts are credited to Ajoti wallets automatically, at least 24 hours after the contribution deadline."
-              value={payoutTime}
-              onChange={(value) => setPayoutTime(value ?? '18:00')}
-              data={[{ value: '09:00', label: '9:00 AM' }, { value: '12:00', label: '12:00 PM' }, { value: '15:00', label: '3:00 PM' }, { value: '18:00', label: '6:00 PM' }, { value: '21:00', label: '9:00 PM' }]}
-            />
-
             <Box>
               <Text fw={600} fz="sm" mb="xs">
                 Payout Structure
@@ -584,8 +575,8 @@ export function CreateGroup() {
                 <Text fz="sm" fw={500}>{contributionCutoffTime}</Text>
               </Box>
               <Box>
-                <Text fz="xs" c="dimmed">Payout Time (WAT)</Text>
-                <Text fz="sm" fw={500}>{payoutTime}</Text>
+                <Text fz="xs" c="dimmed">Automatic Payout (WAT)</Text>
+                <Text fz="sm" fw={500}>11:59 PM</Text>
               </Box>
               <Box>
                 <Text fz="xs" c="dimmed">Payout Order</Text>
@@ -683,7 +674,6 @@ export function CreateGroup() {
                     durationCycles: Number(participants) || 10,
                     maxSlots: Number(participants) || 10,
                     payoutLogic: payoutStructure,
-                    payoutTime,
                     contributionCutoffTime,
                     visibility,
                   })

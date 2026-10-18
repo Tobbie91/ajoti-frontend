@@ -4,7 +4,7 @@ import type { Payout, CircleInvite } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
-type ApiMember = { userId: string; name: string; status: string; position: number | null; joinedAt: string }
+type ApiMember = { userId: string; name: string; status: string; position: number | null; joinedAt: string; avatarUrl?: string | null }
 
 interface GroupMembersTabProps {
   isCompleted: boolean
@@ -180,7 +180,7 @@ export function GroupMembersTab({
               <Table.Tr key={member.userId}>
                 <Table.Td>
                   <Group gap="sm" align="center">
-                    <Avatar size={32} radius="xl" color="gray">
+                    <Avatar src={member.avatarUrl || undefined} size={32} radius="xl" color="gray">
                       {member.name.charAt(0)}
                     </Avatar>
                     <Text fz="sm" fw={500}>{member.name}</Text>

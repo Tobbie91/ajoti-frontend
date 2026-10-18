@@ -211,6 +211,7 @@ export function Signup() {
     setLoading(true);
     try {
       const dobString = formatCalendarDate(dob!);
+      const trackingCode = new URLSearchParams(window.location.search).get("source")?.trim();
       await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -219,6 +220,7 @@ export function Signup() {
         dob: dobString,
         gender: gender!.toUpperCase() as "MALE" | "FEMALE",
         password,
+        ...(trackingCode ? { trackingCode } : {}),
       });
       sessionStorage.setItem("verify_email", email.trim());
       navigate("/verify-otp");

@@ -26,8 +26,12 @@ function DebtCard({ debt, onRepaid }: { debt: Debt; onRepaid: () => void }) {
   async function handleRepay(amountKobo?: number) {
     setRepaying(true)
     setError(null)
+    const pendingKey = `ajoti:debt-repayment:${debt.id}:${amountKobo ?? 'full'}`
+    const idempotencyKey = sessionStorage.getItem(pendingKey) ?? crypto.randomUUID()
+    sessionStorage.setItem(pendingKey, idempotencyKey)
     try {
-      await repayDebt(debt.id, amountKobo)
+      await repayDebt(debt.id, idempotencyKey, amountKobo)
+      sessionStorage.removeItem(pendingKey)
       onRepaid()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Repayment failed. Please try again.')
@@ -57,6 +61,17 @@ function DebtCard({ debt, onRepaid }: { debt: Debt; onRepaid: () => void }) {
         <Text fw={400} className="text-[13px] text-[#6B7280]">Outstanding</Text>
         <Text fw={700} className="text-[15px] text-[#0F172A]">{formatNaira(debt.outstandingTotal)}</Text>
       </div>
+
+      {debt.lateFeeRateBps != null && outstanding > 0 && (
+        <div className="mt-3 rounded-xl bg-[#F0F9FF] px-3 py-2">
+          <Text fw={600} className="text-[11px] text-[#0C4A6E]">
+            Current late fee rate: {debt.lateFeeRateBps / 100}%
+          </Text>
+          <Text className="mt-0.5 text-[11px] leading-relaxed text-[#0C4A6E]">
+            After 23:59 WAT, the rate changes from 1.5% to 4% of outstanding principal. The 4% replaces the 1.5%; it does not stack.
+          </Text>
+        </div>
+      )}
 
       {debt.blocksLoanEligibility && (
         <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#FEF3C7] px-3 py-2">

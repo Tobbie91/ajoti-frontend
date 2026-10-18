@@ -52,3 +52,9 @@ Use the smallest correct solution that satisfies the request. Keep simple edits 
 Track elapsed time from starting the task, including investigation, tool runs and verification. If the task is still incomplete after 10 minutes, ask the user to clarify the remaining scope or priorities before expanding the work. Briefly state what is done, what remains and why it is taking longer. Offer a concrete minimal next step. Do not silently turn a simple edit into hours of work or treat silence as approval for broader scope. While awaiting clarification, finish already-running checks and useful work within the agreed scope; pause work that depends on the answer.
 
 Ask earlier when ambiguity materially affects the solution. The time checkpoint does not authorize skipping necessary correctness checks or existing approval rules. Keep communication brief.
+
+## Ajoti financial and scenario workflows
+
+- Use `$ajoti-financial-safety` when changing, reviewing, or testing behavior that moves, reserves, lends, repays, settles, or accounts for money.
+- Use `$ajoti-scenario-testing` when auditing `Scenerios.md` or deriving scenario-based regression tests; for financial code changes, use both skills.
+- Treat scenario recommendations as proposals. Reconcile them with the workspace `TODO.md`, `docs/blockers.md`, dated action records, current code, and existing tests before changing product behavior.

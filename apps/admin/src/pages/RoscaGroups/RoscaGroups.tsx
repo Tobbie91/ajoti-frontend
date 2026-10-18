@@ -154,8 +154,9 @@ export function RoscaGroups() {
       <Stack gap="lg">
         <Group justify="space-between" align="flex-start" wrap="wrap">
           <Box>
-            <Text fz={22} fw={700} mb={2}>All Groups</Text>
+            <Text fz={22} fw={700} mb={2}>Groups I manage</Text>
             <Text fz="sm" c="dimmed">
+              Groups you administer. Your member groups are under “Groups I’ve joined”.<br />
               {allGroups.filter((group) => group.status === 'Active').length} active groups ·{' '}
               {allGroups.filter((group) => group.status === 'Ready').length} ready to start
             </Text>

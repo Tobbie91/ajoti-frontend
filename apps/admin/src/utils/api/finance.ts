@@ -34,6 +34,66 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
     : ((res as { data?: WalletTransaction[] }).data ?? []);
 }
 
+export type TransactionExportStatusValue =
+  | "QUEUED"
+  | "PROCESSING"
+  | "READY"
+  | "LIMIT_EXCEEDED"
+  | "FAILED"
+  | "EXPIRED";
+
+export interface TransactionExportStatus {
+  id: string;
+  status: TransactionExportStatusValue;
+  rowCount: number | null;
+  byteSize: number | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  readyAt: string | null;
+  linkExpiresAt: string | null;
+  artifactExpiresAt: string | null;
+}
+
+type TransactionExportEnvelope = { data?: TransactionExportStatus | null } | TransactionExportStatus | null;
+
+function unwrapTransactionExport(response: TransactionExportEnvelope): TransactionExportStatus | null {
+  if (!response) return null;
+  if (typeof response === "object" && "data" in response) return response.data ?? null;
+  return response as TransactionExportStatus;
+}
+
+export async function requestTransactionExport(range: {
+  fromDate?: string;
+  toDate?: string;
+}): Promise<TransactionExportStatus> {
+  const response = await authRequest<TransactionExportEnvelope>(
+    "/api/wallet/transaction-exports",
+    { method: "POST", body: JSON.stringify(range) },
+  );
+  const result = unwrapTransactionExport(response);
+  if (!result) throw new Error("The export request could not be read.");
+  return result;
+}
+
+export async function getActiveTransactionExport(): Promise<TransactionExportStatus | null> {
+  const response = await authRequest<TransactionExportEnvelope>(
+    "/api/wallet/transaction-exports/active",
+    { method: "GET" },
+  );
+  return unwrapTransactionExport(response);
+}
+
+export async function getTransactionExportStatus(exportId: string): Promise<TransactionExportStatus> {
+  const response = await authRequest<TransactionExportEnvelope>(
+    `/api/wallet/transaction-exports/${encodeURIComponent(exportId)}`,
+    { method: "GET" },
+  );
+  const result = unwrapTransactionExport(response);
+  if (!result) throw new Error("The export status could not be read.");
+  return result;
+}
+
 // ── Admin Wallet ─────────────────────────────────────────────────────────────
 
 export interface AdminWalletBalance {

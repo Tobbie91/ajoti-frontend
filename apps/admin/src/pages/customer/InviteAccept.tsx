@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Text, Loader } from "@mantine/core";
+import { Checkbox, Text, Loader } from "@mantine/core";
 import {
   IconArrowLeft,
   IconUsers,
@@ -8,7 +8,7 @@ import {
   IconClock,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getInvitePreview, joinByInvite } from "@/utils/api";
+import { ApiError, getInvitePreview, joinByInvite } from "@/utils/api";
 import type { InvitePreview } from "@/utils/api";
 import { useRoscaJoinEligibility } from "@/hooks/useRoscaJoinEligibility";
 
@@ -29,6 +29,12 @@ function formatFreq(f: string) {
   return f.charAt(0) + f.slice(1).toLowerCase();
 }
 
+function formatWAT(value: string | null) {
+  return value
+    ? `${new Date(value).toLocaleString("en-NG", { timeZone: "Africa/Lagos" })} WAT`
+    : "Not set yet";
+}
+
 export function InviteAccept() {
   const navigate = useNavigate();
   const { eligibility, error: eligibilityError, reload } = useRoscaJoinEligibility();
@@ -36,6 +42,7 @@ export function InviteAccept() {
   const [state, setState] = useState<PageState>("loading-preview");
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -62,16 +69,27 @@ export function InviteAccept() {
   }, [token, navigate]);
 
   async function handleAccept() {
-    if (!token || !eligibility?.canJoin) return;
+    if (!token || !preview || !eligibility?.canJoin || !agreed) return;
     setState("submitting");
     try {
-      await joinByInvite(token);
+      await joinByInvite(token, { accepted: true, termsHash: preview.terms.hash });
       setState("success");
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Something went wrong",
-      );
-      setState("error");
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      if (err instanceof ApiError && err.appCode === "ROSCA_TERMS_CHANGED") {
+        try {
+          setPreview(await getInvitePreview(token));
+          setAgreed(false);
+          setErrorMessage("The group terms changed. Review the updated terms and accept them again.");
+          setState("confirm");
+        } catch {
+          setErrorMessage(message);
+          setState("error");
+        }
+      } else {
+        setErrorMessage(message);
+        setState("error");
+      }
     }
   }
 
@@ -174,6 +192,27 @@ export function InviteAccept() {
             </Text>
           </div>
 
+          <div className="mt-4 w-full rounded-xl border border-[#E5E7EB] bg-white px-5 py-4">
+            <Text fw={700} className="text-[15px] text-[#0F172A]">Group terms</Text>
+            <div className="mt-3 flex flex-col gap-2 text-[13px] text-[#4B5563]">
+              <Text>Contribution: {formatNaira(preview.terms.snapshot.circle.contributionAmountKobo)} every {formatFreq(preview.terms.snapshot.circle.frequency)} for {preview.terms.snapshot.circle.durationCycles} cycles.</Text>
+              <Text>First contribution deadline: {formatWAT(preview.terms.snapshot.circle.firstContributionDeadline)}. Admin-set cutoff: {preview.terms.snapshot.circle.contributionCutoffTime ?? "not set"}. Payout: {preview.terms.snapshot.circle.payoutTime}.</Text>
+              <Text>Collateral to reserve: {formatNaira(preview.terms.snapshot.collateral.amountKobo)} ({(preview.terms.snapshot.collateral.ratioBps / 100).toFixed(2)}%). {preview.terms.snapshot.collateral.reservation}</Text>
+              <Text>{preview.terms.snapshot.collateral.beforeStart}</Text>
+              <Text>Configured post-start exit share: {(preview.terms.snapshot.collateral.postStartExitPenaltyBps / 100).toFixed(2)}%. {preview.terms.snapshot.collateral.afterStart}</Text>
+              <Text>{preview.terms.snapshot.collateral.lateFeeShortfall}</Text>
+              <Text>Payout fee: {formatNaira(preview.terms.snapshot.payoutFee.flatFeeKobo)}. {preview.terms.snapshot.payoutFee.note}</Text>
+              <Text>{preview.terms.snapshot.missedContribution.afterCutoffBeforeMidnight}</Text>
+              <Text>{preview.terms.snapshot.missedContribution.afterMidnight}</Text>
+              <Text>{preview.terms.snapshot.missedContribution.bridge}</Text>
+              <Text>{preview.terms.snapshot.missedContribution.repeatDefault}</Text>
+            </div>
+          </div>
+
+          {errorMessage && (
+            <Text role="alert" c="red" fz={13} mt="sm">{errorMessage}</Text>
+          )}
+
           {/* Before you accept */}
           <div className="mt-4 w-full rounded-xl border border-[#FEF3C7] bg-[#FFFBEB] px-5 py-4">
             <Text fw={600} className="text-[13px] text-[#92400E]">
@@ -204,6 +243,12 @@ export function InviteAccept() {
               : 'Checking your participation limit…'}
           </Text>
           {eligibilityError && <button type="button" onClick={reload}>Check again</button>}
+          <Checkbox
+            mt="md"
+            checked={agreed}
+            onChange={(event) => setAgreed(event.currentTarget.checked)}
+            label="I have read and accept these group terms and payout rules."
+          />
           <div className="mt-7 flex w-full gap-3">
             <button
               onClick={() => navigate("/rosca")}
@@ -213,7 +258,7 @@ export function InviteAccept() {
             </button>
             <button
               onClick={handleAccept}
-              disabled={!eligibility?.canJoin}
+              disabled={!eligibility?.canJoin || !agreed}
               className="flex-1 cursor-pointer rounded-xl py-3.5 text-[14px] font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: PRIMARY }}
             >
