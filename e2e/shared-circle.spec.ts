@@ -86,8 +86,8 @@ test('organiser management preserves due-payout action and hides staff recovery 
   await page.route('**/api/rosca/family', route => route.fulfill({ json: { data: ownCircle } }))
   await page.route('**/api/admin/rosca/family', route => route.fulfill({ json: { data: ownCircle } }))
   await page.route('**/api/rosca/family/payouts', route => route.fulfill({ json: { data: [
-    { id: 'failed', cycleNumber: 1, amount: '123456', status: 'FAILED' },
-    { id: 'pending', cycleNumber: 2, amount: '5000000', status: 'PENDING' },
+    { id: 'failed', cycleNumber: 1, amount: '123456', amountPaidOut: null, settlementStatus: 'FAILED', status: 'FAILED', processedAt: null, payoutDate: null },
+    { id: 'pending', cycleNumber: 2, amount: '5000000', amountPaidOut: null, settlementStatus: 'PENDING', status: 'PENDING', processedAt: null, payoutDate: null },
   ] } }))
   await page.goto('/rosca/groups/family')
   await expect(page).toHaveURL(/\/rosca\/family\?view=manage$/)

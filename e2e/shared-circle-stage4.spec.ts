@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 const id = 'shared-contract'
 const sentinels = { bankDetails: 'PRIVATE_BANK_SENTINEL', wallet: 'PRIVATE_WALLET_SENTINEL', collateral: 'PRIVATE_COLLATERAL_SENTINEL', providerId: 'PROVIDER_SENTINEL', ledgerId: 'LEDGER_SENTINEL', debt: 'DEBT_SENTINEL', comment: 'PRIVATE_REVIEW_SENTINEL' }
-async function fixture(page: Page, options: { owner?: boolean; member?: boolean; completed?: boolean; denied?: string; receiptsFail?: boolean; healthFail?: boolean; healthDelayMs?: number; emptyHealth?: boolean; large?: boolean; paidCurrent?: boolean; reviewedMemberIds?: string[]; reviewMineFail?: boolean; preferenceDelayMs?: number; preferenceFailOnce?: boolean } = {}) {
+async function fixture(page: Page, options: { owner?: boolean; member?: boolean; completed?: boolean; denied?: string; receiptsFail?: boolean; healthFail?: boolean; healthDelayMs?: number; emptyHealth?: boolean; large?: boolean; paidCurrent?: boolean; reviewedMemberIds?: string[]; reviewMineFail?: boolean; preferenceDelayMs?: number; preferenceFailOnce?: boolean; payoutRows?: unknown[] } = {}) {
   const member = options.member !== false
   const user = { id: 'me', firstName: 'Shared', lastName: 'Member', role: options.owner || !member ? 'CIRCLE_ADMIN' : 'MEMBER', status: 'ACTIVE' }
   await page.addInitScript(user => localStorage.setItem('user', JSON.stringify(user)), user)
@@ -31,8 +31,8 @@ async function fixture(page: Page, options: { owner?: boolean; member?: boolean;
       if (options.receiptsFail) return route.fulfill({ status: 503, json: { message: sentinels.providerId } })
       return send(options.paidCurrent ? [{ id: 'own', cycleNumber: 2, amount: '500000', penaltyAmount: '0', paidAt: '2031-01-10T00:00:00Z' }] : [])
     }
-    if (path === `/api/rosca/${id}/disbursements` || path === `/api/admin/rosca/${id}/disbursements`) return send({ circleId: id, schedules: schedules.map(schedule => ({ ...schedule, scheduleStatus: schedule.status, payoutStatus: schedule.cycleNumber === 1 ? 'COMPLETED' : null, amountPaidOut: schedule.cycleNumber === 1 ? '500000' : null, processedAt: schedule.cycleNumber === 1 ? '2031-01-16T00:00:00+01:00' : null, ...sentinels })) })
-    if (path === `/api/rosca/${id}/payouts`) return send([{ cycleNumber: 1, recipientName: 'Other Member', amount: '500000', status: 'FAILED', processedAt: null, payoutDate: schedules[0].payoutDate, ...sentinels }])
+    if (path === `/api/rosca/${id}/disbursements` || path === `/api/admin/rosca/${id}/disbursements`) return send({ circleId: id, schedules: schedules.map(schedule => ({ ...schedule, scheduleStatus: schedule.status, payoutStatus: schedule.cycleNumber === 1 ? 'COMPLETED' : null, settlementStatus: schedule.cycleNumber === 1 ? 'COMPLETED' : null, amountPaidOut: schedule.cycleNumber === 1 ? '500000' : null, processedAt: schedule.cycleNumber === 1 ? '2031-01-16T00:00:00+01:00' : null, ...sentinels })) })
+    if (path === `/api/rosca/${id}/payouts`) return send(options.payoutRows ?? [{ cycleNumber: 1, recipientName: 'Other Member', amount: '500000', amountPaidOut: null, settlementStatus: 'FAILED', status: 'FAILED', processedAt: null, payoutDate: schedules[0].payoutDate, ...sentinels }])
     if (path === `/api/rosca/${id}/reviews/summary`) { state.summaryReads++; return send([{ userId: 'other', name: 'Other Member', averageRating: state.reviewPosts.length > 0 ? 4.5 : 4.25, totalReviews: 4, ...sentinels }]) }
     if (path === `/api/rosca/${id}/reviews/mine`) {
       if (state.reviewMineFailures > 0) { state.reviewMineFailures--; return route.fulfill({ status: 503, json: { message: 'Unavailable' } }) }
@@ -61,9 +61,8 @@ async function noLeaks(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 }
 async function selectSection(page: Page, section: string) {
-  const desktopButton = page.getByRole('button', { name: section, exact: true }).filter({ visible: true })
-  if (await desktopButton.count()) {
-    await desktopButton.first().click()
+  if ((page.viewportSize()?.width ?? 0) >= 640) {
+    await page.getByRole('button', { name: section, exact: true }).last().click()
     return
   }
   await page.getByRole('textbox', { name: 'View group section' }).click()
@@ -88,7 +87,7 @@ for (const actor of [{ name: 'member' }, { name: 'owner', owner: true, member: f
     expect(state.reads.some(path => path.includes('/contributions/roster?cycleNumber=1'))).toBe(true)
     await selectSection(page, 'Payouts')
     await expect(page.getByText('Payout history', { exact: true })).toBeVisible()
-    await expect(page.getByText('FAILED', { exact: true }).filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('Failed', { exact: true }).filter({ visible: true })).toBeVisible()
     await expect(page.getByText('Not settled').filter({ visible: true }).first()).toBeVisible()
     await selectSection(page, 'Peers')
     await expect(page.getByText('4.3 / 5', { exact: true }).filter({ visible: true })).toBeVisible()
@@ -112,6 +111,47 @@ test('slow and empty health responses keep progress available and do not invent 
   await expect(page.getByText('Member cycle progress', { exact: true })).toBeVisible()
   await expect(page.getByText('Expected contributions').locator('..')).toContainText('Unavailable')
   await expect(page.getByText('Outstanding contributions').locator('..')).toContainText('Unavailable')
+})
+test('payout history shows only confirmed money paid and separates settlement states', async ({ page }) => {
+  const rows = [
+    { cycleNumber: 1, recipientName: 'Settled Member', amount: '900000', amountPaidOut: '500000', settlementStatus: 'COMPLETED', status: 'COMPLETED', processedAt: '2031-01-16T00:00:00+01:00', payoutDate: '2031-01-16T00:00:00+01:00' },
+    { cycleNumber: 2, recipientName: 'Pending Member', amount: '800000', amountPaidOut: null, settlementStatus: 'PENDING', status: 'PENDING', processedAt: null, payoutDate: '2031-02-16T00:00:00+01:00' },
+    { cycleNumber: 3, recipientName: 'Failed Member', amount: '700000', amountPaidOut: null, settlementStatus: 'FAILED', status: 'FAILED', processedAt: null, payoutDate: '2031-03-16T00:00:00+01:00' },
+    { cycleNumber: 4, recipientName: 'Review Member', amount: '600000', amountPaidOut: null, settlementStatus: 'UNDER_REVIEW', status: 'COMPLETED', processedAt: null, payoutDate: '2031-04-16T00:00:00+01:00' },
+  ]
+  await fixture(page, { payoutRows: rows })
+  await page.goto(`/rosca/${id}`)
+  await selectSection(page, 'Payouts')
+
+  await expect(page.getByText('Amount paid out', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('Settlement status', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('₦5,000.00', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('₦9,000.00', { exact: true }).filter({ visible: true })).toHaveCount(0)
+  await expect(page.getByText('Not settled').filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('Settled', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('Pending', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('Failed', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  await expect(page.getByText('Under review', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+})
+test('admin payout history labels stored amounts separately from confirmed settlement', async ({ page }) => {
+  await fixture(page, {
+    owner: true,
+    member: false,
+    payoutRows: [
+      { cycleNumber: 1, recipientName: 'Settled Member', amount: '900000', amountPaidOut: '500000', settlementStatus: 'COMPLETED', status: 'COMPLETED', processedAt: '2031-01-16T00:00:00+01:00', payoutDate: '2031-01-16T00:00:00+01:00' },
+      { cycleNumber: 2, recipientName: 'Review Member', amount: '600000', amountPaidOut: null, settlementStatus: 'UNDER_REVIEW', status: 'COMPLETED', processedAt: null, payoutDate: '2031-02-16T00:00:00+01:00' },
+    ],
+  })
+  await page.goto(`/rosca/${id}?view=manage`)
+  await page.getByRole('tab', { name: 'Payouts', exact: true }).click()
+
+  await expect(page.getByText('Amount paid out', { exact: true })).toBeVisible()
+  await expect(page.getByText('Settlement status', { exact: true })).toBeVisible()
+  await expect(page.getByText('₦5,000.00', { exact: true })).toBeVisible()
+  await expect(page.getByText('₦9,000.00', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Not settled', { exact: true })).toBeVisible()
+  await expect(page.getByText('Settled', { exact: true })).toBeVisible()
+  await expect(page.getByText('Under review', { exact: true })).toBeVisible()
 })
 test('personal receipt failure does not hide shared health and prevents a guessed payment', async ({ page }) => {
   await fixture(page, { receiptsFail: true })

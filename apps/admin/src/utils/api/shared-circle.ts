@@ -15,7 +15,8 @@ export interface ContributionSummary {
 }
 export interface SharedDisbursement {
   cycleNumber: number; recipientName: string | null; payoutDate: string; contributionDeadline: string;
-  scheduleStatus: string; payoutStatus: string | null; amountPaidOut: string | null; processedAt: string | null
+  scheduleStatus: string; payoutStatus: string | null; settlementStatus: string | null;
+  amountPaidOut: string | null; processedAt: string | null
 }
 export interface RatingSummary { userId: string; name: string; averageRating: number | null; totalReviews: number }
 async function read<T>(circleId: string, suffix: string): Promise<T> {
@@ -69,7 +70,8 @@ export async function getSharedDisbursements(id: string) {
     || !nonnegativeInt(item.cycleNumber) || item.cycleNumber === 0
     || !nullableString(item.recipientName) || typeof item.payoutDate !== 'string'
     || typeof item.contributionDeadline !== 'string' || typeof item.scheduleStatus !== 'string'
-    || !nullableString(item.payoutStatus) || !(item.amountPaidOut == null || koboString(item.amountPaidOut))
+    || !nullableString(item.payoutStatus) || !('settlementStatus' in item) || !nullableString(item.settlementStatus)
+    || !('amountPaidOut' in item) || !(item.amountPaidOut == null || koboString(item.amountPaidOut))
     || !nullableString(item.processedAt))) {
     throw new Error('Payout schedules are incomplete. Please try again.')
   }

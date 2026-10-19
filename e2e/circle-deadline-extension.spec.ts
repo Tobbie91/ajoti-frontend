@@ -92,6 +92,7 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
         contributionDeadline: state.updatedDeadline ?? currentDeadline,
         scheduleStatus: 'UPCOMING',
         payoutStatus: options.payoutStatus ?? null,
+        settlementStatus: options.payoutStatus ?? null,
         amountPaidOut: null,
         processedAt: null,
       }] } } })

@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Group, Loader, Paper, Select, SimpleGrid, Stack, 
 import { getPayoutHistory } from '@/utils/api'
 import { getSharedHealth, getSharedProgress, getContributionSummary, getSharedDisbursements, getRatingSummary } from '@/utils/api/shared-circle'
 import { formatKobo, sumKobo } from '@/utils/kobo'
+import { payoutSettlementDisplay } from '@/utils/payout-settlement'
 
 function ReadSection<T>({ id, title, read, cycle, refreshVersion, children }: {
   id: string; title: string; read: (id: string, cycle?: number) => Promise<T>; cycle?: number; refreshVersion: number; children: (data: T) => ReactNode
@@ -53,8 +54,14 @@ export function SharedCircleFinancials({ circleId, view, currentCycle = 1, cycle
     <Rows headers={['Member', 'Average rating', 'Review count']} rows={ratings.map(item => [item.name, item.totalReviews > 0 && typeof item.averageRating === 'number' && Number.isFinite(item.averageRating) ? `${item.averageRating.toFixed(1)} / 5` : 'Not rated', String(item.totalReviews)])} />
   </>}</ReadSection>
   if (view === 'payouts') return <Stack>
-    <ReadSection id={circleId} title="Payout schedule" read={getSharedDisbursements} refreshVersion={refreshVersion}>{data => <Rows headers={['Cycle', 'Recipient', 'Contribution deadline', 'Scheduled payout', 'Settlement', 'Paid out']} rows={data.schedules.map(item => [item.cycleNumber, item.recipientName ?? 'Unassigned', watDate(item.contributionDeadline), watDate(item.payoutDate), item.payoutStatus ?? item.scheduleStatus, item.amountPaidOut == null ? 'Not settled' : formatKobo(item.amountPaidOut)])} />}</ReadSection>
-    <ReadSection id={circleId} title="Payout history" read={getPayoutHistory} refreshVersion={refreshVersion}>{items => <Rows headers={['Cycle', 'Recipient', 'Amount', 'Status', 'Processed']} rows={items.map(item => [item.cycleNumber, item.recipientName ?? 'Unavailable', formatKobo(item.amount), <Badge color={item.status === 'FAILED' ? 'red' : 'teal'}>{item.status}</Badge>, watDate(item.processedAt)])} />}</ReadSection>
+    <ReadSection id={circleId} title="Payout schedule" read={getSharedDisbursements} refreshVersion={refreshVersion}>{data => <Rows headers={['Cycle', 'Recipient', 'Contribution deadline', 'Scheduled payout', 'Settlement status', 'Paid out']} rows={data.schedules.map(item => {
+      const settlement = payoutSettlementDisplay(item.settlementStatus, item.amountPaidOut, item.payoutStatus ?? item.scheduleStatus)
+      return [item.cycleNumber, item.recipientName ?? 'Unassigned', watDate(item.contributionDeadline), watDate(item.payoutDate), <Badge color={settlement.color}>{settlement.label}</Badge>, item.amountPaidOut == null ? 'Not settled' : formatKobo(item.amountPaidOut)]
+    })} />}</ReadSection>
+    <ReadSection id={circleId} title="Payout history" read={getPayoutHistory} refreshVersion={refreshVersion}>{items => <Rows headers={['Cycle', 'Recipient', 'Amount paid out', 'Settlement status', 'Processed']} rows={items.map(item => {
+      const settlement = payoutSettlementDisplay(item.settlementStatus, item.amountPaidOut, item.status)
+      return [item.cycleNumber ?? 'Unavailable', item.recipientName ?? 'Unavailable', item.amountPaidOut == null ? 'Not settled' : formatKobo(item.amountPaidOut), <Badge color={settlement.color}>{settlement.label}</Badge>, watDate(item.processedAt)]
+    })} />}</ReadSection>
   </Stack>
   return <Stack>
     <ReadSection id={circleId} title="Group financial health" read={getSharedHealth} refreshVersion={refreshVersion}>{health => {

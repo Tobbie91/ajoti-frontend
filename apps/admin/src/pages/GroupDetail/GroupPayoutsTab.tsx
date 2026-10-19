@@ -4,6 +4,7 @@ import { getCircleEarlyPayouts, type CircleEarlyPayout } from '@/utils/api/rosca
 import { Stack, Paper, Text, Group, Button, TextInput, Table, Avatar, Badge, Loader } from '@mantine/core'
 import { IconPlayerPlay, IconRefresh } from '@tabler/icons-react'
 import type { Payout } from '@/utils/api'
+import { payoutSettlementDisplay } from '@/utils/payout-settlement'
 
 const PRIMARY = '#0b6b55'
 
@@ -101,8 +102,8 @@ export function GroupPayoutsTab({
               <Table.Tr style={{ background: PRIMARY }}>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Recipient</Table.Th>
-                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
-                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
+                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount paid out</Table.Th>
+                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Settlement status</Table.Th>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -115,15 +116,10 @@ export function GroupPayoutsTab({
                 </Table.Tr>
               )}
               {payouts.map((p) => {
-                const statusColor =
-                  p.status === 'SUCCESS' || p.status === 'COMPLETED'
-                    ? { bg: '#e6f5f1', color: PRIMARY }
-                    : p.status === 'FAILED'
-                    ? { bg: '#fef2f2', color: '#e74c3c' }
-                    : { bg: '#f1f3f5', color: '#868e96' }
+                const settlement = payoutSettlementDisplay(p.settlementStatus, p.amountPaidOut, p.status)
                 const cycleNumber = p.cycleNumber
                 const recipient = p.recipientName ?? 'Unassigned'
-                const amountNaira = formatKobo(p.amount)
+                const amountNaira = p.amountPaidOut == null ? 'Not settled' : formatKobo(p.amountPaidOut)
                 return (
                   <Table.Tr key={p.cycleNumber}>
                     <Table.Td><Text fz="sm" fw={500}>{cycleNumber != null ? `Cycle ${cycleNumber}` : '-'}</Text></Table.Td>
@@ -142,9 +138,9 @@ export function GroupPayoutsTab({
                       <Badge
                         size="sm"
                         radius="sm"
-                        style={{ background: statusColor.bg, color: statusColor.color, border: 'none', fontWeight: 600 }}
+                        color={settlement.color}
                       >
-                        {p.status}
+                        {settlement.label}
                       </Badge>
                     </Table.Td>
                     <Table.Td>

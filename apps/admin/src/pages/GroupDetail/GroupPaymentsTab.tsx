@@ -2,6 +2,7 @@ import { formatKobo, sumKobo, koboPercent } from '@/utils/kobo'
 import { useEffect, useState } from 'react'
 import { Stack, Paper, Group, Text, Box, SimpleGrid, Table, Badge, Select, Avatar, Button, Loader } from '@mantine/core'
 import { IconChevronDown, IconDownload } from '@tabler/icons-react'
+import { payoutSettlementDisplay } from '@/utils/payout-settlement'
 import {
   getAdminCircleContributions,
   getAdminDisbursements,
@@ -311,8 +312,9 @@ export function GroupPaymentsTab({
                 </Table.Td>
               </Table.Tr>
             ) : disbursements.map((d) => {
-              const isSuccess = d.payoutStatus != null && ['SUCCESS', 'COMPLETED', 'PAID'].includes(d.payoutStatus.toUpperCase())
-              const isUpcoming = d.payoutStatus == null || ['UPCOMING', 'PENDING'].includes((d.scheduleStatus ?? '').toUpperCase())
+              const settlement = payoutSettlementDisplay(d.settlementStatus, d.amountPaidOut, d.payoutStatus ?? d.scheduleStatus)
+              const isSuccess = settlement.label === 'Settled'
+              const isUpcoming = settlement.label === 'Upcoming' || settlement.label === 'Pending' || settlement.label === 'Processing'
               const isStuck = isUpcoming && d.payoutDate != null && new Date(d.payoutDate) < new Date()
               const amountNaira = d.amountPaidOut != null ? formatKobo(d.amountPaidOut) : null
               const canExtend = allowExtensions && d.scheduleStatus === 'UPCOMING' && d.payoutStatus == null && Date.parse(d.contributionDeadline) > Date.now()
@@ -346,7 +348,7 @@ export function GroupPaymentsTab({
                         fontWeight: 600,
                       }}
                     >
-                      {isSuccess ? 'Disbursed' : isStuck ? 'Overdue' : isUpcoming ? 'Upcoming' : d.payoutStatus}
+                      {isSuccess ? 'Settled' : isStuck ? 'Overdue' : settlement.label}
                     </Badge>
                   </Table.Td>
                   <Table.Td><Text fz="sm">Wallet</Text></Table.Td>

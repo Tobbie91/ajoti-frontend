@@ -546,8 +546,9 @@ export async function getCircleEarlyPayouts(circleId: string): Promise<CircleEar
 // ── Payouts ──────────────────────────────────────────────────────────────────
 
 export interface Payout {
-  cycleNumber: number; recipientName: string | null; amount: string; status: string;
-  processedAt: string | null; payoutDate: string;
+  cycleNumber: number | null; recipientName: string | null; amount: string; amountPaidOut: string | null;
+  settlementStatus: string | null; status: string;
+  processedAt: string | null; payoutDate: string | null;
 }
 
 export async function getPayoutHistory(circleId: string): Promise<Payout[]> {
@@ -557,6 +558,13 @@ export async function getPayoutHistory(circleId: string): Promise<Payout[]> {
   );
   const rows = Array.isArray(res) ? res : res.data;
   if (!Array.isArray(rows)) throw new Error('Payout history is unavailable.');
+  if (rows.some((row) => !row || typeof row !== 'object'
+    || typeof row.amount !== 'string' || !/^\d+$/.test(row.amount)
+    || !('amountPaidOut' in row) || !('settlementStatus' in row)
+    || !(row.amountPaidOut == null || (typeof row.amountPaidOut === 'string' && /^\d+$/.test(row.amountPaidOut)))
+    || !(row.settlementStatus == null || typeof row.settlementStatus === 'string'))) {
+    throw new Error('Payout history is incomplete. Please try again.');
+  }
   return rows;
 }
 
@@ -620,6 +628,7 @@ export interface Disbursement {
   contributionDeadline: string;
   scheduleStatus: string;
   payoutStatus: string | null;
+  settlementStatus: string | null;
   amountPaidOut: string | null;
   processedAt: string | null;
   [key: string]: unknown;
