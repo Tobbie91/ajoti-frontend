@@ -143,6 +143,9 @@ export function rejectAdminRequest(
 
 export interface KycQueueRow {
   missingKycDetails?: string[];
+  issueType?: 'FAILED_LOOKUP' | 'MANUAL_REVIEW' | 'STALLED_VERIFICATION';
+  issueReason?: string | null;
+  issueLevel?: number;
   id: string;
   userId: string;
   status: string;
@@ -190,6 +193,16 @@ export function listKycQueue(params: {
     ) as Record<string, string>,
   ).toString();
   return authRequest(`/api/superadmin/kyc?${q}`, { method: "GET" });
+}
+
+export function listKycIssues(params: {
+  page?: number;
+  limit?: number;
+}): Promise<PaginatedResponse<KycQueueRow>> {
+  const q = new URLSearchParams();
+  if (params.page !== undefined) q.set('page', String(params.page));
+  if (params.limit !== undefined) q.set('limit', String(params.limit));
+  return authRequest(`/api/superadmin/kyc/issues?${q.toString()}`, { method: 'GET' });
 }
 
 export function getKycDetail(userId: string): Promise<Record<string, unknown>> {

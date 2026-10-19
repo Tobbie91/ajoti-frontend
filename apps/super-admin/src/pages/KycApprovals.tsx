@@ -41,6 +41,7 @@ import {
 } from '@tabler/icons-react'
 import {
   listKycQueue,
+  listKycIssues,
   getKycDetail,
   approveKyc,
   rejectKyc,
@@ -52,10 +53,11 @@ import {
 import { SortableTh } from '@/components/SortableTh'
 import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
 
-const STATUS_TAB = ['PENDING', 'APPROVED', 'REJECTED'] as const
+const STATUS_TAB = ['ISSUES', 'PENDING', 'APPROVED', 'REJECTED'] as const
 type KycStatusTab = typeof STATUS_TAB[number]
 
 const STATUS_COLOR: Record<string, string> = {
+  ISSUES: 'orange',
   PENDING: 'yellow',
   APPROVED: 'green',
   REJECTED: 'red',
@@ -81,7 +83,7 @@ function pendingLabel(record: KycQueueRow) {
 }
 
 function maskSensitiveData(value: unknown, key = ''): unknown {
-  if (/nin|bvn|document.?number|passport.?number|licen[cs]e.?no|licen[cs]e.?number/i.test(key)) {
+  if (/nin|bvn|encrypted.?number|number.?encrypted|document.?number|passport.?number|licen[cs]e.?no|licen[cs]e.?number/i.test(key)) {
     return value == null ? value : '••••••'
   }
   if (Array.isArray(value)) return value.map((item) => maskSensitiveData(item))
@@ -140,6 +142,7 @@ function LookupEvidenceCard({
     .filter((part) => typeof part === 'string')
     .join(' ')
   const verifiedDob = typeof evidence.dateOfBirth === 'string' ? evidence.dateOfBirth : undefined
+  const field = (key: string) => typeof evidence[key] === 'string' ? evidence[key] as string : undefined
 
   return (
     <Card withBorder radius="md" p="sm">
@@ -155,6 +158,12 @@ function LookupEvidenceCard({
           {verifiedName && <InfoRow label="Mono Verified Name" value={verifiedName} />}
           {accountDob && <InfoRow label="Account Date of Birth" value={fmt(accountDob)} />}
           {verifiedDob && <InfoRow label="Mono Date of Birth" value={fmt(verifiedDob)} />}
+          {field('middleName') && <InfoRow label="Mono Middle Name" value={field('middleName')!} />}
+          {field('gender') && <InfoRow label="Mono Gender" value={field('gender')!} />}
+          {field('nationality') && <InfoRow label="Mono Nationality" value={field('nationality')!} />}
+          {field('ninLastFour') && <InfoRow label="NIN (last 4)" value={field('ninLastFour')!} />}
+          {field('bvnLastFour') && <InfoRow label="BVN (last 4)" value={field('bvnLastFour')!} />}
+          {field('documentLastFour') && <InfoRow label="Government ID (last 4)" value={field('documentLastFour')!} />}
           {reference && <InfoRow label="Reference" value={reference} />}
         </SimpleGrid>
       </Stack>
@@ -179,6 +188,14 @@ function VerificationDataCard({
     data.lastAttempt && typeof data.lastAttempt === 'object' && !Array.isArray(data.lastAttempt)
       ? (data.lastAttempt as Record<string, unknown>)
       : null
+  const submittedDocument =
+    data.submittedDocument && typeof data.submittedDocument === 'object' && !Array.isArray(data.submittedDocument)
+      ? (data.submittedDocument as Record<string, unknown>)
+      : null
+  const returnedIdentity =
+    lastAttempt?.returnedIdentity && typeof lastAttempt.returnedIdentity === 'object' && !Array.isArray(lastAttempt.returnedIdentity)
+      ? (lastAttempt.returnedIdentity as Record<string, unknown>)
+      : null
 
   if (data.provider === 'mono_lookup' && levels) {
     return (
@@ -199,6 +216,14 @@ function VerificationDataCard({
             accountDob={accountDob}
           />
         )}
+        {submittedDocument !== null && (
+          <Alert color="blue" title="Customer-submitted government ID">
+            <Text fz="sm">
+              {String(submittedDocument.type ?? 'Government ID')}
+              {' '}ending in {String(submittedDocument.lastFour ?? '••••')}
+            </Text>
+          </Alert>
+        )}
         {lastAttempt?.status === 'failed' && (
           <Alert color="red" title="Latest verification attempt failed">
             <Text fz="sm">
@@ -207,6 +232,14 @@ function VerificationDataCard({
                 : 'Mono Lookup could not verify this identity.'}
             </Text>
           </Alert>
+        )}
+        {returnedIdentity !== null && (
+          <LookupEvidenceCard
+            label="Provider returned (not verified)"
+            evidence={{ ...returnedIdentity, status: 'unverified' }}
+            accountName={accountName}
+            accountDob={accountDob}
+          />
         )}
         <RawDataToggle data={data} />
       </Stack>
@@ -326,9 +359,9 @@ function KycDetailDrawer({
   }
 
   const savedDocument = record?.verificationData?.submittedDocument as
-    | { type?: string; encryptedNumber?: string }
+    | { type?: string; encryptedNumber?: string; numberEncrypted?: string }
     | undefined
-  const hasSavedDocument = typeof savedDocument?.encryptedNumber === 'string'
+  const hasSavedDocument = typeof savedDocument?.encryptedNumber === 'string' || typeof savedDocument?.numberEncrypted === 'string'
 
   async function handleReverify() {
     if (!record) return
@@ -648,8 +681,10 @@ export function KycApprovals() {
   function fetchRecords() {
     setLoading(true)
     setError(null)
-    listKycQueue({ page, limit: PAGE_SIZE, status: activeTab })
-      .then((res) => {
+    const request = activeTab === 'ISSUES'
+      ? listKycIssues({ page, limit: PAGE_SIZE })
+      : listKycQueue({ page, limit: PAGE_SIZE, status: activeTab })
+    request.then((res) => {
         const filtered = debouncedSearch
           ? res.data.filter((r) => {
               const q = debouncedSearch.toLowerCase()
@@ -709,6 +744,11 @@ export function KycApprovals() {
         </Tabs.List>
       </Tabs>
 
+      {activeTab === 'ISSUES' && (
+        <Alert icon={<IconAlertCircle size={16} />} color="orange" variant="light" radius="md">
+          Failed, ambiguous and stalled Mono identity checks appear here. Open a record to investigate its saved evidence.
+        </Alert>
+      )}
       {activeTab === 'PENDING' && (
         <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light" radius="md">
           All pending KYC records are shown here. “Waiting for Mono” means the provider session is still unresolved; “Needs review” means staff attention may be required.
@@ -756,7 +796,9 @@ export function KycApprovals() {
                       <Table.Td>
                         <Stack gap={3}>
                           <Text fz="xs" c="dimmed">{r.step}</Text>
-                          {r.status === 'PENDING' && <Badge size="xs" variant="light" color={pending.color}>{pending.label}</Badge>}
+                          {activeTab === 'ISSUES' && r.issueType && <Badge size="xs" variant="light" color="orange">{r.issueType.replaceAll('_', ' ')}</Badge>}
+                          {activeTab !== 'ISSUES' && r.status === 'PENDING' && <Badge size="xs" variant="light" color={pending.color}>{pending.label}</Badge>}
+                          {activeTab === 'ISSUES' && r.issueReason && <Text fz="xs" c="red" lineClamp={2}>{r.issueReason}</Text>}
                         </Stack>
                       </Table.Td>
                       <Table.Td><Badge color={STATUS_COLOR[r.status] ?? 'gray'} variant="filled" size="sm" radius="sm">{r.status}</Badge></Table.Td>
