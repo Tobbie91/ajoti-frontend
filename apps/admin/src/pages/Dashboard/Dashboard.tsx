@@ -255,7 +255,7 @@ export function Dashboard() {
       </Paper>
 
       {/* ─── Create-pair + jump-to My Groups ──────────────────────── */}
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         <CreateCard
           icon={<IconUsersGroup size={22} />}
           title="Create an Ajo group"

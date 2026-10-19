@@ -198,6 +198,13 @@ export function GrowthActivities() {
         (contributedByCycle.get(schedule.cycleNumber) ?? 0n) < (kobo(circle.contributionAmount) ?? 0n),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
+  const selectedCyclePaid = nextUnpaidSchedule?.cycleNumber == null ? 0n : sumKobo(
+    contributions.filter(c => c.cycleNumber === nextUnpaidSchedule.cycleNumber).map(c => c.amount),
+  );
+  const expectedContribution = kobo(circle.contributionAmount);
+  const remainingContribution = selectedCyclePaid == null || expectedContribution == null
+    ? null
+    : expectedContribution > selectedCyclePaid ? expectedContribution - selectedCyclePaid : 0n;
   const nextPaymentDate = nextSchedule?.payoutDate
     ? watDate(nextSchedule.payoutDate)
     : circle.status === "COMPLETED" ? "All payouts completed" : "Schedule unavailable";
@@ -415,7 +422,8 @@ export function GrowthActivities() {
         circleId={id!}
         currentCycleNumber={currentCycleNumber}
         nextCycleNumber={nextUnpaidSchedule?.cycleNumber}
-        contributionAmountKobo={circle.contributionAmount}
+        contributionAmountKobo={remainingContribution?.toString() ?? "Unavailable"}
+        amountAlreadyPaidKobo={selectedCyclePaid?.toString() ?? "Unavailable"}
         nextDeadline={nextUnpaidSchedule?.contributionDeadline as string | undefined}
         nextPaymentFallback={nextContributionDate}
         onPaid={(contribution) => {
