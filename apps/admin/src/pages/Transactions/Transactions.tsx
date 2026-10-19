@@ -69,6 +69,15 @@ function formatKobo(val: string | number | undefined): string {
   return `₦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
 }
 
+const KOBO_METADATA_FIELDS = new Set(['flatFee', 'netPayout', 'grossPayout'])
+
+function formatMetadataLabel(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2">
@@ -141,7 +150,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
         {(raw as Record<string, unknown>).balanceBefore != null && <DetailRow label="Balance Before" value={formatKobo((raw as Record<string, unknown>).balanceBefore as string)} />}
         {(raw as Record<string, unknown>).balanceAfter != null && <DetailRow label="Balance After" value={formatKobo((raw as Record<string, unknown>).balanceAfter as string)} />}
         {metaEntries.map(([k, v]) => (
-          <DetailRow key={k} label={k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} value={String(v)} />
+          <DetailRow key={k} label={formatMetadataLabel(k)} value={KOBO_METADATA_FIELDS.has(k) ? formatKobo(String(v)) : String(v)} />
         ))}
         <DetailRow
           label="Reference"
