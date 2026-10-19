@@ -620,16 +620,14 @@ export interface Contribution {
   memberName: string;
   cycleNumber: number;
   amount: string;
-  penaltyAmount: string;
   isLate: boolean;
   paidAt: string | null;
-  [key: string]: unknown;
 }
 
 export async function getAllCircleContributions(
   circleId: string,
 ): Promise<Contribution[]> {
-  // Circle members and admins can read the roster; outsiders are rejected server-side.
+  // Stage 4 must authorize this circle-scoped read and return only member-safe fields.
   const res = await authRequest<{ data?: Contribution[] }>(
     `/api/rosca/${circleId}/contributions/roster`,
     { method: "GET" },
