@@ -1,3 +1,10 @@
+import { circleDeadlineLabel, getCircleDeadlineState } from '@/utils/circle-deadline';
+import { watDate } from '@/utils/wat-date';
+import { SharedCircleFinancials } from "./growth/SharedCircleFinancials";
+import { kobo, sumKobo } from "@/utils/kobo";
+import { ContributionPaymentPreference } from './growth/ContributionPaymentPreference';
+import { circleAccess } from '@/utils/circle-access';
+import { GroupContributionsTab } from '../GroupDetail/GroupContributionsTab';
 import { OverviewTab } from "./growth/OverviewTab";
 import { MembersTab } from "./growth/MembersTab";
 import { AdminTab } from "./growth/AdminTab";
@@ -46,6 +53,8 @@ import {
 
 const GROUP_TABS = [
   "Overview",
+  "Contributions",
+  "Payouts",
   "Members",
   "Admin",
   "Growth & Activities",
@@ -56,6 +65,8 @@ const GROUP_TABS = [
 
 const TAB_SLUG: Record<string, string> = {
   overview: "Overview",
+  contributions: "Contributions",
+  payouts: "Payouts",
   members: "Members",
   admin: "Admin",
   growth: "Growth & Activities",
@@ -77,13 +88,15 @@ export function GrowthActivities() {
   const autoPay = searchParams.get("pay") === "1" || contributionShortcut;
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const [ratingRefreshVersion, setRatingRefreshVersion] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [circle, setCircle] = useState<RoscaCircle | null>(null);
   const [schedules, setSchedules] = useState<RoscaSchedule[]>([]);
+  const [personalReadError, setPersonalReadError] = useState(false);
   const [contributions, setContributions] = useState<CircleContribution[]>([]);
   const [payModalOpen, setPayModalOpen] = useState(false);
-  const [userTrustScore, setUserTrustScore] = useState(0);
+  const [userTrustScore, setUserTrustScore] = useState<number | null>(null);
 
   const currentUserId = (() => {
     try {
@@ -100,27 +113,31 @@ export function GrowthActivities() {
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
-    Promise.all([
-      getRoscaCircle(id),
-      getRoscaSchedules(id),
-      getCircleContributions(id),
-      getTrustScore().catch(
-        () => ({ trustScore: 0 }) as { trustScore: number },
-      ),
-    ])
+    getRoscaCircle(id).then(async c => {
+      const access = circleAccess(c, currentUserId);
+      if (!access.view) throw new Error('Group activity is unavailable for this membership.');
+      const [s, contrib, ts] = await Promise.all([
+        getRoscaSchedules(id),
+        access.approvedMember ? getCircleContributions(id).then(rows => ({ rows, failed: false })).catch(() => ({ rows: [], failed: true })) : Promise.resolve({ rows: [], failed: false }),
+        getTrustScore().catch(() => null),
+      ]);
+      return [c, s, contrib, ts] as const;
+    })
       .then(([c, s, contrib, ts]) => {
         if (cancelled) return;
+        if (c.previewOnly === true) { setLoadError("Group activity is unavailable for this membership."); return; }
         setCircle(c);
         setSchedules(s);
-        setContributions(contrib);
-        setUserTrustScore((ts as { trustScore: number }).trustScore ?? 0);
+        setContributions(contrib.rows);
+        setPersonalReadError(contrib.failed);
+        setUserTrustScore(ts?.trustScore ?? null);
       })
       .catch((err: unknown) => {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load group activity");
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [id, refreshVersion]);
+  }, [id, refreshVersion, currentUserId]);
 
   if (loading) {
     return (
@@ -147,7 +164,8 @@ export function GrowthActivities() {
     );
   }
 
-  const members = ((circle as any).members as CircleMember[]) ?? [];
+  const { approvedMember, manage } = circleAccess(circle, currentUserId);
+  const members = circle.members ?? [];
   const adminName = circle.admin
     ? `${circle.admin.firstName} ${circle.admin.lastName}`.trim()
     : "Admin";
@@ -157,7 +175,7 @@ export function GrowthActivities() {
   const progressPercent =
     totalCycles > 0 ? (completedCycles / totalCycles) * 100 : 0;
 
-  const trustPercent = Math.min(100, userTrustScore);
+  const trustPercent = Math.min(100, userTrustScore ?? 0);
 
   // Next pending payout
   const nextSchedule = schedules
@@ -165,42 +183,35 @@ export function GrowthActivities() {
       (s) => ["IN_PROGRESS", "UPCOMING"].includes((s.status ?? "").toUpperCase()),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
-  const contributedByCycle = new Map<number, number>();
+  const contributedByCycle = new Map<number, bigint>();
   for (const contribution of contributions) {
     contributedByCycle.set(
       contribution.cycleNumber,
-      (contributedByCycle.get(contribution.cycleNumber) ?? 0) + Number(contribution.amount),
+      (contributedByCycle.get(contribution.cycleNumber) ?? 0n) + (kobo(contribution.amount) ?? 0n),
     );
   }
-  const nextUnpaidSchedule = schedules
+  const nextUnpaidSchedule = personalReadError ? undefined : schedules
     .filter(
       (schedule) =>
         ["IN_PROGRESS", "UPCOMING"].includes((schedule.status ?? "").toUpperCase()) &&
         schedule.cycleNumber != null &&
-        (contributedByCycle.get(schedule.cycleNumber) ?? 0) < Number(circle.contributionAmount),
+        (contributedByCycle.get(schedule.cycleNumber) ?? 0n) < (kobo(circle.contributionAmount) ?? 0n),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
   const nextPaymentDate = nextSchedule?.payoutDate
-    ? new Date(nextSchedule.payoutDate as string).toLocaleDateString("en-NG", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
+    ? watDate(nextSchedule.payoutDate)
     : circle.status === "COMPLETED" ? "All payouts completed" : "Schedule unavailable";
-  const nextContributionDate = nextUnpaidSchedule?.contributionDeadline
-    ? new Date(nextUnpaidSchedule.contributionDeadline).toLocaleDateString("en-NG", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : "No unpaid cycle scheduled";
+  const nextContributionDate = personalReadError
+    ? "Unavailable"
+    : nextUnpaidSchedule?.contributionDeadline
+      ? watDate(nextUnpaidSchedule.contributionDeadline)
+      : circle.status === "COMPLETED" ? "No further contributions" : "No unpaid cycle scheduled";
 
-  const totalContributed = contributions.reduce(
-    (s, c) => s + Number(c.amount),
-    0,
-  );
+  const totalContributed = sumKobo(contributions.map(item => item.amount))?.toString() ?? "Unavailable";
   const statusBadge = circleStatusBadge((circle as any).status ?? "");
   const currentCycleNumber = Number(circle.currentCycle ?? 1);
+  const visibleTabs = GROUP_TABS.filter(tab => approvedMember || tab !== "Growth & Activities");
+  const labelForTab = (tab: string) => tab === "Growth & Activities" ? "Growth" : tab === "Peer Reviews" ? "Peers" : tab;
 
   return (
     <div className="mx-auto w-full max-w-[900px] px-6 py-6">
@@ -213,12 +224,23 @@ export function GrowthActivities() {
             className="flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm"
           >
             <IconArrowLeft size={18} color="#374151" />
-            Back
+            Back to joined groups
           </button>
           <Text fw={700} className="text-[22px] text-[#0F172A]">
             {circle.name}
           </Text>
           <button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="ml-auto cursor-pointer text-sm font-semibold text-[#02A36E]">Refresh</button>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {manage && <button type="button" className="text-sm font-semibold text-[#0B6B55]" onClick={() => navigate(`/rosca/${id}?view=manage`)}>Manage Group</button>}
+          {approvedMember && <button type="button" className="text-sm font-semibold text-[#0B6B55]" onClick={() => navigate(`/messages?circleId=${id}`)}>Group chat{circle.status === 'COMPLETED' ? ' history' : ''}</button>}
+        </div>
+        {circle.status === 'COMPLETED' && <Text size="sm" c="dimmed">This group is completed. Financial history and previous chat remain available; new contributions and chat messages are closed.</Text>}
+        <div className="rounded-xl border border-[#E5E7EB] p-4">
+          <Text fw={700}>Current cycle {currentCycleNumber} of {totalCycles}</Text>
+          <Text>Next Deadline{nextSchedule ? ` · Cycle ${nextSchedule.cycleNumber}` : ''}: {circleDeadlineLabel[getCircleDeadlineState({ circleStatus: circle.status, deadline: nextSchedule?.contributionDeadline })]}</Text>
+          {nextSchedule?.contributionDeadline && <Text size="sm">{watDate(nextSchedule.contributionDeadline)}</Text>}
         </div>
 
         {/* ─── Mobile: visible "Overview" pill + Select dropdown for the rest ─── */}
@@ -242,12 +264,7 @@ export function GrowthActivities() {
               if (!value) return;
               setActiveTab(value);
             }}
-            data={[
-              { value: "Members", label: "Members" },
-              { value: "Admin", label: "Admin" },
-              { value: "Growth & Activities", label: "Growth" },
-              { value: "Peer Reviews", label: "Peers" },
-            ]}
+            data={visibleTabs.filter(tab => tab !== "Overview").map(tab => ({ value: tab, label: labelForTab(tab) }))}
             allowDeselect={false}
             radius="md"
             className="flex-1"
@@ -264,8 +281,8 @@ export function GrowthActivities() {
         </div>
 
         {/* ─── Desktop: full-width pill grid ───────────────────────────────── */}
-        <div className="hidden gap-1.5 rounded-xl bg-[#F1F3EF] p-1 sm:grid sm:grid-cols-5">
-          {GROUP_TABS.map((tab) => {
+        <div className="hidden gap-1.5 rounded-xl bg-[#F1F3EF] p-1 sm:grid sm:grid-cols-7">
+          {visibleTabs.map((tab) => {
             const active = activeTab === tab;
             return (
               <button
@@ -278,14 +295,14 @@ export function GrowthActivities() {
                     : "text-[#64748B] hover:bg-white hover:text-[#0F172A]"
                 }`}
               >
-                {tab === "Growth & Activities" ? "Growth" : tab === "Peer Reviews" ? "Peers" : tab}
+                {labelForTab(tab)}
               </button>
             );
           })}
         </div>
 
         {/* ─── Prominent Make-a-contribution button (visible on every tab) ── */}
-        {circle.status === "ACTIVE" && nextUnpaidSchedule && (() => {
+        {approvedMember && circle.status === "ACTIVE" && nextUnpaidSchedule && (() => {
           const nextCycle = nextUnpaidSchedule.cycleNumber;
           if (nextCycle == null) return null;
           return (
@@ -328,19 +345,18 @@ export function GrowthActivities() {
             nextPaymentDate={nextPaymentDate}
             contributionAmountKobo={circle.contributionAmount}
             frequency={(circle as any).frequency ?? ""}
-            userStatus={(circle as any).userMembershipStatus ?? "ACTIVE"}
-            totalContributedKobo={totalContributed}
+            userStatus={String(circle.userMembershipStatus ?? (approvedMember ? "ACTIVE" : "ADMIN"))}
+            totalContributedKobo={personalReadError ? "Unavailable" : totalContributed}
             completedCycles={completedCycles}
             totalCycles={totalCycles}
             progressPercent={progressPercent}
             cycles={cycles}
-            members={members}
-            currentUserId={currentUserId}
             currentCycleNumber={currentCycleNumber}
-            ownContributions={contributions}
             refreshVersion={refreshVersion}
           />
         )}
+        {activeTab === "Contributions" && <GroupContributionsTab circleId={id} isActive />}
+        {activeTab === "Payouts" && <SharedCircleFinancials circleId={id!} view="payouts" refreshVersion={refreshVersion} />}
         {activeTab === "Members" && (
           <MembersTab
             circleName={circle.name}
@@ -357,7 +373,9 @@ export function GrowthActivities() {
             adminBio={(circle as any).description ?? ""}
           />
         )}
-        {activeTab === "Growth & Activities" && (
+        {activeTab === "Growth & Activities" && approvedMember && circle.status === "ACTIVE" && <ContributionPaymentPreference circleId={id!} />}
+        {personalReadError && <Text role="alert" c="red">Unable to load your contribution history. Payment controls are unavailable until you refresh successfully.</Text>}
+        {activeTab === "Growth & Activities" && approvedMember && !personalReadError && (
           <GrowthTab
             trustPercent={trustPercent}
             trustScore={userTrustScore}
@@ -377,13 +395,15 @@ export function GrowthActivities() {
             openContributionOnLoad={contributionShortcut}
           />
         )}
-        {activeTab === "Peer Reviews" && (
+        {activeTab === "Peer Reviews" && <SharedCircleFinancials circleId={id!} view="ratings" refreshVersion={ratingRefreshVersion} />}
+        {activeTab === "Peer Reviews" && approvedMember && (
           <PeerReviewsTab
             circleId={id!}
             circleName={circle.name}
             circleStatus={(circle as any).status ?? ""}
             members={members.filter((m) => m.userId !== currentUserId)}
             currentUserId={currentUserId}
+            onReviewSubmitted={() => setRatingRefreshVersion((version) => version + 1)}
           />
         )}
       </div>
@@ -398,7 +418,10 @@ export function GrowthActivities() {
         contributionAmountKobo={circle.contributionAmount}
         nextDeadline={nextUnpaidSchedule?.contributionDeadline as string | undefined}
         nextPaymentFallback={nextContributionDate}
-        onPaid={(contribution) => setContributions((prev) => [contribution, ...prev])}
+        onPaid={(contribution) => {
+          setContributions((prev) => [contribution, ...prev.filter(existing => existing.id !== contribution.id)]);
+          setRefreshVersion(version => version + 1);
+        }}
       />
     </div>
   );

@@ -247,13 +247,15 @@ export async function getCircleMembers(
 export async function getCirclePeerReviews(
   circleId: string,
 ): Promise<PeerReview[]> {
-  const res = await authRequest<{ data?: PeerReview[] } | PeerReview[]>(
+  const res = await authRequest<{ data?: unknown } | unknown>(
     `/api/rosca/${circleId}/reviews/mine`,
     { method: "GET" },
   );
-  return Array.isArray(res)
-    ? res
-    : ((res as { data?: PeerReview[] }).data ?? []);
+  const reviews = Array.isArray(res) ? res : (res as { data?: unknown } | null)?.data;
+  if (!Array.isArray(reviews) || reviews.some(review => !review || typeof review !== "object" || typeof (review as PeerReview).revieweeId !== "string")) {
+    throw new Error("Your peer review history is unavailable.");
+  }
+  return reviews as PeerReview[];
 }
 
 // ── Admin Access Request ──────────────────────────────────────────────────────

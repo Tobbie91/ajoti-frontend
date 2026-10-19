@@ -24,13 +24,17 @@ export async function mockRoscaReads(page: Page, state: { duration: number; buck
     if (path === '/api/rosca/family') return route.fulfill({ json: { data: current } })
     if (path === '/api/rosca/my-join-requests') return route.fulfill({ json: { data: [{ membershipId: 'membership-family', circleId: 'family', status: 'PENDING', collateralReserved: '500000', circle: current }] } })
     if (path === '/api/rosca/family/schedules') return route.fulfill({ json: { data: Array.from({ length: state.duration }, (_, i) => ({
-      id: `s-${i}`, cycleNumber: i + 1, recipientId: 'member', status: i === 0 ? 'COMPLETED' : 'UPCOMING',
+      id: `s-${i}`, cycleNumber: i + 1, recipientName: 'Test Member', status: i === 0 ? 'COMPLETED' : 'UPCOMING',
       contributionDeadline: '2026-11-01T12:00:00Z', payoutDate: '2026-11-02T12:00:00Z',
     })) } })
     if (path === '/api/rosca/circle-rules') return route.fulfill({ json: { data: { collateralRatioPercent: 10, postStartExitPenaltyPercent: 25 } } })
     if (path === '/api/wallet/buckets') return route.fulfill({ json: state.buckets ?? { data: [], totalRoscaReservedKobo: '0' } })
     if (path === '/api/wallet/transactions') return route.fulfill({ json: { data: state.history ?? [] } })
     if (path === '/api/wallet/balance') return route.fulfill({ json: { data: { total: '10000000', reserved: '2250000', available: '7750000', currency: 'NGN' } } })
+    if (path.endsWith('/financial-health')) return route.fulfill({ json: { success: true, data: { circleId: 'family', totalCollected: '0', contributionAmount: '5000000', filledSlots: 6, cycles: [] } } })
+    if (path.endsWith('/progress')) return route.fulfill({ json: { success: true, data: { circleId: 'family', durationCycles: state.duration, members: [] } } })
+    if (path.endsWith('/contribution-summary')) return route.fulfill({ json: { success: true, data: { circleId: 'family', cycleNumber: 2, totalCollected: '0', contributions: [] } } })
+    if (path.endsWith('/disbursements')) return route.fulfill({ json: { success: true, data: { circleId: 'family', schedules: [] } } })
     if (path.endsWith('/contributions') || path.endsWith('/reviews/mine')) return route.fulfill({ json: { data: [] } })
     return route.fulfill({ json: { data: [], trustScore: 50, finalScore: 50 } })
   })

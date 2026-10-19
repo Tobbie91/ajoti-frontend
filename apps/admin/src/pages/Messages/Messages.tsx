@@ -1,8 +1,9 @@
+import { circleAccess } from '@/utils/circle-access'
 import { useState, useEffect, useRef } from 'react'
 import { Loader, Text, TextInput } from '@mantine/core'
 import { IconSend, IconMessages, IconSearch, IconArrowLeft } from '@tabler/icons-react'
 import { useSearchParams } from 'react-router-dom'
-import { getChatCircles, type ChatCircle } from '@/utils/api'
+import { getRoscaCircle, getChatCircles, type ChatCircle } from '@/utils/api'
 import { useChat } from '@/hooks/useChat'
 import { DirectMessages } from './DirectMessages'
 
@@ -67,7 +68,20 @@ function CircleListItem({ circle, active, onClick }: { circle: ChatCircle; activ
   )
 }
 
-function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId: string; circleName: string; currentUserId: string; onBack?: () => void }) {
+function ChatThread(props: { circleId: string; circleName: string; currentUserId: string; onBack?: () => void }) {
+  const [access, setAccess] = useState<{ view: boolean; sendChat: boolean } | null>(null)
+  useEffect(() => {
+    let active = true
+    setAccess(null)
+    getRoscaCircle(props.circleId).then(circle => { if (active) setAccess(circleAccess(circle, props.currentUserId)) })
+      .catch(() => { if (active) setAccess({ view: false, sendChat: false }) })
+    return () => { active = false }
+  }, [props.circleId, props.currentUserId])
+  if (!access) return <Loader aria-label="Checking group chat access" />
+  if (!access.view) return <Text role="alert" c="red">Group chat history is unavailable for this membership.</Text>
+  return <AuthorizedChatThread {...props} canSend={access.sendChat} />
+}
+function AuthorizedChatThread({ circleId, circleName, currentUserId, onBack, canSend }: { circleId: string; circleName: string; currentUserId: string; onBack?: () => void; canSend: boolean }) {
   const { messages, loading, sending, error, sendMessage } = useChat(circleId)
   const [draft, setDraft] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -78,7 +92,7 @@ function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId:
 
   async function handleSend() {
     const text = draft.trim()
-    if (!text || sending) return
+    if (!text || sending || !canSend) return
     try {
       await sendMessage(text)
       setDraft('')
@@ -115,7 +129,7 @@ function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId:
         ) : messages.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8, opacity: 0.5 }}>
             <IconMessages size={36} color="#9CA3AF" />
-            <Text fz={14} c="dimmed">No messages yet. Say hello!</Text>
+            <Text fz={14} c="dimmed">No messages yet.</Text>
           </div>
         ) : (
           messages.map((msg) => {
@@ -150,7 +164,8 @@ function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId:
           {error}
         </Text>
       )}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', background: '#fff', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+      {!canSend && <Text size="sm" c="dimmed" p="md">Chat is read-only. Sending is available to active members of an active group.</Text>}
+      {canSend && <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', background: '#fff', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
         <TextInput
           style={{ flex: 1 }}
           placeholder="Type a message…"
@@ -166,7 +181,7 @@ function ChatThread({ circleId, circleName, currentUserId, onBack }: { circleId:
         >
           <IconSend size={18} color={draft.trim() ? '#fff' : '#9CA3AF'} />
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

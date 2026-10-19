@@ -1,6 +1,7 @@
+import type { SharedProgress } from '@/utils/api/shared-circle'
 import { Stack, Group, Paper, Text, TextInput, Select, Button, RingProgress, Table, Avatar, Badge, Loader } from '@mantine/core'
 import { IconChevronDown, IconSearch, IconRefresh } from '@tabler/icons-react'
-import type { Payout, CircleInvite } from '@/utils/api'
+import type { CircleInvite } from '@/utils/api'
 
 const PRIMARY = '#0b6b55'
 
@@ -20,7 +21,7 @@ interface GroupMembersTabProps {
   memberSearch: string
   onMemberSearchChange: (value: string) => void
   filteredMembers: ApiMember[]
-  payouts: Payout[]
+  memberProgress: SharedProgress['members'] | undefined
   onAssignPosition: (member: { userId: string; name: string }) => void
   invites: CircleInvite[]
   invitesLoading: boolean
@@ -43,7 +44,7 @@ export function GroupMembersTab({
   memberSearch,
   onMemberSearchChange,
   filteredMembers,
-  payouts,
+  memberProgress,
   onAssignPosition,
   invites,
   invitesLoading,
@@ -172,10 +173,9 @@ export function GroupMembersTab({
               </Table.Tr>
             )}
             {filteredMembers.map((member) => {
-              const hasPayout = payouts.some(
-                (p) => p.recipientId === member.userId &&
-                  ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase())
-              )
+              const progress = memberProgress?.find(item => item.userId === member.userId)
+              const hasPayout = progress?.payoutStatus === 'PAID'
+              const positionLocked = isCompleted || hasPayout || !progress
               return (
               <Table.Tr key={member.userId}>
                 <Table.Td>
@@ -215,12 +215,12 @@ export function GroupMembersTab({
                     variant="outline"
                     size="xs"
                     radius="md"
-                    disabled={hasPayout}
-                    title={hasPayout ? 'Position cannot be changed after payout' : undefined}
+                    disabled={positionLocked}
+                    title={!progress ? 'Payout status unavailable' : positionLocked ? 'Position cannot be changed after payout or completion' : undefined}
                     style={hasPayout ? { borderColor: '#dee2e6', color: '#adb5bd' } : { borderColor: PRIMARY, color: PRIMARY }}
-                    onClick={() => !hasPayout && onAssignPosition({ userId: member.userId, name: member.name })}
+                    onClick={() => !positionLocked && onAssignPosition({ userId: member.userId, name: member.name })}
                   >
-                    {hasPayout ? 'Paid Out' : 'Assign Position'}
+                    {hasPayout ? 'Paid Out' : !progress ? 'Payout status unavailable' : 'Assign Position'}
                   </Button>
                 </Table.Td>
               </Table.Tr>

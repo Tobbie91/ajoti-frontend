@@ -81,7 +81,7 @@ test('processing a payout refreshes the live meter without reducing lifetime col
   await page.route('**/api/admin/rosca/family/financial-health', route => route.fulfill({ json: { data: {
     totalCollected: '62500000', remainingBalance: paid ? '37500000' : '62500000', cycles: [],
   } } }))
-  await page.route('**/api/rosca/family/payouts', route => route.fulfill({ json: { data: paid ? [{ id: 'payout', amount: '24000000', status: 'COMPLETED', cycleNumber: 1, recipientId: 'recipient' }] : [] } }))
+  await page.route('**/api/rosca/family/payouts', route => route.fulfill({ json: { data: paid ? [{ id: 'payout', amount: '24000000', amountPaidOut: '24000000', settlementStatus: 'COMPLETED', status: 'COMPLETED', cycleNumber: 1, recipientId: 'recipient', processedAt: '2026-10-08T12:00:00Z', payoutDate: '2026-10-08T12:00:00Z' }] : [] } }))
   await page.route('**/api/admin/payouts/family/process/1', route => {
     expect(route.request().method()).toBe('POST')
     paid = true

@@ -24,7 +24,7 @@ export function SummaryCard({
   onToggleHidden,
 }: SummaryCardProps) {
   const navigate = useNavigate()
-  const displayAmount = /\d/.test(amount) ? amount : '-'
+  const displayAmount = /\d/.test(amount) || amount === 'Unavailable' || amount === 'Loading…' ? amount : '-'
 
   return (
     <Paper

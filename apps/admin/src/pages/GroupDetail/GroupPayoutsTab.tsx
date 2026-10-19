@@ -1,8 +1,10 @@
+import { formatKobo } from "@/utils/kobo";
 import { useEffect, useState } from 'react'
 import { getCircleEarlyPayouts, type CircleEarlyPayout } from '@/utils/api/rosca'
 import { Stack, Paper, Text, Group, Button, TextInput, Table, Avatar, Badge, Loader } from '@mantine/core'
-import { IconPlayerPlay, IconRefresh, IconArrowBackUp } from '@tabler/icons-react'
+import { IconPlayerPlay, IconRefresh } from '@tabler/icons-react'
 import type { Payout } from '@/utils/api'
+import { payoutSettlementDisplay } from '@/utils/payout-settlement'
 
 const PRIMARY = '#0b6b55'
 
@@ -16,8 +18,6 @@ interface GroupPayoutsTabProps {
   processingCycle: number | null
   onProcessPayout: () => void
   onRefresh: () => void
-  onRetryPayout: (payoutId: string) => void
-  onReverseClick: (payout: Payout) => void
 }
 
 export function GroupPayoutsTab({
@@ -30,10 +30,8 @@ export function GroupPayoutsTab({
   processingCycle,
   onProcessPayout,
   onRefresh,
-  onRetryPayout,
-  onReverseClick,
 }: GroupPayoutsTabProps) {
-  const [earlyPayouts, setEarlyPayouts] = useState<CircleEarlyPayout[]>([])
+  const [earlyPayouts, setEarlyPayouts] = useState<CircleEarlyPayout | null>(null)
   const [earlyPayoutError, setEarlyPayoutError] = useState<string | null>(null)
   useEffect(() => {
     getCircleEarlyPayouts(circleId).then(setEarlyPayouts).catch(err =>
@@ -74,21 +72,9 @@ export function GroupPayoutsTab({
 
       <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
         <Text fw={600} fz="md" mb="xs">Member Early Payouts</Text>
-        <Text size="xs" c="dimmed" mb="sm">Amounts already advanced are deducted from the scheduled payout.</Text>
-        {earlyPayoutError && <Text c="red" size="sm">{earlyPayoutError}</Text>}
-        {!earlyPayoutError && earlyPayouts.length === 0 && <Text c="dimmed" size="sm">No early payouts recorded for this group.</Text>}
-        {earlyPayouts.map(loan => (
-          <Group key={loan.id} justify="space-between" wrap="wrap" py="xs">
-            <div>
-              <Text fw={500} size="sm">{loan.memberName}</Text>
-              <Text size="xs" c="dimmed">{loan.status} · {new Date(loan.requestedAt).toLocaleDateString('en-NG')}</Text>
-            </div>
-            <div>
-              <Text size="sm">Advanced: ₦{(Number(loan.advanceReceived) / 100).toLocaleString('en-NG')}</Text>
-              <Text size="xs" c="dimmed">Fee: ₦{(Number(loan.companyFee) / 100).toLocaleString('en-NG')} · Projected remainder: ₦{(Number(loan.projectedRemainingPayout) / 100).toLocaleString('en-NG')}</Text>
-            </div>
-          </Group>
-        ))}
+        {earlyPayoutError ? <Text role="alert" c="red" size="sm">Unable to load early-payout summary.</Text> : earlyPayouts === null ? <Loader size="sm" /> :
+          <Group wrap="wrap">{[['Total', earlyPayouts.totalLoans], ['Active', earlyPayouts.activeCount], ['Repaid', earlyPayouts.repaidCount], ['Defaulted', earlyPayouts.defaultedCount], ['Cancelled', earlyPayouts.cancelledCount]].map(([label, count]) => <Text key={label}>{label}: {count}</Text>)}</Group>}
+
       </Paper>
       {/* Payout History */}
       <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
@@ -106,7 +92,7 @@ export function GroupPayoutsTab({
           </Button>
         </Group>
 
-        {payoutsLoading ? (
+        {payoutError ? <Text role="alert" c="red" p="lg">{payoutError}</Text> : payoutsLoading ? (
           <Group justify="center" py="xl">
             <Loader size="sm" color={PRIMARY} />
           </Group>
@@ -116,34 +102,26 @@ export function GroupPayoutsTab({
               <Table.Tr style={{ background: PRIMARY }}>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Recipient</Table.Th>
-                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount</Table.Th>
-                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
+                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount paid out</Table.Th>
+                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Settlement status</Table.Th>
                 <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
-                <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}></Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {payouts.length === 0 && (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={5}>
                     <Text c="dimmed" ta="center" py="xl" fz="sm">No payouts found for this circle</Text>
                   </Table.Td>
                 </Table.Tr>
               )}
               {payouts.map((p) => {
-                const statusColor =
-                  p.status === 'SUCCESS' || p.status === 'COMPLETED'
-                    ? { bg: '#e6f5f1', color: PRIMARY }
-                    : p.status === 'FAILED'
-                    ? { bg: '#fef2f2', color: '#e74c3c' }
-                    : { bg: '#f1f3f5', color: '#868e96' }
-                const cycleNumber = p.cycleNumber ?? p.schedule?.cycleNumber
-                const recipient = p.recipient
-                  ? `${p.recipient.firstName} ${p.recipient.lastName}`.trim()
-                  : '-'
-                const amountNaira = (Number(p.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+                const settlement = payoutSettlementDisplay(p.settlementStatus, p.amountPaidOut, p.status)
+                const cycleNumber = p.cycleNumber
+                const recipient = p.recipientName ?? 'Unassigned'
+                const amountNaira = p.amountPaidOut == null ? 'Not settled' : formatKobo(p.amountPaidOut)
                 return (
-                  <Table.Tr key={p.id}>
+                  <Table.Tr key={p.cycleNumber}>
                     <Table.Td><Text fz="sm" fw={500}>{cycleNumber != null ? `Cycle ${cycleNumber}` : '-'}</Text></Table.Td>
                     <Table.Td>
                       <Group gap="sm" align="center">
@@ -153,55 +131,24 @@ export function GroupPayoutsTab({
                     </Table.Td>
                     <Table.Td>
                       <Text fz="sm" fw={600}>
-                        ₦{amountNaira}
+                        {amountNaira}
                       </Text>
                     </Table.Td>
                     <Table.Td>
                       <Badge
                         size="sm"
                         radius="sm"
-                        style={{ background: statusColor.bg, color: statusColor.color, border: 'none', fontWeight: 600 }}
+                        color={settlement.color}
                       >
-                        {p.status}
+                        {settlement.label}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
                       <Text fz="sm" c="dimmed">
-                        {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG') : '-'}
+                        {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos' }) : 'Not processed'}
                       </Text>
                     </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        {p.status === 'FAILED' && (
-                          <Button
-                            variant="subtle"
-                            size="xs"
-                            px="xs"
-                            leftSection={<IconRefresh size={12} />}
-                            style={{ color: '#e67e22' }}
-                            onClick={() => onRetryPayout(p.id)}
-                          >
-                            Retry
-                          </Button>
-                        )}
-                        {/* Reversal is an admin recovery tool for a payout still
-                            stuck mid-flight (PENDING/PROCESSING). A COMPLETED/settled
-                            payout is not reversible - the backend rejects it too, this
-                            isn't just a hidden-but-callable button. */}
-                          {(p.status === 'PENDING' || p.status === 'PROCESSING') && (
-                          <Button
-                            variant="subtle"
-                            size="xs"
-                            px="xs"
-                            leftSection={<IconArrowBackUp size={12} />}
-                            style={{ color: '#e74c3c' }}
-                            onClick={() => onReverseClick(p)}
-                          >
-                            Reverse
-                          </Button>
-                        )}
-                      </Group>
-                    </Table.Td>
+
                   </Table.Tr>
                 )
               })}

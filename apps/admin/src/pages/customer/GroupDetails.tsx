@@ -1,3 +1,4 @@
+import { ContributionPaymentPreference } from './growth/ContributionPaymentPreference';
 import { useState, useEffect } from "react";
 import { Text, Avatar, Badge, Table, Textarea, Loader, Select, Button } from "@mantine/core";
 import {
@@ -50,16 +51,13 @@ interface ScheduleRow {
   status: string;
 }
 
-export function GroupDetails() {
+export function GroupDetails({ previewOnlyOverride = false }: { previewOnlyOverride?: boolean }) {
   const navigate = useNavigate();
   const { id } = useParams();
 
   const [group, setGroup] = useState<GroupData | null>(null);
   const [rawCircle, setRawCircle] = useState<RoscaCircle | null>(null);
   const [circleStatus, setCircleStatus] = useState<string>("");
-  const [paymentPreference, setPaymentPreference] = useState<ContributionPaymentMethod>('MANUAL');
-  const [paymentPreferenceSaving, setPaymentPreferenceSaving] = useState(false);
-  const [paymentPreferenceMessage, setPaymentPreferenceMessage] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -95,12 +93,12 @@ export function GroupDetails() {
       setSchedule([]);
       try {
         const circle = await getRoscaCircle(id!);
-        const previewOnly = circle.previewOnly === true;
+        const previewOnly = previewOnlyOverride || circle.previewOnly === true;
         const schedules = previewOnly
           ? []
           : await getRoscaSchedules(id!).catch(() => [] as RoscaSchedule[]);
         // Fetch members and existing reviews in background
-        setMembers(circle.members ?? []);
+        setMembers(previewOnly ? [] : circle.members ?? []);
         setMembersLoaded(true);
         if (!previewOnly) {
           getCirclePeerReviews(id!)
@@ -143,7 +141,7 @@ export function GroupDetails() {
               (circle as Record<string, unknown>).adminBio ?? "",
             ),
             completionRate: `${circle.durationCycles > 0 ? Math.round(((circle.status === "COMPLETED" ? circle.durationCycles : Math.max(0, (circle.currentCycle ?? 1) - 1)) / circle.durationCycles) * 100) : 0}%`,
-            isCurrentUserAdmin: circle.isRequestingUserAdmin ?? false,
+            isCurrentUserAdmin: !previewOnly && (circle.isRequestingUserAdmin ?? false),
             previewOnly,
           });
         }
@@ -163,14 +161,8 @@ export function GroupDetails() {
       }
     }
     fetchData();
-  }, [id, refreshVersion]);
+  }, [id, refreshVersion, previewOnlyOverride]);
 
-  useEffect(() => {
-    if (!id || !membersLoaded || !members.some(m => m.userId === currentUserId)) return;
-    getContributionPaymentPreference(id)
-      .then(setPaymentPreference)
-      .catch(() => setPaymentPreferenceMessage('Unable to load payment preference'));
-  }, [id, membersLoaded, members, currentUserId]);
 
   if (loading) {
     return (
@@ -526,39 +518,7 @@ export function GroupDetails() {
             {isCurrentUserAdmin && !isMember && (
               <RoscaJoinAction circleId={id!} label="Join as a member" unavailableReason={circleStatus !== "DRAFT" ? "This group is no longer accepting members." : Number(group.slotsLeft) <= 0 ? "This group is full." : undefined} />
             )}
-            {isMember && circleStatus === 'ACTIVE' && (
-              <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
-                <Text fw={600} size="sm" mb="xs">Contribution payment method</Text>
-                <Select
-                  aria-label="Contribution payment method"
-                  value={paymentPreference}
-                  onChange={(value) => setPaymentPreference(value === 'AUTOMATIC' ? 'AUTOMATIC' : 'MANUAL')}
-                  data={[
-                    { value: 'MANUAL', label: 'Manual: I will pay each contribution' },
-                    { value: 'AUTOMATIC', label: 'Automatic: deduct from my Ajoti wallet' },
-                  ]}
-                  allowDeselect={false}
-                />
-                <Text size="xs" c="dimmed" mt="xs">
-                  Automatic deductions use your Ajoti wallet before the contribution cutoff. Keep sufficient funds available.
-                </Text>
-                <Button mt="sm" loading={paymentPreferenceSaving} onClick={async () => {
-                  if (!id) return;
-                  setPaymentPreferenceSaving(true);
-                  setPaymentPreferenceMessage(null);
-                  try {
-                    const updated = await setContributionPaymentPreference(id, paymentPreference);
-                    setPaymentPreference(updated);
-                    setPaymentPreferenceMessage('Payment preference saved');
-                  } catch (error) {
-                    setPaymentPreferenceMessage(error instanceof Error ? error.message : 'Unable to save preference');
-                  } finally {
-                    setPaymentPreferenceSaving(false);
-                  }
-                }}>Save payment preference</Button>
-                {paymentPreferenceMessage && <Text size="sm" mt="xs">{paymentPreferenceMessage}</Text>}
-              </div>
-            )}
+            {isMember && circleStatus === 'ACTIVE' && <ContributionPaymentPreference circleId={id!} />}
             {canRequestExit && (
               <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
                 <Text size="sm" c="dimmed">Leaving a group requires Support review. Your membership and collateral remain unchanged until the request is approved.</Text>
