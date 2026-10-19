@@ -9,6 +9,7 @@ import {
   Divider,
   Group,
   List,
+  Loader,
   Modal,
   NumberInput,
   Progress,
@@ -216,6 +217,7 @@ export function TargetSavings() {
   const navigate = useNavigate();
   const location = useLocation();
   const [plans, setPlans] = useState<TargetSavingsPlan[]>([]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const plan = plans.find(p => location.hash === `#target-plan-${p.id}`);
     if (plan) document.getElementById(`target-plan-${plan.id}`)?.scrollIntoView({ block: 'start' });
@@ -329,7 +331,8 @@ export function TargetSavings() {
     });
 
   useEffect(() => {
-    load().catch(() => {});
+    setLoading(true);
+    load().catch(() => {}).finally(() => setLoading(false));
     getKycStatus()
       .then((kyc) => setKycLevel(kyc.kycLevel ?? 0))
       .catch(() => setKycLevel(0));
@@ -428,6 +431,17 @@ export function TargetSavings() {
       setBusy(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6">
+        <Stack align="center" justify="center" style={{ minHeight: 300 }}>
+          <Loader size={40} color="#02A36E" />
+          <Text fz="sm" c="dimmed">Loading target savings...</Text>
+        </Stack>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 py-6">

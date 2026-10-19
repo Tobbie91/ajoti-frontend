@@ -278,8 +278,8 @@ export function OverviewTab({
         </Badge>
       </div>
 
-      {/* Info Banner */}
-      <div className="flex items-start gap-3 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] px-5 py-4">
+      {/* Info Banner — desktop only; its content duplicates the Cycle Progress + payout timeline. */}
+      <div className="hidden items-start gap-3 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] px-5 py-4 sm:flex">
         <IconInfoCircle size={20} color="#0284C7" className="mt-0.5 flex-shrink-0" />
         <Text fw={500} className="text-[13px] leading-relaxed text-[#0C4A6E]">
           {completedCycles > 0
@@ -297,54 +297,62 @@ export function OverviewTab({
 
       {/* ─── Cycle contributions card ──────────────────────────────── */}
       {activeCycle != null && members.length > 0 && (
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
-          {/* Header: title + per-member + due + last-updated | cycle pills */}
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
+          {/* Header: title + subtitles (stacked), cycle picker as its own row below on mobile. */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
-              <Text fw={700} className="text-[18px] text-[#0F172A]">
+              <Text fw={700} className="text-[17px] text-[#0F172A] sm:text-[18px]">
                 Cycle {activeCycle} contributions
               </Text>
               <Text className="mt-1 text-[12.5px] text-[#64748B]">
-                {formatNaira(contributionAmountKobo)} per member · {members.length} member{members.length === 1 ? "" : "s"} · Due {dueDateStr || "[DUE DATE]"}
+                {formatNaira(contributionAmountKobo)} per member · {members.length} member{members.length === 1 ? "" : "s"}
+              </Text>
+              <Text className="mt-0.5 text-[12.5px] text-[#64748B]">
+                Due {dueDateStr || "[DUE DATE]"}
               </Text>
               {lastUpdatedIso && (
-                <Text className="mt-1 text-[11.5px] text-[#94A3B8]">
+                <Text className="mt-1 hidden text-[11.5px] text-[#94A3B8] sm:block">
                   Last updated {fmtDateLong(lastUpdatedIso)}
                 </Text>
               )}
             </div>
-            {availableCycles.length > 1 && (
-              <div className="flex items-center gap-2">
-                <Text className="text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
-                  Cycle
-                </Text>
-                <div className="flex gap-1.5">
-                  {availableCycles.map((n) => {
-                    const isActive = n === activeCycle;
-                    return (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setRosterCycle(n)}
-                        aria-label={`View cycle ${n}`}
-                        className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-[13px] font-bold transition-colors ${
-                          isActive
-                            ? "bg-[#0B6B55] text-white"
-                            : "border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F3F4F6]"
-                        }`}
-                      >
-                        {n}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Cycle picker: full-width scroll strip on mobile, inline on desktop above the header. */}
+          {availableCycles.length > 1 && (
+            <div className="mt-3 flex items-center gap-2 sm:mt-0">
+              <Text className="text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                Cycle
+              </Text>
+              <div
+                className="flex gap-1.5 overflow-x-auto"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {availableCycles.map((n) => {
+                  const isActive = n === activeCycle;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setRosterCycle(n)}
+                      aria-label={`View cycle ${n}`}
+                      className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-[13px] font-bold transition-colors ${
+                        isActive
+                          ? "bg-[#0B6B55] text-white"
+                          : "border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F3F4F6]"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Circle progress bar */}
           <div className="mt-5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <Text fw={600} className="text-[13.5px] text-[#0F172A]">
                 Circle progress
               </Text>
@@ -364,7 +372,7 @@ export function OverviewTab({
             </div>
           </div>
 
-          {/* Who's paid table */}
+          {/* Who's paid: card list on mobile, grid-table on sm+ */}
           <div className="mt-5">
             <div className="flex items-center justify-between">
               <Text fw={600} className="text-[13.5px] text-[#0F172A]">
@@ -374,50 +382,88 @@ export function OverviewTab({
                 Visible to all members
               </Text>
             </div>
-            <div className="mt-3 grid grid-cols-[1fr_90px_60px_100px] gap-2 border-b border-[#E5E7EB] pb-2 sm:grid-cols-[1fr_110px_70px_110px]">
-              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Member</Text>
-              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Date</Text>
-              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Time</Text>
-              <Text className="text-right text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Status</Text>
-            </div>
-            {roster.map((r) => (
-              <div
-                key={r.userId}
-                className="grid grid-cols-[1fr_90px_60px_100px] items-center gap-2 border-b border-[#F3F4F6] py-3 last:border-b-0 sm:grid-cols-[1fr_110px_70px_110px]"
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
+
+            {/* Mobile: vertical card list for each member. */}
+            <div className="mt-3 flex flex-col gap-2 sm:hidden">
+              {roster.map((r) => (
+                <div
+                  key={r.userId}
+                  className="flex items-center gap-3 rounded-lg border border-[#F3F4F6] bg-white px-3 py-2.5"
+                >
                   <div
-                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold ${
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
                       r.isSelf ? "bg-[#02A36E] text-white" : "bg-[#E5E7EB] text-[#6B7280]"
                     }`}
                   >
                     {initials(r.name)}
                   </div>
-                  <Text fw={600} className="truncate text-[13px] text-[#0F172A]">
-                    {r.name}
-                  </Text>
-                  {r.isSelf && (
-                    <span className="rounded bg-[#DCFCE7] px-1.5 py-0.5 text-[9.5px] font-bold text-[#065F46]">
-                      YOU
-                    </span>
-                  )}
-                </div>
-                <Text className="text-[12px] text-[#374151]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {fmtDateShort(r.paidAt)}
-                </Text>
-                <Text className="text-[12px] text-[#374151]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {fmtTimeShort(r.paidAt)}
-                </Text>
-                <div className="flex justify-end">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <Text fw={600} className="truncate text-[13.5px] text-[#0F172A]">
+                        {r.name}
+                      </Text>
+                      {r.isSelf && (
+                        <span className="shrink-0 rounded bg-[#DCFCE7] px-1.5 py-0.5 text-[9.5px] font-bold text-[#065F46]">
+                          YOU
+                        </span>
+                      )}
+                    </div>
+                    <Text className="text-[11.5px] text-[#9CA3AF]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {r.paidAt ? `${fmtDateShort(r.paidAt)} · ${fmtTimeShort(r.paidAt)}` : "—"}
+                    </Text>
+                  </div>
                   <StatusPill status={r.status} />
                 </div>
+              ))}
+            </div>
+
+            {/* Desktop: 4-column grid-table */}
+            <div className="hidden sm:block">
+              <div className="mt-3 grid grid-cols-[1fr_110px_70px_110px] gap-2 border-b border-[#E5E7EB] pb-2">
+                <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Member</Text>
+                <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Date</Text>
+                <Text className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Time</Text>
+                <Text className="text-right text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Status</Text>
               </div>
-            ))}
+              {roster.map((r) => (
+                <div
+                  key={r.userId}
+                  className="grid grid-cols-[1fr_110px_70px_110px] items-center gap-2 border-b border-[#F3F4F6] py-3 last:border-b-0"
+                >
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div
+                      className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11.5px] font-bold ${
+                        r.isSelf ? "bg-[#02A36E] text-white" : "bg-[#E5E7EB] text-[#6B7280]"
+                      }`}
+                    >
+                      {initials(r.name)}
+                    </div>
+                    <Text fw={600} className="min-w-0 flex-1 truncate text-[13px] text-[#0F172A]">
+                      {r.name}
+                    </Text>
+                    {r.isSelf && (
+                      <span className="rounded bg-[#DCFCE7] px-1.5 py-0.5 text-[9.5px] font-bold text-[#065F46]">
+                        YOU
+                      </span>
+                    )}
+                  </div>
+                  <Text className="text-[12px] text-[#374151]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {fmtDateShort(r.paidAt)}
+                  </Text>
+                  <Text className="text-[12px] text-[#374151]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {fmtTimeShort(r.paidAt)}
+                  </Text>
+                  <div className="flex justify-end">
+                    <StatusPill status={r.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Footer: disclosure + contact admin */}
+          {/* Footer: disclosure + contact admin — disclosure hidden on mobile to reduce copy. */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <Text className="max-w-[420px] text-[11.5px] leading-snug text-[#94A3B8]">
+            <Text className="hidden max-w-[420px] text-[11.5px] leading-snug text-[#94A3B8] sm:block">
               Every member of the circle sees this list. Dates and times are recorded by the server.
             </Text>
             <button
@@ -452,9 +498,9 @@ export function OverviewTab({
         ))}
       </div>
 
-      {/* Payout Timeline + Cycle Progress */}
+      {/* Payout Timeline (hidden on mobile — duplicates Cycle Progress) + Cycle Progress */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div className="flex flex-col items-center rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <div className="hidden flex-col items-center rounded-2xl border border-[#E5E7EB] bg-white p-6 sm:flex">
           <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">Payout Timeline</Text>
           <RingProgress
             size={180}

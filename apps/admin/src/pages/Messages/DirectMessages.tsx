@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Loader, Text, TextInput } from '@mantine/core'
+import { IconArrowLeft } from '@tabler/icons-react'
 import { useSearchParams } from 'react-router-dom'
 import {
   getChatCircles,
@@ -13,7 +14,7 @@ import {
 
 const PRIMARY = '#02A36E'
 
-function DirectThread({ circleId, memberId, title }: { circleId: string; memberId: string; title: string }) {
+function DirectThread({ circleId, memberId, title, onBack }: { circleId: string; memberId: string; title: string; onBack?: () => void }) {
   const [messages, setMessages] = useState<DirectChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -74,9 +75,22 @@ function DirectThread({ circleId, memberId, title }: { circleId: string; memberI
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 440 }}>
-      <div style={{ borderBottom: '1px solid #E5E7EB', padding: 16 }}>
-        <Text fw={700}>{title}</Text>
-        <Text size="xs" c="dimmed">Private conversation. Only this member and the group admin can read these messages.</Text>
+      <div style={{ borderBottom: '1px solid #E5E7EB', padding: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to conversations"
+            className="flex sm:hidden"
+            style={{ background: 'transparent', border: 'none', padding: 4, cursor: 'pointer', color: '#374151' }}
+          >
+            <IconArrowLeft size={20} />
+          </button>
+        )}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Text fw={700} truncate="end">{title}</Text>
+          <Text size="xs" c="dimmed">Private conversation. Only this member and the group admin can read these messages.</Text>
+        </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: 16 }}>
         {loading && <Loader size="sm" color={PRIMARY} />}
@@ -162,13 +176,28 @@ export function DirectMessages() {
     return requestedCircleId ? null : threads[0] ?? null
   }, [threads, circles, currentUserId, requestedCircleId, requestedMemberId])
 
+  const [mobileView, setMobileView] = useState<'list' | 'thread'>('list')
+
   function selectThread(circleId: string, memberId: string) {
     setParams({ view: 'direct', circleId, memberId })
+    setMobileView('thread')
   }
 
+  // When a selected conversation is resolved from URL params on load, auto-swap
+  // to the thread pane on mobile so the user doesn't land on the list.
+  useEffect(() => {
+    if (requestedCircleId && selected) setMobileView('thread')
+  }, [requestedCircleId, selected])
+
   return (
-    <div style={{ display: 'flex', minHeight: 500, height: 'calc(100vh - 160px)', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ width: 265, flexShrink: 0, borderRight: '1px solid #E5E7EB', overflowY: 'auto' }}>
+    <div
+      className="flex overflow-hidden rounded-xl border border-[#E5E7EB]"
+      style={{ minHeight: 500, height: 'calc(100vh - 160px)' }}
+    >
+      {/* List pane — full-width on mobile, 265px side on desktop */}
+      <div
+        className={`${mobileView === 'thread' ? 'hidden' : 'flex'} sm:flex w-full flex-col overflow-y-auto sm:w-[265px] sm:flex-shrink-0 sm:border-r sm:border-[#E5E7EB]`}
+      >
         <Text fw={700} style={{ padding: 16 }}>Private conversations</Text>
         {loading && <Loader size="sm" color={PRIMARY} style={{ margin: 16 }} />}
         {error && <Text size="xs" c="red" style={{ padding: 16 }}>{error}</Text>}
@@ -182,8 +211,20 @@ export function DirectMessages() {
           </button>
         ))}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {selected ? <DirectThread key={`${selected.circleId}:${selected.memberId}`} circleId={selected.circleId} memberId={selected.memberId} title={selected.isCircleAdmin ? selected.memberName : `Group admin · ${selected.circleName}`} /> : (
+
+      {/* Thread pane — full-width on mobile when active, right pane on desktop */}
+      <div
+        className={`${mobileView === 'list' ? 'hidden' : 'flex'} sm:flex w-full flex-col sm:flex-1 sm:min-w-0`}
+      >
+        {selected ? (
+          <DirectThread
+            key={`${selected.circleId}:${selected.memberId}`}
+            circleId={selected.circleId}
+            memberId={selected.memberId}
+            title={selected.isCircleAdmin ? selected.memberName : `Group admin · ${selected.circleName}`}
+            onBack={() => setMobileView('list')}
+          />
+        ) : (
           <Text size="sm" c="dimmed" style={{ padding: 24 }}>Choose a private conversation, or use Message Admin in a group to start one.</Text>
         )}
       </div>

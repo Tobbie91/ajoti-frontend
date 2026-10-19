@@ -136,9 +136,9 @@ export function MyWallet() {
   }, [])
 
   return (
-    <div className="mx-auto w-full max-w-[700px] px-6 py-8">
+    <div className="mx-auto w-full max-w-[700px] px-4 py-6 sm:px-6 sm:py-8">
       {/* Balance card */}
-      <div className="mb-6 rounded-2xl bg-[#02A36E] px-6 py-6">
+      <div className="mb-6 rounded-2xl bg-[#02A36E] px-5 py-5 sm:px-6 sm:py-6">
         <div className="flex items-center gap-2">
           <Text fw={400} fz={12} c="white" opacity={0.75}>Wallet Balance</Text>
           <ActionIcon
@@ -163,11 +163,11 @@ export function MyWallet() {
             style={{ display: 'block', marginTop: 4, marginBottom: 16 }}
           />
         ) : (
-          <Text fw={600} fz={32} c="white" mb={16}>
+          <Text fw={600} c="white" mb={16} className="text-[26px] sm:text-[32px]" style={{ wordBreak: 'break-word' }}>
             ₦{(balance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
           </Text>
         )}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button
             radius="md"
             size="sm"
@@ -229,10 +229,10 @@ export function MyWallet() {
             <div
               key={tx.id}
               onClick={() => setSelectedTx(tx)}
-              className="flex cursor-pointer items-center justify-between rounded-xl border border-[#F3F4F6] bg-white px-4 py-3 transition-colors hover:bg-[#F9FAFB] active:bg-[#F3F4F6]"
+              className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#F3F4F6] bg-white px-4 py-3 transition-colors hover:bg-[#F9FAFB] active:bg-[#F3F4F6]"
             >
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${reservation ? 'bg-[#E7F4EE]' : isCredit ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${reservation ? 'bg-[#E7F4EE]' : isCredit ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'}`}>
                   {reservation
                     ? reservationRelease
                       ? <IconLockOpen size={18} color="#0B6B55" />
@@ -241,14 +241,14 @@ export function MyWallet() {
                       ? <IconArrowDownLeft size={18} color="#02A36E" />
                       : <IconArrowUpRight size={18} color="#EF4444" />}
                 </div>
-                <div>
-                  <Text fw={500} className="text-[14px] text-[#0F172A]">{label}</Text>
+                <div className="min-w-0 flex-1">
+                  <Text fw={500} truncate className="text-[14px] text-[#0F172A]">{label}</Text>
                   <Text fw={400} className="text-[12px] text-[#9CA3AF]">
                     {new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
                   </Text>
                 </div>
               </div>
-              <Text fw={600} className={`text-[14px] ${reservation ? 'text-[#0B6B55]' : isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
+              <Text fw={600} className={`shrink-0 text-[14px] ${reservation ? 'text-[#0B6B55]' : isCredit ? 'text-[#02A36E]' : 'text-[#EF4444]'}`}>
                 {reservation ? '' : isCredit ? '+' : '-'}₦{(Number(tx.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </Text>
             </div>

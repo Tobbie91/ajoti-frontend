@@ -21,7 +21,7 @@ export function AdminTab({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <Text fw={700} className="text-[20px] text-[#0F172A]">
           {circleName}
         </Text>
@@ -42,13 +42,13 @@ export function AdminTab({
         </Badge>
       </div>
 
-      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-        <div className="flex items-start gap-4">
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:p-6">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:gap-4">
           <Avatar size={56} radius="xl" color="dark" variant="filled">
             {adminName.charAt(0).toUpperCase()}
           </Avatar>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
+          <div className="w-full flex-1">
+            <div className="flex flex-wrap items-center gap-2">
               <Text fw={700} className="text-[18px] text-[#0F172A]">
                 {adminName}
               </Text>
@@ -66,7 +66,7 @@ export function AdminTab({
             <button
               type="button"
               onClick={() => navigate(`/messages?view=direct&circleId=${encodeURIComponent(circleId)}`)}
-              className="mt-4 flex cursor-pointer items-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white"
+              className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#02A36E] px-5 py-2.5 text-[13px] font-semibold text-white sm:w-auto sm:justify-start"
             >
               <IconMessageCircle size={16} />
               Open Group Chat

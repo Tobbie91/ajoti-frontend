@@ -4,6 +4,7 @@ import { AdminTab } from "./growth/AdminTab";
 import { GrowthTab } from "./growth/GrowthTab";
 import { PeerReviewsTab } from "./growth/PeerReviewsTab";
 import { circleStatusBadge, mapSchedulesToCycles } from "./growth/utils";
+import { PayContributionModal } from "./growth/PayContributionModal";
 import type { CycleRow } from "./growth/utils";
 import { useState, useEffect } from "react";
 import {
@@ -15,6 +16,7 @@ import {
   Textarea,
   Slider,
   Loader,
+  Select,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -80,6 +82,7 @@ export function GrowthActivities() {
   const [circle, setCircle] = useState<RoscaCircle | null>(null);
   const [schedules, setSchedules] = useState<RoscaSchedule[]>([]);
   const [contributions, setContributions] = useState<CircleContribution[]>([]);
+  const [payModalOpen, setPayModalOpen] = useState(false);
   const [userTrustScore, setUserTrustScore] = useState(0);
 
   const currentUserId = (() => {
@@ -218,8 +221,50 @@ export function GrowthActivities() {
           <button type="button" onClick={() => setRefreshVersion(v => v + 1)} className="ml-auto cursor-pointer text-sm font-semibold text-[#02A36E]">Refresh</button>
         </div>
 
-        {/* ─── Pill tabs at the top — full width, bold ──────────────────── */}
-        <div className="grid grid-cols-5 gap-1.5 rounded-xl bg-[#F1F3EF] p-1">
+        {/* ─── Mobile: visible "Overview" pill + Select dropdown for the rest ─── */}
+        <div className="flex items-center gap-2 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setActiveTab("Overview")}
+            className={`cursor-pointer whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${
+              activeTab === "Overview"
+                ? "bg-[#0B6B55] text-white shadow-sm"
+                : "border border-[#E5E7EB] bg-white text-[#374151]"
+            }`}
+          >
+            Overview
+          </button>
+          <Select
+            aria-label="View group section"
+            placeholder="More"
+            value={activeTab === "Overview" ? null : activeTab}
+            onChange={(value) => {
+              if (!value) return;
+              setActiveTab(value);
+            }}
+            data={[
+              { value: "Members", label: "Members" },
+              { value: "Admin", label: "Admin" },
+              { value: "Growth & Activities", label: "Growth" },
+              { value: "Peer Reviews", label: "Peers" },
+            ]}
+            allowDeselect={false}
+            radius="md"
+            className="flex-1"
+            styles={{
+              input: {
+                borderColor: activeTab !== "Overview" ? "#0B6B55" : "#E5E7EB",
+                backgroundColor: "#FFFFFF",
+                fontWeight: 600,
+                color: activeTab !== "Overview" ? "#0B6B55" : "#374151",
+                height: 44,
+              },
+            }}
+          />
+        </div>
+
+        {/* ─── Desktop: full-width pill grid ───────────────────────────────── */}
+        <div className="hidden gap-1.5 rounded-xl bg-[#F1F3EF] p-1 sm:grid sm:grid-cols-5">
           {GROUP_TABS.map((tab) => {
             const active = activeTab === tab;
             return (
@@ -227,7 +272,7 @@ export function GrowthActivities() {
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`cursor-pointer whitespace-nowrap rounded-lg px-2 py-2.5 text-[12px] font-bold transition-colors sm:text-[14px] ${
+                className={`cursor-pointer whitespace-nowrap rounded-lg px-2 py-2.5 text-[14px] font-bold transition-colors ${
                   active
                     ? "bg-[#0B6B55] text-white shadow-sm"
                     : "text-[#64748B] hover:bg-white hover:text-[#0F172A]"
@@ -258,11 +303,7 @@ export function GrowthActivities() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab("Growth & Activities");
-                  // Scroll to top so the Pay flow is visible after switching tabs
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
+                onClick={() => setPayModalOpen(true)}
                 className="cursor-pointer rounded-lg bg-[#0B6B55] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#095C49]"
               >
                 {nextCycle > currentCycleNumber ? "Pay next cycle early" : "Make a contribution"}
@@ -347,6 +388,18 @@ export function GrowthActivities() {
         )}
       </div>
 
+      {/* Shared Pay-contribution modal — opens from the yellow top banner. */}
+      <PayContributionModal
+        opened={payModalOpen}
+        onClose={() => setPayModalOpen(false)}
+        circleId={id!}
+        currentCycleNumber={currentCycleNumber}
+        nextCycleNumber={nextUnpaidSchedule?.cycleNumber}
+        contributionAmountKobo={circle.contributionAmount}
+        nextDeadline={nextUnpaidSchedule?.contributionDeadline as string | undefined}
+        nextPaymentFallback={nextContributionDate}
+        onPaid={(contribution) => setContributions((prev) => [contribution, ...prev])}
+      />
     </div>
   );
 }
