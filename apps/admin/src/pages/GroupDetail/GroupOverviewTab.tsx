@@ -1,11 +1,13 @@
+import { formatKobo, kobo } from '@/utils/kobo'
 import { Stack, Paper, SimpleGrid, Box, Text, Button, Table, Group } from '@mantine/core'
 import type { RoscaCircle, Payout } from '@/utils/api'
+import { payoutSettlementDisplay } from '@/utils/payout-settlement'
 
 const PRIMARY = '#0b6b55'
 
 const FREQ_LABEL: Record<string, string> = { WEEKLY: 'Weekly', BI_WEEKLY: 'Bi-weekly', MONTHLY: 'Monthly' }
 
-function formatMonthYear(value?: string): string {
+function formatMonthYear(value?: string | null): string {
   if (!value) return '-'
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return '-'
@@ -21,15 +23,15 @@ interface GroupOverviewTabProps {
 export function GroupOverviewTab({ circleData, payouts, onStartNewCycle }: GroupOverviewTabProps) {
   const totalMembers = circleData?.filledSlots ?? 0
   const totalRounds = circleData?.durationCycles ?? 0
-  const contributionAmountNaira = Number(circleData?.contributionAmount ?? 0) / 100
-  const disbursementAmountNaira = contributionAmountNaira * totalMembers
+  const contributionAmount = kobo(circleData?.contributionAmount)
+  const disbursementAmount = contributionAmount == null ? null : (contributionAmount * BigInt(totalMembers)).toString()
   const frequency = circleData ? (FREQ_LABEL[circleData.frequency as string] ?? circleData.frequency ?? '-') : '-'
 
   const sortedPayouts = [...payouts].sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))
   const firstPayout = sortedPayouts[0]
   const lastPayout = sortedPayouts[sortedPayouts.length - 1]
-  const startDate = formatMonthYear(firstPayout?.schedule?.payoutDate ?? firstPayout?.processedAt ?? firstPayout?.createdAt)
-  const endDate = formatMonthYear(lastPayout?.schedule?.payoutDate ?? lastPayout?.processedAt ?? lastPayout?.createdAt)
+  const startDate = formatMonthYear(firstPayout?.payoutDate ?? firstPayout?.processedAt)
+  const endDate = formatMonthYear(lastPayout?.payoutDate ?? lastPayout?.processedAt)
 
   return (
     <Stack gap="lg">
@@ -45,7 +47,7 @@ export function GroupOverviewTab({ circleData, payouts, onStartNewCycle }: Group
           </Box>
           <Box ta="center">
             <Text fz="xs" c="dimmed" mb={4}>Total Contribution</Text>
-            <Text fz="xl" fw={700}>₦{contributionAmountNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text>
+            <Text fz="xl" fw={700}>{formatKobo(contributionAmount?.toString())}</Text>
           </Box>
           <Box ta="center">
             <Text fz="xs" c="dimmed" mb={4}>Contribution Rate</Text>
@@ -69,8 +71,8 @@ export function GroupOverviewTab({ circleData, payouts, onStartNewCycle }: Group
             <Text fz="md" fw={600}>{frequency}</Text>
           </Box>
           <Box ta="center">
-            <Text fz="xs" c="dimmed" mb={4}>Disbursement Amount</Text>
-            <Text fz="md" fw={600}>₦{disbursementAmountNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text>
+            <Text fz="xs" c="dimmed" mb={4}>Expected cycle pot</Text>
+            <Text fz="md" fw={600}>{formatKobo(disbursementAmount)}</Text>
           </Box>
         </SimpleGrid>
       </Paper>
@@ -87,7 +89,7 @@ export function GroupOverviewTab({ circleData, payouts, onStartNewCycle }: Group
   )
 }
 
-export function GroupHistoryTab({ payouts }: { payouts: Payout[] }) {
+export function GroupHistoryTab({ payouts, onViewPayouts }: { payouts: Payout[]; onViewPayouts: () => void }) {
   const sortedPayouts = [...payouts].sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))
 
   return (
@@ -102,8 +104,8 @@ export function GroupHistoryTab({ payouts }: { payouts: Payout[] }) {
             <Table.Tr style={{ background: PRIMARY }}>
               <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Cycle</Table.Th>
               <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Recipient</Table.Th>
-              <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Disbursed Amount</Table.Th>
-              <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Status</Table.Th>
+              <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Amount paid out</Table.Th>
+              <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Settlement status</Table.Th>
               <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Date</Table.Th>
               <Table.Th style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Action</Table.Th>
             </Table.Tr>
@@ -116,29 +118,33 @@ export function GroupHistoryTab({ payouts }: { payouts: Payout[] }) {
                 </Table.Td>
               </Table.Tr>
             ) : (
-              sortedPayouts.map((p) => (
-                <Table.Tr key={p.id}>
-                  <Table.Td><Text fz="sm">Cycle {p.cycleNumber ?? p.schedule?.cycleNumber ?? '-'}</Text></Table.Td>
+              sortedPayouts.map((p) => {
+                const settlement = payoutSettlementDisplay(p.settlementStatus, p.amountPaidOut, p.status)
+                return (
+                <Table.Tr key={p.cycleNumber}>
+                  <Table.Td><Text fz="sm">Cycle {p.cycleNumber}</Text></Table.Td>
                   <Table.Td>
                     <Text fz="sm">
-                      {p.recipient ? `${p.recipient.firstName} ${p.recipient.lastName}` : '-'}
+                      {p.recipientName ?? 'Unassigned'}
                     </Text>
                   </Table.Td>
-                  <Table.Td><Text fz="sm">₦{(Number(p.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</Text></Table.Td>
-                  <Table.Td><Text fz="sm">{p.status}</Text></Table.Td>
-                  <Table.Td><Text fz="sm">{formatMonthYear(p.schedule?.payoutDate ?? p.processedAt ?? p.createdAt)}</Text></Table.Td>
+                  <Table.Td><Text fz="sm">{p.amountPaidOut == null ? 'Not settled' : formatKobo(p.amountPaidOut)}</Text></Table.Td>
+                  <Table.Td><Text fz="sm" c={settlement.color}>{settlement.label}</Text></Table.Td>
+                  <Table.Td><Text fz="sm">{formatMonthYear(p.payoutDate ?? p.processedAt)}</Text></Table.Td>
                   <Table.Td>
                     <Button
                       variant="outline"
                       size="xs"
                       radius="md"
+                      onClick={onViewPayouts}
                       style={{ borderColor: '#dee2e6', color: '#495057' }}
                     >
-                      View Details
+                      View Payouts
                     </Button>
                   </Table.Td>
                 </Table.Tr>
-              ))
+                )
+              })
             )}
           </Table.Tbody>
         </Table>

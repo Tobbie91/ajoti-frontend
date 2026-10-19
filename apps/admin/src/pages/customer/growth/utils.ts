@@ -1,17 +1,18 @@
+import { formatKobo } from "@/utils/kobo";
 import type { RoscaSchedule, CircleMember } from "@/utils/api";
 
 export interface CycleRow {
   cycle: number;
   recipientName: string;
-  status: "Completed" | "Current" | "Upcoming";
+  status: "Completed" | "Current" | "Upcoming" | "Skipped" | "Cancelled" | "Unavailable";
   payoutDate?: string;
+  contributionDeadline?: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 export function formatNaira(kobo: string | number): string {
-  const n = Number(kobo) / 100;
-  return `₦${n.toLocaleString("en-NG", { minimumFractionDigits: 0 })}`;
+  return formatKobo(kobo);
 }
 
 export function getRatingColor(value: number): string {
@@ -47,26 +48,18 @@ export function mapSchedulesToCycles(
     (a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0),
   );
 
-  let foundFirst = false;
   return sorted.map((s) => {
     const st = (s.status ?? "").toUpperCase();
-    let rowStatus: CycleRow["status"];
-    if (st === "COMPLETED" || st === "PAID") {
-      rowStatus = "Completed";
-    } else if (!foundFirst) {
-      foundFirst = true;
-      rowStatus = "Current";
-    } else {
-      rowStatus = "Upcoming";
-    }
-    const recipientName = s.recipientId
+    const rowStatus: CycleRow["status"] = ({ COMPLETED: 'Completed', PAID: 'Completed', IN_PROGRESS: 'Current', UPCOMING: 'Upcoming', SKIPPED: 'Skipped', CANCELLED: 'Cancelled' } as const)[st as 'COMPLETED'] ?? 'Unavailable';
+    const recipientName = s.recipientName ?? (s.recipientId
       ? (memberMap.get(s.recipientId) ?? `Cycle ${s.cycleNumber}`)
-      : `Cycle ${s.cycleNumber}`;
+      : `Cycle ${s.cycleNumber}`);
     return {
       cycle: s.cycleNumber ?? 0,
       recipientName,
       status: rowStatus,
       payoutDate: s.payoutDate,
+      contributionDeadline: s.contributionDeadline,
     };
   });
 }

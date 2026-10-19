@@ -5,9 +5,10 @@ import { KycGate } from '@/components/KycGate'
 import { TransactionPinGate } from '@/components/TransactionPinGate'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { CircleAdminRoute } from '@/components/CircleAdminRoute'
+import { SharedCirclePage, LegacyCircleRedirect } from '@/pages/customer/SharedCirclePage'
 import { defaultAuthenticatedPath, getCurrentRole } from '@/utils/auth-role'
 import {
-  Dashboard, CreateGroup, ManageJoinRequest, RoscaGroups, RoscaArchive, GroupDetail, EditGroup,
+  Dashboard, CreateGroup, ManageJoinRequest, RoscaGroups, RoscaArchive, EditGroup,
   Loans, MyDebts, MyWallet, FundWallet, WithdrawFunds, Transactions, Login, VerifyOtp,
   Kyc, MyProfile, FundWalletCallback, SetPin, Messages, Support, SupportTicket, Maintenance,
   TargetSavings,
@@ -15,7 +16,7 @@ import {
   Signup,
 } from '@/pages'
 import {
-  Home, Rosca, GroupDetails, GrowthActivities, RequestToJoin, JoinSummary,
+  Home, Rosca, RequestToJoin, JoinSummary,
   MyGroupRequests, MyInvites, InviteAccept, BecomeAdmin, HowItWorks,
   ArticleDetail, CreateNewWallet, CreateNewWallet2, Investments,
 } from '@/pages/customer'
@@ -60,7 +61,7 @@ function App() {
           <Route path="/manage-join-request" element={<CircleAdminRoute><ManageJoinRequest /></CircleAdminRoute>} />
           <Route path="/rosca/groups" element={<CircleAdminRoute><RoscaGroups /></CircleAdminRoute>} />
           <Route path="/rosca/groups/archive" element={<CircleAdminRoute><RoscaArchive /></CircleAdminRoute>} />
-          <Route path="/rosca/groups/:id" element={<CircleAdminRoute><GroupDetail /></CircleAdminRoute>} />
+          <Route path="/rosca/groups/:id" element={<LegacyCircleRedirect management />} />
           <Route path="/rosca/groups/:id/edit" element={<CircleAdminRoute><EditGroup /></CircleAdminRoute>} />
           <Route path="/rosca" element={<Rosca />} />
           <Route path="/rosca/how-it-works" element={<HowItWorks />} />
@@ -70,8 +71,8 @@ function App() {
           <Route path="/rosca/invites" element={<MyInvites />} />
           <Route path="/rosca/:id/join" element={<RequestToJoin />} />
           <Route path="/rosca/:id/summary" element={<JoinSummary />} />
-          <Route path="/rosca/:id/activities" element={<GrowthActivities />} />
-          <Route path="/rosca/:id" element={<GroupDetails />} />
+          <Route path="/rosca/:id/activities" element={<LegacyCircleRedirect />} />
+          <Route path="/rosca/:id" element={<SharedCirclePage />} />
           <Route path="/create-wallet" element={<CreateNewWallet />} />
           <Route path="/createNewWallet2" element={<CreateNewWallet2 />} />
           <Route path="/investments" element={<Investments />} />

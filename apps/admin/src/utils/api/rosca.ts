@@ -63,7 +63,7 @@ export interface RoscaCircle {
   id: string;
   name: string;
   description: string;
-  contributionAmount: number;
+  contributionAmount: number | string;
   frequency: string;
   durationCycles: number;
   currentCycle?: number;
@@ -495,6 +495,7 @@ export interface RoscaSchedule {
   contributionDeadline?: string;
   payoutDate?: string;
   recipientId?: string | null;
+  recipientName?: string;
   month?: string;
   recipient?: string;
   status: string;
@@ -512,58 +513,42 @@ export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
 export type ContributionPaymentMethod = "MANUAL" | "AUTOMATIC";
 
 export async function getContributionPaymentPreference(circleId: string): Promise<ContributionPaymentMethod> {
-  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+  const response = await authRequest<{ data?: { paymentMethod?: unknown }; paymentMethod?: unknown }>(
     `/api/rosca/${circleId}/contributions/payment-preference`,
     { method: "GET" },
   );
-  return response.data.paymentMethod;
+  const method = response.data?.paymentMethod ?? response.paymentMethod;
+  if (method !== "MANUAL" && method !== "AUTOMATIC") throw new Error("Payment preference is unavailable.");
+  return method;
 }
 
 export async function setContributionPaymentPreference(
   circleId: string,
   paymentMethod: ContributionPaymentMethod,
 ): Promise<ContributionPaymentMethod> {
-  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+  const response = await authRequest<{ data?: { paymentMethod?: unknown }; paymentMethod?: unknown }>(
     `/api/rosca/${circleId}/contributions/payment-preference`,
     { method: "PATCH", body: JSON.stringify({ paymentMethod }) },
   );
-  return response.data.paymentMethod;
+  const method = response.data?.paymentMethod ?? response.paymentMethod;
+  if (method !== "MANUAL" && method !== "AUTOMATIC") throw new Error("The server returned an invalid payment preference.");
+  return method;
 }
 
 export interface CircleEarlyPayout {
-  id: string;
-  userId: string;
-  memberName: string;
-  status: string;
-  expectedPayout: string;
-  advanceReceived: string;
-  companyFee: string;
-  projectedRemainingPayout: string;
-  requestedAt: string;
-  repaidAt: string | null;
+  circleId: string; totalLoans: number; activeCount: number; repaidCount: number; defaultedCount: number; cancelledCount: number;
 }
-
-export async function getCircleEarlyPayouts(circleId: string): Promise<CircleEarlyPayout[]> {
-  const result = await authRequest<{ data: CircleEarlyPayout[] }>(
-    `/api/admin/rosca/${circleId}/early-payouts`,
-    { method: "GET" },
-  );
+export async function getCircleEarlyPayouts(circleId: string): Promise<CircleEarlyPayout> {
+  const result = await authRequest<{ data: CircleEarlyPayout }>(`/api/admin/rosca/${circleId}/early-payouts`, { method: 'GET' });
   return result.data;
 }
 
 // ── Payouts ──────────────────────────────────────────────────────────────────
 
 export interface Payout {
-  id: string;
-  cycleNumber?: number;
-  recipientId?: string;
-  recipient?: { firstName: string; lastName: string; email?: string };
-  amount: string;
-  status: string;
-  createdAt?: string;
-  processedAt?: string;
-  schedule?: { cycleNumber: number; payoutDate: string };
-  [key: string]: unknown;
+  cycleNumber: number | null; recipientName: string | null; amount: string; amountPaidOut: string | null;
+  settlementStatus: string | null; status: string;
+  processedAt: string | null; payoutDate: string | null;
 }
 
 export async function getPayoutHistory(circleId: string): Promise<Payout[]> {
@@ -571,7 +556,16 @@ export async function getPayoutHistory(circleId: string): Promise<Payout[]> {
     `/api/rosca/${circleId}/payouts`,
     { method: "GET" },
   );
-  return Array.isArray(res) ? res : ((res as { data?: Payout[] }).data ?? []);
+  const rows = Array.isArray(res) ? res : res.data;
+  if (!Array.isArray(rows)) throw new Error('Payout history is unavailable.');
+  if (rows.some((row) => !row || typeof row !== 'object'
+    || typeof row.amount !== 'string' || !/^\d+$/.test(row.amount)
+    || !('amountPaidOut' in row) || !('settlementStatus' in row)
+    || !(row.amountPaidOut == null || (typeof row.amountPaidOut === 'string' && /^\d+$/.test(row.amountPaidOut)))
+    || !(row.settlementStatus == null || typeof row.settlementStatus === 'string'))) {
+    throw new Error('Payout history is incomplete. Please try again.');
+  }
+  return rows;
 }
 
 export function processPayout(
@@ -614,27 +608,15 @@ export function triggerPayoutScheduler(): Promise<{ message: string }> {
 
 // ── Contributions ─────────────────────────────────────────────────────────────
 
+/** Member-safe roster: names are not identifiers; never join these records to users. */
 export interface Contribution {
-  contributionId: string;
-  userId: string;
-  memberName: string;
-  cycleNumber: number;
-  amount: string;
-  penaltyAmount: string;
-  isLate: boolean;
-  paidAt: string | null;
-  [key: string]: unknown;
+  memberName: string; cycleNumber: number; amount: string; paidAt: string | null;
 }
-
-export async function getAllCircleContributions(
-  circleId: string,
-): Promise<Contribution[]> {
-  // Circle members and admins can read the roster; outsiders are rejected server-side.
-  const res = await authRequest<{ data?: Contribution[] }>(
-    `/api/rosca/${circleId}/contributions/roster`,
-    { method: "GET" },
-  );
-  return (res as { data?: Contribution[] }).data ?? [];
+export async function getAllCircleContributions(circleId: string, cycleNumber?: number): Promise<Contribution[]> {
+  const result = await authRequest<{ data: Contribution[] }>(
+    `/api/rosca/${circleId}/contributions/roster${cycleNumber == null ? '' : `?cycleNumber=${cycleNumber}`}`, { method: 'GET' });
+  if (!Array.isArray(result.data)) throw new Error('Contribution history is unavailable.');
+  return result.data;
 }
 
 // GET /api/admin/rosca/{circleId}/disbursements - admin view of disbursements
@@ -646,6 +628,7 @@ export interface Disbursement {
   contributionDeadline: string;
   scheduleStatus: string;
   payoutStatus: string | null;
+  settlementStatus: string | null;
   amountPaidOut: string | null;
   processedAt: string | null;
   [key: string]: unknown;
@@ -658,21 +641,21 @@ export async function getAdminDisbursements(
     `/api/admin/rosca/${circleId}/disbursements`,
     { method: "GET" },
   );
-  return (
-    (res as { data?: { schedules?: Disbursement[] } }).data?.schedules ?? []
-  );
+  const schedules = res.data?.schedules;
+  if (!Array.isArray(schedules)) throw new Error('Disbursement schedules are unavailable.');
+  return schedules;
 }
 
 export function extendCycleDeadline(
   circleId: string,
   cycleNumber: number,
-  newPayoutDate: string,
+  newContributionDeadline: string,
 ): Promise<{ message: string }> {
   return authRequest(
     `/api/admin/rosca/${circleId}/schedules/${cycleNumber}/extend`,
     {
       method: "PATCH",
-      body: JSON.stringify({ newPayoutDate }),
+      body: JSON.stringify({ newContributionDeadline }),
     },
   );
 }
@@ -706,14 +689,9 @@ export async function getAdminCircleContributions(
   const res = await authRequest<{ data?: AdminContributionsResponse }>(url, {
     method: "GET",
   });
-  return (
-    (res as { data?: AdminContributionsResponse }).data ?? {
-      cycleNumber: cycleNumber ?? 1,
-      contributions: [],
-      totalCollected: "0",
-      totalPenalties: "0",
-    }
-  );
+  const data = res.data;
+  if (!data || !Array.isArray(data.contributions)) throw new Error('Contribution oversight is unavailable.');
+  return data;
 }
 
 export async function makeContribution(

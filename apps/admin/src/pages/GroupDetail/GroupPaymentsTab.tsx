@@ -1,6 +1,8 @@
+import { formatKobo, sumKobo, koboPercent } from '@/utils/kobo'
 import { useEffect, useState } from 'react'
 import { Stack, Paper, Group, Text, Box, SimpleGrid, Table, Badge, Select, Avatar, Button, Loader } from '@mantine/core'
 import { IconChevronDown, IconDownload } from '@tabler/icons-react'
+import { payoutSettlementDisplay } from '@/utils/payout-settlement'
 import {
   getAdminCircleContributions,
   getAdminDisbursements,
@@ -11,14 +13,8 @@ import {
 
 const PRIMARY = '#0b6b55'
 
-const ROUND_OPTIONS = [
-  { value: '4', label: 'Round 4' },
-  { value: '3', label: 'Round 3' },
-  { value: '2', label: 'Round 2' },
-  { value: '1', label: 'Round 1' },
-]
-
 interface GroupPaymentsTabProps {
+  allowExtensions: boolean
   circleId: string | undefined
   isActive: boolean
   financialHealth: FinancialHealth | null
@@ -28,7 +24,8 @@ interface GroupPaymentsTabProps {
   onExtendDeadline: (cycleNumber: number) => void
 }
 
-export function GroupPaymentsTab({ circleId, isActive, financialHealth, financialHealthLoading, refreshToken, onExtendDeadline }: GroupPaymentsTabProps) {
+export function GroupPaymentsTab({
+  allowExtensions, circleId, isActive, financialHealth, financialHealthLoading, refreshToken, onExtendDeadline }: GroupPaymentsTabProps) {
   const [selectedRound, setSelectedRound] = useState<string | null>('1')
   const [paymentContribs, setPaymentContribs] = useState<AdminContributionsResponse | null>(null)
   const [paymentContribsLoading, setPaymentContribsLoading] = useState(false)
@@ -75,27 +72,27 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
         </Group>
         {financialHealth ? (() => {
           const cycles = financialHealth.cycles ?? []
-          const totalExpKobo = cycles.reduce((s, c) => s + Number(c.expectedPot ?? 0), 0)
-          const totalColKobo = cycles.reduce((s, c) => s + Number(c.collected ?? 0), 0)
-          const overallRate = totalExpKobo > 0 ? (totalColKobo / totalExpKobo) * 100 : 0
+          const totalExpKobo = sumKobo(cycles.map(c => c.expectedPot))?.toString()
+          const totalColKobo = sumKobo(cycles.map(c => c.collected))?.toString()
+          const overallRate = koboPercent(totalColKobo, totalExpKobo)
           return (
             <Stack gap="md">
               <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
                 <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
                   <Text fz="xs" c="dimmed" mb={4}>Total Expected</Text>
-                  <Text fz="lg" fw={700}>₦{(totalExpKobo / 100).toLocaleString('en-NG')}</Text>
+                  <Text fz="lg" fw={700}>{formatKobo(totalExpKobo)}</Text>
                 </Box>
                 <Box style={{ textAlign: 'center', background: '#f0faf7', borderRadius: 8, padding: '12px 8px' }}>
                   <Text fz="xs" c="dimmed" mb={4}>Total Collected</Text>
-                  <Text fz="lg" fw={700} style={{ color: PRIMARY }}>₦{(totalColKobo / 100).toLocaleString('en-NG')}</Text>
+                  <Text fz="lg" fw={700} style={{ color: PRIMARY }}>{formatKobo(totalColKobo)}</Text>
                 </Box>
                 <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
                   <Text fz="xs" c="dimmed" mb={4}>Collection Rate</Text>
-                  <Text fz="lg" fw={700}>{overallRate.toFixed(1)}%</Text>
+                  <Text fz="lg" fw={700}>{overallRate == null ? "Unavailable" : `${overallRate.toFixed(1)}%`}</Text>
                 </Box>
                 <Box style={{ textAlign: 'center', background: '#f8f9fa', borderRadius: 8, padding: '12px 8px' }}>
                   <Text fz="xs" c="dimmed" mb={4}>Total Outstanding</Text>
-                  <Text fz="lg" fw={700}>₦{(cycles.reduce((s, c) => s + Number(c.outstanding ?? 0), 0) / 100).toLocaleString('en-NG')}</Text>
+                  <Text fz="lg" fw={700}>{formatKobo(sumKobo(cycles.map(c => c.outstanding))?.toString())}</Text>
                 </Box>
               </SimpleGrid>
               {cycles.length > 0 && (
@@ -112,24 +109,24 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                   </Table.Thead>
                   <Table.Tbody>
                     {cycles.map((cyc) => {
-                      const exp = Number(cyc.expectedPot ?? 0)
-                      const col = Number(cyc.collected ?? 0)
-                      const rate = exp > 0 ? Math.round((col / exp) * 100) : 0
+                      const exp = cyc.expectedPot
+                      const col = cyc.collected
+                      const rate = koboPercent(col, exp)
                       const deadline = cyc.contributionDeadline
-                        ? new Date(cyc.contributionDeadline).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
+                        ? new Date(cyc.contributionDeadline).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'short' })
                         : '-'
                       return (
                         <Table.Tr key={cyc.cycleNumber}>
                           <Table.Td><Text fz="sm" fw={500}>Cycle {cyc.cycleNumber}</Text></Table.Td>
                           <Table.Td><Text fz="sm" c="dimmed">{deadline}</Text></Table.Td>
-                          <Table.Td><Text fz="sm">₦{(exp / 100).toLocaleString('en-NG')}</Text></Table.Td>
-                          <Table.Td><Text fz="sm" style={{ color: PRIMARY }}>₦{(col / 100).toLocaleString('en-NG')}</Text></Table.Td>
+                          <Table.Td><Text fz="sm">{formatKobo(exp)}</Text></Table.Td>
+                          <Table.Td><Text fz="sm" style={{ color: PRIMARY }}>{formatKobo(col)}</Text></Table.Td>
                           <Table.Td>
-                            <Badge size="sm" radius="sm" style={{ background: rate >= 80 ? '#e6f5f1' : '#fdf3e7', color: rate >= 80 ? PRIMARY : '#e67e22', border: 'none', fontWeight: 600 }}>
-                              {rate}%
+                            <Badge size="sm" radius="sm" style={{ background: (rate ?? 0) >= 80 ? '#e6f5f1' : '#fdf3e7', color: (rate ?? 0) >= 80 ? PRIMARY : '#e67e22', border: 'none', fontWeight: 600 }}>
+                              {rate == null ? "Unavailable" : `${rate}%`}
                             </Badge>
                           </Table.Td>
-                          <Table.Td><Text fz="sm" c="dimmed">₦{(Number(cyc.outstanding ?? 0) / 100).toLocaleString('en-NG')}</Text></Table.Td>
+                          <Table.Td><Text fz="sm" c="dimmed">{formatKobo(cyc.outstanding)}</Text></Table.Td>
                         </Table.Tr>
                       )
                     })}
@@ -154,7 +151,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
         >
           <Text fw={600} fz="sm" c="white">Contributions In</Text>
           <Select
-            data={financialHealth?.cycles?.map((c) => ({ value: String(c.cycleNumber), label: `Round ${c.cycleNumber}` })) ?? ROUND_OPTIONS}
+            data={financialHealth?.cycles?.map((c) => ({ value: String(c.cycleNumber), label: `Round ${c.cycleNumber}` })) ?? []}
             value={selectedRound}
             onChange={setSelectedRound}
             size="xs"
@@ -199,9 +196,9 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
               </Table.Tr>
             ) : (
               (paymentContribs?.contributions ?? []).map((c) => {
-                const amountNaira = Number(c.amount) / 100
+                const amountNaira = formatKobo(c.amount)
                 const dateStr = c.paidAt
-                  ? new Date(c.paidAt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  ? new Date(c.paidAt).toLocaleString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                   : '-'
                 return (
                   <Table.Tr key={c.contributionId}>
@@ -211,7 +208,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                         <Text fz="sm" fw={500}>{c.memberName}</Text>
                       </Group>
                     </Table.Td>
-                    <Table.Td><Text fz="sm">₦{amountNaira.toLocaleString('en-NG')}</Text></Table.Td>
+                    <Table.Td><Text fz="sm">{amountNaira}</Text></Table.Td>
                     <Table.Td>
                       <Badge
                         size="sm"
@@ -247,16 +244,16 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
             <Box>
               <Text fz="xs" c="dimmed">Total Expected</Text>
               <Text fz="sm" fw={600}>
-                ₦{(() => {
+                {(() => {
                   const cyc = financialHealth?.cycles?.find((c) => c.cycleNumber === Number(selectedRound))
-                  return cyc ? (Number(cyc.expectedPot) / 100).toLocaleString('en-NG') : '0'
+                  return formatKobo(cyc?.expectedPot)
                 })()}
               </Text>
             </Box>
             <Box>
               <Text fz="xs" c="dimmed">Total Received</Text>
               <Text fz="sm" fw={600} style={{ color: PRIMARY }}>
-                ₦{(Number(paymentContribs?.totalCollected ?? 0) / 100).toLocaleString('en-NG')}
+                {formatKobo(paymentContribs?.totalCollected)}
               </Text>
             </Box>
             <Box>
@@ -264,8 +261,8 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
               <Text fz="sm" fw={600} style={{ color: PRIMARY }}>
                 {(() => {
                   const cyc = financialHealth?.cycles?.find((c) => c.cycleNumber === Number(selectedRound))
-                  if (!cyc || Number(cyc.expectedPot) === 0) return '-'
-                  return `${Math.round((Number(cyc.collected) / Number(cyc.expectedPot)) * 100)}%`
+                  const rate = koboPercent(cyc?.collected, cyc?.expectedPot)
+                  return rate == null ? 'Unavailable' : `${rate}%`
                 })()}
               </Text>
             </Box>
@@ -315,12 +312,14 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                 </Table.Td>
               </Table.Tr>
             ) : disbursements.map((d) => {
-              const isSuccess = d.payoutStatus != null && ['SUCCESS', 'COMPLETED', 'PAID'].includes(d.payoutStatus.toUpperCase())
-              const isUpcoming = d.payoutStatus == null || ['UPCOMING', 'PENDING'].includes((d.scheduleStatus ?? '').toUpperCase())
+              const settlement = payoutSettlementDisplay(d.settlementStatus, d.amountPaidOut, d.payoutStatus ?? d.scheduleStatus)
+              const isSuccess = settlement.label === 'Settled'
+              const isUpcoming = settlement.label === 'Upcoming' || settlement.label === 'Pending' || settlement.label === 'Processing'
               const isStuck = isUpcoming && d.payoutDate != null && new Date(d.payoutDate) < new Date()
-              const amountNaira = d.amountPaidOut != null ? (Number(d.amountPaidOut) / 100).toLocaleString('en-NG') : null
+              const amountNaira = d.amountPaidOut != null ? formatKobo(d.amountPaidOut) : null
+              const canExtend = allowExtensions && d.scheduleStatus === 'UPCOMING' && d.payoutStatus == null && Date.parse(d.contributionDeadline) > Date.now()
               const dateStr = (d.processedAt ?? (isUpcoming ? d.payoutDate : null))
-                ? new Date((d.processedAt ?? d.payoutDate) as string).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                ? new Date((d.processedAt ?? d.payoutDate) as string).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric' })
                 : '-'
               return (
                 <Table.Tr key={d.cycleNumber} style={isStuck ? { background: '#fff5f5' } : isUpcoming ? { background: '#f0faf7' } : undefined}>
@@ -335,7 +334,7 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                   </Table.Td>
                   <Table.Td>
                     <Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>
-                      {amountNaira ? `₦${amountNaira}` : 'Pending'}
+                      {amountNaira ?? 'Not settled'}
                     </Text>
                   </Table.Td>
                   <Table.Td>
@@ -349,13 +348,13 @@ export function GroupPaymentsTab({ circleId, isActive, financialHealth, financia
                         fontWeight: 600,
                       }}
                     >
-                      {isSuccess ? 'Disbursed' : isStuck ? 'Overdue' : isUpcoming ? 'Upcoming' : d.payoutStatus}
+                      {isSuccess ? 'Settled' : isStuck ? 'Overdue' : settlement.label}
                     </Badge>
                   </Table.Td>
                   <Table.Td><Text fz="sm">Wallet</Text></Table.Td>
                   <Table.Td><Text fz="sm" c={isUpcoming ? 'dimmed' : undefined}>{dateStr}</Text></Table.Td>
                   <Table.Td>
-                    {isStuck && (
+                    {canExtend && (
                       <Button
                         size="xs"
                         variant="light"
