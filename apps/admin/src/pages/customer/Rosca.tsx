@@ -1,3 +1,4 @@
+import { kobo, formatKobo } from "@/utils/kobo";
 import { useState, useEffect } from "react";
 import {
   Text,
@@ -5,6 +6,7 @@ import {
   Badge,
   Avatar,
   Tabs,
+  Select,
   Loader,
 } from "@mantine/core";
 import {
@@ -58,7 +60,6 @@ interface JoinedGroup {
   admin: string;
   circleStatus: string;
   frequency: string;
-  contributionAmountNaira: number;
   contributionAmountKobo: string;
   nextDeadlineRaw?: string;
   nextContributionCycle?: number;
@@ -86,9 +87,6 @@ function contributionDate(circle: { status?: string; nextContributionDeadline?: 
   return "Schedule unavailable";
 }
 
-function money(n: number): string {
-  return `₦${n.toLocaleString("en-NG")}`;
-}
 
 // Status-driven visual tone for the joined card.
 type CardTone = "active" | "notready" | "completed" | "cancelled";
@@ -166,10 +164,10 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
             <span>{group.memberCount || "—"} members</span>
             <span className="inline-block h-1 w-1 rounded-full bg-[#CBD5E1]" />
             <span>{group.frequency ? group.frequency.toLowerCase() : "—"}</span>
-            {group.contributionAmountNaira > 0 && (
+            {(kobo(group.contributionAmountKobo) ?? 0n) > 0n && (
               <>
                 <span className="inline-block h-1 w-1 rounded-full bg-[#CBD5E1]" />
-                <span>{money(group.contributionAmountNaira)}</span>
+                <span>{formatKobo(group.contributionAmountKobo)}</span>
               </>
             )}
           </div>
@@ -225,12 +223,12 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
       {tone === "active" && !group.progressUnavailable && (
         <div className="mt-3 flex flex-col gap-1 rounded-lg bg-[#F9FAFB] px-3 py-2">
           <Text className="text-[11.5px] text-[#475569]">
-            Current cycle {group.currentCycle}: <strong>{Number(group.currentCycleOutstandingKobo) === 0 ? "Paid" : Number(group.currentCyclePaidKobo) > 0 ? "Partially paid" : "Unpaid"}</strong>
-            {` · ${money(Number(group.currentCyclePaidKobo) / 100)} paid · ${money(Number(group.currentCycleOutstandingKobo) / 100)} outstanding`}
+            Current cycle {group.currentCycle}: <strong>{kobo(group.currentCycleOutstandingKobo) === 0n ? "Paid" : Number(group.currentCyclePaidKobo) > 0 ? "Partially paid" : "Unpaid"}</strong>
+            {` · ${formatKobo(group.currentCyclePaidKobo)} paid · ${formatKobo(group.currentCycleOutstandingKobo)} outstanding`}
           </Text>
           {group.nextContributionCycle != null && group.nextContributionCycle > group.currentCycle && (
             <Text className="text-[11.5px] text-[#475569]">
-              Cycle {group.nextContributionCycle}: {money(Number(group.nextContributionPaidKobo) / 100)} paid · {money(Number(group.nextContributionAmountKobo ?? 0) / 100)} remaining
+              Cycle {group.nextContributionCycle}: {formatKobo(group.nextContributionPaidKobo)} paid · {formatKobo(group.nextContributionAmountKobo ?? 0)} remaining
             </Text>
           )}
         </div>
@@ -250,13 +248,13 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
               {cycleStripSubtle}
             </Text>
           </div>
-          {tone === "active" && group.contributionAmountNaira > 0 && !group.progressUnavailable && (
+          {tone === "active" && (kobo(group.contributionAmountKobo) ?? 0n) > 0n && !group.progressUnavailable && (
             <Text
               fw={700}
               className="flex-shrink-0 text-[13px]"
               style={{ color: t.cycleText, fontVariantNumeric: "tabular-nums" }}
             >
-              {money(Number(group.nextContributionAmountKobo ?? group.contributionAmountKobo) / 100)}
+              {formatKobo(group.nextContributionAmountKobo ?? group.contributionAmountKobo)}
             </Text>
           )}
         </div>
@@ -325,6 +323,7 @@ export function Rosca() {
     if (slug === "all" || slug === "all-groups") return "All Groups";
     return "Joined";
   });
+  const [joinedStatus, setJoinedStatus] = useState<string>(["active", "completed"].includes(searchParams.get("status") ?? "") ? searchParams.get("status")! : "all");
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -425,13 +424,12 @@ export function Rosca() {
         admin: adminName,
         circleStatus: (circle.status as string) ?? "",
         frequency: (circle.frequency as string) ?? "",
-        contributionAmountNaira: Number(circle.contributionAmount ?? 0) / 100,
         contributionAmountKobo: String(circle.contributionAmount ?? "0"),
         nextDeadlineRaw: circle.nextContributionDeadline ?? undefined,
         currentCyclePaidKobo: "0",
         currentCycleOutstandingKobo: String(circle.contributionAmount ?? "0"),
         nextContributionPaidKobo: "0",
-        progressUnavailable: false,
+        progressUnavailable: true,
         memberCount: Number(circle.filledSlots ?? 0),
         currentCycle: Number(circle.currentCycle ?? 1),
       };
@@ -458,13 +456,12 @@ export function Rosca() {
         admin: adminName,
         circleStatus: c.status ?? "",
         frequency: c.frequency ?? "",
-        contributionAmountNaira: Number(c.contributionAmount ?? 0) / 100,
         contributionAmountKobo: String(c.contributionAmount ?? "0"),
         nextDeadlineRaw: c.nextContributionDeadline ?? undefined,
         currentCyclePaidKobo: "0",
         currentCycleOutstandingKobo: String(c.contributionAmount ?? "0"),
         nextContributionPaidKobo: "0",
-        progressUnavailable: false,
+        progressUnavailable: true,
         memberCount: Number(c.filledSlots ?? 0),
         currentCycle: Number(c.currentCycle ?? 1),
       };
@@ -505,11 +502,11 @@ export function Rosca() {
             }
             const completedCycles = schedules.filter((schedule) => schedule.status === 'COMPLETED').length;
             const totalCycles = schedules.length;
-            const paidByCycle = new Map<number, number>();
+            const paidByCycle = new Map<number, bigint>();
             for (const contribution of contributions) {
               paidByCycle.set(
                 contribution.cycleNumber,
-                (paidByCycle.get(contribution.cycleNumber) ?? 0) + Number(contribution.amount),
+                (paidByCycle.get(contribution.cycleNumber) ?? 0n) + BigInt(contribution.amount),
               );
             }
             const nextSchedule = schedules
@@ -517,20 +514,19 @@ export function Rosca() {
               .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))
               .find((schedule) =>
                 schedule.cycleNumber != null &&
-                (paidByCycle.get(schedule.cycleNumber) ?? 0) < Number(group.contributionAmountKobo),
+                (paidByCycle.get(schedule.cycleNumber) ?? 0n) < BigInt(group.contributionAmountKobo),
               );
             const nextCycle = nextSchedule?.cycleNumber;
-            const paidTowardNextCycle = nextCycle == null ? 0 : paidByCycle.get(nextCycle) ?? 0;
-            const amountDue = Math.max(0, Number(group.contributionAmountKobo) - paidTowardNextCycle);
-            const currentCyclePaid = Math.min(
-              Number(group.contributionAmountKobo),
-              paidByCycle.get(group.currentCycle) ?? 0,
-            );
+            const paidTowardNextCycle = nextCycle == null ? 0n : paidByCycle.get(nextCycle) ?? 0n;
+            const expected = BigInt(group.contributionAmountKobo);
+            const amountDue = expected > paidTowardNextCycle ? expected - paidTowardNextCycle : 0n;
+            const paidCurrent = paidByCycle.get(group.currentCycle) ?? 0n;
+            const currentCyclePaid = expected < paidCurrent ? expected : paidCurrent;
             return {
               ...group, completedCycles, totalCycles,
               completionRate: Math.round((completedCycles / totalCycles) * 100),
               currentCyclePaidKobo: String(currentCyclePaid),
-              currentCycleOutstandingKobo: String(Math.max(0, Number(group.contributionAmountKobo) - currentCyclePaid)),
+              currentCycleOutstandingKobo: String(expected - currentCyclePaid),
               nextContributionPaidKobo: String(paidTowardNextCycle),
               progressUnavailable: false,
               nextContributionCycle: nextCycle,
@@ -719,9 +715,11 @@ export function Rosca() {
             )
           ) : (
             <>
+              <Select label="Joined circle status" value={joinedStatus} onChange={value => setJoinedStatus(value ?? 'all')} data={[{ value: 'all', label: 'All joined circles' }, { value: 'active', label: 'Active circles' }, { value: 'completed', label: 'Completed history' }]} />
+              {joinedGroups.filter(group => joinedStatus === 'all' || group.circleStatus.toLowerCase() === joinedStatus).length === 0 && <Text>No circles match this status.</Text>}
               {joinedReadError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Some membership data could not be loaded. The groups below may be incomplete.</div>}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {joinedGroups.map((group) => (
+                {joinedGroups.filter(group => joinedStatus === 'all' || group.circleStatus.toLowerCase() === joinedStatus).map((group) => (
                   <JoinedGroupCard
                     key={group.id}
                     group={group}

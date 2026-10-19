@@ -1,3 +1,7 @@
+import { circleDeadlineLabel, getCircleDeadlineState } from '@/utils/circle-deadline';
+import { watDate } from '@/utils/wat-date';
+import { SharedCircleFinancials } from "./growth/SharedCircleFinancials";
+import { kobo, sumKobo } from "@/utils/kobo";
 import { ContributionPaymentPreference } from './growth/ContributionPaymentPreference';
 import { circleAccess } from '@/utils/circle-access';
 import { GroupContributionsTab } from '../GroupDetail/GroupContributionsTab';
@@ -48,6 +52,7 @@ import {
 const GROUP_TABS = [
   "Overview",
   "Contributions",
+  "Payouts",
   "Members",
   "Admin",
   "Growth & Activities",
@@ -59,6 +64,7 @@ const GROUP_TABS = [
 const TAB_SLUG: Record<string, string> = {
   overview: "Overview",
   contributions: "Contributions",
+  payouts: "Payouts",
   members: "Members",
   admin: "Admin",
   growth: "Growth & Activities",
@@ -84,8 +90,9 @@ export function GrowthActivities() {
 
   const [circle, setCircle] = useState<RoscaCircle | null>(null);
   const [schedules, setSchedules] = useState<RoscaSchedule[]>([]);
+  const [personalReadError, setPersonalReadError] = useState(false);
   const [contributions, setContributions] = useState<CircleContribution[]>([]);
-  const [userTrustScore, setUserTrustScore] = useState(0);
+  const [userTrustScore, setUserTrustScore] = useState<number | null>(null);
 
   const currentUserId = (() => {
     try {
@@ -107,8 +114,8 @@ export function GrowthActivities() {
       if (!access.view) throw new Error('Group activity is unavailable for this membership.');
       const [s, contrib, ts] = await Promise.all([
         getRoscaSchedules(id),
-        access.approvedMember ? getCircleContributions(id) : Promise.resolve([]),
-        getTrustScore().catch(() => ({ trustScore: 0 })),
+        access.approvedMember ? getCircleContributions(id).then(rows => ({ rows, failed: false })).catch(() => ({ rows: [], failed: true })) : Promise.resolve({ rows: [], failed: false }),
+        getTrustScore().catch(() => null),
       ]);
       return [c, s, contrib, ts] as const;
     })
@@ -117,8 +124,9 @@ export function GrowthActivities() {
         if (c.previewOnly === true) { setLoadError("Group activity is unavailable for this membership."); return; }
         setCircle(c);
         setSchedules(s);
-        setContributions(contrib);
-        setUserTrustScore((ts as { trustScore: number }).trustScore ?? 0);
+        setContributions(contrib.rows);
+        setPersonalReadError(contrib.failed);
+        setUserTrustScore(ts?.trustScore ?? null);
       })
       .catch((err: unknown) => {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load group activity");
@@ -163,7 +171,7 @@ export function GrowthActivities() {
   const progressPercent =
     totalCycles > 0 ? (completedCycles / totalCycles) * 100 : 0;
 
-  const trustPercent = Math.min(100, userTrustScore);
+  const trustPercent = Math.min(100, userTrustScore ?? 0);
 
   // Next pending payout
   const nextSchedule = schedules
@@ -171,19 +179,19 @@ export function GrowthActivities() {
       (s) => ["IN_PROGRESS", "UPCOMING"].includes((s.status ?? "").toUpperCase()),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
-  const contributedByCycle = new Map<number, number>();
+  const contributedByCycle = new Map<number, bigint>();
   for (const contribution of contributions) {
     contributedByCycle.set(
       contribution.cycleNumber,
-      (contributedByCycle.get(contribution.cycleNumber) ?? 0) + Number(contribution.amount),
+      (contributedByCycle.get(contribution.cycleNumber) ?? 0n) + (kobo(contribution.amount) ?? 0n),
     );
   }
-  const nextUnpaidSchedule = schedules
+  const nextUnpaidSchedule = personalReadError ? undefined : schedules
     .filter(
       (schedule) =>
         ["IN_PROGRESS", "UPCOMING"].includes((schedule.status ?? "").toUpperCase()) &&
         schedule.cycleNumber != null &&
-        (contributedByCycle.get(schedule.cycleNumber) ?? 0) < Number(circle.contributionAmount),
+        (contributedByCycle.get(schedule.cycleNumber) ?? 0n) < (kobo(circle.contributionAmount) ?? 0n),
     )
     .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))[0];
   const nextPaymentDate = nextSchedule?.payoutDate
@@ -201,10 +209,7 @@ export function GrowthActivities() {
       })
     : "No unpaid cycle scheduled";
 
-  const totalContributed = contributions.reduce(
-    (s, c) => s + Number(c.amount),
-    0,
-  );
+  const totalContributed = sumKobo(contributions.map(item => item.amount))?.toString() ?? "Unavailable";
   const statusBadge = circleStatusBadge((circle as any).status ?? "");
   const currentCycleNumber = Number(circle.currentCycle ?? 1);
 
@@ -232,9 +237,14 @@ export function GrowthActivities() {
           {approvedMember && <button type="button" className="text-sm font-semibold text-[#0B6B55]" onClick={() => navigate(`/messages?circleId=${id}`)}>Group chat{circle.status === 'COMPLETED' ? ' history' : ''}</button>}
         </div>
         {circle.status === 'COMPLETED' && <Text size="sm" c="dimmed">This group is completed. Financial history and previous chat remain available; new contributions and chat messages are closed.</Text>}
+        <div className="rounded-xl border border-[#E5E7EB] p-4">
+          <Text fw={700}>Current cycle {currentCycleNumber} of {totalCycles}</Text>
+          <Text>Next Deadline{nextSchedule ? ` · Cycle ${nextSchedule.cycleNumber}` : ''}: {circleDeadlineLabel[getCircleDeadlineState({ circleStatus: circle.status, deadline: nextSchedule?.contributionDeadline })]}</Text>
+          {nextSchedule?.contributionDeadline && <Text size="sm">{watDate(nextSchedule.contributionDeadline)}</Text>}
+        </div>
         {/* ─── Pill tabs at the top — full width, bold ──────────────────── */}
         <div className="flex overflow-x-auto gap-1.5 rounded-xl bg-[#F1F3EF] p-1">
-          {GROUP_TABS.filter(tab => approvedMember || !["Growth & Activities", "Peer Reviews"].includes(tab)).map((tab) => {
+          {GROUP_TABS.filter(tab => approvedMember || tab !== "Growth & Activities").map((tab) => {
             const active = activeTab === tab;
             return (
               <button
@@ -302,19 +312,17 @@ export function GrowthActivities() {
             contributionAmountKobo={circle.contributionAmount}
             frequency={(circle as any).frequency ?? ""}
             userStatus={String(circle.userMembershipStatus ?? (approvedMember ? "ACTIVE" : "ADMIN"))}
-            totalContributedKobo={totalContributed}
+            totalContributedKobo={personalReadError ? "Unavailable" : totalContributed}
             completedCycles={completedCycles}
             totalCycles={totalCycles}
             progressPercent={progressPercent}
             cycles={cycles}
-            members={members}
-            currentUserId={currentUserId}
             currentCycleNumber={currentCycleNumber}
-            ownContributions={contributions}
             refreshVersion={refreshVersion}
           />
         )}
         {activeTab === "Contributions" && <GroupContributionsTab circleId={id} isActive />}
+        {activeTab === "Payouts" && <SharedCircleFinancials circleId={id!} view="payouts" refreshVersion={refreshVersion} />}
         {activeTab === "Members" && (
           <MembersTab
             circleName={circle.name}
@@ -332,7 +340,8 @@ export function GrowthActivities() {
           />
         )}
         {activeTab === "Growth & Activities" && approvedMember && circle.status === "ACTIVE" && <ContributionPaymentPreference circleId={id!} />}
-        {activeTab === "Growth & Activities" && approvedMember && (
+        {personalReadError && <Text role="alert" c="red">Unable to load your contribution history. Payment controls are unavailable until you refresh successfully.</Text>}
+        {activeTab === "Growth & Activities" && approvedMember && !personalReadError && (
           <GrowthTab
             trustPercent={trustPercent}
             trustScore={userTrustScore}
@@ -352,6 +361,7 @@ export function GrowthActivities() {
             openContributionOnLoad={contributionShortcut}
           />
         )}
+        {activeTab === "Peer Reviews" && <SharedCircleFinancials circleId={id!} view="ratings" refreshVersion={refreshVersion} />}
         {activeTab === "Peer Reviews" && approvedMember && (
           <PeerReviewsTab
             circleId={id!}

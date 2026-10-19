@@ -1,6 +1,8 @@
+import { getSharedProgress, type SharedProgress } from '@/utils/api/shared-circle'
+import { contributionDeadline, followingWatPayout, watCutoffTime } from '@/utils/deadline-extension'
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { DateInput, DateTimePicker } from '@mantine/dates'
+import { DateInput, DateTimePicker, TimeInput } from '@mantine/dates'
 import {
   Stack,
   Text,
@@ -105,6 +107,7 @@ const defaultRestartMembers: RestartMember[] = [
 export function GroupDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [memberProgress, setMemberProgress] = useState<SharedProgress | null>(null)
   const [circleData, setCircleData] = useState<RoscaCircle | null>(null)
   const [circleLoading, setCircleLoading] = useState(true)
   const [circleError, setCircleError] = useState<string | null>(null)
@@ -120,6 +123,8 @@ export function GroupDetail() {
       .then(value => { if (active) setCircleData(value) })
       .catch(() => { if (active) setCircleError('Could not load this group. Please try again.') })
       .finally(() => { if (active) setCircleLoading(false) })
+    setMemberProgress(null)
+    getSharedProgress(id).then(value => { if (active) setMemberProgress(value) }).catch(() => {})
     // Fetch financial health early so the balance card is populated immediately
     financialHealthFetched.current = true
     setFinancialHealth(null)
@@ -315,6 +320,7 @@ export function GroupDetail() {
   const [existingAssignments, setExistingAssignments] = useState<PayoutAssignment[]>([])
 
   function openAssignModal(member: { userId: string; name: string }) {
+    if (!memberProgress || groupStatus === 'COMPLETED' || memberProgress.members.find(item => item.userId === member.userId)?.payoutStatus !== 'UPCOMING') return
     setAssignMember(member)
     setAssignPosition('')
     setAssignError(null)
@@ -329,7 +335,7 @@ export function GroupDetail() {
   }
 
   async function handleAssignPosition() {
-    if (!id || !assignMember || !assignPosition) return
+    if (!id || !assignMember || !assignPosition || !memberProgress || memberProgress.members.find(member => member.userId === assignMember.userId)?.payoutStatus !== 'UPCOMING') return
     const pos = parseInt(assignPosition)
     if (!pos || pos < 1) { setAssignError('Enter a valid position number'); return }
     setAssignLoading(true)
@@ -361,6 +367,7 @@ export function GroupDetail() {
   // Payment Oversight state
   const [extendModal, setExtendModal] = useState<{ cycleNumber: number } | null>(null)
   const [extendDate, setExtendDate] = useState<string | null>(null)
+  const [extendTime, setExtendTime] = useState('')
   const [extendError, setExtendError] = useState<string | null>(null)
   const [extendSubmitting, setExtendSubmitting] = useState(false)
   const [paymentsRefreshToken, setPaymentsRefreshToken] = useState(0)
@@ -427,7 +434,8 @@ export function GroupDetail() {
   })()
   const hasOwnMembership = apiMembers.some(m => m.userId === currentUserId && (m.status === 'ACTIVE' || m.status === 'PENDING'))
 
-  const selectedDeadline = extendDate ? new Date(`${extendDate.slice(0, 10)}T23:59:59+01:00`) : null
+  const candidateDeadline = contributionDeadline(extendDate, extendTime)
+  const selectedDeadline = candidateDeadline ? new Date(candidateDeadline) : null
   const selectedCycle = financialHealth?.cycles?.find(cycle => cycle.cycleNumber === extendModal?.cycleNumber)
   const followingCycle = financialHealth?.cycles?.find(cycle => cycle.cycleNumber === (extendModal?.cycleNumber ?? 0) + 1)
   const currentCycleDeadline = selectedCycle?.contributionDeadline ? Date.parse(selectedCycle.contributionDeadline) : NaN
@@ -435,21 +443,21 @@ export function GroupDetail() {
   const invalidExtension = Boolean(extendDate) && (
     !Number.isFinite(selectedDeadlineTime) ||
     selectedDeadlineTime <= Date.now() ||
-    !Number.isFinite(currentCycleDeadline) ||
+    !Number.isFinite(currentCycleDeadline) || currentCycleDeadline <= Date.now() ||
     selectedDeadlineTime <= currentCycleDeadline
   )
 
   async function handleExtendDeadline() {
     if (!id || !extendModal || !extendDate || !selectedCycle?.contributionDeadline) return
-    const date = extendDate.slice(0, 10)
-    const newContributionDeadline = `${date}T23:59:59+01:00`
+    const newContributionDeadline = contributionDeadline(extendDate, extendTime)
+    if (!canSubmitDeadlineExtensions || !newContributionDeadline) return
     const candidateTime = Date.parse(newContributionDeadline)
     const existingTime = Date.parse(selectedCycle.contributionDeadline)
     if (!Number.isFinite(candidateTime) || candidateTime <= Date.now()) {
       setExtendError('Choose a valid deadline in the future.')
       return
     }
-    if (!Number.isFinite(existingTime) || candidateTime <= existingTime) {
+    if (!Number.isFinite(existingTime) || existingTime <= Date.now() || candidateTime <= existingTime) {
       setExtendError('Choose a deadline later than this cycle’s current contribution deadline.')
       return
     }
@@ -667,7 +675,7 @@ export function GroupDetail() {
 
           {/* History Tab */}
           <Tabs.Panel value="history" pt="lg">
-            <GroupHistoryTab payouts={payouts} />
+            <GroupHistoryTab payouts={payouts} onViewPayouts={() => setActiveTab("payouts")} />
           </Tabs.Panel>
         </Tabs>
       ) : (
@@ -703,7 +711,7 @@ export function GroupDetail() {
             memberSearch={memberSearch}
             onMemberSearchChange={setMemberSearch}
             filteredMembers={filteredMembers}
-            payouts={payouts}
+            memberProgress={memberProgress?.members}
             onAssignPosition={openAssignModal}
             invites={invites}
             invitesLoading={invitesLoading}
@@ -718,10 +726,12 @@ export function GroupDetail() {
           <GroupPaymentsTab
             circleId={id}
             isActive={activeTab === 'payments'}
+            allowExtensions={groupStatus === "ACTIVE"}
             financialHealth={financialHealth}
             financialHealthLoading={financialHealthLoading}
             refreshToken={paymentsRefreshToken}
             onExtendDeadline={(cycleNumber) => {
+              setExtendTime(watCutoffTime(financialHealth?.cycles?.find(cycle => cycle.cycleNumber === cycleNumber)?.contributionDeadline))
               setExtendModal({ cycleNumber })
               setExtendDate(null)
               setExtendError(null)
@@ -779,11 +789,13 @@ export function GroupDetail() {
             placeholder="Pick a date"
             value={extendDate}
             onChange={(value) => { setExtendDate(value); setExtendError(null) }}
-            minDate={new Date(Date.now() + 86400000)}
             radius="md"
             size="sm"
           />
-          {extendDate && <Text size="sm">Corresponding payout: {new Date(new Date(`${extendDate.slice(0, 10)}T00:00:00+01:00`).getTime() + 86400000).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'long', year: 'numeric' })} at 00:00 WAT.</Text>}
+          <TimeInput label="New cutoff time (WAT)" withSeconds value={extendTime} onChange={event => { setExtendTime(event.currentTarget.value); setExtendError(null) }} />
+          <Text size="xs" c="dimmed">The time starts from this cycle’s existing WAT cutoff. Changing it changes the contribution cutoff explicitly. At 00:00 WAT, payout is still on the following calendar day.</Text>
+          {candidateDeadline && <Text size="sm">Corresponding payout: {new Date(followingWatPayout(candidateDeadline)!).toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'long' })} at 00:00 WAT.</Text>}
+
           {extendDate && !selectedCycle?.contributionDeadline && <Alert color="red">The current cycle deadline is unavailable, so this extension cannot be validated.</Alert>}
           {extendDate && invalidExtension && selectedCycle?.contributionDeadline && <Alert color="red">Choose a valid future date after this cycle&apos;s current contribution deadline.</Alert>}
           {selectedDeadline && followingCycle?.contributionDeadline && <Alert color="yellow">This extension compresses the time before cycle {followingCycle.cycleNumber}. Its deadline remains {new Date(followingCycle.contributionDeadline).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })} WAT. Overlapping dates may be rejected.</Alert>}
@@ -1233,10 +1245,7 @@ export function GroupDetail() {
                 <Text fz="xs" fw={600} c="dimmed" mb={6}>Current Assignments</Text>
                 <Stack gap={4}>
                   {existingAssignments.map((a) => {
-                    const isPaidOut = payouts.some(
-                      (p) => p.recipientId === a.userId &&
-                        ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase())
-                    )
+                    const isPaidOut = memberProgress?.members.some(member => member.userId === a.userId && member.payoutStatus === 'PAID')
                     return (
                       <Group key={a.userId} justify="space-between">
                         <Text fz="xs" fw={500}>{a.name}</Text>
@@ -1259,10 +1268,7 @@ export function GroupDetail() {
             {(() => {
               const totalSlots = existingAssignments.length || apiMembers.length
               const paidPositions = new Set(
-                payouts
-                  .filter(p => ['SUCCESS', 'COMPLETED', 'PAID'].includes((p.status ?? '').toUpperCase()))
-                  .map(p => existingAssignments.find(a => a.userId === p.recipientId)?.position)
-                  .filter(Boolean)
+                (memberProgress?.members ?? []).filter(member => member.payoutStatus === 'PAID').map(member => member.payoutPosition).filter(position => position != null)
               )
               const availablePositions = Array.from({ length: totalSlots }, (_, i) => i + 1)
                 .filter(pos => !paidPositions.has(pos))
@@ -1346,15 +1352,14 @@ export function GroupDetail() {
               <Text fw={700} fz="lg">Activate Circle</Text>
               <IconX size={20} stroke={1.5} color="#868e96" style={{ cursor: 'pointer' }} onClick={() => setActivateModal(false)} />
             </Group>
-            <Text fz="sm" c="dimmed">Choose the first contribution deadline for <strong>{group.name}</strong>. The first payout will be scheduled 24 hours afterwards.</Text>
+            <Text fz="sm" c="dimmed">Choose the first contribution deadline for <strong>{group.name}</strong>. The first payout will be scheduled at 00:00 WAT on the following calendar day.</Text>
             <DateTimePicker
               label="First contribution deadline"
               placeholder="Pick a date and time"
               radius="md"
               size="sm"
               valueFormat="DD MMM YYYY, HH:mm"
-              minDate={new Date()}
-              value={activateStartDate}
+                value={activateStartDate}
               onChange={setActivateStartDate}
               styles={{ input: { border: '1px solid #dee2e6' } }}
             />

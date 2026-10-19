@@ -63,7 +63,7 @@ export interface RoscaCircle {
   id: string;
   name: string;
   description: string;
-  contributionAmount: number;
+  contributionAmount: number | string;
   frequency: string;
   durationCycles: number;
   currentCycle?: number;
@@ -495,6 +495,7 @@ export interface RoscaSchedule {
   contributionDeadline?: string;
   payoutDate?: string;
   recipientId?: string | null;
+  recipientName?: string;
   month?: string;
   recipient?: string;
   status: string;
@@ -531,39 +532,18 @@ export async function setContributionPaymentPreference(
 }
 
 export interface CircleEarlyPayout {
-  id: string;
-  userId: string;
-  memberName: string;
-  status: string;
-  expectedPayout: string;
-  advanceReceived: string;
-  companyFee: string;
-  projectedRemainingPayout: string;
-  requestedAt: string;
-  repaidAt: string | null;
+  circleId: string; totalLoans: number; activeCount: number; repaidCount: number; defaultedCount: number; cancelledCount: number;
 }
-
-export async function getCircleEarlyPayouts(circleId: string): Promise<CircleEarlyPayout[]> {
-  const result = await authRequest<{ data: CircleEarlyPayout[] }>(
-    `/api/admin/rosca/${circleId}/early-payouts`,
-    { method: "GET" },
-  );
+export async function getCircleEarlyPayouts(circleId: string): Promise<CircleEarlyPayout> {
+  const result = await authRequest<{ data: CircleEarlyPayout }>(`/api/admin/rosca/${circleId}/early-payouts`, { method: 'GET' });
   return result.data;
 }
 
 // ── Payouts ──────────────────────────────────────────────────────────────────
 
 export interface Payout {
-  id: string;
-  cycleNumber?: number;
-  recipientId?: string;
-  recipient?: { firstName: string; lastName: string; email?: string };
-  amount: string;
-  status: string;
-  createdAt?: string;
-  processedAt?: string;
-  schedule?: { cycleNumber: number; payoutDate: string };
-  [key: string]: unknown;
+  cycleNumber: number; recipientName: string | null; amount: string; status: string;
+  processedAt: string | null; payoutDate: string;
 }
 
 export async function getPayoutHistory(circleId: string): Promise<Payout[]> {
@@ -571,7 +551,9 @@ export async function getPayoutHistory(circleId: string): Promise<Payout[]> {
     `/api/rosca/${circleId}/payouts`,
     { method: "GET" },
   );
-  return Array.isArray(res) ? res : ((res as { data?: Payout[] }).data ?? []);
+  const rows = Array.isArray(res) ? res : res.data;
+  if (!Array.isArray(rows)) throw new Error('Payout history is unavailable.');
+  return rows;
 }
 
 export function processPayout(
@@ -614,25 +596,15 @@ export function triggerPayoutScheduler(): Promise<{ message: string }> {
 
 // ── Contributions ─────────────────────────────────────────────────────────────
 
+/** Member-safe roster: names are not identifiers; never join these records to users. */
 export interface Contribution {
-  contributionId: string;
-  userId: string;
-  memberName: string;
-  cycleNumber: number;
-  amount: string;
-  isLate: boolean;
-  paidAt: string | null;
+  memberName: string; cycleNumber: number; amount: string; paidAt: string | null;
 }
-
-export async function getAllCircleContributions(
-  circleId: string,
-): Promise<Contribution[]> {
-  // Stage 4 must authorize this circle-scoped read and return only member-safe fields.
-  const res = await authRequest<{ data?: Contribution[] }>(
-    `/api/rosca/${circleId}/contributions/roster`,
-    { method: "GET" },
-  );
-  return (res as { data?: Contribution[] }).data ?? [];
+export async function getAllCircleContributions(circleId: string, cycleNumber?: number): Promise<Contribution[]> {
+  const result = await authRequest<{ data: Contribution[] }>(
+    `/api/rosca/${circleId}/contributions/roster${cycleNumber == null ? '' : `?cycleNumber=${cycleNumber}`}`, { method: 'GET' });
+  if (!Array.isArray(result.data)) throw new Error('Contribution history is unavailable.');
+  return result.data;
 }
 
 // GET /api/admin/rosca/{circleId}/disbursements - admin view of disbursements
@@ -656,9 +628,9 @@ export async function getAdminDisbursements(
     `/api/admin/rosca/${circleId}/disbursements`,
     { method: "GET" },
   );
-  return (
-    (res as { data?: { schedules?: Disbursement[] } }).data?.schedules ?? []
-  );
+  const schedules = res.data?.schedules;
+  if (!Array.isArray(schedules)) throw new Error('Disbursement schedules are unavailable.');
+  return schedules;
 }
 
 export function extendCycleDeadline(
@@ -704,14 +676,9 @@ export async function getAdminCircleContributions(
   const res = await authRequest<{ data?: AdminContributionsResponse }>(url, {
     method: "GET",
   });
-  return (
-    (res as { data?: AdminContributionsResponse }).data ?? {
-      cycleNumber: cycleNumber ?? 1,
-      contributions: [],
-      totalCollected: "0",
-      totalPenalties: "0",
-    }
-  );
+  const data = res.data;
+  if (!data || !Array.isArray(data.contributions)) throw new Error('Contribution oversight is unavailable.');
+  return data;
 }
 
 export async function makeContribution(

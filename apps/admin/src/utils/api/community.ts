@@ -424,8 +424,16 @@ export interface CircleContribution {
 export async function getCircleContributions(
   circleId: string,
 ): Promise<CircleContribution[]> {
-  const res = await authRequest<
-    { data?: CircleContribution[] } | CircleContribution[]
-  >(`/api/rosca/${circleId}/contributions?limit=100`, { method: "GET" });
-  return Array.isArray(res) ? res : (res.data ?? []);
+  const rows: CircleContribution[] = [];
+  const seen = new Set<string>();
+  for (let offset = 0; offset < 100000; offset += 100) {
+    const response = await authRequest<{ data: CircleContribution[] }>(`/api/rosca/${circleId}/contributions?limit=100${offset ? `&offset=${offset}` : ''}`, { method: 'GET' });
+    if (!Array.isArray(response.data)) throw new Error('Personal contribution history is unavailable.');
+    for (const row of response.data) {
+      if (seen.has(row.id)) throw new Error('Contribution history changed during loading. Refresh to try again.');
+      seen.add(row.id); rows.push(row);
+    }
+    if (response.data.length < 100) return rows;
+  }
+  throw new Error('Contribution history could not be fully loaded.');
 }

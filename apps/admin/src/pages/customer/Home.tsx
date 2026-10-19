@@ -1,3 +1,7 @@
+import { useCircleDeadline } from '@/hooks/useCircleDeadline';
+import { circleDeadlineLabel, getCircleDeadlineState } from '@/utils/circle-deadline';
+import { watDate } from '@/utils/wat-date';
+import { formatKobo } from '@/utils/kobo';
 import { Title, Text, Card, Box, Modal, Paper, SimpleGrid, UnstyledButton } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconCompass, IconGauge, IconLock, IconLockOpen, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
@@ -28,16 +32,19 @@ export function Home() {
   const user = stored ? JSON.parse(stored) : null;
   const userName = user?.firstName ?? "there";
   const [walletBalance, setWalletBalance] = useState<{
-    total: number;
-    reserved: number;
-    available: number;
+    total: string;
+    reserved: string;
+    available: string;
   } | null>(null);
   const [recentTxns, setRecentTxns] = useState<WalletTransaction[]>([]);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const [trustData, setTrustData] = useState<TrustScore | null>(null);
   const [creditScore, setCreditScore] = useState<number | null>(null);
+  const [membershipLoading, setMembershipLoading] = useState(true);
+  const [membershipError, setMembershipError] = useState(false);
+  const [walletError, setWalletError] = useState(false);
   const [participations, setParticipations] = useState<RoscaCircle[]>([]);
-  const [pendingJoinRequests, setPendingJoinRequests] = useState(0);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<number | null>(null);
   const [trustOpen, setTrustOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([]);
@@ -46,12 +53,12 @@ export function Home() {
       getWalletBalance()
         .then((d) =>
           setWalletBalance({
-            total: Number(d.total ?? 0) / 100,
-            reserved: Number(d.reserved ?? 0) / 100,
-            available: Number(d.available ?? 0) / 100,
+            total: d.total,
+            reserved: d.reserved,
+            available: d.available,
           }),
         )
-        .catch(() => setWalletBalance({ total: 0, reserved: 0, available: 0 })),
+        .catch(() => setWalletError(true)),
       getWalletTransactions()
         .then((t) => setRecentTxns(t.slice(0, 5)))
         .catch(() => {}),
@@ -71,12 +78,16 @@ export function Home() {
           ),
         )
         .catch(() => setCreditScore(0)),
-      getMyParticipations()
-        .then((rows) => setParticipations(Array.isArray(rows) ? rows : []))
-        .catch(() => setParticipations([])),
-      getMyJoinRequests()
-        .then((rows) => setPendingJoinRequests(rows.filter((row) => (row.status ?? "").toUpperCase() === "PENDING").length))
-        .catch(() => setPendingJoinRequests(0)),
+      Promise.all([getMyParticipations(), getMyJoinRequests()]).then(([participations, requests]) => {
+        const byId = new Map(participations.map(circle => [circle.id, circle]));
+        for (const request of requests) {
+          if (['ACTIVE', 'STARTED', 'COMPLETED'].includes(request.status.toUpperCase()) && request.circle && !byId.has(request.circleId)) {
+            byId.set(request.circleId, { ...request.circle, id: request.circleId } as RoscaCircle);
+          }
+        }
+        setParticipations([...byId.values()]);
+        setPendingJoinRequests(requests.filter(row => row.status === 'PENDING').length);
+      }).catch(() => setMembershipError(true)).finally(() => setMembershipLoading(false)),
       getMyTargetSavings()
         .then((rows) => setTargetPlans(Array.isArray(rows) ? rows : []))
         .catch(() => setTargetPlans([])),
@@ -88,20 +99,9 @@ export function Home() {
     const joined = participations.length;
     let active = 0;
     let completed = 0;
-    let nextPayment: { date: Date; name: string } | null = null;
-    for (const c of participations) {
-      const status = (c.status ?? "").toUpperCase();
-      if (status === "COMPLETED") completed += 1;
-      else if (status === "ACTIVE" || status === "STARTED") active += 1;
-      const deadline = c.nextContributionDeadline;
-      if (deadline) {
-        const d = new Date(deadline);
-        if (!Number.isNaN(d.getTime()) && d.getTime() > Date.now()) {
-          if (!nextPayment || d < nextPayment.date) {
-            nextPayment = { date: d, name: c.name ?? "Circle" };
-          }
-        }
-      }
+    for (const circle of participations) {
+      if (circle.status === 'COMPLETED') completed++;
+      else if (['ACTIVE', 'STARTED'].includes(circle.status)) active++;
     }
     let nextTarget: Date | null = null;
     for (const p of targetPlans) {
@@ -115,16 +115,16 @@ export function Home() {
     }
     const fmtShort = (d: Date) => d.toLocaleDateString("en-NG", { day: "numeric", month: "short" });
     return {
-      joined: String(joined),
-      active: String(active),
-      completed: String(completed),
-      nextPayment: nextPayment ? fmtShort(nextPayment.date) : "—",
-      nextPaymentSub: nextPayment?.name,
+      joined: membershipLoading ? "Loading…" : membershipError ? "Unavailable" : String(joined),
+      active: membershipLoading ? "Loading…" : membershipError ? "Unavailable" : String(active),
+      completed: membershipLoading ? "Loading…" : membershipError ? "Unavailable" : String(completed),
       nextTarget: nextTarget ? fmtShort(nextTarget) : "—",
     };
   })();
-  const money = (n: number) =>
-    `${String.fromCharCode(0x20a6)}${n.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+  const { deadline, loading: deadlineLoading, error: deadlineError } = useCircleDeadline(participations, !membershipLoading);
+  const allCompleted = participations.length > 0 && participations.every(circle => circle.status === 'COMPLETED');
+  const allPlanned = participations.length > 0 && participations.every(circle => circle.status === 'DRAFT');
+  const deadlineState = getCircleDeadlineState({ circleStatus: allCompleted ? 'COMPLETED' : allPlanned ? 'DRAFT' : undefined, deadline: deadline?.deadline, failed: membershipError || deadlineError });
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-4 sm:px-6 sm:py-6">
       <div className="flex flex-col gap-5 sm:gap-7">
@@ -138,7 +138,7 @@ export function Home() {
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <SummaryCard
             title="Total Balance"
-            amount={walletBalance ? money(walletBalance.total) : "-"}
+            amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.total) : "Loading…"}
             gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
             hideable
             hidden={hidden}
@@ -146,13 +146,13 @@ export function Home() {
           />
           <SummaryCard
             title="Available"
-            amount={walletBalance ? money(walletBalance.available) : "-"}
+            amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.available) : "Loading…"}
             gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
             hidden={hidden}
           />
           <SummaryCard
             title="Reserved"
-            amount={walletBalance ? money(walletBalance.reserved) : "-"}
+            amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.reserved) : "Loading…"}
             gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
             hidden={hidden}
           />
@@ -204,12 +204,15 @@ export function Home() {
           />
         </SimpleGrid>
 
+        {membershipError && <Text role="alert" c="red">Unable to load joined-circle counts. Refresh to try again.</Text>}
+        {deadlineError && <Text role="alert" c="red">Unable to load circle deadlines. Refresh to try again.</Text>}
+        {walletError && <Text role="alert" c="red">Unable to load wallet balances. Refresh to try again.</Text>}
         {/* ─── At-a-glance stats row ──────────────────────────────────── */}
         <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs">
-          <HomeStatTile label="Joined groups" value={stats.joined} />
-          <HomeStatTile label="Next payment" value={stats.nextPayment} sub={stats.nextPaymentSub} />
-          <HomeStatTile label="Active" value={stats.active} />
-          <HomeStatTile label="Completed" value={stats.completed} />
+          <HomeStatTile label="Joined groups" value={stats.joined} onClick={() => navigate("/rosca?tab=joined")} />
+          <HomeStatTile label="Next Deadline" value={deadlineLoading ? "Loading…" : circleDeadlineLabel[deadlineState]} sub={deadline ? `${deadline.groupName} · Cycle ${deadline.cycleNumber} · ${watDate(deadline.deadline)}` : undefined} onClick={deadline ? () => navigate(`/rosca/${deadline.circleId}`) : undefined} />
+          <HomeStatTile label="Active" value={stats.active} onClick={() => navigate("/rosca?tab=joined&status=active")} />
+          <HomeStatTile label="Completed" value={stats.completed} onClick={() => navigate("/rosca?tab=joined&status=completed")} />
           <HomeStatTile label="Next target due" value={stats.nextTarget} />
         </SimpleGrid>
 
@@ -251,7 +254,7 @@ export function Home() {
                 <Text size="sm" c="dimmed">Track requests you’ve sent to other admins.</Text>
               </div>
               <div className="flex items-center gap-2">
-                <Text fw={700} c="#047857">{pendingJoinRequests} pending</Text>
+                <Text fw={700} c="#047857">{pendingJoinRequests == null ? membershipError ? "Unavailable" : "Loading…" : `${pendingJoinRequests} pending`}</Text>
                 <IconArrowRight size={18} color="#047857" />
               </div>
             </div>
@@ -552,9 +555,9 @@ function HomeQuickTile({
   );
 }
 
-function HomeStatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function HomeStatTile({ label, value, sub, onClick }: { label: string; value: string; sub?: string; onClick?: () => void }) {
   return (
-    <Paper withBorder radius="md" p="xs" style={{ background: "#FFFFFF" }}>
+    <Paper withBorder radius="md" p="xs" role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick} onKeyDown={event => { if (onClick && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); } }} style={{ background: "#FFFFFF", cursor: onClick ? "pointer" : undefined }}>
       <Text style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "#64748B" }}>
         {label}
       </Text>
@@ -562,7 +565,7 @@ function HomeStatTile({ label, value, sub }: { label: string; value: string; sub
         {value}
       </Text>
       {sub && (
-        <Text truncate style={{ fontSize: 10.5, color: "#9CA3AF", marginTop: 2 }}>
+        <Text style={{ overflowWrap: "anywhere", fontSize: 10.5, color: "#9CA3AF", marginTop: 2 }}>
           {sub}
         </Text>
       )}

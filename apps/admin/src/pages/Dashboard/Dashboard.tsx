@@ -1,3 +1,4 @@
+import { useCircleDeadline } from '@/hooks/useCircleDeadline'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Badge,
@@ -126,6 +127,8 @@ export function Dashboard() {
     ])
   }, [])
 
+  const { deadline: nextCircleDeadline, loading: deadlineLoading, error: deadlineError } = useCircleDeadline(circles, !circlesLoading)
+
   const bucketCounts = useMemo(() => {
     const counts = { Active: 0, 'Not Ready': 0, Ready: 0, Completed: 0 } as Record<string, number>
     const safeCircles = (Array.isArray(circles) ? circles : []).filter(c => (c.status ?? '').toUpperCase() !== 'CANCELLED')
@@ -147,12 +150,12 @@ export function Dashboard() {
   const allCirclesCompleted = nonCancelledCircles.length > 0 && nonCancelledCircles.every((circle) => circle.status?.toUpperCase() === 'COMPLETED')
   const circlesArePlanned = nonCancelledCircles.length > 0 && nonCancelledCircles.every((circle) => circle.status?.toUpperCase() === 'DRAFT')
   const deadlineState = getCircleDeadlineState({
-    circleStatus: dashStats?.nextDeadline ? 'ACTIVE' : allCirclesCompleted ? 'COMPLETED' : circlesArePlanned ? 'DRAFT' : undefined,
-    deadline: dashStats?.nextDeadline?.deadline,
-    failed: dashboardError,
+    circleStatus: nextCircleDeadline ? 'ACTIVE' : allCirclesCompleted ? 'COMPLETED' : circlesArePlanned ? 'DRAFT' : undefined,
+    deadline: nextCircleDeadline?.deadline,
+    failed: circlesError || deadlineError,
   })
-  const formattedDeadline = dashStats?.nextDeadline && ['upcoming', 'overdue'].includes(deadlineState)
-    ? new Date(dashStats.nextDeadline.deadline).toLocaleString('en-NG', {
+  const formattedDeadline = nextCircleDeadline && ['upcoming', 'overdue'].includes(deadlineState)
+    ? new Date(nextCircleDeadline.deadline).toLocaleString('en-NG', {
         timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
       })
     : null
@@ -296,7 +299,7 @@ export function Dashboard() {
         <StatsCard
           title="Next Deadline"
           value={formattedDeadline ?? (deadlineState === 'completed' ? 'Completed' : deadlineState === 'planned' ? 'Not scheduled' : unavailableValue)}
-          subtitle={deadlineState === 'failed' ? 'Failed to load' : dashStats?.nextDeadline ? `${dashStats.nextDeadline.groupName} · ${circleDeadlineLabel[deadlineState]}` : circleDeadlineLabel[deadlineState]}
+          subtitle={deadlineLoading ? 'Loading…' : deadlineState === 'failed' ? 'Failed to load' : nextCircleDeadline ? `${nextCircleDeadline.groupName} · Cycle ${nextCircleDeadline.cycleNumber} · ${circleDeadlineLabel[deadlineState]}` : circleDeadlineLabel[deadlineState]}
         />
         <StatsCard
           title="People requesting to join"
@@ -307,6 +310,8 @@ export function Dashboard() {
         />
       </SimpleGrid>
 
+      {deadlineError && <Text role="alert" c="red">Unable to load group schedules and deadlines. Refresh to try again.</Text>}
+      {nextCircleDeadline && <Button component={Link} to={`/rosca/${nextCircleDeadline.circleId}`}>View next deadline · Cycle {nextCircleDeadline.cycleNumber}</Button>}
       {circlesError && <Text role="alert" c="red">Unable to load administered circle counts. Try refreshing the page.</Text>}
       {/* ─── Group buckets ────────────────────────────────────────── */}
       <Box>

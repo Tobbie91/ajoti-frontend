@@ -58,6 +58,7 @@ async function mockAdminApi(page: Page, options: {
     }
     if (path === '/api/users/me') return route.fulfill({ json: { data: admin } })
     if (path === '/api/admin/rosca/my-circles') return route.fulfill({ json: { data: options.circles ?? managedCircles } })
+    if (/^\/api\/rosca\/[^/]+\/schedules$/.test(path)) return route.fulfill({ json: { success: true, data: options.deadline ? [{ cycleNumber: 2, contributionDeadline: options.deadline, payoutDate: '2031-01-01T00:00:00+01:00', status: 'UPCOMING', recipientName: 'Member' }] : [] } })
     if (path === '/api/admin/rosca/dashboard') return route.fulfill({ json: { data: {
       totalGroups: 99,
       nextDeadline: options.deadline ? { groupName: 'Verified Deadline Ajo', deadline: options.deadline } : null,
@@ -81,7 +82,7 @@ test('dashboard counts unique administered circles and completed links open hist
   await expect(page.getByRole('button', { name: 'Not Ready — 1', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Completed — 1', exact: true })).toBeVisible()
   await expect(page.getByText('Unique administered circles · excludes cancelled')).toBeVisible()
-  await expect(deadlineCard).toContainText('Verified Deadline Ajo · Upcoming')
+  await expect(deadlineCard).toContainText('Duplicate Active Ajo · Cycle 2 · Upcoming')
   await expect(deadlineCard).toContainText(/3 Feb 2030/)
 
   await page.getByRole('button', { name: 'Completed — 1', exact: true }).click()
@@ -95,7 +96,7 @@ test('dashboard shows overdue, completed, unavailable, and API error deadline st
   await mockAdminApi(page, { deadline: '2020-01-01T12:00:00Z' })
   await page.goto('/dashboard')
   const deadlineCard = page.getByText('Next Deadline').locator('..')
-  await expect(deadlineCard).toContainText('Verified Deadline Ajo · Overdue')
+  await expect(deadlineCard).toContainText('Duplicate Active Ajo · Cycle 2 · Overdue')
 
   await page.route('**/api/admin/rosca/dashboard', route => route.fulfill({ json: { data: {
     totalGroups: 1, nextDeadline: null, pendingJoinRequests: { total: 0, breakdown: [] },
@@ -111,6 +112,8 @@ test('dashboard shows overdue, completed, unavailable, and API error deadline st
   await page.route('**/api/admin/rosca/dashboard', route => route.fulfill({ status: 503, json: { message: 'Unavailable' } }))
   await page.reload()
   await expect(page.getByText('Unable to load group dashboard and deadlines. Refresh to try again.')).toBeVisible()
+  await page.route('**/api/rosca/running/schedules', route => route.fulfill({ status: 503, json: { message: 'Unavailable' } }))
+  await page.reload()
   await expect(deadlineCard).toContainText('Failed to load')
 })
 

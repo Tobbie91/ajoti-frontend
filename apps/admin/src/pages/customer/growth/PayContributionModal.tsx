@@ -1,3 +1,4 @@
+import { kobo, formatKobo } from "@/utils/kobo";
 import { useEffect, useState } from "react";
 import { Modal, Text } from "@mantine/core";
 import { IconCheck } from "@tabler/icons-react";
@@ -36,17 +37,19 @@ export function PayContributionModal({
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [walletAvailable, setWalletAvailable] = useState<number | null>(null);
+  const [walletAvailable, setWalletAvailable] = useState<bigint | null>(null);
   const [submittedCycleNumber, setSubmittedCycleNumber] = useState<number | null>(null);
 
-  const amountKobo = Number(contributionAmountKobo);
+  const [walletError, setWalletError] = useState(false);
+  const amountKobo = kobo(contributionAmountKobo);
   const hasSufficientFunds =
-    walletAvailable !== null && walletAvailable >= amountKobo / 100;
+    walletAvailable !== null && amountKobo !== null && amountKobo > 0n && walletAvailable >= amountKobo;
   const isEarlyPayment = nextCycleNumber != null && currentCycleNumber != null && nextCycleNumber > currentCycleNumber;
   const displayedCycleNumber = step === "done" ? submittedCycleNumber ?? nextCycleNumber : nextCycleNumber;
 
   const deadlineFormatted = nextDeadline
     ? new Date(nextDeadline).toLocaleString("en-NG", {
+        timeZone: "Africa/Lagos",
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -63,13 +66,14 @@ export function PayContributionModal({
     setErrorMsg("");
     setSubmittedCycleNumber(null);
     setWalletAvailable(null);
+    setWalletError(false);
     getWalletBalance()
-      .then((b) => setWalletAvailable(Number(b.available) / 100))
-      .catch(() => setWalletAvailable(0));
+      .then((b) => { const available = kobo(b.available); if (available === null) throw new Error('Unavailable'); setWalletAvailable(available); })
+      .catch(() => setWalletError(true));
   }, [opened]);
 
   async function handleConfirm() {
-    if (nextCycleNumber == null) return;
+    if (nextCycleNumber == null || !hasSufficientFunds || walletError) return;
     const cycleBeingPaid = nextCycleNumber;
     setSubmittedCycleNumber(cycleBeingPaid);
     setStep("submitting");
@@ -131,7 +135,7 @@ export function PayContributionModal({
                 {formatNaira(contributionAmountKobo)}
               </Text>
             </div>
-            {Number(amountAlreadyPaidKobo) > 0 && (
+            {(kobo(amountAlreadyPaidKobo) ?? 0n) > 0n && (
               <div className="flex justify-between py-1">
                 <Text fw={500} className="text-[13px] text-[#6B7280]">Already paid toward this cycle</Text>
                 <Text fw={700} className="text-[13px] text-[#0F172A]">
@@ -154,14 +158,13 @@ export function PayContributionModal({
                   fw={700}
                   className={`text-[13px] ${walletAvailable === null ? "text-[#9CA3AF]" : hasSufficientFunds ? "text-[#02A36E]" : "text-[#EF4444]"}`}
                 >
-                  {walletAvailable === null
-                    ? "Loading…"
-                    : `₦${walletAvailable.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
+                  {walletError ? "Unavailable" : walletAvailable === null ? "Loading…" : formatKobo(walletAvailable.toString())}
                 </Text>
               </div>
             </div>
           </div>
 
+          {walletError && <Text role="alert" c="red">Unable to load wallet balance. Close and reopen to try again.</Text>}
           {!hasSufficientFunds && walletAvailable !== null && (
             <div className="flex items-center gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3">
               <Text fw={500} className="text-[12px] text-[#991B1B]">
@@ -200,6 +203,7 @@ export function PayContributionModal({
             </button>
           </div>
 
+          {walletError && <Text role="alert" c="red">Unable to load wallet balance. Close and reopen to try again.</Text>}
           {!hasSufficientFunds && walletAvailable !== null && (
             <button
               onClick={() => {

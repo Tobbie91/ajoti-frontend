@@ -1,3 +1,4 @@
+import { formatKobo } from "@/utils/kobo";
 import { useEffect, useState } from 'react'
 import { getCircleEarlyPayouts, type CircleEarlyPayout } from '@/utils/api/rosca'
 import { Stack, Paper, Text, Group, Button, TextInput, Table, Avatar, Badge, Loader } from '@mantine/core'
@@ -29,7 +30,7 @@ export function GroupPayoutsTab({
   onProcessPayout,
   onRefresh,
 }: GroupPayoutsTabProps) {
-  const [earlyPayouts, setEarlyPayouts] = useState<CircleEarlyPayout[]>([])
+  const [earlyPayouts, setEarlyPayouts] = useState<CircleEarlyPayout | null>(null)
   const [earlyPayoutError, setEarlyPayoutError] = useState<string | null>(null)
   useEffect(() => {
     getCircleEarlyPayouts(circleId).then(setEarlyPayouts).catch(err =>
@@ -70,21 +71,9 @@ export function GroupPayoutsTab({
 
       <Paper p="lg" radius="md" style={{ border: '1px solid #e9ecef' }}>
         <Text fw={600} fz="md" mb="xs">Member Early Payouts</Text>
-        <Text size="xs" c="dimmed" mb="sm">Amounts already advanced are deducted from the scheduled payout.</Text>
-        {earlyPayoutError && <Text c="red" size="sm">{earlyPayoutError}</Text>}
-        {!earlyPayoutError && earlyPayouts.length === 0 && <Text c="dimmed" size="sm">No early payouts recorded for this group.</Text>}
-        {earlyPayouts.map(loan => (
-          <Group key={loan.id} justify="space-between" wrap="wrap" py="xs">
-            <div>
-              <Text fw={500} size="sm">{loan.memberName}</Text>
-              <Text size="xs" c="dimmed">{loan.status} · {new Date(loan.requestedAt).toLocaleDateString('en-NG')}</Text>
-            </div>
-            <div>
-              <Text size="sm">Advanced: ₦{(Number(loan.advanceReceived) / 100).toLocaleString('en-NG')}</Text>
-              <Text size="xs" c="dimmed">Fee: ₦{(Number(loan.companyFee) / 100).toLocaleString('en-NG')} · Projected remainder: ₦{(Number(loan.projectedRemainingPayout) / 100).toLocaleString('en-NG')}</Text>
-            </div>
-          </Group>
-        ))}
+        {earlyPayoutError ? <Text role="alert" c="red" size="sm">Unable to load early-payout summary.</Text> : earlyPayouts === null ? <Loader size="sm" /> :
+          <Group wrap="wrap">{[['Total', earlyPayouts.totalLoans], ['Active', earlyPayouts.activeCount], ['Repaid', earlyPayouts.repaidCount], ['Defaulted', earlyPayouts.defaultedCount], ['Cancelled', earlyPayouts.cancelledCount]].map(([label, count]) => <Text key={label}>{label}: {count}</Text>)}</Group>}
+
       </Paper>
       {/* Payout History */}
       <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
@@ -132,13 +121,11 @@ export function GroupPayoutsTab({
                     : p.status === 'FAILED'
                     ? { bg: '#fef2f2', color: '#e74c3c' }
                     : { bg: '#f1f3f5', color: '#868e96' }
-                const cycleNumber = p.cycleNumber ?? p.schedule?.cycleNumber
-                const recipient = p.recipient
-                  ? `${p.recipient.firstName} ${p.recipient.lastName}`.trim()
-                  : '-'
-                const amountNaira = (Number(p.amount) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+                const cycleNumber = p.cycleNumber
+                const recipient = p.recipientName ?? 'Unassigned'
+                const amountNaira = formatKobo(p.amount)
                 return (
-                  <Table.Tr key={p.id}>
+                  <Table.Tr key={p.cycleNumber}>
                     <Table.Td><Text fz="sm" fw={500}>{cycleNumber != null ? `Cycle ${cycleNumber}` : '-'}</Text></Table.Td>
                     <Table.Td>
                       <Group gap="sm" align="center">
@@ -148,7 +135,7 @@ export function GroupPayoutsTab({
                     </Table.Td>
                     <Table.Td>
                       <Text fz="sm" fw={600}>
-                        ₦{amountNaira}
+                        {amountNaira}
                       </Text>
                     </Table.Td>
                     <Table.Td>
@@ -162,7 +149,7 @@ export function GroupPayoutsTab({
                     </Table.Td>
                     <Table.Td>
                       <Text fz="sm" c="dimmed">
-                        {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG') : '-'}
+                        {p.processedAt ? new Date(p.processedAt).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos' }) : 'Not processed'}
                       </Text>
                     </Table.Td>
 

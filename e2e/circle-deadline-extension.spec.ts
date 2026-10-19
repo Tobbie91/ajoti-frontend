@@ -43,7 +43,7 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
     admin: { firstName: 'Circle', lastName: 'Admin' },
     members: [{ userId: user.id, name: 'Circle User', status: 'ACTIVE', position: 1 }],
   }
-  const currentDeadline = options.currentDeadline ?? '2020-01-01T23:59:59+01:00'
+  const currentDeadline = options.currentDeadline ?? deadlineWithOffset(new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10), 0)
 
   await page.addInitScript((cachedUser) => localStorage.setItem('user', JSON.stringify(cachedUser)), user)
   await page.route('**/api/**', async (route) => {
@@ -61,7 +61,7 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
         cycles: [1, 2, 3, 4].map((cycleNumber) => ({
           cycleNumber,
           contributionDeadline: cycleNumber === 1 ? state.updatedDeadline ?? currentDeadline : '2030-01-01T23:59:59+01:00',
-          scheduleStatus: cycleNumber === 1 ? 'IN_PROGRESS' : 'UPCOMING',
+          scheduleStatus: 'UPCOMING',
           expectedPot: '400000', collected: '0', outstanding: '400000', expectedCount: 4, collectedCount: 0,
         })),
       } } })
@@ -76,7 +76,7 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
         return route.fulfill({ status: options.patchStatus, json: { message: 'Invalid contribution deadline' } })
       }
       state.updatedDeadline = String(body.newContributionDeadline ?? '')
-      return route.fulfill({ json: { message: 'Contribution deadline extended' } })
+      return route.fulfill({ json: { message: 'Deadline extended successfully' } })
     }
     if (path === `/api/admin/rosca/${circleId}/disbursements`) {
       state.disbursementReads += 1
@@ -84,7 +84,7 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
         cycleNumber: 1,
         recipientId: 'member-1',
         recipientName: 'Member One',
-        payoutDate: '2020-01-02T12:00:00Z',
+        payoutDate: '2031-01-02T00:00:00+01:00',
         contributionDeadline: state.updatedDeadline ?? currentDeadline,
         scheduleStatus: 'UPCOMING',
         payoutStatus: null,
@@ -110,6 +110,7 @@ async function openExtensionForm(page: Page, targetDate: string) {
   await page.getByRole('button', { name: 'Extend Deadline' }).click()
   const input = page.getByLabel('New contribution deadline (WAT)')
   await input.fill(targetDate)
+  await page.getByLabel('New cutoff time (WAT)').fill('23:59:59')
   await page.getByText('Extend Cycle Deadline', { exact: true }).click()
 }
 
@@ -140,7 +141,7 @@ test('server-side deadline validation is shown without closing the form', async 
     date.setDate(date.getDate() + 7)
     return date.toISOString().slice(0, 10)
   })
-  const state = await mockDeadlineExtensionApi(page, { patchStatus: 422 })
+  const state = await mockDeadlineExtensionApi(page, { patchStatus: 400 })
   await openExtensionForm(page, targetDate)
   await page.getByRole('button', { name: 'Extend deadline', exact: true }).click()
   await expect(page.getByText('Invalid contribution deadline')).toBeVisible()

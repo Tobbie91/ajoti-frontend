@@ -84,7 +84,7 @@ export function MembersTab({
                 Payout Position
               </th>
               <th className="px-3 py-3 text-left text-[12px] font-semibold text-[#6B7280] sm:px-5">
-                Trust Score
+                Membership
               </th>
             </tr>
           </thead>
@@ -138,18 +138,7 @@ export function MembersTab({
                       </Text>
                     </td>
                     <td className="px-3 py-3.5 sm:px-5">
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          value={Math.min(100, member.trustScore ?? 50)}
-                          size={6}
-                          radius="xl"
-                          color="#02A36E"
-                          className="w-12 sm:w-16"
-                        />
-                        <Text fw={600} className="text-[13px] text-[#0F172A]">
-                          {member.trustScore ?? 50}
-                        </Text>
-                      </div>
+                      <Text size="sm">{member.status ?? "Unavailable"}</Text>
                     </td>
                   </tr>
                 );
