@@ -235,7 +235,66 @@ export function GrowthTab({
         <Text fw={700} className="mb-4 text-[16px] text-[#0F172A]">
           Payment History
         </Text>
-        <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white">
+
+        {/* Mobile: card list */}
+        <div className="flex flex-col gap-2 sm:hidden">
+          {contributions.length === 0 ? (
+            <div className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-8 text-center text-[13px] text-[#9CA3AF]">
+              No contributions recorded yet.
+            </div>
+          ) : (
+            contributions.map((c) => {
+              const penalty = Number(c.penaltyAmount ?? 0);
+              const date = c.paidAt
+                ? new Date(c.paidAt).toLocaleDateString("en-NG", {
+                    day: "numeric", month: "short", year: "numeric",
+                  })
+                : "-";
+              return (
+                <div
+                  key={c.id}
+                  className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <Text fw={700} className="text-[14px] text-[#0F172A]">
+                      Cycle {c.cycleNumber}
+                    </Text>
+                    <Badge
+                      size="sm"
+                      radius="xl"
+                      styles={{
+                        root: {
+                          backgroundColor: "#D1FAE5",
+                          color: "#065F46",
+                          textTransform: "none",
+                          fontWeight: 600,
+                          fontSize: 11,
+                        },
+                      }}
+                    >
+                      Paid
+                    </Badge>
+                  </div>
+                  <Text className="mt-1 text-[12px] text-[#6B7280]">
+                    {date}
+                  </Text>
+                  <Text fw={700} className="mt-2 text-[15px] text-[#0F172A]">
+                    {formatNaira(c.amount)}
+                  </Text>
+                  {penalty > 0 && (
+                    <Text className="mt-1 text-[12px] text-[#EF4444]">
+                      Late fee: {formatNaira(c.penaltyAmount)}
+                      <span className="ml-1 text-[10.5px] text-[#6B7280]">(1.5% after deadline)</span>
+                    </Text>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop: table */}
+        <div className="hidden overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white sm:block">
           <table className="w-full min-w-[480px]">
             <thead>
               <tr className="border-b border-[#E5E7EB] bg-[#F9FAFB]">

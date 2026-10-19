@@ -70,7 +70,6 @@ import { RoscaJoinAction } from '@/components/RoscaJoinAction'
 import { GroupFinancialSummary } from './GroupFinancialSummary'
 
 const PRIMARY = '#0b6b55'
-const canSubmitDeadlineExtensions = import.meta.env.DEV && import.meta.env.VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION === 'true'
 
 function getStatusBadge(status: string) {
   if (status === 'Active') return { bg: '#e6f5f1', color: PRIMARY }
@@ -450,7 +449,7 @@ export function GroupDetail() {
   async function handleExtendDeadline() {
     if (!id || !extendModal || !extendDate || !selectedCycle?.contributionDeadline) return
     const newContributionDeadline = contributionDeadline(extendDate, extendTime)
-    if (!canSubmitDeadlineExtensions || !newContributionDeadline) return
+    if (!newContributionDeadline) return
     const candidateTime = Date.parse(newContributionDeadline)
     const existingTime = Date.parse(selectedCycle.contributionDeadline)
     if (!Number.isFinite(candidateTime) || candidateTime <= Date.now()) {
@@ -799,7 +798,6 @@ export function GroupDetail() {
           {extendDate && !selectedCycle?.contributionDeadline && <Alert color="red">The current cycle deadline is unavailable, so this extension cannot be validated.</Alert>}
           {extendDate && invalidExtension && selectedCycle?.contributionDeadline && <Alert color="red">Choose a valid future date after this cycle&apos;s current contribution deadline.</Alert>}
           {selectedDeadline && followingCycle?.contributionDeadline && <Alert color="yellow">This extension compresses the time before cycle {followingCycle.cycleNumber}. Its deadline remains {new Date(followingCycle.contributionDeadline).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })} WAT. Overlapping dates may be rejected.</Alert>}
-          {!canSubmitDeadlineExtensions && <Alert color="yellow">Submission is disabled in deployed builds until the independent deadline-extension integration is available and verified.</Alert>}
           {extendError && <Text fz="sm" c="red">{extendError}</Text>}
           <Group justify="flex-end" gap="sm" mt="xs">
             <Button
@@ -814,11 +812,11 @@ export function GroupDetail() {
               radius="md"
               size="sm"
               color="orange"
-              disabled={!canSubmitDeadlineExtensions || !extendDate || invalidExtension || !selectedCycle?.contributionDeadline || extendSubmitting}
+              disabled={!extendDate || invalidExtension || !selectedCycle?.contributionDeadline || extendSubmitting}
               loading={extendSubmitting}
               onClick={handleExtendDeadline}
             >
-              {canSubmitDeadlineExtensions ? 'Extend deadline' : 'Extension integration disabled'}
+              Extend deadline
             </Button>
           </Group>
         </Stack>

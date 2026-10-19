@@ -1,5 +1,15 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { circle, mockRoscaReads } from './rosca-read-fixtures'
+
+async function selectSection(page: Page, section: string) {
+  const desktopButton = page.getByRole('button', { name: section, exact: true }).filter({ visible: true })
+  if (await desktopButton.count()) {
+    await desktopButton.first().click()
+    return
+  }
+  await page.getByRole('textbox', { name: 'View group section' }).click()
+  await page.getByRole('option', { name: section, exact: true }).click()
+}
 
 for (const admin of [false, true]) {
   test(`${admin ? 'organiser member' : 'member'} sees shared information and contribution history`, async ({ page }) => {
@@ -10,7 +20,7 @@ for (const admin of [false, true]) {
     await expect(page.getByText('Family Ajo', { exact: true }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Manage Group', exact: true })).toHaveCount(admin ? 1 : 0)
     await expect(page.getByRole('button', { name: 'Make a contribution', exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Contributions', exact: true }).click()
+    await selectSection(page, 'Contributions')
     await expect(page.getByText('Contribution History', { exact: true })).toBeVisible()
     await expect(page.getByText('₦1,234.56', { exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -65,7 +75,7 @@ test('failed roster loads show an error instead of unpaid members or an empty hi
   await page.goto('/rosca/family')
   await expect(page.getByText('Group financial health', { exact: true })).toBeVisible()
   await expect(page.getByText('0 paid · 0 partial · 1 unpaid · 0 defaulted')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Contributions', exact: true }).click()
+  await selectSection(page, 'Contributions')
   await expect(page.getByRole('alert')).toContainText('Unable to load contribution history')
   await expect(page.getByText('No contributions found for this circle')).toHaveCount(0)
 })

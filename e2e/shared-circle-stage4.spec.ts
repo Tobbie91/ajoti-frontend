@@ -60,6 +60,15 @@ async function noLeaks(page: Page) {
   expect(body).not.toContain('CROSS_CIRCLE_MESSAGE_SENTINEL')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 }
+async function selectSection(page: Page, section: string) {
+  const desktopButton = page.getByRole('button', { name: section, exact: true }).filter({ visible: true })
+  if (await desktopButton.count()) {
+    await desktopButton.first().click()
+    return
+  }
+  await page.getByRole('textbox', { name: 'View group section' }).click()
+  await page.getByRole('option', { name: section, exact: true }).click()
+}
 for (const actor of [{ name: 'member' }, { name: 'owner', owner: true, member: false }, { name: 'owner member', owner: true }, { name: 'completed member', completed: true }]) {
   test(`${actor.name} sees safe financial progress, history and ratings`, async ({ page }) => {
     const state = await fixture(page, actor)
@@ -71,18 +80,18 @@ for (const actor of [{ name: 'member' }, { name: 'owner', owner: true, member: f
     await expect(page.getByText('Group balance remaining is unavailable', { exact: false })).toBeVisible()
     if (actor.completed) await expect(page.getByText('Next Deadline: Completed', { exact: true })).toBeVisible()
     else await expect(page.getByText('Next Deadline · Cycle 2: Upcoming', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Contributions', exact: true }).click()
+    await selectSection(page, 'Contributions')
     await expect(page.getByText('₦2,499.99', { exact: true })).toBeVisible()
     await page.getByRole('textbox', { name: 'Contribution history cycle' }).click()
     await page.getByRole('option', { name: 'Cycle 1', exact: true }).click()
     await expect(page.getByText('₦5,000.00', { exact: true })).toBeVisible()
     expect(state.reads.some(path => path.includes('/contributions/roster?cycleNumber=1'))).toBe(true)
-    await page.getByRole('button', { name: 'Payouts', exact: true }).click()
+    await selectSection(page, 'Payouts')
     await expect(page.getByText('Payout history', { exact: true })).toBeVisible()
-    await expect(page.getByText('FAILED', { exact: true })).toBeVisible()
-    await expect(page.getByText('Not settled').first()).toBeVisible()
-    await page.getByRole('button', { name: 'Peers', exact: true }).click()
-    await expect(page.getByText('4.3 / 5', { exact: true })).toBeVisible()
+    await expect(page.getByText('FAILED', { exact: true }).filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('Not settled').filter({ visible: true }).first()).toBeVisible()
+    await selectSection(page, 'Peers')
+    await expect(page.getByText('4.3 / 5', { exact: true }).filter({ visible: true })).toBeVisible()
     if (!actor.owner) expect(state.reads.filter(path => path.startsWith('/api/admin/rosca'))).toEqual([])
     await noLeaks(page)
   })
@@ -139,7 +148,7 @@ test('early payments and payment preferences remain available for an owner who i
   const state = await fixture(page, { owner: true, paidCurrent: true, preferenceDelayMs: 500 })
   await page.goto(`/rosca/${id}`)
   await expect(page.getByRole('button', { name: 'Pay next cycle early' })).toBeVisible()
-  await page.getByRole('button', { name: 'Growth', exact: true }).click()
+  await selectSection(page, 'Growth')
   await expect(page.getByText('Contribution payment method', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save payment preference' })).toBeDisabled()
   await expect(page.getByRole('textbox', { name: 'Contribution payment method' }).first()).toBeDisabled()
@@ -157,7 +166,7 @@ test('completed members can submit a permitted review while aggregate data stays
   await page.getByRole('button', { name: 'Submit Review', exact: true }).click()
   await expect(page.getByText('Review submitted!', { exact: true })).toBeVisible()
   expect(state.reviewPosts).toEqual([{ revieweeId: 'other', rating: 4 }])
-  await expect(page.getByText('4.5 / 5', { exact: true })).toBeVisible()
+  await expect(page.getByText('4.5 / 5', { exact: true }).filter({ visible: true })).toBeVisible()
   expect(state.summaryReads).toBeGreaterThanOrEqual(2)
 })
 
@@ -183,7 +192,7 @@ test('peer review history errors retry without enabling duplicate submissions', 
 test('owner-only viewers see aggregate ratings without member review submission access', async ({ page }) => {
   const state = await fixture(page, { owner: true, member: false, completed: true })
   await page.goto(`/rosca/${id}?tab=peer`)
-  await expect(page.getByText('4.3 / 5', { exact: true })).toBeVisible()
+  await expect(page.getByText('4.3 / 5', { exact: true }).filter({ visible: true })).toBeVisible()
   expect(state.reads.some(path => path.endsWith('/reviews/mine'))).toBe(false)
   await expect(page.getByText(/Rate your fellow members/)).toHaveCount(0)
 })
@@ -212,7 +221,7 @@ test('personal contribution history paginates all receipts before deriving total
 test('payment preference remains unavailable until the verified server value loads and supports retry', async ({ page }) => {
   await fixture(page, { preferenceFailOnce: true, preferenceDelayMs: 250 })
   await page.goto(`/rosca/${id}`)
-  await page.getByRole('button', { name: 'Growth', exact: true }).click()
+  await selectSection(page, 'Growth')
   await expect(page.getByRole('alert')).toContainText('Unable to load payment preference')
   await expect(page.getByRole('textbox', { name: 'Contribution payment method' }).first()).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Save payment preference' })).toBeDisabled()

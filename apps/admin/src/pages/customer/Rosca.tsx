@@ -613,7 +613,7 @@ export function Rosca() {
             <button
               type="button"
               onClick={() => navigate("/rosca/how-it-works")}
-              className="shrink-0 py-1 text-xs font-semibold text-[#0B6B55]"
+              className="shrink-0 cursor-pointer rounded-lg border border-[#0B6B55] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#0B6B55]"
             >
               How it works
             </button>
@@ -658,30 +658,46 @@ export function Rosca() {
             </div>
           </div>
 
-          {/* Mobile 2-pill toggle (Joined / Discover) */}
-          <div className="sm:hidden grid grid-cols-2 rounded-xl bg-[#F1F3EF] p-1" aria-label="Ajo view">
+          {/* Mobile: visible "Joined" pill + white Select dropdown for Discover filters */}
+          <div className="flex items-center gap-2 sm:hidden">
             <button
               type="button"
               onClick={() => { setActiveTab("Joined"); setShowAll(false); }}
-              className={`rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${
+              className={`cursor-pointer whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${
                 activeTab === "Joined"
                   ? "bg-[#0B6B55] text-white shadow-sm"
-                  : "text-[#64748B]"
+                  : "border border-[#E5E7EB] bg-white text-[#374151]"
               }`}
             >
               Joined{hasJoined ? ` (${joinedGroups.length})` : ""}
             </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab("All Groups"); setShowAll(false); }}
-              className={`rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${
-                activeTab !== "Joined"
-                  ? "bg-[#0B6B55] text-white shadow-sm"
-                  : "text-[#64748B]"
-              }`}
-            >
-              Discover
-            </button>
+            <Select
+              aria-label="Discover ajo groups"
+              placeholder="Discover"
+              value={activeTab === "Joined" ? null : activeTab}
+              onChange={(value) => {
+                if (!value) return;
+                setActiveTab(value);
+                setShowAll(false);
+              }}
+              data={[
+                { value: "All Groups", label: "All groups" },
+                { value: "Open Groups", label: "Open groups" },
+                { value: "Invite-Only", label: "Invite-only" },
+              ]}
+              allowDeselect={false}
+              radius="md"
+              className="flex-1"
+              styles={{
+                input: {
+                  borderColor: activeTab !== "Joined" ? "#0B6B55" : "#E5E7EB",
+                  backgroundColor: "#FFFFFF",
+                  fontWeight: 600,
+                  color: activeTab !== "Joined" ? "#0B6B55" : "#374151",
+                  height: 44,
+                },
+              }}
+            />
           </div>
         </div>
 
@@ -775,7 +791,7 @@ export function Rosca() {
           </button>
         </div>
 
-        {/* ─── Mobile search + filter ─────────────────────────────────────── */}
+        {/* ─── Mobile search + Requests/Invites shortcuts ──────────────────── */}
         <div className="space-y-3 sm:hidden">
           <TextInput
             aria-label="Search ajo groups"
@@ -786,27 +802,9 @@ export function Rosca() {
             onChange={(e) => setSearch(e.currentTarget.value)}
             styles={{ input: { borderColor: "#E5E7EB", backgroundColor: "#FFFFFF" } }}
           />
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex flex-1 items-center gap-2 text-xs font-medium text-[#475467]">
-              Show
-              <select
-                aria-label="Filter ajo groups"
-                value={activeTab}
-                onChange={(e) => {
-                  setActiveTab(e.currentTarget.value);
-                  setShowAll(false);
-                }}
-                className="min-w-0 flex-1 rounded-lg border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#101828]"
-              >
-                <option value="All Groups">All groups</option>
-                <option value="Open Groups">Open groups</option>
-                <option value="Invite-Only">Invite-only</option>
-              </select>
-            </label>
-            <div className="flex shrink-0 items-center gap-3 text-xs font-semibold text-[#0B6B55]">
-              <button type="button" onClick={() => navigate("/rosca/requests")}>Requests</button>
-              <button type="button" onClick={() => navigate("/rosca/invites")}>Invites</button>
-            </div>
+          <div className="flex items-center justify-end gap-3 text-xs font-semibold text-[#0B6B55]">
+            <button type="button" onClick={() => navigate("/rosca/requests")}>Requests</button>
+            <button type="button" onClick={() => navigate("/rosca/invites")}>Invites</button>
           </div>
         </div>
 

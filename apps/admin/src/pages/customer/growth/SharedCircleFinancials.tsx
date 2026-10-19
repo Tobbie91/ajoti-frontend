@@ -24,10 +24,23 @@ function ReadSection<T>({ id, title, read, cycle, refreshVersion, children }: {
   </Stack></Paper>
 }
 function Rows({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
-  return rows.length === 0 ? <Text c="dimmed">No records available.</Text> : <Table.ScrollContainer minWidth={560}><Table striped>
-    <Table.Thead><Table.Tr>{headers.map(header => <Table.Th key={header}>{header}</Table.Th>)}</Table.Tr></Table.Thead>
-    <Table.Tbody>{rows.map((row, index) => <Table.Tr key={index}>{row.map((cell, i) => <Table.Td key={i}>{cell}</Table.Td>)}</Table.Tr>)}</Table.Tbody>
-  </Table></Table.ScrollContainer>
+  if (rows.length === 0) return <Text c="dimmed">No records available.</Text>
+  return <>
+    <div className="flex flex-col gap-2 sm:hidden">
+      {rows.map((row, rowIndex) => <div key={rowIndex} className="rounded-lg border border-[#E5E7EB] p-3">
+        {headers.map((header, columnIndex) => <div key={header} className="flex items-start justify-between gap-3 py-1">
+          <Text size="xs" c="dimmed" className="shrink-0">{header}</Text>
+          <div className="min-w-0 text-right text-sm">{row[columnIndex]}</div>
+        </div>)}
+      </div>)}
+    </div>
+    <div className="hidden sm:block">
+      <Table.ScrollContainer minWidth={560}><Table striped>
+        <Table.Thead><Table.Tr>{headers.map(header => <Table.Th key={header}>{header}</Table.Th>)}</Table.Tr></Table.Thead>
+        <Table.Tbody>{rows.map((row, index) => <Table.Tr key={index}>{row.map((cell, i) => <Table.Td key={i}>{cell}</Table.Td>)}</Table.Tr>)}</Table.Tbody>
+      </Table></Table.ScrollContainer>
+    </div>
+  </>
 }
 export function SharedCircleFinancials({ circleId, view, currentCycle = 1, cycleNumbers = [], refreshVersion = 0 }: {
   circleId: string; view: 'overview' | 'payouts' | 'ratings'; currentCycle?: number; cycleNumbers?: number[]; refreshVersion?: number

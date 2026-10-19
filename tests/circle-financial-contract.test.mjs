@@ -19,10 +19,22 @@ test('unavailable and malformed financial values never become zero', () => {
   assert.equal(formatKobo('0'), '₦0.00')
 })
 test('extensions preserve the explicit WAT cutoff and derive the following calendar day', () => {
+  const watTimestamp = (iso) => new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).format(new Date(iso))
   assert.equal(watCutoffTime('2030-10-16T17:00:00Z'), '18:00:00')
   assert.equal(contributionDeadline('2030-10-16', '18:00'), '2030-10-16T18:00:00+01:00')
-  assert.equal(followingWatPayout('2030-10-16T23:59:59+01:00'), '2030-10-16T23:00:00.000Z')
-  assert.equal(followingWatPayout('2030-10-17T00:00:00+01:00'), '2030-10-17T23:00:00.000Z')
+  const endOfDayDeadline = '2030-10-16T23:59:59+01:00'
+  const endOfDayPayout = followingWatPayout(endOfDayDeadline)
+  assert.equal(endOfDayPayout, '2030-10-16T23:00:00.000Z')
+  assert.equal(watTimestamp(endOfDayPayout), '17/10/2030, 00:00:00')
+  assert.equal(Date.parse(endOfDayPayout) - Date.parse(endOfDayDeadline), 1000)
+  const midnightDeadline = '2030-10-17T00:00:00+01:00'
+  const midnightPayout = followingWatPayout(midnightDeadline)
+  assert.equal(midnightPayout, '2030-10-17T23:00:00.000Z')
+  assert.equal(watTimestamp(midnightPayout), '18/10/2030, 00:00:00')
+  assert.equal(Date.parse(midnightPayout) - Date.parse(midnightDeadline), 86400000)
   assert.equal(followingWatPayout('2032-02-29T18:00:00+01:00'), '2032-02-29T23:00:00.000Z')
   assert.equal(followingWatPayout('2030-12-31T18:00:00+01:00'), '2030-12-31T23:00:00.000Z')
   assert.equal(contributionDeadline('2030-02-30', '18:00:00'), null)

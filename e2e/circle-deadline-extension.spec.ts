@@ -73,6 +73,9 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
       if (options.patchStatus === 409) {
         return route.fulfill({ status: 409, json: { message: 'Schedule conflict' } })
       }
+      if (options.patchStatus === 403) {
+        return route.fulfill({ status: 403, json: { message: 'Only the circle owner can extend a deadline' } })
+      }
       if (options.patchStatus && options.patchStatus !== 200) {
         return route.fulfill({ status: options.patchStatus, json: { message: 'Invalid contribution deadline' } })
       }
@@ -150,6 +153,20 @@ test('server-side deadline validation is shown without closing the form', async 
   expect(state.patches).toHaveLength(1)
 })
 
+test('backend authorization errors remain visible when submission is denied', async ({ page }) => {
+  const targetDate = await page.evaluate(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 7)
+    return date.toISOString().slice(0, 10)
+  })
+  const state = await mockDeadlineExtensionApi(page, { patchStatus: 403 })
+  await openExtensionForm(page, targetDate)
+  await page.getByRole('button', { name: 'Extend deadline', exact: true }).click()
+  await expect(page.getByText('Only the circle owner can extend a deadline')).toBeVisible()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  expect(state.patches).toHaveLength(1)
+})
+
 test('extension rejects a date that does not move the current deadline forward', async ({ page }) => {
   const targetDate = await page.evaluate(() => {
     const date = new Date()
@@ -216,6 +233,28 @@ test('00:00 WAT cutoff preview schedules payout on the following WAT calendar da
   expect(state.patches[0]?.body).toEqual({ newContributionDeadline: `${targetDate}T00:00:00+01:00` })
 })
 
+test('23:59:59 WAT cutoff previews payout at midnight on the following day', async ({ page }) => {
+  const { currentDate, targetDate, payoutDate } = await page.evaluate(() => {
+    const current = new Date()
+    current.setDate(current.getDate() + 7)
+    const target = new Date(current)
+    target.setDate(target.getDate() + 1)
+    const payout = new Date(target)
+    payout.setDate(payout.getDate() + 1)
+    return {
+      currentDate: current.toISOString().slice(0, 10),
+      targetDate: target.toISOString().slice(0, 10),
+      payoutDate: payout.toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'long' }),
+    }
+  })
+  const state = await mockDeadlineExtensionApi(page, { currentDeadline: `${currentDate}T18:00:00+01:00` })
+  await openExtensionForm(page, targetDate, '23:59:59')
+  await expect(page.getByText(`Corresponding payout: ${payoutDate} at 00:00 WAT.`, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Extend deadline', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(state.patches[0]?.body).toEqual({ newContributionDeadline: `${targetDate}T23:59:59+01:00` })
+})
+
 for (const payoutStatus of ['FAILED', 'INITIATED']) {
   test(`${payoutStatus.toLowerCase()} payout prevents a new deadline extension`, async ({ page }) => {
     const state = await mockDeadlineExtensionApi(page, { payoutStatus })
@@ -242,7 +281,7 @@ test('non-admin members do not receive deadline extension controls', async ({ pa
   await expect(page.getByRole('button', { name: 'Extend Deadline' })).toHaveCount(0)
 })
 
-test('submission stays disabled unless the development-only contract flag is explicitly enabled', async ({ page }) => {
+test('actual circle owners can submit deadline extensions in production builds', async ({ page }) => {
   const targetDate = await page.evaluate(() => {
     const date = new Date()
     date.setDate(date.getDate() + 7)
@@ -250,7 +289,10 @@ test('submission stays disabled unless the development-only contract flag is exp
   })
   const state = await mockDeadlineExtensionApi(page)
   await openExtensionForm(page, targetDate)
-  await expect(page.getByText(/disabled in deployed builds/i)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Extension integration disabled' })).toBeDisabled()
-  expect(state.patches).toHaveLength(0)
+  const submit = page.getByRole('button', { name: 'Extend deadline', exact: true })
+  await expect(submit).toBeEnabled()
+  await submit.click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(state.patches).toHaveLength(1)
+  expect(state.patches[0]?.body).toEqual({ newContributionDeadline: `${targetDate}T23:59:59+01:00` })
 })

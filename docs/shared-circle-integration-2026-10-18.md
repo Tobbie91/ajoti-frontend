@@ -1,6 +1,6 @@
 # Shared circle frontend integration — 19 October 2026
 
-This record supersedes the earlier pending-contract notes in this file. It describes the consolidated frontend branch `feat/shared-circle-integration`, based on the preserved frontend PRs #55–#57. No existing PR was rewritten or closed. The integration branch has not been merged or deployed.
+This record describes the consolidated frontend branch `feat/shared-circle-integration`, based on preserved frontend PRs #55–#57. The branch is merged through PR #58 into `staging`; no production deployment was performed.
 
 ## Implementation status
 
@@ -9,8 +9,8 @@ This record supersedes the earlier pending-contract notes in this file. It descr
 | Canonical circle view | `/rosca/:id` is shared by authorized members and actual owners; unapproved viewers stay on a preview. Owners retain management controls. | Frontend guards and mocked authorization cases; backend remains authoritative. |
 | Member-safe financial views | Circle health, cycle progress, contribution summaries/history, payout schedule/history, and aggregate reviews use the Stage 4 DTOs. Amounts are integer kobo and formatted with `BigInt`; missing or malformed values remain unavailable. | Contract fixtures only; no live staging request. |
 | Dashboard and navigation | Joined, administered and completed circles are deduplicated; Next Deadline comes from a circle-scoped schedule and includes its cycle. Upcoming, overdue, completed, planned, unavailable and failed states are represented. | Desktop/mobile mocked browser cases. |
-| Independent deadline extension | The owner control uses the cycle-specific PATCH contract and preserves the selected schedule's configured WAT cutoff. Validation, 409 handling and schedule refresh remain. | Mocked requests. Submission stays gated off in production builds. |
-| Completed history | Completed members can read cycle/contribution/payout history, see aggregate reviews, submit a permitted review once, and use read-only group chat UI. | Mocked frontend behavior. Backend group-chat reads for completed members are still blocked by the current Stage 4 source branch. |
+| Independent deadline extension | The actual owner can submit through the cycle-specific PATCH contract. The UI preserves the selected schedule's configured WAT cutoff, validates dates, displays backend errors and refreshes schedules after success. Backend authorization and financial-state checks remain authoritative. | Mocked requests and production-preview tests; no live staging PATCH. |
+| Completed history | Completed members can read cycle/contribution/payout history, see aggregate reviews, submit a permitted review once, and use read-only group chat UI. | Mocked frontend behavior; backend staging now permits ACTIVE/COMPLETED group reads and restricts sending to ACTIVE memberships in ACTIVE circles. Not live-tested from this environment. |
 | Sensitive data | Shared screens do not render private wallets, bank details, debts, collateral, provider IDs, ledger details, or individual review comments/identities. | Sentinel-field UI tests; this does not prove backend response redaction. |
 
 ## Stage 4 member-safe contracts used by the frontend
@@ -45,28 +45,25 @@ Content-Type: application/json
 
 The selected deadline must include `Z` or an explicit numeric offset. HTTP 400 validation errors remain in the form; HTTP 409 reports a concurrent schedule conflict. After success the frontend reloads schedule data. The existing control remains owner-only, ACTIVE-circle-only, UPCOMING-cycle-only and unavailable after the existing cutoff or after payout processing begins.
 
-The current schedule's WAT cutoff is preserved when the organiser changes only the date. An explicit time change changes that cutoff visibly. The backend schedules payout at 00:00 WAT on the following calendar day: a 23:59:59 WAT cutoff is one second before that payout, while a 00:00 WAT cutoff leaves the payout on the next calendar day. No financial cutoff or payout rule is changed by this frontend work.
-
-Submission requires both `import.meta.env.DEV` and `VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION=true`. A production build remains disabled even when that flag is present. The opt-in is for isolated development contract tests only.
+The current schedule's WAT cutoff is preserved when the organiser changes only the date. An explicit time change changes that cutoff visibly. The backend schedules payout at 00:00 WAT on the following calendar day: a 23:59:59 WAT cutoff is one second before that payout, while a 00:00 WAT cutoff leaves the payout on the next calendar day. The UI shows this preview and sends an ISO timestamp with `+01:00`; it does not add an early penalty or alter payout timing. The actual circle owner can submit in all builds. The backend remains authoritative for ownership and financial-state validation.
 
 ## Remaining integration blockers
 
-1. **Completed group chat reads:** backend Stage 4 `chat.service.ts` currently permits only ACTIVE memberships in its group read/list checks. It needs to permit ACTIVE and COMPLETED for listing/reading history while keeping send restricted to ACTIVE membership in an ACTIVE circle. Direct messages must remain on their separate participant authorization path. The frontend already hides sending for completed circles and blocks history reads when circle access fails.
-2. **Live staging:** the configured API host available to this environment resolves to `localhost`; the health probe failed and no authorized staging test identities/circles were available. Backend PRs #122–#125 are draft/open and are not assumed deployed. No live authorization, server-side redaction, real deadline extension or provider behavior has been verified.
-3. **Member remaining balance:** Stage 4 intentionally omits group remaining/reconciliation balance from the member-safe DTO. The frontend shows it as unavailable. If product acceptance requires this value, backend must add an approved authoritative safe aggregate; the frontend must not derive it.
+1. **Live staging:** backend PRs #122–#125 are merged into backend `staging`, including completed-member group-history reads and ACTIVE-only sending. This environment's sanitized `VITE_API_BASE_URL` is `http://localhost:3001`, not a shared staging host, and no authorized staging test identities/circles are available. No live authorization, server-side redaction, real deadline extension or provider behavior has been verified.
+2. **Member remaining balance:** Stage 4 intentionally omits group remaining/reconciliation balance from the member-safe DTO. The frontend shows it as unavailable. If product acceptance requires this value, backend must add an approved authoritative safe aggregate; the frontend must not derive it.
 
-Before staging acceptance, deploy the reviewed backend stack through the approved process, provide the staging base URL and authorized accounts/circles for member, owner, owner-member, completed and denied cases, and then run the contract/Playwright matrix against staging. Recheck server authorization/redaction and the real extension's 400/403/404/409 behavior plus schedule refresh. Keep the production extension gate closed until that integration has passed. Do not run money-moving provider operations as part of these read/contract checks.
+Before live staging acceptance, provide a reachable staging API base URL and authorized accounts/circles for member, owner, owner-member, completed and denied cases. Then run the contract/Playwright matrix against the deployed backend. Recheck server authorization/redaction and the real extension's 400/403/404/409 behavior plus schedule refresh. Do not run money-moving provider operations as part of these read/contract checks.
 
 ## Verification
 
 Verification completed on the consolidated branch:
 
-- Focused Playwright regression set: **54/54 desktop Chromium and 54/54 mobile Chromium**. This covers Stage 4 access roles, financial states, deadline validation/conflicts, dashboard navigation, completed history, and responsive layouts. API responses are mocked.
-- Production-preview safety gate: **2/2 desktop/mobile tests passed** with `VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION=true` supplied to the production build; submission remained disabled.
+- Focused Playwright regression set: **57/57 desktop Chromium and 57/57 mobile Chromium**. This covers Stage 4 access roles, financial states, deadline validation/conflicts, dashboard navigation, completed history, and responsive layouts. API responses are mocked.
+- Production-preview submission: **4/4 desktop/mobile tests passed**; the owner PATCH works on the production build without a feature flag and the non-owner control remains hidden. Mocked backend 403 responses remain visible in the full focused suite.
 - `pnpm --filter ajoti-admin exec tsc -b --force`: passed.
 - `pnpm lint`: passed with 0 errors and 5 existing warnings in unrelated files.
 - Contract regression tests: **7/7 passed** (`tests/circle-access.test.mjs` and `tests/circle-financial-contract.test.mjs`).
 - `pnpm build:admin` and `pnpm build:super-admin`: passed. Vite reports existing large JavaScript chunks above 500 kB.
 - `git diff --check`: passed.
 
-No live staging integration is claimed. The production deadline submission gate remains closed pending deployed backend integration and authorized staging acceptance testing.
+Live staging authorization, response redaction, API-envelope compatibility and provider behavior remain unverified because the available API host is `http://localhost:3001`, not a shared staging deployment, and no authorized staging identities were available. The deadline action is enabled for the actual owner; backend authorization and financial-state validation must be confirmed in staging.

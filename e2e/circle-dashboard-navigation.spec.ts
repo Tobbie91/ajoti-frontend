@@ -87,7 +87,7 @@ test('dashboard counts unique administered circles and completed links open hist
 
   await page.getByRole('button', { name: 'Completed — 1', exact: true }).click()
   await expect(page).toHaveURL(/\/rosca\/groups\?status=completed$/)
-  await expect(page.getByText('Completed Ajo')).toBeVisible()
+  await expect(page.getByText('Completed Ajo').filter({ visible: true })).toBeVisible()
   await expect(page.getByText('Active Ajo')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
@@ -123,7 +123,7 @@ test('administered group list reports API errors and can retry', async ({ page }
   await page.goto('/rosca/groups?status=completed')
   await expect(page.getByRole('alert')).toContainText('Groups could not be loaded')
   await page.getByRole('button', { name: 'Try again' }).click()
-  await expect(page.getByText('Completed Ajo')).toBeVisible()
+  await expect(page.getByText('Completed Ajo').filter({ visible: true })).toBeVisible()
 })
 
 test('joined circles retain unique completed history and explicit overdue status', async ({ page }) => {

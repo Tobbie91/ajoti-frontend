@@ -229,7 +229,85 @@ export function RoscaGroups() {
         )}
 
         {!loadError && <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
-          <div style={{ overflowX: 'auto' }}>
+          {/* Mobile: card list — no horizontal scroll */}
+          <div className="flex flex-col gap-2 p-3 sm:hidden">
+            {paginated.length === 0 ? (
+              <Text ta="center" c="dimmed" py="xl" fz="sm">No groups match your filters.</Text>
+            ) : paginated.map((group) => (
+              <div
+                key={group.id}
+                className="flex flex-col gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    <Checkbox
+                      checked={selected.includes(group.id)}
+                      onChange={() => toggleOne(group.id)}
+                      size="xs"
+                      mt={3}
+                    />
+                    <Text fw={600} fz="sm" className="min-w-0 flex-1" lineClamp={2}>
+                      {group.name}
+                    </Text>
+                  </div>
+                  <Tooltip label={groupStatusDescription(group.status)} withArrow>
+                    <Badge
+                      size="sm"
+                      radius="sm"
+                      style={{
+                        background: statusBackground[group.status],
+                        color: statusColor[group.status],
+                        border: 'none',
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {group.status}
+                    </Badge>
+                  </Tooltip>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[12px] text-[#64748B]">
+                  <div>
+                    <span className="font-semibold text-[#94A3B8]">Members </span>
+                    <span className="text-[#0F172A]">{group.members}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-[#94A3B8]">Progress </span>
+                    <span className="text-[#0F172A]">{group.roundProgress}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-semibold text-[#94A3B8]">Next payout </span>
+                    <span className="text-[#0F172A]">{group.nextPayout}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    style={{ color: PRIMARY, flex: 1 }}
+                    onClick={() => navigate(`/rosca/groups/${group.id}`)}
+                  >
+                    Manage
+                  </Button>
+                  {group.canInvite && (
+                    <Button
+                      variant="light"
+                      size="xs"
+                      color="teal"
+                      leftSection={<IconMailPlus size={13} />}
+                      style={{ flex: 1 }}
+                      onClick={() => setInviteTarget(group)}
+                    >
+                      Invite
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: original table */}
+          <div className="hidden sm:block" style={{ overflowX: 'auto' }}>
             <Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 820 }}>
               <Table.Thead>
                 <Table.Tr style={{ background: PRIMARY }}>

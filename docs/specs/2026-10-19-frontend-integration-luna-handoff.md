@@ -2,11 +2,11 @@
 
 ## Start here
 
-The user explicitly requested: **pause development and create a plan for Luna because conversation tokens will not carry**. Development, Playwright and the build watcher were stopped. Do not automatically resume until the user asks Luna to continue.
+This handoff records the earlier checkpoint at `c8c49bd`. The user has since authorized completion, removal of the deadline submission restriction, merging PR #58 into `staging`, and closing PRs #55–#57 as superseded. The current result is recorded in `docs/shared-circle-integration-2026-10-18.md`.
 
 Repository: `ajoti-fintech/ajoti-frontend`, local directory `/workspace/ajoti-frontend`.
 Current integration branch: **`feat/shared-circle-integration`**.
-The checkpoint commit containing this document preserves all partial edits. Read `git status` and `git log -5` before changing anything. **This is unfinished work, not a verified or deployable implementation.** No consolidated draft PR has been opened or branch pushed yet. PRs #55–#57 remain unchanged by this integration phase.
+The checkpoint commit preserved the original work. PR #58 is the only frontend PR to merge; do not merge #55–#57 separately.
 
 ## User-authorized objective and limits
 
@@ -17,7 +17,7 @@ Required outcomes:
 1. Canonical `/rosca/:id` for approved members and owners; overview, membership, cycles, deadlines, payout order and group progress; owner-only management; preserve personal and early contributions and payment preferences.
 2. Actual member-safe contributions, financial health, expected/collected/outstanding amounts, cycle progress, payout schedules/history and aggregate reviews. Integer-kobo arithmetic, correct envelopes, loading/error/unavailable states. Never invent balances or show private data.
 3. Joined/administered/completed navigation and deduplicated counts; Next Deadline with circle AND cycle; upcoming/overdue/planned/completed/unavailable/error states on desktop/mobile.
-4. Independent deadline PATCH using `newContributionDeadline`, explicit offset, validation/409, refresh; verify WAT boundary without silently changing financial behavior; retain production safety gate.
+4. Independent deadline PATCH using `newContributionDeadline`, explicit offset, validation/409 and refresh; make submission available normally to the actual owner and rely on backend authorization and financial-state checks.
 5. Completed members retain history and permitted peer-review submission/aggregates; group chat read-only; protect private conversations and deny unauthorized historical reads.
 6. Contract and Playwright tests for member, owner, owner-member, completed and unauthorized actors, partial contributions, failed payouts, conflicts, unavailable data, loading, errors and redaction; run typecheck/lint/both real app builds and relevant regressions.
 7. Report exact implementation/PR/test/backend dependency/incomplete work and staging acceptance actions. Do not claim live integration without it.
@@ -32,7 +32,7 @@ Preserved frontend PRs:
 
 - #55, `feat/shared-circle-experience` -> `staging`, shared routes/access/capabilities/history/chat baseline; base head `ab9c3c7`.
 - #56, `feat/circle-dashboard-navigation` -> #55 branch, head `f11e9c7`; dashboard/navigation improvements.
-- #57, `feat/circle-deadline-extension` -> #55 branch, head `95b582d`; extension contract/gate and updated integration documentation.
+- #57, `feat/circle-deadline-extension` -> #55 branch, head `95b582d`; extension contract and updated integration documentation.
 - Integration branch was created from #57 and merged `origin/pr-56` with a normal merge commit **`5400544`**. Neither implementation was squashed, duplicated or rewritten. Existing #56/#57 changed-file sets did not conflict.
 - Prior review found all three draft PRs mergeable. Recheck remote heads before final integration PR.
 
@@ -89,7 +89,7 @@ Review these rather than restarting them:
 - `GroupPayoutsTab.tsx`, `GroupOverviewTab.tsx`: safe payout recipients/dates/amounts and aggregate early-payout counts. History View Payouts button switches to the payout tab.
 - `GroupDetail.tsx`, `GroupMembersTab.tsx`: member payout progress now comes from safe progress API rather than removed recipientId fields. Unknown/paid/completed payout status locks position controls; backend remains authoritative.
 - `GroupPaymentsTab.tsx`: exact-kobo totals, dynamic cycle selector; extension controls shown for eligible UPCOMING schedules **before** cutoff, not only stuck/overdue payouts.
-- `GroupDetail.tsx` deadline form: explicit TimeInput (WAT, seconds), default existing selected-cycle cutoff, owner may intentionally choose a new time; validates future/new/existing cutoff; preserves DEV + opt-in production gate, 400/409 handling and refetch. Initial activation text corrected from “24 hours” to following-calendar-day 00:00 WAT.
+- `GroupDetail.tsx` deadline form: explicit TimeInput (WAT, seconds), default existing selected-cycle cutoff, owner may intentionally choose a new time; validates future/new/existing cutoff, handles backend errors, and refreshes schedules after success. Submission has no development-only or production-build restriction. Initial activation text corrected from “24 hours” to following-calendar-day 00:00 WAT.
 - `hooks/useCircleDeadline.ts`: shared authorized schedule-based circle/cycle deadline selection, deduplicates IDs and reports failures.
 - `Dashboard.tsx`: admin Next Deadline uses that hook, provides circle/cycle link.
 - `customer/Home.tsx`: member counts merge/deduplicate participation and completed join history; uses same cycle-aware deadline hook, completed/active navigation, unavailable reads; exact wallet strings instead of error-to-zero.
@@ -136,23 +136,23 @@ Logs copied into `work/luna-handoff/`: `ajoti-typecheck.log`, `ajoti-lint.log`, 
 3. **Dashboard/member Home regression tests:** add test covering duplicate participations plus completed join-request-only history, exact counts, cycle-context Next Deadline and completed filter navigation. Add errors for membership/schedules/wallet showing unavailable rather than zero. Use existing tile/component behavior.
 4. **Pagination regression:** personal receipts now have verified limit/offset pagination. Add a 100+ receipt contract test to prove totals include page two and no unsafe early-payment target is inferred from truncated history.
 5. **Loading/missing data:** add tests for delayed health read while other panels remain available, missing cycles/summary data, retriable failure and no invented zero/NaN/Infinity. New reader checks array presence but audit item/value handling.
-6. **Deadline boundary/invalidation tests:** preserve default existing WAT cutoff (e.g.18:00), explicitly test 23:59:59 vs00:00 preview/payload, old-cutoff expiry, failed payout/initiated payout exclusion, 400/403/404/409 messages and successful schedule refetch. Existing tests cover payload400/409/success but not every new boundary/control eligibility case. Keep production submissions disabled even with env flag true.
+6. **Deadline boundary/invalidation tests:** preserve default existing WAT cutoff (e.g.18:00), explicitly test 23:59:59 vs00:00 preview/payload, old-cutoff expiry, failed payout/initiated payout exclusion, 400/403/404/409 messages and successful schedule refetch. The actual owner submits in development and production; backend checks remain authoritative.
 7. **Sensitive-data tests:** current new tests inject sentinel bank/wallet/collateral/provider/ledger/debt/review-comment fields and assert no UI exposure; this is frontend rendering evidence, NOT proof of server redaction. Test duplicate display names do not create member ID/debt joins. Add denied chat-history read and same-circle/direct-message isolation checks where actual transport contracts permit.
 8. **Completed frontend:** verify completed status/final cycle progress, history selectors, payout status, aggregate reviews and permitted submission. Keep read-only chat behavior and direct-message separation. Explain backend blocker below; do not bypass it.
 9. Audit actual remaining frontend calls for Stage 4 source compatibility, especially owner management views that previously relied on removed recipient IDs, loan arrays or trust fields. Already corrected major consumers; don't assume no remaining mismatch without search/build.
 
 ### C. Required verification
 
-Start opted-in DEV server:
+Start the development server:
 
 ```
-VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION=true pnpm --filter ajoti-admin dev --host 127.0.0.1 --port 5190 --strictPort
+pnpm --filter ajoti-admin dev --host 127.0.0.1 --port 5190 --strictPort
 ```
 
 Focused suite command (server must run):
 
 ```
-E2E_BASE_URL=http://127.0.0.1:5190 pnpm exec playwright test --config work/playwright.integration.config.ts e2e/shared-circle-stage4.spec.ts e2e/shared-circle.spec.ts e2e/circle-dashboard-navigation.spec.ts e2e/circle-deadline-extension.spec.ts --grep-invert 'submission stays disabled'
+E2E_BASE_URL=http://127.0.0.1:5190 pnpm exec playwright test --config work/playwright.integration.config.ts e2e/shared-circle-stage4.spec.ts e2e/shared-circle.spec.ts e2e/circle-dashboard-navigation.spec.ts e2e/circle-deadline-extension.spec.ts
 ```
 
 Fix targeted failures first, then run relevant `rosca-duration.spec.ts` / `reported-group-flows.spec.ts` regressions. Avoid running the whole unrelated E2E suite blindly.
@@ -169,7 +169,7 @@ pnpm build:super-admin
 git diff --check
 ```
 
-Production gate needs a SEPARATE production build/preview: build admin with `VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION=true`, run `pnpm --filter ajoti-admin preview --host 127.0.0.1 --port 5191 --strictPort`, then run the disabled-submission test against port5191. Enabled submission tests and disabled gate test cannot all pass on a single fixed Vite build. Do not weaken the gate to make tests convenient.
+Production verification uses the normal admin build and preview, then runs the owner-submission and non-owner-denial tests against the built application. No feature flag is required.
 
 ### D. Reviewable final deliverable
 
