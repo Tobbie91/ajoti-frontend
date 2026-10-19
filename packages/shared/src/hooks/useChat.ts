@@ -8,7 +8,7 @@ export interface UseChatConfig<TMessage> {
   postMessage: (circleId: string, body: string) => Promise<TMessage>
 }
 
-export function useChat<TMessage extends { id: string; createdAt: string }>(
+export function useChat<TMessage extends { id: string; createdAt: string; circleId: string }>(
   circleId: string | null,
   config: UseChatConfig<TMessage>,
 ) {
@@ -25,8 +25,8 @@ export function useChat<TMessage extends { id: string; createdAt: string }>(
     setMessages((prev) => {
       const byId = new Map<string, TMessage>()
       // Server history is oldest -> newest, followed by any real-time messages.
-      for (const msg of incoming) byId.set(msg.id, msg)
-      for (const msg of prev) byId.set(msg.id, msg)
+      for (const msg of incoming) { if (msg.circleId === joinedRef.current) byId.set(msg.id, msg) }
+      for (const msg of prev) { if (msg.circleId === joinedRef.current) byId.set(msg.id, msg) }
       return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     })
   }, [])
@@ -42,7 +42,9 @@ export function useChat<TMessage extends { id: string; createdAt: string }>(
     socket.on('connect', () => {
       if (joinedRef.current) socket.emit('chat.join', joinedRef.current)
     })
-    socket.on('chat.message', (msg: TMessage) => mergeMessages([msg]))
+    socket.on('chat.message', (msg: TMessage) => {
+      if (msg.circleId === joinedRef.current) mergeMessages([msg])
+    })
     socket.on('chat.error', (data: { message?: string }) => {
       setError(data.message ?? 'Unable to receive the chat update')
     })

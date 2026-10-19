@@ -1,3 +1,4 @@
+import { kobo, sumKobo } from "@/utils/kobo";
 import { useState, useEffect } from "react";
 import {
   Text,
@@ -47,7 +48,7 @@ export function GrowthTab({
   openContributionOnLoad = false,
 }: {
   trustPercent: number;
-  trustScore: number;
+  trustScore: number | null;
   nextContributionDate: string;
   contributions: CircleContribution[];
   setContributions: (
@@ -67,18 +68,17 @@ export function GrowthTab({
   const [modalOpen, setModalOpen] = useState(false);
 
   const isActive = circleStatus.toUpperCase() === "ACTIVE";
-  const contributedAmount = nextCycleNumber == null
-    ? 0
-    : contributions
-        .filter((c) => c.cycleNumber === nextCycleNumber)
-        .reduce((sum, c) => sum + Number(c.amount), 0);
-  const remainingAmountKobo = Math.max(0, Number(contributionAmountKobo) - contributedAmount);
-  const alreadyContributed = remainingAmountKobo === 0;
+  const contributedAmount = nextCycleNumber == null ? 0n : sumKobo(contributions.filter(c => c.cycleNumber === nextCycleNumber).map(c => c.amount));
+  const expected = kobo(contributionAmountKobo);
+  const remaining = contributedAmount == null || expected == null ? null : expected > contributedAmount ? expected - contributedAmount : 0n;
+  const remainingAmountKobo = remaining?.toString() ?? 'Unavailable';
+  const alreadyContributed = remaining === 0n;
   const isEarlyPayment = nextCycleNumber != null && nextCycleNumber > currentCycleNumber;
   const canContribute =
-    isActive && nextCycleNumber != null && !alreadyContributed;
+    isActive && remaining != null && nextCycleNumber != null && !alreadyContributed;
   const deadlineFormatted = nextDeadline
     ? new Date(nextDeadline).toLocaleString("en-NG", {
+        timeZone: "Africa/Lagos",
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -113,7 +113,7 @@ export function GrowthTab({
         currentCycleNumber={currentCycleNumber}
         nextCycleNumber={nextCycleNumber}
         contributionAmountKobo={remainingAmountKobo}
-        amountAlreadyPaidKobo={contributedAmount}
+        amountAlreadyPaidKobo={contributedAmount?.toString() ?? "Unavailable"}
         nextDeadline={nextDeadline}
         nextPaymentFallback={nextContributionDate}
         onPaid={(contribution) => {
@@ -133,13 +133,13 @@ export function GrowthTab({
             <IconShieldCheck size={28} color="#02A36E" />
           </div>
           <Text fw={800} className="mt-3 text-[32px] text-[#02A36E]">
-            {trustScore}
+            {trustScore ?? "Unavailable"}
           </Text>
           <Text fw={600} className="text-[14px] text-[#0F172A]">
             Trust Score
           </Text>
           <Text fw={500} className="mt-1 text-[12px] text-[#6B7280]">
-            {trustPercent >= 80
+            {trustScore == null ? "Unable to load trust score" : trustPercent >= 80
               ? "Excellent"
               : trustPercent >= 60
                 ? "Good"
@@ -327,7 +327,7 @@ export function GrowthTab({
                 </tr>
               ) : (
                 contributions.map((c) => {
-                  const penalty = Number(c.penaltyAmount ?? 0);
+                  const penalty = kobo(c.penaltyAmount) ?? 0n;
                   const date = c.paidAt
                     ? new Date(c.paidAt).toLocaleDateString("en-NG", {
                         day: "numeric",
@@ -363,7 +363,7 @@ export function GrowthTab({
                           {penalty > 0 ? (
                             <>
                               {formatNaira(c.penaltyAmount)}
-                              <span className="mt-0.5 block text-[10px] text-[#6B7280]">1.5% after deadline</span>
+                              <span className="mt-0.5 block text-[10px] text-[#6B7280]">Assessed late fee</span>
                             </>
                           ) : "-"}
                         </Text>
