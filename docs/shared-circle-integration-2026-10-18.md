@@ -15,12 +15,12 @@ Branch: `feat/shared-circle-experience`, based on remote staging `691598c`.
 - Completed memberships from join-request history are included in Joined, deduplicated with participation IDs. Existing administered-group navigation remains available.
 - Chat sending requires a fresh detail response confirming ACTIVE membership and ACTIVE circle. Completed history remains readable where the backend permits it; failed permission reads leave sending disabled.
 - Customer payout retry/reversal controls and their handlers are removed. Existing authorised manual due-payout action is retained.
-- Deadline form previews one selected cycle's new contribution date and next-day 00:00 WAT payout, states future cycles stay unchanged, and warns about compression. Submission is disabled: no calls to the legacy cascading extension API.
+- Deadline form previews one selected cycle's new contribution date and next-day 00:00 WAT payout, states future cycles stay unchanged, and warns about compression. PR #57 calls only the independent extension API behind a development-only opt-in; it never calls the legacy cascading API.
 - Admin wallet API failures no longer display zero balances. Group dashboard/deadline errors are explicit. Peer-review submission failures no longer show success.
 
 ## Verified frontend contracts and limitations
 
-These are existing client contracts and fixture-backed browser behavior, not confirmation of live backend implementation. The environment does not provide verified readiness for `VITE_API_BASE_URL`; no backend source was available or modified.
+These are existing client contracts and fixture-backed browser behavior, not confirmation of live backend implementation. Backend PR #123 is source-reviewed for its extension contract, but no backend code was changed and no live backend integration has been run. `VITE_API_BASE_URL` readiness remains unverified.
 
 | Existing API | Use and limits |
 | --- | --- |
@@ -74,3 +74,4 @@ Integrate and browser-test the Stage 4 member-safe contracts once implemented an
 - `node --experimental-strip-types --test tests/circle-access.test.mjs`: 4 pass.
 - Shared-circle Playwright coverage: 22 desktop/mobile cases pass across the shared-page, management, and completed-list checks. All 12 existing duration/deadline/navigation cases pass after updating canonical routes, current labels, authoritative schedule fixtures, and navigation readiness assertions.
 - Browser checks use system `/usr/bin/chromium` through an untracked local config, with video disabled because the bundled Chromium/ffmpeg were unavailable. Tests use API fixtures; no live backend or database integration is claimed.
+- 19 October contract review: admin typecheck and production builds passed with the extension flag both unset and set. All 12 desktop/mobile cases in `e2e/circle-deadline-extension.spec.ts` passed across an opted-in development run and a production preview built with the flag set; the production bundle kept submission disabled. The separate default-disabled development check also passed on desktop and mobile. No live backend requests were made.
