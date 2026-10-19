@@ -513,22 +513,26 @@ export function getRoscaSchedules(circleId: string): Promise<RoscaSchedule[]> {
 export type ContributionPaymentMethod = "MANUAL" | "AUTOMATIC";
 
 export async function getContributionPaymentPreference(circleId: string): Promise<ContributionPaymentMethod> {
-  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+  const response = await authRequest<{ data?: { paymentMethod?: unknown }; paymentMethod?: unknown }>(
     `/api/rosca/${circleId}/contributions/payment-preference`,
     { method: "GET" },
   );
-  return response.data.paymentMethod;
+  const method = response.data?.paymentMethod ?? response.paymentMethod;
+  if (method !== "MANUAL" && method !== "AUTOMATIC") throw new Error("Payment preference is unavailable.");
+  return method;
 }
 
 export async function setContributionPaymentPreference(
   circleId: string,
   paymentMethod: ContributionPaymentMethod,
 ): Promise<ContributionPaymentMethod> {
-  const response = await authRequest<{ data: { paymentMethod: ContributionPaymentMethod } }>(
+  const response = await authRequest<{ data?: { paymentMethod?: unknown }; paymentMethod?: unknown }>(
     `/api/rosca/${circleId}/contributions/payment-preference`,
     { method: "PATCH", body: JSON.stringify({ paymentMethod }) },
   );
-  return response.data.paymentMethod;
+  const method = response.data?.paymentMethod ?? response.paymentMethod;
+  if (method !== "MANUAL" && method !== "AUTOMATIC") throw new Error("The server returned an invalid payment preference.");
+  return method;
 }
 
 export interface CircleEarlyPayout {

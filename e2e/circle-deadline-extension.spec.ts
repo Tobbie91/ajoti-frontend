@@ -8,6 +8,7 @@ type MockOptions = {
   user?: typeof admin | typeof member
   currentDeadline?: string
   patchStatus?: number
+  payoutStatus?: string | null
 }
 
 type MockState = {
@@ -87,7 +88,7 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
         payoutDate: '2031-01-02T00:00:00+01:00',
         contributionDeadline: state.updatedDeadline ?? currentDeadline,
         scheduleStatus: 'UPCOMING',
-        payoutStatus: null,
+        payoutStatus: options.payoutStatus ?? null,
         amountPaidOut: null,
         processedAt: null,
       }] } } })
@@ -104,13 +105,13 @@ async function mockDeadlineExtensionApi(page: Page, options: MockOptions = {}): 
   return state
 }
 
-async function openExtensionForm(page: Page, targetDate: string) {
+async function openExtensionForm(page: Page, targetDate: string, cutoffTime?: string) {
   await page.goto(`/rosca/${circleId}?view=manage`)
   await page.getByRole('tab', { name: 'Payment Oversight' }).click()
   await page.getByRole('button', { name: 'Extend Deadline' }).click()
   const input = page.getByLabel('New contribution deadline (WAT)')
   await input.fill(targetDate)
-  await page.getByLabel('New cutoff time (WAT)').fill('23:59:59')
+  if (cutoffTime) await page.getByLabel('New cutoff time (WAT)').fill(cutoffTime)
   await page.getByText('Extend Cycle Deadline', { exact: true }).click()
 }
 
@@ -179,6 +180,60 @@ test('successful extension refreshes financial schedules and disbursement schedu
   await expect.poll(() => state.disbursementReads).toBeGreaterThan(disbursementReadsBeforePatch)
   expect(state.patches[0]?.body).toEqual({ newContributionDeadline: `${targetDate}T23:59:59+01:00` })
   expect(state.updatedDeadline).toBe(`${targetDate}T23:59:59+01:00`)
+})
+
+test('extension keeps the configured 18:00 WAT cutoff when the organiser changes only the date', async ({ page }) => {
+  const { currentDate, targetDate } = await page.evaluate(() => {
+    const current = new Date()
+    current.setDate(current.getDate() + 7)
+    const target = new Date(current)
+    target.setDate(target.getDate() + 1)
+    return { currentDate: current.toISOString().slice(0, 10), targetDate: target.toISOString().slice(0, 10) }
+  })
+  const state = await mockDeadlineExtensionApi(page, { currentDeadline: `${currentDate}T18:00:00+01:00` })
+  await openExtensionForm(page, targetDate)
+  await expect(page.getByLabel('New cutoff time (WAT)')).toHaveValue('18:00:00')
+  await page.getByRole('button', { name: 'Extend deadline', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(state.patches[0]?.body).toEqual({ newContributionDeadline: `${targetDate}T18:00:00+01:00` })
+})
+
+test('00:00 WAT cutoff preview schedules payout on the following WAT calendar day', async ({ page }) => {
+  const { currentDate, targetDate, payoutDate } = await page.evaluate(() => {
+    const current = new Date()
+    current.setDate(current.getDate() + 7)
+    const target = new Date(current)
+    target.setDate(target.getDate() + 1)
+    const payout = new Date(target)
+    payout.setDate(payout.getDate() + 1)
+    return { currentDate: current.toISOString().slice(0, 10), targetDate: target.toISOString().slice(0, 10), payoutDate: payout.toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'long' }) }
+  })
+  const state = await mockDeadlineExtensionApi(page, { currentDeadline: `${currentDate}T18:00:00+01:00` })
+  await openExtensionForm(page, targetDate, '00:00:00')
+  await expect(page.getByText(`Corresponding payout: ${payoutDate} at 00:00 WAT.`, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Extend deadline', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(state.patches[0]?.body).toEqual({ newContributionDeadline: `${targetDate}T00:00:00+01:00` })
+})
+
+for (const payoutStatus of ['FAILED', 'INITIATED']) {
+  test(`${payoutStatus.toLowerCase()} payout prevents a new deadline extension`, async ({ page }) => {
+    const state = await mockDeadlineExtensionApi(page, { payoutStatus })
+    await page.goto(`/rosca/${circleId}?view=manage`)
+    await page.getByRole('tab', { name: 'Payment Oversight' }).click()
+    await expect(page.getByText('Cycle 1', { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Extend Deadline', exact: true })).toHaveCount(0)
+    expect(state.patches).toEqual([])
+  })
+}
+
+test('an expired contribution cutoff cannot be extended', async ({ page }) => {
+  const state = await mockDeadlineExtensionApi(page, { currentDeadline: '2020-01-01T18:00:00+01:00' })
+  await page.goto(`/rosca/${circleId}?view=manage`)
+  await page.getByRole('tab', { name: 'Payment Oversight' }).click()
+  await expect(page.getByText('Cycle 1', { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Extend Deadline', exact: true })).toHaveCount(0)
+  expect(state.patches).toEqual([])
 })
 
 test('non-admin members do not receive deadline extension controls', async ({ page }) => {

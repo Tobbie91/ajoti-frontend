@@ -24,6 +24,8 @@ test('a member can open a joined group before the first cycle completes and retu
 })
 
 test('joined cards display the contribution deadline rather than the payout date', async ({ page }) => {
+  // Freeze before the fixture deadline so this remains an upcoming-state assertion.
+  await page.clock.install({ time: new Date('2026-10-01T00:00:00Z') })
   await mockRoscaReads(page, { duration: 5 })
   await page.route('**/api/rosca/my-participations', route => route.fulfill({ json: { data: [{
     ...circle, currentCycle: 1, durationCycles: 5,
@@ -31,6 +33,7 @@ test('joined cards display the contribution deadline rather than the payout date
   }] } }))
   await page.route('**/api/rosca/family/schedules', route => route.fulfill({ json: { data: Array.from({ length: 5 }, (_, i) => ({ cycleNumber: i + 1, status: 'UPCOMING', contributionDeadline: '2026-10-10T12:00:00Z', payoutDate: '2026-10-11T12:00:00Z' })) } }))
   await page.goto('/rosca?tab=joined')
-  await expect(page.getByText(/Next pay by/)).toContainText('10 Oct 2026', { timeout: 5000 })
-  await expect(page.getByText(/Next pay by/)).not.toContainText('11 Oct')
+  const deadlineLabel = page.getByText(/Upcoming · Pay by/)
+  await expect(deadlineLabel).toContainText('10 Oct 2026', { timeout: 5000 })
+  await expect(deadlineLabel).not.toContainText('11 Oct')
 })

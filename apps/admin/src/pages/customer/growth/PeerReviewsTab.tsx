@@ -26,6 +26,7 @@ import {
   messageAdmin,
   makeContribution,
   getWalletBalance,
+  getCirclePeerReviews,
   submitPeerReview,
   type CircleContribution,
   type CircleMember,
@@ -47,12 +48,14 @@ export function PeerReviewsTab({
   circleStatus,
   members,
   currentUserId,
+  onReviewSubmitted,
 }: {
   circleId: string;
   circleName: string;
   circleStatus: string;
   members: CircleMember[];
   currentUserId: string;
+  onReviewSubmitted?: () => void;
 }) {
   const [selectedMember, setSelectedMember] = useState<CircleMember | null>(
     null,
@@ -64,8 +67,26 @@ export function PeerReviewsTab({
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
+  const [reviewHistoryStatus, setReviewHistoryStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [reviewHistoryRetry, setReviewHistoryRetry] = useState(0);
 
   const isCompleted = circleStatus.toUpperCase() === "COMPLETED";
+
+  useEffect(() => {
+    if (!isCompleted) return;
+    let active = true;
+    setReviewHistoryStatus("loading");
+    getCirclePeerReviews(circleId)
+      .then((reviews) => {
+        if (!active) return;
+        setSubmitted(new Set(reviews.map((review) => review.revieweeId).filter(Boolean)));
+        setReviewHistoryStatus("loaded");
+      })
+      .catch(() => {
+        if (active) setReviewHistoryStatus("error");
+      });
+    return () => { active = false; };
+  }, [circleId, isCompleted, reviewHistoryRetry]);
 
   if (!isCompleted) {
     return (
@@ -94,10 +115,11 @@ export function PeerReviewsTab({
     try {
       await submitPeerReview(circleId, {
         revieweeId: selectedMember.userId,
-        rating: Math.round(rating / 20), // convert 0-100 to 1-5
+        rating: Math.max(1, Math.min(5, Math.round(rating / 20))), // 1-5 scale
         comment: message.trim() || undefined,
       });
       setSubmitted((prev) => new Set([...prev, selectedMember.userId]));
+      onReviewSubmitted?.();
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to submit review. Please try again.");
       setSubmitStep("idle");
@@ -110,6 +132,7 @@ export function PeerReviewsTab({
     return (
       <div className="flex flex-col gap-6">
         {submitError && <Text role="alert" c="red">{submitError}</Text>}
+        {reviewHistoryStatus === "error" && <Text role="alert" c="red">Unable to load your review history. Retry before submitting to avoid a duplicate review. <button type="button" className="font-semibold underline" onClick={() => setReviewHistoryRetry((value) => value + 1)}>Try again</button></Text>}
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
@@ -199,7 +222,7 @@ export function PeerReviewsTab({
               <Slider
                 value={rating}
                 onChange={setRating}
-                min={0}
+                min={20}
                 max={100}
                 step={5}
                 color="#02A36E"
@@ -237,7 +260,7 @@ export function PeerReviewsTab({
                 Cancel
               </button>
               <button
-                disabled={submitStep === "submitting"}
+                disabled={submitStep === "submitting" || reviewHistoryStatus !== "loaded" || rating < 20}
                 onClick={handleSubmit}
                 className="flex-1 cursor-pointer rounded-lg bg-[#02A36E] py-3 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -257,6 +280,8 @@ export function PeerReviewsTab({
       <Text fw={600} className="text-[15px] text-[#0F172A]">
         Rate your fellow members from the &ldquo;{circleName}&rdquo; circle
       </Text>
+      {reviewHistoryStatus === "loading" && <Text role="status" size="sm" c="dimmed">Loading your review history…</Text>}
+      {reviewHistoryStatus === "error" && <Text role="alert" c="red">Unable to load your review history. Retry before submitting to avoid a duplicate review. <button type="button" className="font-semibold underline" onClick={() => setReviewHistoryRetry((value) => value + 1)}>Try again</button></Text>}
       {members.length === 0 ? (
         <Text fw={400} className="text-[13px] text-[#9CA3AF]">
           No other members to review.
@@ -268,6 +293,7 @@ export function PeerReviewsTab({
             return (
               <button
                 key={m.userId}
+                disabled={reviewHistoryStatus !== "loaded" || submitted.has(m.userId)}
                 onClick={() => {
                   if (!alreadyReviewed) {
                     setSelectedMember(m);

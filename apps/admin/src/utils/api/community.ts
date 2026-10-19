@@ -430,6 +430,12 @@ export async function getCircleContributions(
     const response = await authRequest<{ data: CircleContribution[] }>(`/api/rosca/${circleId}/contributions?limit=100${offset ? `&offset=${offset}` : ''}`, { method: 'GET' });
     if (!Array.isArray(response.data)) throw new Error('Personal contribution history is unavailable.');
     for (const row of response.data) {
+      if (!row || typeof row.id !== 'string' || !row.id || !Number.isSafeInteger(row.cycleNumber) || row.cycleNumber < 1
+        || typeof row.amount !== 'string' || !/^\d+$/.test(row.amount)
+        || typeof row.penaltyAmount !== 'string' || !/^\d+$/.test(row.penaltyAmount)
+        || typeof row.paidAt !== 'string' || !Number.isFinite(Date.parse(row.paidAt))) {
+        throw new Error('Personal contribution history contains incomplete records. Refresh to try again.');
+      }
       if (seen.has(row.id)) throw new Error('Contribution history changed during loading. Refresh to try again.');
       seen.add(row.id); rows.push(row);
     }

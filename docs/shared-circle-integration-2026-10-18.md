@@ -1,77 +1,72 @@
-# Shared circle frontend integration — 18 October 2026
+# Shared circle frontend integration — 19 October 2026
 
-## Contract review update — 19 October 2026
+This record supersedes the earlier pending-contract notes in this file. It describes the consolidated frontend branch `feat/shared-circle-integration`, based on the preserved frontend PRs #55–#57. No existing PR was rewritten or closed. The integration branch has not been merged or deployed.
 
-Reviewed the client calls in PRs #55–#57 against backend PR #123. PR #123 confirms the independent deadline endpoint contract below. Its backend behavior is source-verified, but it is not a live integration result: the backend PR is still open, and frontend tests use mocked responses.
+## Implementation status
 
-Branch: `feat/shared-circle-experience`, based on remote staging `691598c`.
+| Area | Frontend state | Verification boundary |
+|---|---|---|
+| Canonical circle view | `/rosca/:id` is shared by authorized members and actual owners; unapproved viewers stay on a preview. Owners retain management controls. | Frontend guards and mocked authorization cases; backend remains authoritative. |
+| Member-safe financial views | Circle health, cycle progress, contribution summaries/history, payout schedule/history, and aggregate reviews use the Stage 4 DTOs. Amounts are integer kobo and formatted with `BigInt`; missing or malformed values remain unavailable. | Contract fixtures only; no live staging request. |
+| Dashboard and navigation | Joined, administered and completed circles are deduplicated; Next Deadline comes from a circle-scoped schedule and includes its cycle. Upcoming, overdue, completed, planned, unavailable and failed states are represented. | Desktop/mobile mocked browser cases. |
+| Independent deadline extension | The owner control uses the cycle-specific PATCH contract and preserves the selected schedule's configured WAT cutoff. Validation, 409 handling and schedule refresh remain. | Mocked requests. Submission stays gated off in production builds. |
+| Completed history | Completed members can read cycle/contribution/payout history, see aggregate reviews, submit a permitted review once, and use read-only group chat UI. | Mocked frontend behavior. Backend group-chat reads for completed members are still blocked by the current Stage 4 source branch. |
+| Sensitive data | Shared screens do not render private wallets, bank details, debts, collateral, provider IDs, ledger details, or individual review comments/identities. | Sentinel-field UI tests; this does not prove backend response redaction. |
 
-## Implemented
+## Stage 4 member-safe contracts used by the frontend
 
-- `/rosca/:id` is the customer group entry point. Legacy activity URLs preserve query/payment shortcuts; legacy organiser detail URLs redirect to the canonical route with `view=manage`.
-- ACTIVE and COMPLETED memberships use the existing activity overview, cycle schedules, roster, progress, and completed peer-review submission components. Circle owners see the same shared page plus a management link. Owners who are approved members retain personal contribution and early-payment flows.
-- Unapproved/unknown memberships get a preview without protected schedule, roster, or review requests. The backend detail response remains authoritative; previews cannot be promoted by query strings. All backend authorization remains unchanged.
-- The contribution-history component is reused in shared and management views. Failed roster/history loads show errors instead of empty results or invented unpaid statuses. Currency presentation preserves two decimal places.
-- Completed memberships from join-request history are included in Joined, deduplicated with participation IDs. Existing administered-group navigation remains available.
-- Chat sending requires a fresh detail response confirming ACTIVE membership and ACTIVE circle. Completed history remains readable where the backend permits it; failed permission reads leave sending disabled.
-- Customer payout retry/reversal controls and their handlers are removed. Existing authorised manual due-payout action is retained.
-- Deadline form previews one selected cycle's new contribution date and next-day 00:00 WAT payout, states future cycles stay unchanged, and warns about compression. PR #57 calls only the independent extension API behind a development-only opt-in; it never calls the legacy cascading API.
-- Admin wallet API failures no longer display zero balances. Group dashboard/deadline errors are explicit. Peer-review submission failures no longer show success.
+Source reviewed: [backend Stage 4 shared-circle contract](https://github.com/ajoti-fintech/ajoti-backend/blob/codex/stage4-shared-circle-access/docs/specs/2026-10-19-action-stage4-shared-circle-access.md). Read responses use `{ success, data }`; money fields are integer-kobo strings and dates are ISO instants.
 
-## Verified frontend contracts and limitations
+| Endpoint | Frontend use |
+|---|---|
+| `GET /api/rosca/:id` | Circle details or a safe discoverable preview. Protected members, dates and progress are not inferred from a preview. |
+| `GET /api/rosca/:id/schedules` | Cycle context, contribution cutoffs, payout dates and recipient display names. |
+| `GET /api/rosca/:id/progress` | Per-member completed cycles, payout position and payout state. The page does not join members to contribution rows by display name. |
+| `GET /api/rosca/:id/contribution-summary?cycleNumber=N` | Selected-cycle aggregate and recorded contribution rows. |
+| `GET /api/rosca/:id/contributions/roster?cycleNumber=N` | Selected-cycle member-safe contribution history; no user IDs, penalties or late-state are assumed. |
+| `GET /api/rosca/:id/financial-health` | Collected, expected and outstanding totals and per-cycle counts. The member DTO has no remaining/reconciliation balance; the UI labels it unavailable and never derives it from scheduled payouts. |
+| `GET /api/rosca/:id/disbursements` and `GET /api/rosca/:id/payouts` | Safe payout schedule, recipients, settlement states and history. |
+| `GET /api/rosca/:id/reviews/summary` | Aggregate 1–5 ratings and review counts only. |
+| `GET /api/rosca/:id/reviews/mine` | The authenticated member's own review history, used only to prevent a duplicate submission. Private comments and reviewer identities are not rendered. |
+| `GET /api/rosca/:id/contributions?limit=100&offset=N` | Authenticated member's personal receipts, paged until the complete history is loaded; malformed or repeated pages fail closed. |
 
-These are existing client contracts and fixture-backed browser behavior, not confirmation of live backend implementation. Backend PR #123 is source-reviewed for its extension contract, but no backend code was changed and no live backend integration has been run. `VITE_API_BASE_URL` readiness remains unverified.
+Protected circle reads require actual ownership or ACTIVE/COMPLETED membership. A global `CIRCLE_ADMIN` role does not grant access to unrelated circles. Pending, rejected, removed, exited, defaulted and unrelated users remain outside protected views. These frontend states do not replace service/controller authorization.
 
-| Existing API | Use and limits |
-| --- | --- |
-| `GET /api/rosca/:id` | Circle/preview, `isRequestingUserAdmin`, `userMembershipStatus` or own roster membership. Unknown status fails closed. Stage 4 must authorize each circle read in backend services/controllers and return only member-safe fields. |
-| `GET /api/rosca/:id/schedules` | Client uses cycle number/status, contribution deadline, payout date and recipient display information. No invented dates. Stage 4 must allow owners and ACTIVE/COMPLETED members to read current and completed history; completed history coverage must be confirmed. |
-| `GET /api/rosca/:id/contributions/roster` | Client uses member reference/name, cycle, amount, paid timestamp and late status. Stage 4 must return a safe projection and omit per-member penalty/debt, collateral, wallet/bank, provider and ledger data. Full history and pagination behavior must be explicit. |
-| `GET /api/rosca/:id/contributions?limit=100` | Existing personal payment flow retained. Coverage beyond 100 rows requires a verified pagination contract. |
-| `GET /api/chat/circles`, `GET /api/chat/circles/:id/messages` | Existing history. Completed-circle inclusion and historical access still require backend verification. |
-| `GET /api/rosca/my-join-requests`, `/my-participations` | Joined/completed lists deduplicated by circle ID. Completed metadata retention must be guaranteed by backend. |
-| `GET /api/admin/rosca/:id/financial-health` | Remains management-only; never called from shared member views. Stage 4 needs a confirmed member-safe read contract before any shared view uses it. |
-| `GET /api/rosca/:id/payouts` | Current payout-history client is used in management. Its `Payout` type includes recipient contact fields; do not reuse this raw shape in member views. Stage 4 must provide a safe projection and documented pagination. |
-| `GET /api/rosca/:id/reviews/mine` and `GET /api/rosca/:id/reviews` | The former is used for the current user's review history; the latter feeds management review rows. Neither is an aggregate peer-review DTO. Do not expose individual reviewer identities/comments as aggregate data. |
-| `PATCH /api/admin/rosca/:id/schedules/:cycle/extend` | PR #123 confirms the independent contract below. The form is owner-management-only and deployed submission remains disabled until the backend is available and integration-tested. |
+## Independent deadline extension
 
-### Verified independent deadline contract from backend PR #123
-
-The frontend call matches the controller and validated DTO in PR #123:
+The frontend sends:
 
 ```http
-PATCH /api/admin/rosca/{circleId}/schedules/{cycleNumber}/extend
+PATCH /api/admin/rosca/:id/schedules/:cycleNumber/extend
 Content-Type: application/json
 
 {"newContributionDeadline":"2030-10-16T18:00:00+01:00"}
 ```
 
-The request must contain `newContributionDeadline` as a strict ISO timestamp with `Z` or an explicit numeric offset. The UI currently sends the selected WAT calendar date at `23:59:59+01:00`. Success is HTTP 200 with `{"message":"Deadline extended successfully"}`; the response does not include a schedule. The backend derives payout for 00:00 WAT on the following calendar day and changes only the selected cycle. HTTP 400 covers invalid/expired dates and payout, late-fee or cycle-ordering conflicts; 403 is not the circle owner; 404 is a missing circle/cycle; HTTP 409 is a concurrent schedule change. The client handles validation and 409, then refetches financial health and admin disbursement schedules after success. The old `newPayoutDate` body is rejected.
+The selected deadline must include `Z` or an explicit numeric offset. HTTP 400 validation errors remain in the form; HTTP 409 reports a concurrent schedule conflict. After success the frontend reloads schedule data. The existing control remains owner-only, ACTIVE-circle-only, UPCOMING-cycle-only and unavailable after the existing cutoff or after payout processing begins.
 
-The admin route/service remains the authorization boundary. The frontend control is shown only in the management view, and submission requires both a development build and an explicit `VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION=true` opt-in. Production builds cannot enable submission with that flag. Mocked browser tests cover the payload, WAT offset, validation, 409, post-success refresh, member visibility and production gate; staging integration remains blocked while PR #123 is open.
+The current schedule's WAT cutoff is preserved when the organiser changes only the date. An explicit time change changes that cutoff visibly. The backend schedules payout at 00:00 WAT on the following calendar day: a 23:59:59 WAT cutoff is one second before that payout, while a 00:00 WAT cutoff leaves the payout on the next calendar day. No financial cutoff or payout rule is changed by this frontend work.
 
-## Required backend contracts before remaining integration
+Submission requires both `import.meta.env.DEV` and `VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION=true`. A production build remains disabled even when that flag is present. The opt-in is for isolated development contract tests only.
 
-No new Stage 4 endpoint paths have been assumed or added. Backend owners must confirm routes and implement the following exact consumer contracts and access rules before the shared views integrate them:
+## Remaining integration blockers
 
-1. **Authorization for every circle-scoped read**: the actual circle owner and members with `ACTIVE` or `COMPLETED` membership may read the permitted circle data. A global `CIRCLE_ADMIN` role alone grants no access to an unrelated circle. Pending, rejected, removed and unrelated users are denied protected reads. Completed membership keeps authorized historical reads and remains read-only. Enforce this in backend services/controllers, not only route guards or frontend capabilities. Management stays owner-only; financial recovery actions stay staff-only.
-2. **Group progress**: circle ID/name/status and per-cycle number/status, completion state, contribution deadline and payout timestamp, plus counts and totals required by the existing progress views. Totals must come from authoritative backend data; amounts are integer kobo strings, and unavailable values must be explicit (`null`/unavailable), never synthesized as zero or calculated from payout schedules.
-3. **Member-safe contributions**: the roster view needs a circle-member reference/display name, cycle number, amount, payment timestamp and late/on-time state. Amounts are integer kobo strings. Exclude personal debt/penalty amounts, collateral, private wallet/bank details, provider IDs and internal ledger data. Specify completeness and pagination for historical cycles.
-4. **Member-safe financial health**: circle ID/status/currency; authoritative `totalCollectedKobo` and `remainingBalanceKobo`; and per-cycle number/status, expected/collected/outstanding amounts, expected/collected counts, contribution deadline, payout timestamp, recipient display name/reference and settlement status. Amounts are integer kobo strings; nullable/unknown must be distinguishable from zero. Do not infer group balances by subtracting scheduled payouts. Exclude wallets, debts, bank accounts, individual collateral, ledger/provider references and diagnostics.
-5. **Payout schedules and history**: cycle number/status, contribution deadline, scheduled payout timestamp, recipient display name, actual settled amount/currency, settlement status and processed timestamp, with documented history pagination. Do not reuse the management `Payout` payload, which includes recipient contact data; exclude wallet/bank details, provider IDs, internal ledger details and individual collateral.
-6. **Aggregate peer-review data**: reviewed member reference/display name, average rating, rating scale and review count, with visibility/aggregation policy. Individual submissions are not a reliable aggregate. Never include reviewer identities or comments in the aggregate response.
-7. **Navigation and deadlines**: preserve circle ID/name/status and membership state for completed records in the joined-history source so PR #56 can deduplicate without losing completed history. The current admin dashboard supplies `nextDeadline.groupName` and `deadline` only; it has no cycle number. PR #56 does not fabricate one. Any unified member/admin deadline API must identify circle and cycle and distinguish upcoming, overdue, completed, unavailable and error states.
+1. **Completed group chat reads:** backend Stage 4 `chat.service.ts` currently permits only ACTIVE memberships in its group read/list checks. It needs to permit ACTIVE and COMPLETED for listing/reading history while keeping send restricted to ACTIVE membership in an ACTIVE circle. Direct messages must remain on their separate participant authorization path. The frontend already hides sending for completed circles and blocks history reads when circle access fails.
+2. **Live staging:** the configured API host available to this environment resolves to `localhost`; the health probe failed and no authorized staging test identities/circles were available. Backend PRs #122–#125 are draft/open and are not assumed deployed. No live authorization, server-side redaction, real deadline extension or provider behavior has been verified.
+3. **Member remaining balance:** Stage 4 intentionally omits group remaining/reconciliation balance from the member-safe DTO. The frontend shows it as unavailable. If product acceptance requires this value, backend must add an approved authoritative safe aggregate; the frontend must not derive it.
 
-## Remaining work
-
-Integrate and browser-test the Stage 4 member-safe contracts once implemented and available in a shared backend environment. Full shared financial totals, settlement history and aggregate ratings remain incomplete. PR #57's deadline request is source-matched to PR #123 but has only mocked frontend verification; leave deployed submission disabled until staging integration verifies the real request, owner authorization, 400/409 behavior and refreshed schedules. No backend code, deployment or merge is part of this frontend work.
+Before staging acceptance, deploy the reviewed backend stack through the approved process, provide the staging base URL and authorized accounts/circles for member, owner, owner-member, completed and denied cases, and then run the contract/Playwright matrix against staging. Recheck server authorization/redaction and the real extension's 400/403/404/409 behavior plus schedule refresh. Keep the production extension gate closed until that integration has passed. Do not run money-moving provider operations as part of these read/contract checks.
 
 ## Verification
 
-- `pnpm lint`: pass, zero errors and five existing hook/refresh warnings.
-- `pnpm --filter ajoti-admin exec tsc -b --force`: pass.
-- Clean customer production build and staff production build: pass; existing bundle-size warnings remain.
-- `node --experimental-strip-types --test tests/circle-access.test.mjs`: 4 pass.
-- Shared-circle Playwright coverage: 22 desktop/mobile cases pass across the shared-page, management, and completed-list checks. All 12 existing duration/deadline/navigation cases pass after updating canonical routes, current labels, authoritative schedule fixtures, and navigation readiness assertions.
-- Browser checks use system `/usr/bin/chromium` through an untracked local config, with video disabled because the bundled Chromium/ffmpeg were unavailable. Tests use API fixtures; no live backend or database integration is claimed.
-- 19 October contract review: admin typecheck and production builds passed with the extension flag both unset and set. All 12 desktop/mobile cases in `e2e/circle-deadline-extension.spec.ts` passed across an opted-in development run and a production preview built with the flag set; the production bundle kept submission disabled. The separate default-disabled development check also passed on desktop and mobile. No live backend requests were made.
+Verification completed on the consolidated branch:
+
+- Focused Playwright regression set: **54/54 desktop Chromium and 54/54 mobile Chromium**. This covers Stage 4 access roles, financial states, deadline validation/conflicts, dashboard navigation, completed history, and responsive layouts. API responses are mocked.
+- Production-preview safety gate: **2/2 desktop/mobile tests passed** with `VITE_ENABLE_CIRCLE_DEADLINE_EXTENSION=true` supplied to the production build; submission remained disabled.
+- `pnpm --filter ajoti-admin exec tsc -b --force`: passed.
+- `pnpm lint`: passed with 0 errors and 5 existing warnings in unrelated files.
+- Contract regression tests: **7/7 passed** (`tests/circle-access.test.mjs` and `tests/circle-financial-contract.test.mjs`).
+- `pnpm build:admin` and `pnpm build:super-admin`: passed. Vite reports existing large JavaScript chunks above 500 kB.
+- `git diff --check`: passed.
+
+No live staging integration is claimed. The production deadline submission gate remains closed pending deployed backend integration and authorized staging acceptance testing.

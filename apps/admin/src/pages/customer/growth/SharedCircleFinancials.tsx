@@ -44,13 +44,16 @@ export function SharedCircleFinancials({ circleId, view, currentCycle = 1, cycle
     <ReadSection id={circleId} title="Payout history" read={getPayoutHistory} refreshVersion={refreshVersion}>{items => <Rows headers={['Cycle', 'Recipient', 'Amount', 'Status', 'Processed']} rows={items.map(item => [item.cycleNumber, item.recipientName ?? 'Unavailable', formatKobo(item.amount), <Badge color={item.status === 'FAILED' ? 'red' : 'teal'}>{item.status}</Badge>, watDate(item.processedAt)])} />}</ReadSection>
   </Stack>
   return <Stack>
-    <ReadSection id={circleId} title="Group financial health" read={getSharedHealth} refreshVersion={refreshVersion}>{health => <>
+    <ReadSection id={circleId} title="Group financial health" read={getSharedHealth} refreshVersion={refreshVersion}>{health => {
+      const expectedTotal = health.cycles.length === 0 ? 'Unavailable' : formatKobo(sumKobo(health.cycles.map(item => item.expectedPot))?.toString())
+      const outstandingTotal = health.cycles.length === 0 ? 'Unavailable' : formatKobo(sumKobo(health.cycles.map(item => item.outstanding))?.toString())
+      return <>
       <SimpleGrid cols={{ base: 1, sm: 3 }}>
-        {[['Total collected', formatKobo(health.totalCollected)], ['Expected contributions', formatKobo(sumKobo(health.cycles.map(item => item.expectedPot))?.toString())], ['Outstanding contributions', formatKobo(sumKobo(health.cycles.map(item => item.outstanding))?.toString())]].map(([label, value]) => <div key={label}><Text size="sm" c="dimmed">{label}</Text><Text fw={700}>{value}</Text></div>)}
+        {[['Total collected', formatKobo(health.totalCollected)], ['Expected contributions', expectedTotal], ['Outstanding contributions', outstandingTotal]].map(([label, value]) => <div key={label}><Text size="sm" c="dimmed">{label}</Text><Text fw={700}>{value}</Text></div>)}
       </SimpleGrid>
       <Text size="xs" c="dimmed">Group balance remaining is unavailable in the member-safe API. Collected contributions are not an available wallet balance.</Text>
       <Rows headers={['Cycle', 'Deadline', 'Expected', 'Collected', 'Outstanding', 'Paid / expected', 'Status']} rows={health.cycles.map(item => [item.cycleNumber, watDate(item.contributionDeadline), formatKobo(item.expectedPot), formatKobo(item.collected), formatKobo(item.outstanding), `${item.collectedCount} / ${item.expectedCount}`, item.scheduleStatus])} />
-    </>}</ReadSection>
+    </>}}</ReadSection>
     <ReadSection id={circleId} title="Member cycle progress" read={getSharedProgress} refreshVersion={refreshVersion}>{data => <Rows headers={['Member', 'Completed cycles', 'Payout position', 'Payout status']} rows={data.members.map(item => [item.name, `${item.completedCycles} / ${item.durationCycles}`, item.payoutPosition ?? 'Unassigned', item.payoutStatus])} />}</ReadSection>
     <Select label="Contribution summary cycle" value={cycle} onChange={value => { if (value) setCycle(value) }} data={numbers.map(number => ({ value: String(number), label: `Cycle ${number}` }))} />
     <ReadSection id={circleId} title="Contribution summary" read={getContributionSummary} cycle={Number(cycle)} refreshVersion={refreshVersion}>{data => <>

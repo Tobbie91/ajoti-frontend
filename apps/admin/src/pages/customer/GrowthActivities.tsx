@@ -86,6 +86,7 @@ export function GrowthActivities() {
   const autoPay = searchParams.get("pay") === "1" || contributionShortcut;
   const [loading, setLoading] = useState(true);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const [ratingRefreshVersion, setRatingRefreshVersion] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [circle, setCircle] = useState<RoscaCircle | null>(null);
@@ -361,7 +362,7 @@ export function GrowthActivities() {
             openContributionOnLoad={contributionShortcut}
           />
         )}
-        {activeTab === "Peer Reviews" && <SharedCircleFinancials circleId={id!} view="ratings" refreshVersion={refreshVersion} />}
+        {activeTab === "Peer Reviews" && <SharedCircleFinancials circleId={id!} view="ratings" refreshVersion={ratingRefreshVersion} />}
         {activeTab === "Peer Reviews" && approvedMember && (
           <PeerReviewsTab
             circleId={id!}
@@ -369,6 +370,7 @@ export function GrowthActivities() {
             circleStatus={(circle as any).status ?? ""}
             members={members.filter((m) => m.userId !== currentUserId)}
             currentUserId={currentUserId}
+            onReviewSubmitted={() => setRatingRefreshVersion((version) => version + 1)}
           />
         )}
       </div>
