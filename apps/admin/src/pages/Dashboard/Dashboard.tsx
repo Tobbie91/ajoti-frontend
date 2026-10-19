@@ -293,7 +293,7 @@ export function Dashboard() {
         <StatsCard
           title="Total Groups"
           value={circlesLoading ? unavailableValue : circlesError ? unavailableValue : String(bucketCounts.total)}
-          subtitle={circlesError ? 'Failed to load' : 'Excludes cancelled'}
+          subtitle={circlesError ? 'Failed to load' : 'Admin circles · excl. cancelled'}
           withBar
         />
         <StatsCard
