@@ -24,6 +24,7 @@ import {
   type MyJoinRequest,
 } from "@/utils/api";
 import { PayContributionModal } from "./growth/PayContributionModal";
+import { circleDeadlineLabel, getCircleDeadlineState } from "@/utils/circle-deadline";
 
 type Participation = RoscaCircle;
 
@@ -78,7 +79,7 @@ const statusBadge: Record<GroupStatus, { bg: string; color: string; border: stri
 function contributionDate(circle: { status?: string; nextContributionDeadline?: string | null }): string {
   const date = circle.nextContributionDeadline ? new Date(circle.nextContributionDeadline) : null;
   if (date && !Number.isNaN(date.getTime())) {
-    return date.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+    return date.toLocaleString("en-NG", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
   }
   if (circle.status === "DRAFT") return "After the organiser starts the group";
   if (["COMPLETED", "CANCELLED"].includes(circle.status ?? "")) return "No further contributions";
@@ -133,10 +134,14 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
   })();
 
   const cycleStripSubtle = (() => {
-    if (tone === "active" && group.progressUnavailable) return "Group contribution progress is unavailable. Refresh to try again.";
-    if (tone === "active") return `Next pay by ${group.nextContribution}`;
+    if (group.progressUnavailable) return "Schedule and contribution progress unavailable. Refresh to try again.";
+    const deadlineState = getCircleDeadlineState({ circleStatus: group.circleStatus, deadline: group.nextDeadlineRaw });
+    if (deadlineState === "upcoming") return `Upcoming · Pay by ${group.nextContribution}`;
+    if (deadlineState === "overdue") return `Overdue · Due ${group.nextContribution}`;
+    if (deadlineState === "unavailable" && tone === "active") return `${circleDeadlineLabel.unavailable} · Refresh to check the schedule.`;
+    if (tone === "active") return `${circleDeadlineLabel[deadlineState]} · ${group.nextContribution}`;
     if (tone === "notready") return "No contributions yet";
-    return group.nextContribution;
+    return `${circleDeadlineLabel[deadlineState]} · ${group.nextContribution}`;
   })();
 
   return (
@@ -264,7 +269,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
           onClick={onView}
           className="cursor-pointer rounded-lg border border-[#02A36E] bg-white py-2.5 text-[12.5px] font-semibold text-[#0B6B55] transition-colors hover:bg-[#E7F4EE]"
         >
-          View group
+          {tone === "completed" ? "View history" : "View group"}
         </button>
         <button
           type="button"
@@ -289,7 +294,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
           className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-1.5 text-[11.5px] text-[#64748B] transition-colors hover:bg-[#F1F3EF] hover:text-[#0F172A]"
         >
           <IconMessageCircle size={13} />
-          Group chat
+          {tone === "completed" ? "Previous group chat" : "Group chat"}
         </button>
         {canExit && (
           <button
@@ -327,18 +332,24 @@ export function Rosca() {
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [joinedGroups, setJoinedGroups] = useState<JoinedGroup[]>([]);
   const [joinedLoading, setJoinedLoading] = useState(true);
+  const [joinedReadError, setJoinedReadError] = useState(false);
+  const [membershipReadError, setMembershipReadError] = useState(false);
+  const [discoverReadError, setDiscoverReadError] = useState(false);
   const [needsLogin, setNeedsLogin] = useState(false);
   const [payPlan, setPayPlan] = useState<JoinedGroup | null>(null);
 
   // ─── Fetch discover list + joined-ID set ────────────────────────────────
   useEffect(() => {
+    setMembershipReadError(false);
+    setDiscoverReadError(false);
     Promise.allSettled([
       listRoscaCircles(),
       getMyParticipations(),
       getMyJoinRequests(),
     ]).then(([circlesRes, partRes, joinRes]) => {
       if (circlesRes.status === "fulfilled") {
-        const mapped: RoscaGroup[] = circlesRes.value.map((c: RoscaCircle) => {
+        const uniqueCircles = [...new Map(circlesRes.value.filter((circle) => circle?.id).map((circle) => [circle.id, circle])).values()];
+        const mapped: RoscaGroup[] = uniqueCircles.map((c: RoscaCircle) => {
           const slotsLeft = (c.maxSlots ?? 0) - (c.filledSlots ?? 0);
           const adminName = c.admin
             ? `${c.admin.firstName ?? ""} ${c.admin.lastName ?? ""}`.trim()
@@ -365,7 +376,13 @@ export function Rosca() {
           err.message.toLowerCase().includes("unauthorized")
         ) {
           setNeedsLogin(true);
+        } else {
+          setDiscoverReadError(true);
         }
+      }
+
+      if (partRes.status === "rejected" || joinRes.status === "rejected") {
+        setMembershipReadError(true);
       }
 
       const ids = new Set<string>();
@@ -384,6 +401,7 @@ export function Rosca() {
   // ─── Fetch joined-group details — always, not only on Joined tab ─────────
   useEffect(() => {
     setJoinedLoading(true);
+    setJoinedReadError(false);
 
     function mapJoinRequest(r: MyJoinRequest): JoinedGroup {
       const circle = (r.circle ?? {}) as Partial<RoscaCircle>;
@@ -454,6 +472,7 @@ export function Rosca() {
 
     Promise.allSettled([getMyJoinRequests(), getMyParticipations()])
       .then(([joinRes, partRes]) => {
+        setJoinedReadError(joinRes.status === "rejected" || partRes.status === "rejected");
         const joinRequests = joinRes.status === "fulfilled" ? joinRes.value : [];
         const participations = partRes.status === "fulfilled" ? partRes.value : [];
 
@@ -475,7 +494,7 @@ export function Rosca() {
             merged.push(mapJoinRequest(r));
           }
         }
-        void Promise.all(merged.map(async (group) => {
+        return Promise.all(merged.map(async (group) => {
           try {
             const [schedules, contributions] = await Promise.all([
               getRoscaSchedules(group.id),
@@ -518,13 +537,17 @@ export function Rosca() {
               nextContributionAmountKobo: String(amountDue),
               nextDeadlineRaw: nextSchedule?.contributionDeadline,
               nextContribution: nextSchedule?.contributionDeadline
-                ? new Date(nextSchedule.contributionDeadline).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                ? new Date(nextSchedule.contributionDeadline).toLocaleString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
                 : group.nextContribution,
             };
           } catch {
             return { ...group, progressUnavailable: true };
           }
         })).then(setJoinedGroups);
+      })
+      .catch(() => {
+        setJoinedGroups([]);
+        setJoinedReadError(true);
       })
       .finally(() => setJoinedLoading(false));
   }, [refreshVersion]);
@@ -673,42 +696,43 @@ export function Rosca() {
               <Loader color="#02A36E" size="md" />
             </div>
           ) : !hasJoined ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-16">
-              <Text fw={600} className="text-[#374151]">No joined groups yet</Text>
-              <Text size="sm" className="text-[#9CA3AF]">
-                Discover and join an ajo circle to see it here.
-              </Text>
-              <button
-                type="button"
-                onClick={() => { setActiveTab("All Groups"); setShowAll(false); }}
-                className="mt-2 cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2 text-sm font-semibold text-white"
-              >
-                Browse ajo groups
-              </button>
-            </div>
+            joinedReadError ? (
+              <div role="alert" className="flex flex-col items-center justify-center gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-10 text-center">
+                <Text fw={600} className="text-red-800">Joined groups could not be loaded</Text>
+                <Text size="sm" className="text-red-700">Your group history is unavailable. Try again to reload it.</Text>
+                <button type="button" onClick={() => setRefreshVersion((v) => v + 1)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-800 ring-1 ring-red-300">Try again</button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 py-16">
+                <Text fw={600} className="text-[#374151]">No joined groups yet</Text>
+                <Text size="sm" className="text-[#9CA3AF]">
+                  Discover and join an ajo circle to see it here.
+                </Text>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("All Groups"); setShowAll(false); }}
+                  className="mt-2 cursor-pointer rounded-lg bg-[#02A36E] px-5 py-2 text-sm font-semibold text-white"
+                >
+                  Browse ajo groups
+                </button>
+              </div>
+            )
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {joinedGroups.map((group) => (
-                <JoinedGroupCard
-                  key={group.id}
-                  group={group}
-                  onView={() => navigate(`/rosca/${group.id}`)}
-                  onPay={() => setPayPlan(group)}
-                  onChat={() =>
-                    navigate(`/messages?circleId=${encodeURIComponent(group.id)}`)
-                  }
-                  onSupport={() =>
-                    navigate(
-                      `/support?category=ROSCA&subject=${encodeURIComponent(
-                        `Group exit request: ${group.name}`,
-                      )}&body=${encodeURIComponent(
-                        `Group ID: ${group.id}\nReason for requesting to leave: `,
-                      )}`,
-                    )
-                  }
-                />
-              ))}
-            </div>
+            <>
+              {joinedReadError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Some membership data could not be loaded. The groups below may be incomplete.</div>}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {joinedGroups.map((group) => (
+                  <JoinedGroupCard
+                    key={group.id}
+                    group={group}
+                    onView={() => navigate(`/rosca/${group.id}`)}
+                    onPay={() => setPayPlan(group)}
+                    onChat={() => navigate(`/messages?circleId=${encodeURIComponent(group.id)}`)}
+                    onSupport={() => navigate(`/support?category=ROSCA&subject=${encodeURIComponent(`Group exit request: ${group.name}`)}&body=${encodeURIComponent(`Group ID: ${group.id}\nReason for requesting to leave: `)}`)}
+                  />
+                ))}
+              </div>
+            </>
           )
         ) : null}
 
@@ -800,6 +824,16 @@ export function Rosca() {
             >
               Login
             </button>
+          </div>
+        ) : discoverReadError ? (
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            Available groups could not be loaded. Try again to refresh the list.
+            <button type="button" onClick={() => setRefreshVersion((v) => v + 1)} className="ml-2 font-semibold underline">Try again</button>
+          </div>
+        ) : membershipReadError ? (
+          <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Membership status is unavailable, so groups are hidden until your membership can be checked.
+            <button type="button" onClick={() => setRefreshVersion((v) => v + 1)} className="ml-2 font-semibold underline">Try again</button>
           </div>
         ) : displayed.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

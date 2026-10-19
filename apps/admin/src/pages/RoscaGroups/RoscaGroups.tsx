@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Badge,
   Box,
   Button,
   Checkbox,
+  Alert,
   Group,
   Loader,
   Pagination,
@@ -16,7 +17,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core'
-import { IconArchive, IconChevronDown, IconMailPlus, IconSearch } from '@tabler/icons-react'
+import { IconAlertCircle, IconArchive, IconChevronDown, IconMailPlus, IconSearch } from '@tabler/icons-react'
 import { InviteMemberModal } from '@/components/InviteMemberModal'
 import { listAllRoscaCircles, type RoscaCircle } from '@/utils/api'
 import {
@@ -87,31 +88,44 @@ const statusBackground: Record<GroupDisplayStatus, string> = {
 
 export function RoscaGroups() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [allGroups, setAllGroups] = useState<RoscaGroup[]>([])
   const [archivedCount, setArchivedCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [refreshVersion, setRefreshVersion] = useState(0)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string[]>([])
-  const [statusFilter, setStatusFilter] = useState<string>('All')
+  const statusFromQuery = searchParams.get('status')?.toLowerCase()
+  const statusFilter = ({ active: 'Active', 'not-ready': 'Not Ready', ready: 'Ready', completed: 'Completed' } as Record<string, string>)[statusFromQuery ?? ''] ?? 'All'
   const [inviteTarget, setInviteTarget] = useState<RoscaGroup | null>(null)
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     listAllRoscaCircles()
       .then((res) => {
-        const circles = Array.isArray(res)
+        const rawCircles = Array.isArray(res)
           ? res
           : ((res as Record<string, unknown>)?.data ??
               (res as Record<string, unknown>)?.circles ?? []) as RoscaCircle[]
+        const circles = [...new Map(rawCircles.filter(circle => circle?.id).map(circle => [circle.id, circle])).values()]
         const activeCircles = circles.filter(
           (circle) => (circle.status ?? '').toUpperCase() !== 'CANCELLED',
         )
         setArchivedCount(circles.length - activeCircles.length)
         setAllGroups(activeCircles.map(mapCircleToGroup))
       })
-      .catch((err) => console.error('Failed to load ROSCA circles:', err))
+      .catch(() => {
+        setAllGroups([])
+        setArchivedCount(0)
+        setLoadError(true)
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [refreshVersion])
+
+  useEffect(() => setPage(1), [statusFilter])
 
   const filtered = allGroups.filter((group) => {
     const matchesSearch = group.name.toLowerCase().includes(search.toLowerCase())
@@ -190,8 +204,14 @@ export function RoscaGroups() {
             data={statusOptions}
             value={statusFilter}
             onChange={(value) => {
-              setStatusFilter(value || 'All')
-              setPage(1)
+              const next = value || 'All'
+              const slug = ({ Active: 'active', 'Not Ready': 'not-ready', Ready: 'ready', Completed: 'completed' } as Record<string, string>)[next]
+              setSearchParams((previous) => {
+                const params = new URLSearchParams(previous)
+                if (slug) params.set('status', slug)
+                else params.delete('status')
+                return params
+              })
             }}
             rightSection={<IconChevronDown size={14} />}
             allowDeselect={false}
@@ -199,7 +219,16 @@ export function RoscaGroups() {
           />
         </Group>
 
-        <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
+        {loadError && (
+          <Alert color="red" icon={<IconAlertCircle size={18} />} title="Groups could not be loaded" role="alert">
+            Your administered group list is unavailable, so its counts and history are not shown as zero.
+            <Button variant="subtle" color="red" size="compact-sm" ml="xs" onClick={() => setRefreshVersion((version) => version + 1)}>
+              Try again
+            </Button>
+          </Alert>
+        )}
+
+        {!loadError && <Paper radius="md" style={{ border: '1px solid #e9ecef' }}>
           <div style={{ overflowX: 'auto' }}>
             <Table verticalSpacing="sm" horizontalSpacing="lg" style={{ minWidth: 820 }}>
               <Table.Thead>
@@ -301,7 +330,7 @@ export function RoscaGroups() {
               color={PRIMARY}
             />
           </Group>
-        </Paper>
+        </Paper>}
       </Stack>
 
       <InviteMemberModal
