@@ -48,6 +48,7 @@ export function WithdrawFunds() {
   // Saved accounts
   const [savedAccounts, setSavedAccounts] = useState<SavedBankAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [accountsLoadError, setAccountsLoadError] = useState(false);
   const [selectedAccount, setSelectedAccount] =
     useState<SavedBankAccount | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -55,11 +56,13 @@ export function WithdrawFunds() {
   // Amount
   const [amount, setAmount] = useState("");
   const [availableBalance, setAvailableBalance] = useState(0);
+  const [walletLoadError, setWalletLoadError] = useState(false);
 
   // Stage 11: a withdrawal already in flight blocks starting another
   const [pendingWithdrawal, setPendingWithdrawal] =
     useState<PendingWithdrawal | null>(null);
   const [loadingWallet, setLoadingWallet] = useState(true);
+  const [withdrawalReference, setWithdrawalReference] = useState<string | null>(null);
 
   // Transfer-fee quote / review
   const [quote, setQuote] = useState<WithdrawalQuote | null>(null);
@@ -73,12 +76,13 @@ export function WithdrawFunds() {
 
   function loadWallet() {
     setLoadingWallet(true);
+    setWalletLoadError(false);
     getWallet()
       .then((data) => {
         setAvailableBalance(Number(data.balance?.available ?? 0) / 100);
         setPendingWithdrawal(data.pendingWithdrawal ?? null);
       })
-      .catch(() => setAvailableBalance(0))
+      .catch(() => setWalletLoadError(true))
       .finally(() => setLoadingWallet(false));
   }
 
@@ -89,6 +93,7 @@ export function WithdrawFunds() {
 
   function loadAccounts() {
     setLoadingAccounts(true);
+    setAccountsLoadError(false);
     listBankAccounts()
       .then((res) => {
         const accounts = res.data ?? [];
@@ -97,7 +102,7 @@ export function WithdrawFunds() {
           (current) => current ?? accounts.find((account) => account.isDefault) ?? null,
         );
       })
-      .catch(() => {})
+      .catch(() => setAccountsLoadError(true))
       .finally(() => setLoadingAccounts(false));
   }
 
@@ -124,6 +129,7 @@ export function WithdrawFunds() {
   }
 
   const canProceedToReview =
+    !loadingWallet && !walletLoadError && !loadingAccounts && !accountsLoadError &&
     numericAmount >= MIN_WITHDRAWAL_NAIRA &&
     numericAmount <= availableBalance &&
     selectedAccount !== null;
@@ -162,7 +168,7 @@ export function WithdrawFunds() {
     setStep("processing");
     setError(null);
     try {
-      await initializeWithdrawal({
+      const result = await initializeWithdrawal({
         amount: numericAmount,
         accountNumber: selectedAccount.accountNumber,
         accountName: selectedAccount.accountName,
@@ -172,6 +178,7 @@ export function WithdrawFunds() {
         transactionPin: enteredPin,
         quotedFeeKobo: quote?.feeKobo,
       });
+      setWithdrawalReference(result.reference);
       setStep("success");
     } catch (err) {
       // 409: a withdrawal is already in progress (started elsewhere, e.g. another
@@ -234,14 +241,19 @@ export function WithdrawFunds() {
         </div>
         <div className="text-center">
           <Text fw={700} className="text-[22px] text-[#0F172A]">
-            Withdrawal Successful
+            Withdrawal Initiated
           </Text>
           <Text
             fw={400}
             className="mt-2 max-w-[320px] text-[14px] leading-[1.6] text-[#6B7280]"
           >
-            Your withdrawal of ₦{amount} has been initiated successfully.
+            Your withdrawal of ₦{amount} has been submitted and is awaiting confirmation.
           </Text>
+          {withdrawalReference && (
+            <Text fw={500} className="mt-2 text-[12px] text-[#6B7280]">
+              Reference: {withdrawalReference}
+            </Text>
+          )}
         </div>
         <div className="mt-4 flex w-full max-w-[300px] flex-col gap-3">
           <button
@@ -337,11 +349,15 @@ export function WithdrawFunds() {
                 Withdraw Funds
               </Text>
               <Text fw={400} className="mt-1 text-[14px] text-[#6B7280]">
-                Available: ₦
-                {availableBalance.toLocaleString("en-NG", {
-                  minimumFractionDigits: 2,
-                })}
+                {loadingWallet ? "Loading available balance..." : walletLoadError
+                  ? "Available balance unavailable"
+                  : `Available: ₦${availableBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
               </Text>
+              {walletLoadError && (
+                <button onClick={loadWallet} className="mt-1 cursor-pointer text-[13px] font-semibold text-[#02A36E] hover:underline">
+                  Retry balance
+                </button>
+              )}
             </div>
 
             {/* Stage 11: a pending withdrawal blocks starting another (and every
@@ -390,6 +406,15 @@ export function WithdrawFunds() {
                   <Text className="text-[13px] text-[#6B7280]">
                     Loading accounts...
                   </Text>
+                </div>
+              ) : accountsLoadError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center">
+                  <Text fw={400} className="text-[13px] text-red-700">
+                    We couldn't load your saved accounts. Please try again.
+                  </Text>
+                  <button onClick={loadAccounts} className="mt-2 cursor-pointer text-[13px] font-semibold text-[#02A36E] hover:underline">
+                    Retry
+                  </button>
                 </div>
               ) : savedAccounts.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-6 text-center">
@@ -693,7 +718,7 @@ export function WithdrawFunds() {
               ))}
             </div>
 
-            <button className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline">
+            <button onClick={() => navigate("/support?category=ACCOUNT&subject=Forgot%20transaction%20PIN")} className="cursor-pointer text-[13px] font-medium text-[#02A36E] hover:underline">
               Forgot PIN?
             </button>
 

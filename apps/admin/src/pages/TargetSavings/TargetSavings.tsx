@@ -961,7 +961,11 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
     try {
       await contributeTargetSavings(plan.id, String(Math.round(amount * 100)), `target-${plan.id}-${crypto.randomUUID()}`);
       setOpen(false);
-      await onChanged();
+      try {
+        await onChanged();
+      } catch {
+        notifications.show({ color: "yellow", title: "Contribution added", message: "Your contribution was accepted, but the latest balance could not be refreshed. Refresh the page to see the updated total." });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "We could not add this contribution");
     } finally {
@@ -982,7 +986,6 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
         };
       };
       setCancelOpen(false);
-      await onChanged();
       const returned = result?.data?.returnedAmountKobo ?? cancellationReturnKobo.toString();
       const fee = result?.data?.penaltyKobo ?? cancellationFeeKobo.toString();
       notifications.show({
@@ -993,6 +996,11 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
             ? `${money(returned)} returned to your Ajoti wallet. Cancellation fee: ${money(fee)}.`
             : "Your savings membership has been cancelled.",
       });
+      try {
+        await onChanged();
+      } catch {
+        notifications.show({ color: "yellow", title: "Savings cancelled", message: "Cancellation completed, but the latest balance could not be refreshed. Refresh the page to see the updated total." });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "We could not cancel this savings membership");
     } finally {

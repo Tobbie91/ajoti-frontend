@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Text, Select, Loader, Stack, Paper, Group, Box, Badge, SimpleGrid } from '@mantine/core'
 import {
   IconArrowLeft,
@@ -54,6 +54,7 @@ export function Loans() {
   const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const eligibilityRequest = useRef(0)
 
   useEffect(() => {
     Promise.all([
@@ -76,17 +77,21 @@ export function Loans() {
   const disbursementAmount = eligibility?.maxLoanAmount != null ? Number(eligibility.maxLoanAmount) / 100 : 0
 
   async function handleCircleSelect(id: string | null) {
+    const requestId = ++eligibilityRequest.current
     setSelectedCircleId(id)
     setEligibility(null)
-    if (!id) return
+    if (!id) {
+      setCheckingEligibility(false)
+      return
+    }
     setCheckingEligibility(true)
     try {
       const result = await getLoanEligibility(id)
-      setEligibility(result)
+      if (requestId === eligibilityRequest.current) setEligibility(result)
     } catch {
-      setEligibility({ eligible: false, reason: 'Could not check eligibility. Try again.' })
+      if (requestId === eligibilityRequest.current) setEligibility({ eligible: false, reason: 'Could not check eligibility. Try again.' })
     } finally {
-      setCheckingEligibility(false)
+      if (requestId === eligibilityRequest.current) setCheckingEligibility(false)
     }
   }
 
