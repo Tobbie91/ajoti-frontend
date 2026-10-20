@@ -915,6 +915,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [copied, setCopied] = useState(false);
+  const contributionAttempt = useRef<{ amountKobo: string; idempotencyKey: string } | null>(null);
 
   useEffect(() => {
     const nextRemaining = toNaira(plan.myMembership?.remainingAmountKobo ?? "0");
@@ -958,8 +959,15 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
     if (!canContribute || amount <= 0 || amount > remaining) return;
     setSaving(true);
     setError("");
+    const amountKobo = String(Math.round(amount * 100));
+    let attempt = contributionAttempt.current;
+    if (!attempt || attempt.amountKobo !== amountKobo) {
+      attempt = { amountKobo, idempotencyKey: `target-${plan.id}-${crypto.randomUUID()}` };
+      contributionAttempt.current = attempt;
+    }
     try {
-      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)), `target-${plan.id}-${crypto.randomUUID()}`);
+      await contributeTargetSavings(plan.id, amountKobo, attempt.idempotencyKey);
+      if (contributionAttempt.current === attempt) contributionAttempt.current = null;
       setOpen(false);
       try {
         await onChanged();

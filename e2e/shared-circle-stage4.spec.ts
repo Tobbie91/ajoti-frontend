@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 const id = 'shared-contract'
 const sentinels = { bankDetails: 'PRIVATE_BANK_SENTINEL', wallet: 'PRIVATE_WALLET_SENTINEL', collateral: 'PRIVATE_COLLATERAL_SENTINEL', providerId: 'PROVIDER_SENTINEL', ledgerId: 'LEDGER_SENTINEL', debt: 'DEBT_SENTINEL', comment: 'PRIVATE_REVIEW_SENTINEL' }
-async function fixture(page: Page, options: { owner?: boolean; member?: boolean; completed?: boolean; denied?: string; receiptsFail?: boolean; healthFail?: boolean; healthDelayMs?: number; emptyHealth?: boolean; large?: boolean; paidCurrent?: boolean; reviewedMemberIds?: string[]; reviewMineFail?: boolean; preferenceDelayMs?: number; preferenceFailOnce?: boolean; payoutRows?: unknown[] } = {}) {
+async function fixture(page: Page, options: { owner?: boolean; member?: boolean; completed?: boolean; denied?: string; receiptsFail?: boolean; healthFail?: boolean; healthDelayMs?: number; emptyHealth?: boolean; large?: boolean; paidCurrent?: boolean; reviewedMemberIds?: string[]; reviewMineFail?: boolean; preferenceDelayMs?: number; preferenceFailOnce?: boolean; payoutRows?: unknown[]; chatHistory?: unknown[]; chatOlder?: unknown[] } = {}) {
   const member = options.member !== false
   const user = { id: 'me', firstName: 'Shared', lastName: 'Member', role: options.owner || !member ? 'CIRCLE_ADMIN' : 'MEMBER', status: 'ACTIVE' }
   await page.addInitScript(user => localStorage.setItem('user', JSON.stringify(user)), user)
@@ -47,7 +47,11 @@ async function fixture(page: Page, options: { owner?: boolean; member?: boolean;
     }
     if (path === '/api/wallet/balance') return send({ available: '999999999', total: '999999999', reserved: '0' })
     if (path === '/api/chat/circles') return route.fulfill({ json: [{ id, name: 'Contract Circle', lastMessage: null }] })
-    if (path === `/api/chat/circles/${id}/messages`) return route.fulfill({ json: [{ id: 'chat', circleId: id, senderId: 'other', senderName: 'Other Member', senderInitials: 'OM', body: 'Historical group message', createdAt: '2031-01-01T00:00:00Z' }, { id: 'wrong', circleId: 'unrelated', senderId: 'private', body: 'CROSS_CIRCLE_MESSAGE_SENTINEL', createdAt: '2031-01-01T00:00:00Z' }] })
+    if (path === `/api/chat/circles/${id}/messages`) {
+      const before = url.searchParams.get('before')
+      const defaultHistory = [{ id: 'chat', circleId: id, senderId: 'other', senderName: 'Other Member', senderInitials: 'OM', body: 'Historical group message', createdAt: '2031-01-01T00:00:00Z' }, { id: 'wrong', circleId: 'unrelated', senderId: 'private', body: 'CROSS_CIRCLE_MESSAGE_SENTINEL', createdAt: '2031-01-01T00:00:00Z' }]
+      return route.fulfill({ json: before ? options.chatOlder ?? [] : options.chatHistory ?? defaultHistory })
+    }
     if (path === '/api/trust/my-score') return send({ trustScore: 50 })
     if (path.endsWith('/early-payouts')) return send({ circleId: id, totalLoans: 1, activeCount: 0, repaidCount: 1, defaultedCount: 0, cancelledCount: 0 })
     return send([])
@@ -124,6 +128,25 @@ test('a pending contribution remains unconfirmed and does not refresh as paid', 
   await expect(page.getByRole('button', { name: 'Confirm & Pay' })).toHaveCount(0)
   expect(contributionPosts).toBe(1)
   expect(state.reads.filter(path => path.startsWith(`/api/rosca/${id}/contributions`))).toHaveLength(contributionReadsBeforePayment)
+})
+
+test('group chat loads older history with the backend cursor', async ({ page }) => {
+  const history = Array.from({ length: 50 }, (_, index) => ({
+    id: `chat-${index}`,
+    circleId: id,
+    senderId: 'other',
+    senderName: 'Other Member',
+    senderInitials: 'OM',
+    body: `Recent message ${index}`,
+    createdAt: new Date(Date.UTC(2031, 0, 2, 0, index)).toISOString(),
+  }))
+  const older = [{ id: 'chat-older', circleId: id, senderId: 'other', senderName: 'Other Member', senderInitials: 'OM', body: 'Older message', createdAt: '2031-01-01T23:00:00.000Z' }]
+  const state = await fixture(page, { chatHistory: history, chatOlder: older })
+  await page.goto(`/messages?circleId=${id}`)
+  await expect(page.getByText('Recent message 49')).toBeVisible()
+  await page.getByRole('button', { name: 'Load older messages' }).click()
+  await expect(page.getByText('Older message')).toBeVisible()
+  expect(state.reads.some(path => path.includes('/messages?before='))).toBe(true)
 })
 test('slow and empty health responses keep progress available and do not invent cycle totals', async ({ page }) => {
   await fixture(page, { healthDelayMs: 400, emptyHealth: true })

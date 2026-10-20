@@ -127,7 +127,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   let isRefreshing = false;
-  let refreshQueue: Array<() => void> = [];
+  let refreshQueue: Array<{ retry: () => void; reject: (reason: unknown) => void }> = [];
 
   async function tryRefresh(): Promise<void> {
     const res = await fetch(`${baseUrl}/api/auth/refresh`, {
@@ -181,7 +181,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     if (response.status === 401) {
       if (isRefreshing) {
         return new Promise<T>((resolve, reject) => {
-          refreshQueue.push(() => {
+          refreshQueue.push({ reject, retry: () => {
             performAuthenticatedRequest<T>(path, options)
               .then(({ response: retryResponse, data: retryData }) => {
                 if (!retryResponse.ok) {
@@ -191,23 +191,27 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
                 resolve(retryData as T);
               })
               .catch(reject);
-          });
+          } });
         });
       }
 
       isRefreshing = true;
       try {
         await tryRefresh();
-        refreshQueue.forEach((cb) => cb());
+        const queued = refreshQueue;
         refreshQueue = [];
+        queued.forEach((item) => item.retry());
         ({ response, data } = await performAuthenticatedRequest<T>(
           path,
           options,
         ));
       } catch {
+        const queued = refreshQueue;
         refreshQueue = [];
+        const expired = new ApiError("Session expired", 401);
+        queued.forEach((item) => item.reject(expired));
         clearSessionAndRedirect();
-        throw new ApiError("Session expired", 401);
+        throw expired;
       } finally {
         isRefreshing = false;
       }
