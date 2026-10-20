@@ -336,9 +336,11 @@ export function TargetSavings() {
     getKycStatus()
       .then((kyc) => setKycLevel(kyc.kycLevel ?? 0))
       .catch(() => setKycLevel(0));
-    getCowrywiseState()
-      .then((state) => setSandboxStagingAvailable(state.testMode === true))
-      .catch(() => setSandboxStagingAvailable(false));
+    if (isDevAuthBypass) {
+      getCowrywiseState()
+        .then((state) => setSandboxStagingAvailable(state.testMode === true))
+        .catch(() => setSandboxStagingAvailable(false));
+    }
 
     const params = new URLSearchParams(window.location.search);
     const id = params.get("targetInviteId");
@@ -570,7 +572,7 @@ export function TargetSavings() {
             </div>
           )}
 
-          {sandboxStagingAvailable && (
+          {isDevAuthBypass && sandboxStagingAvailable && (
             <Accordion variant="separated" mt="md">
               <Accordion.Item value="developer-tools">
                 <Accordion.Control>Sandbox tools</Accordion.Control>
@@ -1045,7 +1047,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
     "on-track": { label: "On track", color: "green", heroHex: "#0B6B55", barColor: "green" },
     behind:     { label: "Behind pace", color: "orange", heroHex: "#B45309", barColor: "orange" },
     reached:    { label: "Target reached", color: "blue", heroHex: "#1E40AF", barColor: "blue" },
-    matured:    { label: "Matured", color: "gray", heroHex: "#374151", barColor: "gray" },
+    matured:    { label: providerActionsUnavailable ? "Maturity date passed" : "Matured", color: "gray", heroHex: "#374151", barColor: "gray" },
   };
   const meta = statusMeta[statusKind];
 
@@ -1086,7 +1088,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
             color={meta.color}
             size="lg"
             radius="sm"
-            leftSection={statusKind === "reached" || statusKind === "matured" ? (statusKind === "matured" ? <IconLockOpen size={13} stroke={2.5} /> : <IconLock size={13} stroke={2.5} />) : undefined}
+            leftSection={statusKind === "reached" || statusKind === "matured" ? (statusKind === "matured" && !providerActionsUnavailable ? <IconLockOpen size={13} stroke={2.5} /> : <IconLock size={13} stroke={2.5} />) : undefined}
             style={{ fontWeight: 700, letterSpacing: 0.4 }}
           >
             {meta.label}
@@ -1146,12 +1148,12 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
           You're {fmtMoney(remainingKoboStr, showAmounts)} short with {daysLeft} day{daysLeft === 1 ? "" : "s"} left. Save about <strong>{fmtMoney(String(catchUpKobo), showAmounts)}</strong> {freqLabel} to finish on time.
         </Alert>
       )}
-      {targetReached && !maturityReached && plan.status === "ACTIVE" && (
+      {targetReached && !maturityReached && plan.status === "ACTIVE" && !providerActionsUnavailable && (
         <Alert mt="md" color="blue" variant="light" icon={<IconLock size={18} />} title="Target reached">
           You've hit your target. Your savings will be released at <strong>{maturityLabel}</strong>; you can also cancel early with a 1.5% fee on the amount saved.
         </Alert>
       )}
-      {maturityReached && plan.status === "ACTIVE" && (
+      {maturityReached && plan.status === "ACTIVE" && !providerActionsUnavailable && (
         <Alert mt="md" color="gray" variant="light" icon={<IconLockOpen size={18} />} title="Matured — funds unlocked">
           Contributions are closed. {fmtMoney(savedKoboStr, showAmounts)} is being released to your Ajoti wallet.
         </Alert>
@@ -1161,14 +1163,14 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
       )}
 
       {providerActionsUnavailable && (
-        <Alert mt="md" color="orange" title="Investment-backed target is not active">
-          Provider: {plan.investment.provider ?? "Not assigned"}. Contributions, cancellation and maturity settlement remain disabled until product eligibility and provider operations are approved and enabled.
+        <Alert mt="md" color="orange" title="Investment-backed actions are unavailable">
+          Provider: {plan.investment.provider ?? "Not assigned"}. Contributions, cancellation and maturity settlement are disabled. Contact Ajoti support to review this plan.
         </Alert>
       )}
 
       <Group grow mt="lg" align="flex-start">
         <div><Text size="xs" c="dimmed">Next contribution</Text><Text fw={700}>{fmtMoney(plan.contributionAmountKobo, showAmounts)} {freqLabel}</Text></div>
-        <div><Text size="xs" c="dimmed">Access</Text><Text fw={700}>Maturity or early cancellation</Text></div>
+        <div><Text size="xs" c="dimmed">Access</Text><Text fw={700}>{providerActionsUnavailable ? "Unavailable — contact support" : "Maturity or early cancellation"}</Text></div>
       </Group>
 
       {canContribute && (
