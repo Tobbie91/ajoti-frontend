@@ -243,8 +243,30 @@ export interface DirectChatThread {
   lastMessage: DirectChatMessage;
 }
 
-export function getDirectChatThreads(): Promise<DirectChatThread[]> {
-  return authRequest("/api/chat/direct/threads", { method: "GET" });
+export interface DirectChatThreadCursor {
+  createdAt: string;
+  id: string;
+}
+
+export interface DirectChatThreadsPage {
+  threads: DirectChatThread[];
+  nextCursor: DirectChatThreadCursor | null;
+}
+
+export async function getDirectChatThreads(
+  cursor?: DirectChatThreadCursor,
+  limit = 50,
+): Promise<DirectChatThreadsPage> {
+  const params = new URLSearchParams({ limit: String(limit), paged: 'true' });
+  if (cursor) {
+    params.set("beforeCreatedAt", cursor.createdAt);
+    params.set("beforeId", cursor.id);
+  }
+  const response = await authRequest<DirectChatThreadsPage | DirectChatThread[]>(
+    `/api/chat/direct/threads?${params.toString()}`,
+    { method: "GET" },
+  );
+  return Array.isArray(response) ? { threads: response, nextCursor: null } : response;
 }
 
 export function getDirectChatMessages(circleId: string, memberId: string, before?: string): Promise<DirectChatMessage[]> {

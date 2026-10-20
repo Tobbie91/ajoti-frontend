@@ -10,6 +10,7 @@ import {
   type ChatCircle,
   type DirectChatMessage,
   type DirectChatThread,
+  type DirectChatThreadCursor,
 } from '@/utils/api'
 
 const PRIMARY = '#02A36E'
@@ -161,6 +162,8 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
 export function DirectMessages() {
   const [params, setParams] = useSearchParams()
   const [threads, setThreads] = useState<DirectChatThread[]>([])
+  const [threadCursor, setThreadCursor] = useState<DirectChatThreadCursor | null>(null)
+  const [loadingMoreThreads, setLoadingMoreThreads] = useState(false)
   const [circles, setCircles] = useState<ChatCircle[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -176,13 +179,32 @@ export function DirectMessages() {
 
   useEffect(() => {
     Promise.all([getDirectChatThreads(), getChatCircles()])
-      .then(([loadedThreads, loadedCircles]) => {
-        setThreads(loadedThreads)
+      .then(([threadPage, loadedCircles]) => {
+        setThreads(threadPage.threads)
+        setThreadCursor(threadPage.nextCursor)
         setCircles(loadedCircles)
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load conversations'))
       .finally(() => setLoading(false))
   }, [])
+
+  async function loadMoreThreads() {
+    if (!threadCursor || loadingMoreThreads) return
+    setLoadingMoreThreads(true)
+    setError(null)
+    try {
+      const page = await getDirectChatThreads(threadCursor)
+      setThreads((current) => {
+        const seen = new Set(current.map((thread) => `${thread.circleId}:${thread.memberId}`))
+        return [...current, ...page.threads.filter((thread) => !seen.has(`${thread.circleId}:${thread.memberId}`))]
+      })
+      setThreadCursor(page.nextCursor)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load more conversations')
+    } finally {
+      setLoadingMoreThreads(false)
+    }
+  }
 
   const selected = useMemo(() => {
     const match = threads.find((thread) =>
@@ -239,6 +261,16 @@ export function DirectMessages() {
             <Text size="xs" c="dimmed" lineClamp={1}>{thread.lastMessage.body}</Text>
           </button>
         ))}
+        {threadCursor && (
+          <button
+            type="button"
+            disabled={loadingMoreThreads}
+            onClick={() => { void loadMoreThreads() }}
+            style={{ border: 0, background: 'white', padding: 16, color: PRIMARY, cursor: 'pointer', opacity: loadingMoreThreads ? 0.5 : 1 }}
+          >
+            {loadingMoreThreads ? 'Loading conversations…' : 'Load more conversations'}
+          </button>
+        )}
       </div>
 
       {/* Thread pane — full-width on mobile when active, right pane on desktop */}
