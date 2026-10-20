@@ -55,6 +55,7 @@ export function Loans() {
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
   const eligibilityRequest = useRef(0)
+  const applicationInFlight = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -95,17 +96,20 @@ export function Loans() {
     }
   }
 
-  async function submitLoan() {
-    if (!selectedCircleId) return
+  async function submitLoan(transactionPin: string) {
+    if (!selectedCircleId || applicationInFlight.current) return
+    applicationInFlight.current = true
     setStep('processing')
     setError(null)
     try {
-      await applyForLoan({ circleId: selectedCircleId })
+      await applyForLoan({ circleId: selectedCircleId, transactionPin })
       setStep('success')
       getLoanStatus().then(setActiveLoan).catch(() => {})
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Loan application failed. Please try again.')
       setStep('error')
+    } finally {
+      applicationInFlight.current = false
     }
   }
 
@@ -113,7 +117,7 @@ export function Loans() {
     if (pin.length < 4) {
       const newPin = pin + digit
       setPin(newPin)
-      if (newPin.length === 4) setTimeout(() => submitLoan(), 300)
+      if (newPin.length === 4) void submitLoan(newPin)
     }
   }
 
