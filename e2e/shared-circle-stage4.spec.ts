@@ -104,6 +104,27 @@ test('financial failures can retry, and missing member balance never becomes zer
   await expect(page.getByText('₦9,007,199,254,740,993.99', { exact: true })).toBeVisible()
   await noLeaks(page)
 })
+
+test('a pending contribution remains unconfirmed and does not refresh as paid', async ({ page }) => {
+  const state = await fixture(page)
+  let contributionPosts = 0
+  await page.route(`**/api/rosca/${id}/contributions`, async route => {
+    if (route.request().method() === 'POST') {
+      contributionPosts++
+      return route.fulfill({ json: { success: true, message: 'Contribution is awaiting Flutterwave settlement', data: { status: 'PENDING', attemptId: 'pending-attempt' } } })
+    }
+    return route.continue()
+  })
+  await page.goto(`/rosca/${id}?tab=growth&pay=1`)
+  await expect(page.getByRole('button', { name: 'Confirm & Pay' })).toBeVisible()
+  const contributionReadsBeforePayment = state.reads.filter(path => path.startsWith(`/api/rosca/${id}/contributions`)).length
+  await page.getByRole('button', { name: 'Confirm & Pay' }).click()
+  await expect(page.getByText('Payment Pending')).toBeVisible()
+  await expect(page.getByText('Payment not confirmed yet')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Confirm & Pay' })).toHaveCount(0)
+  expect(contributionPosts).toBe(1)
+  expect(state.reads.filter(path => path.startsWith(`/api/rosca/${id}/contributions`))).toHaveLength(contributionReadsBeforePayment)
+})
 test('slow and empty health responses keep progress available and do not invent cycle totals', async ({ page }) => {
   await fixture(page, { healthDelayMs: 400, emptyHealth: true })
   await page.goto(`/rosca/${id}`)
