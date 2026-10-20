@@ -389,6 +389,7 @@ export interface Loan {
 
 export async function applyForLoan(payload: {
   circleId: string;
+  transactionPin: string;
 }): Promise<Loan> {
   const res = await authRequest<{ data?: Loan } | Loan>("/api/loan/apply", {
     method: "POST",
