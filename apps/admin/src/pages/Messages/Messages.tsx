@@ -1,5 +1,5 @@
 import { circleAccess } from '@/utils/circle-access'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { Loader, Text, TextInput } from '@mantine/core'
 import { IconSend, IconMessages, IconSearch, IconArrowLeft } from '@tabler/icons-react'
 import { useSearchParams } from 'react-router-dom'
@@ -82,13 +82,22 @@ function ChatThread(props: { circleId: string; circleName: string; currentUserId
   return <AuthorizedChatThread {...props} canSend={access.sendChat} />
 }
 function AuthorizedChatThread({ circleId, circleName, currentUserId, onBack, canSend }: { circleId: string; circleName: string; currentUserId: string; onBack?: () => void; canSend: boolean }) {
-  const { messages, loading, sending, error, sendMessage } = useChat(circleId)
+  const { messages, loading, sending, loadingOlder, hasOlderMessages, error, sendMessage, loadOlderMessages } = useChat(circleId)
   const [draft, setDraft] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const historyContainerRef = useRef<HTMLDivElement>(null)
+  const previousScrollHeight = useRef<number | null>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (loadingOlder) return
+    const container = historyContainerRef.current
+    if (previousScrollHeight.current != null && container) {
+      container.scrollTop += container.scrollHeight - previousScrollHeight.current
+      previousScrollHeight.current = null
+      return
+    }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, loadingOlder])
 
   async function handleSend() {
     const text = draft.trim()
@@ -121,7 +130,20 @@ function AuthorizedChatThread({ circleId, circleName, currentUserId, onBack, can
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div ref={historyContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {hasOlderMessages && (
+          <button
+            type="button"
+            disabled={loadingOlder}
+            onClick={() => {
+              if (historyContainerRef.current) previousScrollHeight.current = historyContainerRef.current.scrollHeight
+              void loadOlderMessages()
+            }}
+            className="self-center rounded-lg border border-[#E5E7EB] px-3 py-2 text-xs font-medium text-[#374151] disabled:opacity-50"
+          >
+            {loadingOlder ? 'Loading older messages…' : 'Load older messages'}
+          </button>
+        )}
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
             <Loader size="sm" color={PRIMARY} />

@@ -247,8 +247,9 @@ export function getDirectChatThreads(): Promise<DirectChatThread[]> {
   return authRequest("/api/chat/direct/threads", { method: "GET" });
 }
 
-export function getDirectChatMessages(circleId: string, memberId: string): Promise<DirectChatMessage[]> {
-  return authRequest(`/api/chat/direct/${encodeURIComponent(circleId)}/${encodeURIComponent(memberId)}`, {
+export function getDirectChatMessages(circleId: string, memberId: string, before?: string): Promise<DirectChatMessage[]> {
+  const qs = before ? `?before=${encodeURIComponent(before)}` : ''
+  return authRequest(`/api/chat/direct/${encodeURIComponent(circleId)}/${encodeURIComponent(memberId)}${qs}`, {
     method: "GET",
   });
 }

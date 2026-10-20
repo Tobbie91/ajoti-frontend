@@ -19,11 +19,14 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasOlderMessages, setHasOlderMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
     setMessages([])
+    setHasOlderMessages(false)
     setDraft('')
     setError(null)
     setLoading(true)
@@ -31,11 +34,14 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
     function refresh() {
       getDirectChatMessages(circleId, memberId)
         .then((incoming) => {
-          if (active) setMessages((prev) => {
-            const byId = new Map(prev.map((m) => [m.id, m]))
-            for (const message of incoming) byId.set(message.id, message)
-            return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-          })
+          if (active) {
+            setHasOlderMessages(incoming.length >= 50)
+            setMessages((prev) => {
+              const byId = new Map(prev.map((m) => [m.id, m]))
+              for (const message of incoming) byId.set(message.id, message)
+              return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+            })
+          }
         })
         .catch((reason: unknown) => {
           if (active) setError(reason instanceof Error ? reason.message : 'Unable to load private messages')
@@ -49,6 +55,24 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
     }, 10000)
     return () => { active = false; clearInterval(interval) }
   }, [circleId, memberId])
+
+  async function loadOlderMessages() {
+    if (!hasOlderMessages || loadingOlder || messages.length === 0) return
+    setLoadingOlder(true)
+    try {
+      const older = await getDirectChatMessages(circleId, memberId, messages[0].createdAt)
+      setMessages((prev) => {
+        const byId = new Map(older.map((message) => [message.id, message]))
+        for (const message of prev) byId.set(message.id, message)
+        return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      })
+      setHasOlderMessages(older.length >= 50)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load older messages')
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
 
   async function handleSend() {
     const body = draft.trim()
@@ -93,6 +117,11 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: 16 }}>
+        {hasOlderMessages && (
+          <button type="button" disabled={loadingOlder} onClick={() => { void loadOlderMessages() }} style={{ alignSelf: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px', fontSize: 12, opacity: loadingOlder ? 0.5 : 1 }}>
+            {loadingOlder ? 'Loading older messages…' : 'Load older messages'}
+          </button>
+        )}
         {loading && <Loader size="sm" color={PRIMARY} />}
         {!loading && messages.length === 0 && !error && <Text c="dimmed" size="sm">No private messages yet. Start the conversation below.</Text>}
         {messages.map((msg) => {

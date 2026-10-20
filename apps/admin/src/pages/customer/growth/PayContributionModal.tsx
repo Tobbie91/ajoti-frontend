@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { getWalletBalance, makeContribution, type CircleContribution } from "@/utils/api";
 import { formatNaira } from "./utils";
 
-type Step = "idle" | "submitting" | "done" | "error";
+type Step = "idle" | "submitting" | "done" | "pending" | "error";
 
 export interface PayContributionModalProps {
   opened: boolean;
@@ -37,6 +37,7 @@ export function PayContributionModal({
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [pendingMsg, setPendingMsg] = useState("");
   const [walletAvailable, setWalletAvailable] = useState<bigint | null>(null);
   const [submittedCycleNumber, setSubmittedCycleNumber] = useState<number | null>(null);
 
@@ -79,6 +80,17 @@ export function PayContributionModal({
     setStep("submitting");
     try {
       const contribution = await makeContribution(circleId, cycleBeingPaid);
+      const status = String((contribution as CircleContribution & { status?: string }).status ?? "").toUpperCase();
+      if (status === "FAILED") {
+        setErrorMsg("The payment failed. Check your wallet and contribution history before trying again.");
+        setStep("error");
+        return;
+      }
+      if (status === "PENDING" || (status && !["SUCCESSFUL", "SETTLED", "COMPLETED"].includes(status))) {
+        setPendingMsg("Your payment is awaiting confirmation. Do not submit another payment for this cycle while it is being checked.");
+        setStep("pending");
+        return;
+      }
       if (onPaid) onPaid(contribution);
       setStep("done");
     } catch (e: unknown) {
@@ -93,11 +105,17 @@ export function PayContributionModal({
       onClose={() => {
         if (step !== "submitting") onClose();
       }}
-      title={step === "done" ? "Contribution Successful" : isEarlyPayment ? `Pay Cycle ${nextCycleNumber} Early` : "Make Contribution"}
+      title={step === "done" ? "Contribution Successful" : step === "pending" ? "Payment Pending" : isEarlyPayment ? `Pay Cycle ${nextCycleNumber} Early` : "Make Contribution"}
       centered
       radius="md"
     >
-      {step === "done" ? (
+      {step === "pending" ? (
+        <div className="flex flex-col items-center gap-4 py-4">
+          <Text fw={700} className="text-[16px] text-[#92400E]">Payment not confirmed yet</Text>
+          <Text role="status" className="text-center text-[13px] text-[#6B7280]">{pendingMsg}</Text>
+          <button onClick={onClose} className="mt-2 w-full cursor-pointer rounded-lg border border-[#E5E7EB] py-3 text-[13px] font-semibold text-[#374151]">Close</button>
+        </div>
+      ) : step === "done" ? (
         <div className="flex flex-col items-center gap-4 py-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
             <IconCheck size={32} color="#02A36E" />

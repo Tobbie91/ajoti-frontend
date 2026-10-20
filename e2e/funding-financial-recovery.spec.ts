@@ -1,5 +1,35 @@
 import { expect, test } from '@playwright/test'
 import { circle, mockRoscaReads } from './rosca-read-fixtures'
+import { mockCustomer } from './review-fix-fixtures'
+
+test('funding callback trusts backend verification and keeps pending payments unconfirmed', async ({ page, context }) => {
+  let verificationCalls = 0
+  await mockCustomer(context, async (route, path) => {
+    if (path === '/api/wallet/funding/verify/provider-ref') {
+      verificationCalls++
+      await route.fulfill({ json: { success: false, status: 'pending', message: 'Provider confirmation is still pending' } })
+      return true
+    }
+    return false
+  })
+  await page.goto('/fund-wallet/callback?status=successful&tx_ref=provider-ref')
+  await expect(page.getByText('Payment Successful!')).toHaveCount(0)
+  await expect(page.getByText('Provider confirmation is still pending')).toBeVisible()
+  await expect(page.getByText('provider-ref')).toBeVisible()
+  expect(verificationCalls).toBe(1)
+})
+
+test('a success redirect without a transaction reference cannot show success', async ({ page, context }) => {
+  let verificationCalls = 0
+  await mockCustomer(context, async (_route, path) => {
+    if (path.startsWith('/api/wallet/funding/verify/')) verificationCalls++
+    return false
+  })
+  await page.goto('/fund-wallet/callback?status=success')
+  await expect(page.getByText('Payment Successful!')).toHaveCount(0)
+  await expect(page.getByText(/reference is missing/)).toBeVisible()
+  expect(verificationCalls).toBe(0)
+})
 
 test('BVN provisioning failures offer verification and support instead of only retry', async ({ page }) => {
   await mockRoscaReads(page, { duration: 5 })

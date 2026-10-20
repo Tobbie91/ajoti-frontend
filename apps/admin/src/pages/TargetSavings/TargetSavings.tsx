@@ -915,6 +915,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [copied, setCopied] = useState(false);
+  const contributionAttempt = useRef<{ amountKobo: string; idempotencyKey: string } | null>(null);
 
   useEffect(() => {
     const nextRemaining = toNaira(plan.myMembership?.remainingAmountKobo ?? "0");
@@ -958,10 +959,21 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
     if (!canContribute || amount <= 0 || amount > remaining) return;
     setSaving(true);
     setError("");
+    const amountKobo = String(Math.round(amount * 100));
+    let attempt = contributionAttempt.current;
+    if (!attempt || attempt.amountKobo !== amountKobo) {
+      attempt = { amountKobo, idempotencyKey: `target-${plan.id}-${crypto.randomUUID()}` };
+      contributionAttempt.current = attempt;
+    }
     try {
-      await contributeTargetSavings(plan.id, String(Math.round(amount * 100)), `target-${plan.id}-${crypto.randomUUID()}`);
+      await contributeTargetSavings(plan.id, amountKobo, attempt.idempotencyKey);
+      if (contributionAttempt.current === attempt) contributionAttempt.current = null;
       setOpen(false);
-      await onChanged();
+      try {
+        await onChanged();
+      } catch {
+        notifications.show({ color: "yellow", title: "Contribution added", message: "Your contribution was accepted, but the latest balance could not be refreshed. Refresh the page to see the updated total." });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "We could not add this contribution");
     } finally {
@@ -982,7 +994,6 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
         };
       };
       setCancelOpen(false);
-      await onChanged();
       const returned = result?.data?.returnedAmountKobo ?? cancellationReturnKobo.toString();
       const fee = result?.data?.penaltyKobo ?? cancellationFeeKobo.toString();
       notifications.show({
@@ -993,6 +1004,11 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
             ? `${money(returned)} returned to your Ajoti wallet. Cancellation fee: ${money(fee)}.`
             : "Your savings membership has been cancelled.",
       });
+      try {
+        await onChanged();
+      } catch {
+        notifications.show({ color: "yellow", title: "Savings cancelled", message: "Cancellation completed, but the latest balance could not be refreshed. Refresh the page to see the updated total." });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "We could not cancel this savings membership");
     } finally {

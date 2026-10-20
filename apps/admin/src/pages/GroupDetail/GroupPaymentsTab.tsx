@@ -1,7 +1,7 @@
 import { formatKobo, sumKobo, koboPercent } from '@/utils/kobo'
 import { useEffect, useState } from 'react'
 import { Stack, Paper, Group, Text, Box, SimpleGrid, Table, Badge, Select, Avatar, Button, Loader } from '@mantine/core'
-import { IconChevronDown, IconDownload } from '@tabler/icons-react'
+import { IconChevronDown } from '@tabler/icons-react'
 import { payoutSettlementDisplay } from '@/utils/payout-settlement'
 import {
   getAdminCircleContributions,
@@ -267,15 +267,6 @@ export function GroupPaymentsTab({
               </Text>
             </Box>
           </Group>}
-          <Button
-            variant="outline"
-            size="xs"
-            radius="md"
-            leftSection={<IconDownload size={14} />}
-            style={{ borderColor: PRIMARY, color: PRIMARY }}
-          >
-            Download Logs
-          </Button>
         </Group>
       </Paper>
 
