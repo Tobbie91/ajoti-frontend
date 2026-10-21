@@ -61,6 +61,7 @@ async function mockAdminApi(page: Page, options: {
     if (/^\/api\/rosca\/[^/]+\/schedules$/.test(path)) return route.fulfill({ json: { success: true, data: options.deadline ? [{ cycleNumber: 2, contributionDeadline: options.deadline, payoutDate: '2031-01-01T00:00:00+01:00', status: 'UPCOMING', recipientName: 'Member' }] : [] } })
     if (path === '/api/admin/rosca/dashboard') return route.fulfill({ json: { data: {
       totalGroups: 99,
+      memberGroupCount: 7,
       nextDeadline: options.deadline ? { groupName: 'Verified Deadline Ajo', deadline: options.deadline } : null,
       pendingJoinRequests: { total: 0, breakdown: [] },
     } } })
@@ -71,6 +72,13 @@ async function mockAdminApi(page: Page, options: {
     return route.fulfill({ json: { data: [] } })
   })
 }
+
+test('dashboard exposes joined membership count separately from administered circles', async ({ page }) => {
+  await mockAdminApi(page)
+  await page.goto('/dashboard')
+  await expect(page.getByText('Joined Groups', { exact: true }).locator('..')).toContainText('7')
+  await expect(page.getByText('Total Groups', { exact: true }).locator('..')).toContainText('4')
+})
 
 test('dashboard counts unique administered circles and completed links open history filter', async ({ page }) => {
   await mockAdminApi(page, { deadline: '2030-02-03T12:00:00Z' })

@@ -300,13 +300,17 @@ export function Dashboard() {
 
       {walletError && <Text role="alert" c="red">Unable to load wallet balances. Refresh to try again.</Text>}
       {dashboardError && <Text role="alert" c="red">Unable to load group dashboard and deadlines. Refresh to try again.</Text>}
-      {/* ─── 3-stat row (unchanged) ───────────────────────────────── */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
         <StatsCard
           title="Total Groups"
           value={circlesLoading ? unavailableValue : circlesError ? unavailableValue : String(bucketCounts.total)}
           subtitle={circlesError ? 'Failed to load' : 'Admin circles · excl. cancelled'}
           withBar
+        />
+        <StatsCard
+          title="Joined Groups"
+          value={typeof dashStats?.memberGroupCount === 'number' ? String(dashStats.memberGroupCount) : unavailableValue}
+          subtitle={dashboardError ? 'Failed to load' : 'Active and completed memberships'}
         />
         <StatsCard
           title="Next Deadline"
