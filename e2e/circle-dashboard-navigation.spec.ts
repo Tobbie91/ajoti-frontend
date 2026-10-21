@@ -89,7 +89,7 @@ test('dashboard counts unique administered circles and completed links open hist
   await expect(page.getByRole('button', { name: 'Ready — 1', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Not Ready — 1', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Completed — 1', exact: true })).toBeVisible()
-  await expect(page.getByText('Unique administered circles · excludes cancelled')).toBeVisible()
+  await expect(page.getByText('Admin circles · excl. cancelled')).toBeVisible()
   await expect(deadlineCard).toContainText('Duplicate Active Ajo · Cycle 2 · Upcoming')
   await expect(deadlineCard).toContainText(/3 Feb 2030/)
 
