@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { notifications } from "@mantine/notifications";
 import {
   Alert,
@@ -218,6 +218,7 @@ export function TargetSavings() {
   const location = useLocation();
   const [plans, setPlans] = useState<TargetSavingsPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   useEffect(() => {
     const plan = plans.find(p => location.hash === `#target-plan-${p.id}`);
     if (plan) document.getElementById(`target-plan-${plan.id}`)?.scrollIntoView({ block: 'start' });
@@ -234,6 +235,7 @@ export function TargetSavings() {
   const [joinError, setJoinError] = useState("");
   const [privateInvite, setPrivateInvite] = useState<{ id: string; token: string } | null>(null);
   const [kycLevel, setKycLevel] = useState<number | null>(null);
+  const [kycError, setKycError] = useState(false);
   const [showAmounts, setShowAmounts] = useState<boolean>(() => {
     try {
       return localStorage.getItem("targetSavings:showAmounts") !== "0";
@@ -324,18 +326,34 @@ export function TargetSavings() {
   const activePlans = filteredPlans.filter((p) => !["COMPLETED", "MATURED"].includes((p.status ?? "").toUpperCase()));
   const completedPlans = filteredPlans.filter((p) => ["COMPLETED", "MATURED"].includes((p.status ?? "").toUpperCase()));
 
-  const load = () =>
-    Promise.all([getMyTargetSavings(), getPublicTargetSavings()]).then(([m, p]) => {
+  const load = useCallback(async () => {
+    setLoadError(false);
+    try {
+      const [m, p] = await Promise.all([getMyTargetSavings(), getPublicTargetSavings()]);
       setPlans(m);
       setPub(p.filter((x) => !m.some((y) => y.id === x.id)));
-    });
+    } catch (error) {
+      setLoadError(true);
+      throw error;
+    }
+  }, []);
 
-  useEffect(() => {
+  const reloadSavings = useCallback(() => {
     setLoading(true);
     load().catch(() => {}).finally(() => setLoading(false));
+  }, [load]);
+
+  const loadKyc = useCallback(() => {
+    setKycError(false);
+    setKycLevel(null);
     getKycStatus()
       .then((kyc) => setKycLevel(kyc.kycLevel ?? 0))
-      .catch(() => setKycLevel(0));
+      .catch(() => setKycError(true));
+  }, []);
+
+  useEffect(() => {
+    reloadSavings();
+    loadKyc();
     if (isDevAuthBypass) {
       getCowrywiseState()
         .then((state) => setSandboxStagingAvailable(state.testMode === true))
@@ -346,7 +364,7 @@ export function TargetSavings() {
     const id = params.get("targetInviteId");
     const token = params.get("targetInviteToken");
     if (id && token) setPrivateInvite({ id, token });
-  }, []);
+  }, [reloadSavings, loadKyc]);
 
   const kycReady = (kycLevel ?? 0) >= 1;
 
@@ -467,6 +485,20 @@ export function TargetSavings() {
         </Group>
       </Group>
 
+      {loadError && (
+        <Alert mb="lg" color="red" title="Unable to load your savings">
+          Savings information could not be refreshed. Previously loaded information may be out of date.
+          <Button ml="sm" size="xs" variant="light" onClick={reloadSavings}>Retry savings</Button>
+        </Alert>
+      )}
+
+      {kycError && (
+        <Alert mb="lg" color="orange" title="Unable to load verification status">
+          Creating, joining and contributing remain unavailable until your verification status can be checked.
+          <Button ml="sm" size="xs" variant="light" onClick={loadKyc}>Retry verification</Button>
+        </Alert>
+      )}
+
       {kycLevel !== null && !kycReady && (
         <Alert mb="lg" color="yellow" icon={<IconInfoCircle size={18} />} title="Complete KYC Level 1 to use Target Savings">
           You can browse groups and view existing memberships, but you cannot create, join, or contribute until verification is complete.
@@ -486,8 +518,8 @@ export function TargetSavings() {
 
       {view === "MINE" ? (
         <Stack gap="md">
-          {isDevAuthBypass && plans.length === 0 && <LocalReviewSavingsCard />}
-          {plans.length === 0 && (
+          {isDevAuthBypass && !loadError && plans.length === 0 && <LocalReviewSavingsCard />}
+          {!loadError && plans.length === 0 && (
             <Card withBorder style={{ display: isDevAuthBypass ? "none" : undefined }}>
               <Text fw={600}>No savings targets yet</Text>
               <Text size="sm" c="dimmed">Create an individual target, start a group target, or discover a public group.</Text>
@@ -550,7 +582,7 @@ export function TargetSavings() {
               </Group>
               <Stack gap="xs">
                 {activePlans.map((p) => (
-                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
+                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} kycKnown={kycLevel !== null} showAmounts={showAmounts} />
                 ))}
               </Stack>
             </div>
@@ -566,7 +598,7 @@ export function TargetSavings() {
               </Group>
               <Stack gap="xs">
                 {completedPlans.map((p) => (
-                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} showAmounts={showAmounts} />
+                  <TargetPlanRow key={p.id} plan={p} onChanged={load} kycReady={kycReady} kycKnown={kycLevel !== null} showAmounts={showAmounts} />
                 ))}
               </Stack>
             </div>
@@ -611,7 +643,7 @@ export function TargetSavings() {
             <Text size="sm" c="dimmed">Browse active public Target Savings groups and review the rules before joining.</Text>
           </div>
 
-          {pub.length === 0 ? (
+          {pub.length === 0 ? !loadError && (
             <Card withBorder>
               <Text fw={600}>No public groups available right now</Text>
               <Text size="sm" c="dimmed">Private groups can still be joined through an invitation link from their organiser.</Text>
@@ -649,9 +681,9 @@ export function TargetSavings() {
             Joining adds this group to My Savings and gives you the same personal target and maturity date as other members.
           </Alert>
           {!kycReady && (
-            <Alert color="yellow" title="KYC Level 1 required">
-              Complete identity verification before joining this group.
-              <Button ml="sm" size="xs" variant="light" onClick={() => navigate("/kyc")}>Complete KYC</Button>
+            <Alert color="yellow" title={kycLevel === null ? "Verification status unavailable" : "KYC Level 1 required"}>
+              {kycLevel === null ? "Your verification status must be checked before joining this group." : "Complete identity verification before joining this group."}
+              {kycLevel !== null && <Button ml="sm" size="xs" variant="light" onClick={() => navigate("/kyc")}>Complete KYC</Button>}
             </Alert>
           )}
           <GroupRules plan={joinPlan} />
@@ -674,9 +706,9 @@ export function TargetSavings() {
             This is a private Target Savings invitation. Review the rules before joining.
           </Alert>
           {!kycReady && (
-            <Alert color="yellow" title="KYC Level 1 required">
-              Complete identity verification before accepting this invitation.
-              <Button ml="sm" size="xs" variant="light" onClick={() => navigate("/kyc")}>Complete KYC</Button>
+            <Alert color="yellow" title={kycLevel === null ? "Verification status unavailable" : "KYC Level 1 required"}>
+              {kycLevel === null ? "Your verification status must be checked before accepting this invitation." : "Complete identity verification before accepting this invitation."}
+              {kycLevel !== null && <Button ml="sm" size="xs" variant="light" onClick={() => navigate("/kyc")}>Complete KYC</Button>}
             </Alert>
           )}
           <GroupRules />
@@ -828,7 +860,7 @@ export function TargetSavings() {
 // Compact one-line row that reveals the full CustomerTargetCard below on click.
 // Default is collapsed so the My Savings tab shows a scannable list even when
 // the user has many plans.
-function TargetPlanRow({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
+function TargetPlanRow({ plan, onChanged, kycReady, kycKnown, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; kycKnown: boolean; showAmounts: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const savedKobo = BigInt(plan.myMembership?.savedAmountKobo ?? "0");
   const targetKobo = BigInt(plan.targetAmountKobo ?? "0");
@@ -895,14 +927,14 @@ function TargetPlanRow({ plan, onChanged, kycReady, showAmounts }: { plan: Targe
       </button>
       {expanded && (
         <div className="border-t border-[#F1F3EF] bg-[#FAFAF7] p-4">
-          <CustomerTargetCard plan={plan} onChanged={onChanged} kycReady={kycReady} showAmounts={showAmounts} />
+          <CustomerTargetCard plan={plan} onChanged={onChanged} kycReady={kycReady} kycKnown={kycKnown} showAmounts={showAmounts} />
         </div>
       )}
     </div>
   );
 }
 
-function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; showAmounts: boolean }) {
+function CustomerTargetCard({ plan, onChanged, kycReady, kycKnown, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; kycKnown: boolean; showAmounts: boolean }) {
   const mine = plan.myMembership?.status === "ACTIVE" ? plan.myMembership : null;
   const providerActionsUnavailable = investmentActionsUnavailable(plan.investment);
   const savedKobo = BigInt(mine?.savedAmountKobo ?? "0");
@@ -1158,7 +1190,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, showAmounts }: { plan: 
           Contributions are closed. {fmtMoney(savedKoboStr, showAmounts)} is being released to your Ajoti wallet.
         </Alert>
       )}
-      {contributionAvailable && !kycReady && (
+      {contributionAvailable && kycKnown && !kycReady && (
         <Alert mt="md" color="yellow" variant="light">Complete KYC Level 1 before contributing to this target.</Alert>
       )}
 

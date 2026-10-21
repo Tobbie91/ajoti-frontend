@@ -1,5 +1,56 @@
 import { expect, test } from '@playwright/test'
 
+test('failed savings and KYC reads show retryable errors instead of empty targets and missing KYC', async ({ page }) => {
+  let unavailable = true
+  await page.addInitScript(() => localStorage.setItem('user', JSON.stringify({
+    id: 'member-1', firstName: 'Test', role: 'MEMBER', status: 'ACTIVE',
+  })))
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname
+    if (!path.startsWith('/api/')) return route.continue()
+    if (path === '/api/users/me') return route.fulfill({ json: { id: 'member-1', role: 'MEMBER', status: 'ACTIVE' } })
+    if (path === '/api/target-savings/mine' || path === '/api/kyc/status') {
+      if (unavailable) return route.fulfill({ status: 503, json: { message: 'Temporarily unavailable' } })
+      return route.fulfill({ json: path.endsWith('/mine') ? { data: [] } : { kycLevel: 1 } })
+    }
+    if (path === '/api/target-savings/public') return route.fulfill({ json: { data: [] } })
+    return route.fulfill({ json: {} })
+  })
+  await page.goto('/target-savings')
+  await expect(page.getByText('Unable to load your savings')).toBeVisible()
+  await expect(page.getByText('Unable to load verification status')).toBeVisible()
+  await expect(page.getByText('No savings targets yet', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Complete KYC Level 1 to use Target Savings', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'New target', exact: true })).toBeDisabled()
+
+  unavailable = false
+  await page.getByRole('button', { name: 'Retry savings', exact: true }).click()
+  await expect(page.getByText('No savings targets yet', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Retry verification', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'New target', exact: true })).toBeEnabled()
+  await expect(page.getByText('Unable to load verification status')).toHaveCount(0)
+})
+
+test('a public groups failure cannot masquerade as an empty savings portfolio', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('user', JSON.stringify({
+    id: 'member-1', firstName: 'Test', role: 'MEMBER', status: 'ACTIVE',
+  })))
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname
+    if (!path.startsWith('/api/')) return route.continue()
+    if (path === '/api/users/me') return route.fulfill({ json: { id: 'member-1', role: 'MEMBER', status: 'ACTIVE' } })
+    if (path === '/api/target-savings/mine') return route.fulfill({ json: { data: [] } })
+    if (path === '/api/target-savings/public') return route.fulfill({ status: 503, json: { message: 'Temporarily unavailable' } })
+    if (path === '/api/kyc/status') return route.fulfill({ json: { kycLevel: 1 } })
+    return route.fulfill({ json: {} })
+  })
+  await page.goto('/target-savings')
+  await expect(page.getByRole('button', { name: 'Retry savings', exact: true })).toBeVisible()
+  await expect(page.getByText('No savings targets yet', { exact: true })).toHaveCount(0)
+  await page.getByText('Discover Groups', { exact: true }).click()
+  await expect(page.getByText('No public groups available right now', { exact: true })).toHaveCount(0)
+})
+
 test('provider-backed plans do not promise unavailable actions and customer UI hides sandbox funding', async ({ page }) => {
   const plan = {
     id: 'provider-target', ownerId: 'member-1', type: 'INDIVIDUAL', name: 'Legacy Cowrywise target',
