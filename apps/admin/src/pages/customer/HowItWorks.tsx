@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, TextInput, Badge } from "@mantine/core";
 import {
   IconSearch,
@@ -65,6 +65,13 @@ export function HowItWorks() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<FilterCategory>("All");
   const [search, setSearch] = useState("");
+
+  // Jump the viewport to the top when the Explore page mounts — React Router
+  // preserves the previous page's scroll offset by default, which left users
+  // landing mid-article when navigating here from a scrolled Home/Dashboard.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
 
   const filtered = ARTICLES.filter((a) => {
     const matchesCategory =

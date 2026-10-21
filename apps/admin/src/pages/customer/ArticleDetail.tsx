@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Text, Badge } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -137,6 +138,12 @@ function renderBlock(block: BodyBlock, index: number) {
 export function ArticleDetail() {
   const navigate = useNavigate();
   const { articleId } = useParams();
+
+  // Scroll back to the top each time a different article opens — otherwise the
+  // viewport stays wherever the previous article (or Explore list) was scrolled.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [articleId]);
 
   const article = ARTICLES.find((a) => a.id === articleId);
 
