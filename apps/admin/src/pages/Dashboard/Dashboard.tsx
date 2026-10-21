@@ -42,6 +42,7 @@ import {
   getCreditScore,
   getAdminDashboard,
   listAllRoscaCircles,
+  getMyParticipations,
   type AdminDashboard,
   type RoscaCircle,
   type TrustScore,
@@ -71,6 +72,9 @@ export function Dashboard() {
   const [circles, setCircles] = useState<RoscaCircle[]>([])
   const [circlesLoading, setCirclesLoading] = useState(true)
   const [circlesError, setCirclesError] = useState(false)
+  const [joinedCircles, setJoinedCircles] = useState<RoscaCircle[]>([])
+  const [joinedCirclesLoading, setJoinedCirclesLoading] = useState(true)
+  const [joinedCirclesError, setJoinedCirclesError] = useState(false)
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([])
 
   const [trustOpen, setTrustOpen] = useState(false)
@@ -121,13 +125,21 @@ export function Dashboard() {
         })
         .catch(() => { setCircles([]); setCirclesError(true) })
         .finally(() => setCirclesLoading(false)),
+      getMyParticipations()
+        .then(setJoinedCircles)
+        .catch(() => setJoinedCirclesError(true))
+        .finally(() => setJoinedCirclesLoading(false)),
       getMyTargetSavings()
         .then((res) => setTargetPlans(Array.isArray(res) ? res : []))
         .catch(() => setTargetPlans([])),
     ])
   }, [])
 
-  const { deadline: nextCircleDeadline, loading: deadlineLoading, error: deadlineError } = useCircleDeadline(circles, !circlesLoading)
+  const deadlineCircles = useMemo(
+    () => [...new Map([...joinedCircles, ...circles].map(circle => [circle.id, circle])).values()],
+    [circles, joinedCircles],
+  )
+  const { deadline: nextCircleDeadline, loading: deadlineLoading, error: deadlineError } = useCircleDeadline(deadlineCircles, !circlesLoading && !joinedCirclesLoading)
 
   const bucketCounts = useMemo(() => {
     const counts = { Active: 0, 'Not Ready': 0, Ready: 0, Completed: 0 } as Record<string, number>
@@ -146,13 +158,13 @@ export function Dashboard() {
     }
   }, [circles, targetPlans])
 
-  const nonCancelledCircles = circles.filter((circle) => circle.status?.toUpperCase() !== 'CANCELLED')
+  const nonCancelledCircles = deadlineCircles.filter((circle) => circle.status?.toUpperCase() !== 'CANCELLED')
   const allCirclesCompleted = nonCancelledCircles.length > 0 && nonCancelledCircles.every((circle) => circle.status?.toUpperCase() === 'COMPLETED')
   const circlesArePlanned = nonCancelledCircles.length > 0 && nonCancelledCircles.every((circle) => circle.status?.toUpperCase() === 'DRAFT')
   const deadlineState = getCircleDeadlineState({
     circleStatus: nextCircleDeadline ? 'ACTIVE' : allCirclesCompleted ? 'COMPLETED' : circlesArePlanned ? 'DRAFT' : undefined,
     deadline: nextCircleDeadline?.deadline,
-    failed: circlesError || deadlineError,
+    failed: circlesError || joinedCirclesError || deadlineError,
   })
   const formattedDeadline = nextCircleDeadline && ['upcoming', 'overdue'].includes(deadlineState)
     ? new Date(nextCircleDeadline.deadline).toLocaleString('en-NG', {

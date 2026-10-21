@@ -117,6 +117,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
   const tone = cardToneFor(group.circleStatus);
   const t = CARD_TONE[tone];
   const canPay = tone === "active" && !group.progressUnavailable && group.nextContributionCycle != null;
+  const paidForNow = tone === "active" && !group.progressUnavailable && group.nextContributionCycle == null && kobo(group.currentCycleOutstandingKobo) === 0n;
   const canExit = ["DRAFT", "ACTIVE"].includes(group.circleStatus);
   const pct = Math.max(0, Math.min(100, group.totalCycles > 0 ? Math.round((group.completedCycles / group.totalCycles) * 100) : 0));
   const ringDeg = (pct / 100) * 360;
@@ -125,6 +126,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
     if (tone === "completed") return "All cycles complete";
     if (tone === "cancelled") return "Group cancelled";
     if (tone === "notready")  return "Starts when the organiser activates the group";
+    if (paidForNow) return "No contribution due now";
     const cycle = group.nextContributionCycle ?? group.currentCycle;
     return cycle > group.currentCycle
       ? `Cycle ${cycle} contribution · Pay early`
@@ -133,6 +135,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
 
   const cycleStripSubtle = (() => {
     if (group.progressUnavailable) return "Schedule and contribution progress unavailable. Refresh to try again.";
+    if (paidForNow) return "Current cycle paid · Further payments unlock as the group advances.";
     const deadlineState = getCircleDeadlineState({ circleStatus: group.circleStatus, deadline: group.nextDeadlineRaw });
     if (deadlineState === "upcoming") return `Upcoming · Pay by ${group.nextContribution}`;
     if (deadlineState === "overdue") return `Overdue · Due ${group.nextContribution}`;
@@ -280,7 +283,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
               : "cursor-not-allowed border border-[#E5E7EB] bg-[#F3F4F6] text-[#9CA3AF]"
           }`}
         >
-          {group.progressUnavailable ? "Progress unavailable" : group.nextContributionCycle != null && group.nextContributionCycle > group.currentCycle ? `Pay Cycle ${group.nextContributionCycle} Early` : "Pay contribution"}
+          {group.progressUnavailable ? "Progress unavailable" : paidForNow ? "Paid for now" : group.nextContributionCycle != null && group.nextContributionCycle > group.currentCycle ? `Pay Cycle ${group.nextContributionCycle} Early` : "Pay contribution"}
         </button>
       </div>
 
@@ -511,6 +514,7 @@ export function Rosca() {
             }
             const nextSchedule = schedules
               .filter((schedule) => ['IN_PROGRESS', 'UPCOMING'].includes((schedule.status ?? '').toUpperCase()))
+              .filter((schedule) => schedule.cycleNumber != null && schedule.cycleNumber >= group.currentCycle && schedule.cycleNumber <= group.currentCycle + 1)
               .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))
               .find((schedule) =>
                 schedule.cycleNumber != null &&

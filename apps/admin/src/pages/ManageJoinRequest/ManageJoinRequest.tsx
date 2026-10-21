@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Stack,
   Text,
@@ -42,6 +43,8 @@ function getTrustBg(score: number) {
 }
 
 export function ManageJoinRequest() {
+  const [searchParams] = useSearchParams()
+  const requestedCircleId = searchParams.get('circleId')
   const [tabsLoading, setTabsLoading] = useState(true)
   const [circles, setCircles] = useState<CirclePendingRequests[]>([])
   const [activeCircle, setActiveCircle] = useState<CirclePendingRequests | null>(null)
@@ -70,11 +73,11 @@ export function ManageJoinRequest() {
     getJoinRequests()
       .then((data) => {
         setCircles(data)
-        if (data.length > 0) setActiveCircle(data[0])
+        if (data.length > 0) setActiveCircle(data.find((circle) => circle.circleId === requestedCircleId) ?? data[0])
       })
       .catch((err) => setFetchError(err instanceof Error ? err.message : 'Failed to load requests'))
       .finally(() => setTabsLoading(false))
-  }, [])
+  }, [requestedCircleId])
 
   // Load pending members whenever active circle changes
   useEffect(() => {

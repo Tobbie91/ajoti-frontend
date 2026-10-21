@@ -4,7 +4,7 @@ import { io, type Socket } from 'socket.io-client'
 
 export interface UseChatConfig<TMessage> {
   chatBaseUrl: string
-  fetchMessages: (circleId: string) => Promise<TMessage[]>
+  fetchMessages: (circleId: string, before?: string) => Promise<TMessage[]>
   postMessage: (circleId: string, body: string) => Promise<TMessage>
 }
 
@@ -16,6 +16,8 @@ export function useChat<TMessage extends { id: string; createdAt: string; circle
   const [messages, setMessages] = useState<TMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasOlderMessages, setHasOlderMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
   const joinedRef = useRef<string | null>(circleId)
@@ -40,7 +42,12 @@ export function useChat<TMessage extends { id: string; createdAt: string; circle
 
     // Rooms are lost after a disconnect, so join again on every reconnect.
     socket.on('connect', () => {
-      if (joinedRef.current) socket.emit('chat.join', joinedRef.current)
+      const activeCircleId = joinedRef.current
+      if (!activeCircleId) return
+      socket.emit('chat.join', activeCircleId)
+      fetchMessages(activeCircleId)
+        .then((history) => { if (joinedRef.current === activeCircleId) mergeMessages(history) })
+        .catch(() => {})
     })
     socket.on('chat.message', (msg: TMessage) => {
       if (msg.circleId === joinedRef.current) mergeMessages([msg])
@@ -53,12 +60,13 @@ export function useChat<TMessage extends { id: string; createdAt: string; circle
       socket.disconnect()
       socketRef.current = null
     }
-  }, [chatBaseUrl, mergeMessages])
+  }, [chatBaseUrl, fetchMessages, mergeMessages])
 
   useEffect(() => {
     const socket = socketRef.current
     if (circleId && socket?.connected) socket.emit('chat.join', circleId)
     setMessages([])
+    setHasOlderMessages(false)
     setError(null)
     if (!circleId) {
       setLoading(false)
@@ -68,7 +76,12 @@ export function useChat<TMessage extends { id: string; createdAt: string; circle
     let cancelled = false
     setLoading(true)
     fetchMessages(circleId)
-      .then((history) => { if (!cancelled) mergeMessages(history) })
+      .then((history) => {
+        if (!cancelled) {
+          mergeMessages(history)
+          setHasOlderMessages(history.length >= 50)
+        }
+      })
       .catch((reason: unknown) => {
         if (!cancelled) setError(reason instanceof Error ? reason.message : 'Unable to load messages')
       })
@@ -89,6 +102,21 @@ export function useChat<TMessage extends { id: string; createdAt: string; circle
     }
   }, [circleId, fetchMessages, mergeMessages])
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!circleId || !hasOlderMessages || loadingOlder || messages.length === 0) return
+    const before = messages[0].createdAt
+    setLoadingOlder(true)
+    try {
+      const older = await fetchMessages(circleId, before)
+      mergeMessages(older)
+      setHasOlderMessages(older.length >= 50)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load older messages')
+    } finally {
+      setLoadingOlder(false)
+    }
+  }, [circleId, fetchMessages, hasOlderMessages, loadingOlder, mergeMessages, messages])
+
   const sendMessage = useCallback(async (body: string) => {
     if (!circleId || !body.trim()) throw new Error('Select a conversation and enter a message')
     setSending(true)
@@ -104,5 +132,5 @@ export function useChat<TMessage extends { id: string; createdAt: string; circle
     }
   }, [circleId, postMessage, mergeMessages])
 
-  return { messages, loading, sending, error, sendMessage }
+  return { messages, loading, sending, loadingOlder, hasOlderMessages, error, sendMessage, loadOlderMessages }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Text, Select, Loader, Stack, Paper, Group, Box, Badge, SimpleGrid } from '@mantine/core'
 import {
   IconArrowLeft,
@@ -54,6 +54,8 @@ export function Loans() {
   const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const eligibilityRequest = useRef(0)
+  const applicationInFlight = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -76,31 +78,38 @@ export function Loans() {
   const disbursementAmount = eligibility?.maxLoanAmount != null ? Number(eligibility.maxLoanAmount) / 100 : 0
 
   async function handleCircleSelect(id: string | null) {
+    const requestId = ++eligibilityRequest.current
     setSelectedCircleId(id)
     setEligibility(null)
-    if (!id) return
+    if (!id) {
+      setCheckingEligibility(false)
+      return
+    }
     setCheckingEligibility(true)
     try {
       const result = await getLoanEligibility(id)
-      setEligibility(result)
+      if (requestId === eligibilityRequest.current) setEligibility(result)
     } catch {
-      setEligibility({ eligible: false, reason: 'Could not check eligibility. Try again.' })
+      if (requestId === eligibilityRequest.current) setEligibility({ eligible: false, reason: 'Could not check eligibility. Try again.' })
     } finally {
-      setCheckingEligibility(false)
+      if (requestId === eligibilityRequest.current) setCheckingEligibility(false)
     }
   }
 
-  async function submitLoan() {
-    if (!selectedCircleId) return
+  async function submitLoan(transactionPin: string) {
+    if (!selectedCircleId || applicationInFlight.current) return
+    applicationInFlight.current = true
     setStep('processing')
     setError(null)
     try {
-      await applyForLoan({ circleId: selectedCircleId })
+      await applyForLoan({ circleId: selectedCircleId, transactionPin })
       setStep('success')
       getLoanStatus().then(setActiveLoan).catch(() => {})
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Loan application failed. Please try again.')
       setStep('error')
+    } finally {
+      applicationInFlight.current = false
     }
   }
 
@@ -108,7 +117,7 @@ export function Loans() {
     if (pin.length < 4) {
       const newPin = pin + digit
       setPin(newPin)
-      if (newPin.length === 4) setTimeout(() => submitLoan(), 300)
+      if (newPin.length === 4) void submitLoan(newPin)
     }
   }
 

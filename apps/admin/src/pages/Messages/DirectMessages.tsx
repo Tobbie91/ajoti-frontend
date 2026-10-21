@@ -10,6 +10,7 @@ import {
   type ChatCircle,
   type DirectChatMessage,
   type DirectChatThread,
+  type DirectChatThreadCursor,
 } from '@/utils/api'
 
 const PRIMARY = '#02A36E'
@@ -19,11 +20,14 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasOlderMessages, setHasOlderMessages] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
     setMessages([])
+    setHasOlderMessages(false)
     setDraft('')
     setError(null)
     setLoading(true)
@@ -31,11 +35,14 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
     function refresh() {
       getDirectChatMessages(circleId, memberId)
         .then((incoming) => {
-          if (active) setMessages((prev) => {
-            const byId = new Map(prev.map((m) => [m.id, m]))
-            for (const message of incoming) byId.set(message.id, message)
-            return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-          })
+          if (active) {
+            setHasOlderMessages(incoming.length >= 50)
+            setMessages((prev) => {
+              const byId = new Map(prev.map((m) => [m.id, m]))
+              for (const message of incoming) byId.set(message.id, message)
+              return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+            })
+          }
         })
         .catch((reason: unknown) => {
           if (active) setError(reason instanceof Error ? reason.message : 'Unable to load private messages')
@@ -49,6 +56,24 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
     }, 10000)
     return () => { active = false; clearInterval(interval) }
   }, [circleId, memberId])
+
+  async function loadOlderMessages() {
+    if (!hasOlderMessages || loadingOlder || messages.length === 0) return
+    setLoadingOlder(true)
+    try {
+      const older = await getDirectChatMessages(circleId, memberId, messages[0].createdAt)
+      setMessages((prev) => {
+        const byId = new Map(older.map((message) => [message.id, message]))
+        for (const message of prev) byId.set(message.id, message)
+        return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      })
+      setHasOlderMessages(older.length >= 50)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load older messages')
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
 
   async function handleSend() {
     const body = draft.trim()
@@ -93,6 +118,11 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: 16 }}>
+        {hasOlderMessages && (
+          <button type="button" disabled={loadingOlder} onClick={() => { void loadOlderMessages() }} style={{ alignSelf: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px', fontSize: 12, opacity: loadingOlder ? 0.5 : 1 }}>
+            {loadingOlder ? 'Loading older messages…' : 'Load older messages'}
+          </button>
+        )}
         {loading && <Loader size="sm" color={PRIMARY} />}
         {!loading && messages.length === 0 && !error && <Text c="dimmed" size="sm">No private messages yet. Start the conversation below.</Text>}
         {messages.map((msg) => {
@@ -132,6 +162,8 @@ function DirectThread({ circleId, memberId, title, onBack }: { circleId: string;
 export function DirectMessages() {
   const [params, setParams] = useSearchParams()
   const [threads, setThreads] = useState<DirectChatThread[]>([])
+  const [threadCursor, setThreadCursor] = useState<DirectChatThreadCursor | null>(null)
+  const [loadingMoreThreads, setLoadingMoreThreads] = useState(false)
   const [circles, setCircles] = useState<ChatCircle[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -147,13 +179,32 @@ export function DirectMessages() {
 
   useEffect(() => {
     Promise.all([getDirectChatThreads(), getChatCircles()])
-      .then(([loadedThreads, loadedCircles]) => {
-        setThreads(loadedThreads)
+      .then(([threadPage, loadedCircles]) => {
+        setThreads(threadPage.threads)
+        setThreadCursor(threadPage.nextCursor)
         setCircles(loadedCircles)
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to load conversations'))
       .finally(() => setLoading(false))
   }, [])
+
+  async function loadMoreThreads() {
+    if (!threadCursor || loadingMoreThreads) return
+    setLoadingMoreThreads(true)
+    setError(null)
+    try {
+      const page = await getDirectChatThreads(threadCursor)
+      setThreads((current) => {
+        const seen = new Set(current.map((thread) => `${thread.circleId}:${thread.memberId}`))
+        return [...current, ...page.threads.filter((thread) => !seen.has(`${thread.circleId}:${thread.memberId}`))]
+      })
+      setThreadCursor(page.nextCursor)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load more conversations')
+    } finally {
+      setLoadingMoreThreads(false)
+    }
+  }
 
   const selected = useMemo(() => {
     const match = threads.find((thread) =>
@@ -210,6 +261,16 @@ export function DirectMessages() {
             <Text size="xs" c="dimmed" lineClamp={1}>{thread.lastMessage.body}</Text>
           </button>
         ))}
+        {threadCursor && (
+          <button
+            type="button"
+            disabled={loadingMoreThreads}
+            onClick={() => { void loadMoreThreads() }}
+            style={{ border: 0, background: 'white', padding: 16, color: PRIMARY, cursor: 'pointer', opacity: loadingMoreThreads ? 0.5 : 1 }}
+          >
+            {loadingMoreThreads ? 'Loading conversations…' : 'Load more conversations'}
+          </button>
+        )}
       </div>
 
       {/* Thread pane — full-width on mobile when active, right pane on desktop */}

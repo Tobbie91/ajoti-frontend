@@ -58,15 +58,35 @@ function mapApiTxn(tx: WalletTransaction): Transaction {
     type: entryType,
     time: d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit', hour12: true }),
     amount: `₦${amtNaira.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
-    direction: tx.bucketType === 'ROSCA' && ['RESERVE', 'RELEASE'].includes(entryType) ? 'reservation' : entryType === 'CREDIT' ? 'credit' : 'debit',
+    direction: ['RESERVE', 'RELEASE'].includes(entryType) ? 'reservation' : entryType === 'CREDIT' ? 'credit' : 'debit',
     date: dateLabel,
     raw: tx,
   }
 }
 
+function transactionCategory(tx: WalletTransaction): string {
+  const bucket = (tx.bucketType ?? '').toUpperCase()
+  const source = (tx.sourceType ?? '').toUpperCase()
+  const movement = String(tx.movementType ?? '').toUpperCase()
+  if (bucket === 'ROSCA' || ['ROSCA_CIRCLE', 'CONTRIBUTION', 'COLLATERAL_RESERVE', 'COLLATERAL_RELEASE', 'COLLATERAL_SEIZURE', 'PENALTY', 'EXIT_PENALTY', 'EXIT_FORFEIT_COMPENSATION', 'HELD_PAYOUT_DEPOSIT', 'HELD_PAYOUT_RELEASE', 'ROSCA_ADMIN_FEE', 'LATE_PENALTY_ADMIN_FEE'].includes(source)) return 'ROSCA'
+  if (bucket === 'TARGET' || ['TARGET_SAVINGS', 'TARGET_MATURITY'].includes(source)) return 'Investment'
+  if (movement === 'FUNDING') return 'Funding'
+  if (movement === 'WITHDRAWAL' || movement === 'TRANSFER') return 'Transfer'
+  return 'Other'
+}
+
 function formatKobo(val: string | number | undefined): string {
   if (val == null) return 'Not available'
   return `₦${(Number(val) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+}
+
+const KOBO_METADATA_FIELDS = new Set(['flatFee', 'netPayout', 'grossPayout'])
+
+function formatMetadataLabel(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, c => c.toUpperCase())
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -141,7 +161,7 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
         {(raw as Record<string, unknown>).balanceBefore != null && <DetailRow label="Balance Before" value={formatKobo((raw as Record<string, unknown>).balanceBefore as string)} />}
         {(raw as Record<string, unknown>).balanceAfter != null && <DetailRow label="Balance After" value={formatKobo((raw as Record<string, unknown>).balanceAfter as string)} />}
         {metaEntries.map(([k, v]) => (
-          <DetailRow key={k} label={k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} value={String(v)} />
+          <DetailRow key={k} label={formatMetadataLabel(k)} value={KOBO_METADATA_FIELDS.has(k) ? formatKobo(String(v)) : String(v)} />
         ))}
         <DetailRow
           label="Reference"
@@ -152,7 +172,6 @@ function TransactionDetailModal({ tx, onClose }: { tx: Transaction | null; onClo
   )
 }
 
-const STATUS_OPTIONS = ['All', 'Successful', 'Pending', 'Failed']
 const TYPE_OPTIONS = ['All', 'Credit', 'Debit']
 const CATEGORY_OPTIONS = ['All', 'Transfer', 'Funding', 'ROSCA', 'Investment']
 
@@ -163,7 +182,6 @@ export function Transactions() {
   const [walletBalance, setWalletBalance] = useState('₦0.00')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<string | null>('All')
   const [type, setType] = useState<string | null>('All')
   const [category, setCategory] = useState<string | null>('All')
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
@@ -263,6 +281,7 @@ export function Transactions() {
       if (type === 'Credit' && tx.direction !== 'credit') return false
       if (type === 'Debit' && tx.direction !== 'debit') return false
     }
+    if (category && category !== 'All' && transactionCategory(tx.raw) !== category) return false
     return true
   })
 
@@ -381,8 +400,7 @@ export function Transactions() {
       ) : (
         <>
       {/* Filters */}
-      <div className="mb-4 grid grid-cols-3 gap-2">
-        <Select data={STATUS_OPTIONS} value={status} onChange={setStatus} placeholder="Status" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
+      <div className="mb-4 grid grid-cols-2 gap-2">
         <Select data={TYPE_OPTIONS} value={type} onChange={setType} placeholder="Type" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
         <Select data={CATEGORY_OPTIONS} value={category} onChange={setCategory} placeholder="Category" radius="lg" size="xs" styles={{ input: { borderColor: '#E5E7EB', fontSize: 13, height: 36 } }} />
       </div>
