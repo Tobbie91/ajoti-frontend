@@ -57,11 +57,11 @@ export function StatsCard({ title, value, subtitle, withBar = false }: StatsCard
       </Text>
 
       <Text
-        fz={32}
+        fz={22}
         fw={700}
-        lh={1}
+        lh={1.15}
         mb={4}
-        style={{ color: '#212529' }}
+        style={{ color: '#212529', wordBreak: 'break-word' }}
       >
         {value}
       </Text>
