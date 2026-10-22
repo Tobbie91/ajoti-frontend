@@ -61,6 +61,7 @@ async function mockAdminApi(page: Page, options: {
     if (/^\/api\/rosca\/[^/]+\/schedules$/.test(path)) return route.fulfill({ json: { success: true, data: options.deadline ? [{ cycleNumber: 2, contributionDeadline: options.deadline, payoutDate: '2031-01-01T00:00:00+01:00', status: 'UPCOMING', recipientName: 'Member' }] : [] } })
     if (path === '/api/admin/rosca/dashboard') return route.fulfill({ json: { data: {
       totalGroups: 99,
+      memberGroupCount: 7,
       nextDeadline: options.deadline ? { groupName: 'Verified Deadline Ajo', deadline: options.deadline } : null,
       pendingJoinRequests: { total: 0, breakdown: [] },
     } } })
@@ -72,6 +73,13 @@ async function mockAdminApi(page: Page, options: {
   })
 }
 
+test('dashboard exposes joined membership count separately from administered circles', async ({ page }) => {
+  await mockAdminApi(page)
+  await page.goto('/dashboard')
+  await expect(page.getByText('Joined Groups', { exact: true }).locator('..')).toContainText('7')
+  await expect(page.getByText('Total Groups', { exact: true }).locator('..')).toContainText('4')
+})
+
 test('dashboard counts unique administered circles and completed links open history filter', async ({ page }) => {
   await mockAdminApi(page, { deadline: '2030-02-03T12:00:00Z' })
   await page.goto('/dashboard')
@@ -81,7 +89,7 @@ test('dashboard counts unique administered circles and completed links open hist
   await expect(page.getByRole('button', { name: 'Ready — 1', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Not Ready — 1', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Completed — 1', exact: true })).toBeVisible()
-  await expect(page.getByText('Unique administered circles · excludes cancelled')).toBeVisible()
+  await expect(page.getByText('Admin circles · excl. cancelled')).toBeVisible()
   await expect(deadlineCard).toContainText('Duplicate Active Ajo · Cycle 2 · Upcoming')
   await expect(deadlineCard).toContainText(/3 Feb 2030/)
 

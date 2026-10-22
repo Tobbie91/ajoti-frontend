@@ -373,6 +373,7 @@ export interface DashboardCircle {
 
 export interface AdminDashboard {
   totalGroups: number;
+  memberGroupCount?: number;
   groupCounts?: { active: number; ready: number; notReady: number; completed: number };
   categories?: {
     activeGroups: DashboardCircle[];
