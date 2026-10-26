@@ -228,3 +228,74 @@ test('member home deduplicates circles, shows the scheduled cycle deadline and r
   await expect(joinedTile).toContainText('Unavailable')
   await expect(page.getByText('Available', { exact: true }).locator('../..')).toContainText('Unavailable')
 })
+
+const widgetTarget = {
+  id: 'school-fees', name: 'School Fees Target', status: 'MATURED', type: 'GROUP',
+  maturityDate: '2026-01-01T00:00:00Z', totalSavedKobo: '90000000',
+  myMembership: { status: 'COMPLETED', savedAmountKobo: '15000000' },
+  investment: { enabled: false, lifecycleStatus: 'LEGACY' },
+}
+for (const [path, user] of [['/dashboard', admin], ['/home', member]] as const) {
+  test(`personal savings widgets share one row on ${path}`, async ({ page }) => {
+    await mockAdminApi(page)
+    if (user.role === 'MEMBER') {
+      await page.addInitScript(value => localStorage.setItem('user', JSON.stringify(value)), user)
+      await page.route('**/api/users/me', route => route.fulfill({ json: { data: user } }))
+    }
+    await page.route('**/api/rosca/my-contributions-summary', route => route.fulfill({ json: { data: { activeAjosContributionsKobo: '7000000' } } }))
+    await page.route('**/api/target-savings/mine', route => route.fulfill({ json: { data: [widgetTarget] } }))
+    await page.goto(path, { waitUntil: 'domcontentloaded' })
+    const ajo = page.getByRole('region', { name: 'My Active Ajos', exact: true })
+    const matured = page.getByRole('region', { name: 'Target Savings Matured', exact: true })
+    await expect(ajo).toContainText('₦70,000.00')
+    await expect(ajo).toContainText('Contributions awaiting payout')
+    await expect(ajo.getByRole('link')).toHaveCount(0)
+    await expect(matured).toContainText('₦150,000.00')
+    await expect(matured).not.toContainText('₦900,000')
+    await expect(matured).toContainText('School Fees Target')
+    await expect(matured.getByRole('link', { name: 'View' })).toHaveAttribute('href', '/target-savings#target-plan-school-fees')
+    await expect(matured.getByRole('link', { name: 'Withdraw' })).toHaveAttribute('href', '/withdraw')
+    const a = await ajo.boundingBox(), b = await matured.boundingBox()
+    expect(a && b && Math.abs(a.y - b.y) < 2 && a.x + a.width <= b.x + 1).toBeTruthy()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.getByRole('button', { name: 'Hide wallet balance and transactions' }).click()
+    await expect(ajo).not.toContainText('₦70,000.00')
+    await expect(matured).not.toContainText('₦150,000.00')
+  })
+}
+test('matured widget excludes unsettled, cancelled, other-member and provider plans', async ({ page }) => {
+  await mockAdminApi(page)
+  await page.route('**/api/rosca/my-contributions-summary', route => route.fulfill({ json: { data: { activeAjosContributionsKobo: '0' } } }))
+  await page.route('**/api/target-savings/mine', route => route.fulfill({ json: { data: [
+    { ...widgetTarget, id: 'date-passed', status: 'ACTIVE' },
+    { ...widgetTarget, id: 'cancelled', myMembership: { status: 'CANCELLED', savedAmountKobo: '15000000' } },
+    { ...widgetTarget, id: 'other-member', myMembership: null },
+    { ...widgetTarget, id: 'provider', investment: { enabled: true, lifecycleStatus: 'DISABLED_PENDING_INTEGRATION' } },
+  ] } }))
+  await page.goto('/dashboard')
+  await expect(page.getByRole('region', { name: 'My Active Ajos' })).toContainText('₦0.00')
+  await expect(page.getByRole('region', { name: 'Target Savings Matured' })).toHaveCount(0)
+})
+
+
+test('personal widget errors remain unavailable and the Ajo summary can retry', async ({ page }, testInfo) => {
+  await mockAdminApi(page)
+  let unavailable = true
+  await page.route('**/api/rosca/my-contributions-summary', route => unavailable
+    ? route.fulfill({ status: 503, json: { message: 'Unavailable' } })
+    : route.fulfill({ json: { data: { activeAjosContributionsKobo: '7000000' } } }))
+  await page.route('**/api/target-savings/mine', route => route.fulfill({ json: { data: [widgetTarget] } }))
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+  const ajo = page.getByRole('region', { name: 'My Active Ajos', exact: true })
+  await expect(ajo).toContainText('Unavailable')
+  await expect(ajo).not.toContainText('₦0.00')
+  unavailable = false
+  await ajo.getByRole('button', { name: 'Retry Ajo summary' }).click()
+  await expect(ajo).toContainText('₦70,000.00')
+  await expect(page.getByRole('region', { name: 'Target Savings Matured' })).toContainText('₦150,000.00')
+  await ajo.locator('..').screenshot({ path: testInfo.outputPath('dashboard-widgets.png') })
+  await page.route('**/api/target-savings/mine', route => route.fulfill({ status: 503, json: { message: 'Unavailable' } }))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('Unable to load matured savings. Refresh to try again.')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Target Savings Matured' })).toHaveCount(0)
+})
