@@ -35,6 +35,7 @@ import { StatsCard } from '@/components/StatsCard'
 import { TrustScoreCard, CreditScoreCard } from '@/components/ScoreCards'
 import { QuickActions } from '@/components/QuickActions'
 import { SummaryCard } from '@/components/SumaryCard'
+import { PersonalSavingsWidgets } from '@/components/PersonalSavingsWidgets'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 import {
   getTrustScore,
@@ -76,6 +77,7 @@ export function Dashboard() {
   const [joinedCirclesLoading, setJoinedCirclesLoading] = useState(true)
   const [joinedCirclesError, setJoinedCirclesError] = useState(false)
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([])
+  const [targetSavingsError, setTargetSavingsError] = useState(false)
 
   const [trustOpen, setTrustOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
@@ -131,7 +133,7 @@ export function Dashboard() {
         .finally(() => setJoinedCirclesLoading(false)),
       getMyTargetSavings()
         .then((res) => setTargetPlans(Array.isArray(res) ? res : []))
-        .catch(() => setTargetPlans([])),
+        .catch(() => { setTargetPlans([]); setTargetSavingsError(true) }),
     ])
   }, [])
 
@@ -207,6 +209,8 @@ export function Dashboard() {
           hidden={hidden}
         />
       </SimpleGrid>
+
+      <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm">

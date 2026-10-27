@@ -9,6 +9,7 @@ import transctionIcon from "@/assets/Transaction_Icon.svg";
 import { MyDashboard } from "@/components/MyDashBoard/MyDashboard";
 import { QuickCard } from "@/components/QuickCard";
 import { SummaryCard } from "@/components/SumaryCard";
+import { PersonalSavingsWidgets } from "@/components/PersonalSavingsWidgets";
 import { TrustScoreCard, CreditScoreCard } from "@/components/ScoreCards";
 import Rosca from "@/assets/Rosca.svg";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +49,7 @@ export function Home() {
   const [trustOpen, setTrustOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([]);
+  const [targetSavingsError, setTargetSavingsError] = useState(false);
   useEffect(() => {
     Promise.allSettled([
       getWalletBalance()
@@ -90,7 +92,7 @@ export function Home() {
       }).catch(() => setMembershipError(true)).finally(() => setMembershipLoading(false)),
       getMyTargetSavings()
         .then((rows) => setTargetPlans(Array.isArray(rows) ? rows : []))
-        .catch(() => setTargetPlans([])),
+        .catch(() => { setTargetPlans([]); setTargetSavingsError(true); }),
     ]);
   }, []);
 
@@ -157,6 +159,8 @@ export function Home() {
             hidden={hidden}
           />
         </SimpleGrid>
+
+        <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
         {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}
         <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs">

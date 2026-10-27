@@ -371,6 +371,13 @@ export interface DashboardCircle {
   maxSlots: number; durationCycles: number; createdAt: string;
 }
 
+export async function getMyContributionsSummary(): Promise<{ activeAjosContributionsKobo: string }> {
+  const result = await authRequest<{ data: { activeAjosContributionsKobo: string } }>(
+    '/api/rosca/my-contributions-summary', { method: 'GET' },
+  );
+  return result.data;
+}
+
 export interface AdminDashboard {
   totalGroups: number;
   memberGroupCount?: number;
