@@ -24,7 +24,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const commonStyle = (active: boolean) => ({ root: { borderRadius: 8, fontWeight: active ? 600 : 400 } })
 
   return (
-    <Box h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
+    <Box className="customer-sidebar" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
       <Stack gap={2} px="xs" py="md" style={{ flex: 1 }}>
         {!admin && <NavLink component={RouterNavLink} to="/home" label="Home"
           leftSection={<IconHome2 size={19} stroke={1.5} />} active={isActive('/home')} onClick={onClose}

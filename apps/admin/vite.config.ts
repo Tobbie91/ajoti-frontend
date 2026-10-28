@@ -7,7 +7,11 @@ import path from 'path'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    port: 5179,
+    port: 5176,
+    strictPort: true,
+    proxy: {
+      '/api': { target: 'https://api.ajoti.com', changeOrigin: true },
+    },
   },
   resolve: {
     alias: {

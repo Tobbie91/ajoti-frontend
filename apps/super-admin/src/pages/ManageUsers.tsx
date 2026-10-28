@@ -1,3 +1,4 @@
+import { downloadUsersCsv, downloadUsersPdf } from '@/utils/user-export'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Title,
@@ -23,6 +24,7 @@ import {
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
+  IconDownload,
   IconSearch,
   IconEye,
   IconAlertCircle,
@@ -370,6 +372,10 @@ const PAGE_SIZE = 20
 
 export function ManageUsers() {
   const canManageKyc = hasPermission(getStaffRoleFromStorage(), 'MANAGE_KYC')
+  const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [registeredFrom, setRegisteredFrom] = useState('')
+  const [registeredTo, setRegisteredTo] = useState('')
   const [users, setUsers] = useState<SuperadminUserRow[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -397,6 +403,8 @@ export function ManageUsers() {
     listUsers({
       page,
       limit: PAGE_SIZE,
+      registeredFrom: registeredFrom || undefined,
+      registeredTo: registeredTo || undefined,
       search: debouncedSearch || undefined,
       role: roleFilter ?? undefined,
       status: statusFilter ?? undefined,
@@ -411,15 +419,15 @@ export function ManageUsers() {
   useEffect(() => {
     fetchUsers()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearch, roleFilter, statusFilter, kycFilter, pendingAdminFilter])
+  }, [page, debouncedSearch, roleFilter, statusFilter, kycFilter, pendingAdminFilter, registeredFrom, registeredTo])
 
   function openUserDetail(userId: string) { setSelectedUserId(userId); openDrawer() }
 
   function handleFiltersReset() {
-    setSearch(''); setRoleFilter(null); setStatusFilter(null); setKycFilter(null); setPendingAdminFilter(false); setPage(1)
+    setSearch(''); setRoleFilter(null); setStatusFilter(null); setKycFilter(null); setPendingAdminFilter(false); setRegisteredFrom(''); setRegisteredTo(''); setPage(1)
   }
 
-  const hasFilters = !!(search || roleFilter || statusFilter || kycFilter || pendingAdminFilter)
+  const hasFilters = !!(search || roleFilter || statusFilter || kycFilter || pendingAdminFilter || registeredFrom || registeredTo)
   type UserSortKey = 'name' | 'email' | 'phone' | 'role' | 'kyc' | 'rosca' | 'status'
   const { sort, toggleSort } = useSortState<UserSortKey>()
   const sortedUsers = sortRows(users, sort, {
@@ -431,6 +439,52 @@ export function ManageUsers() {
     rosca: (u) => u._count.roscaMemberships,
     status: (u) => u.status,
   })
+
+  async function handleExport(format: 'csv' | 'pdf') {
+    if (registeredFrom && registeredTo && registeredFrom > registeredTo) {
+      setExportError('The registration start date must be before the end date.')
+      return
+    }
+    setExporting(format)
+    setExportError(null)
+    const params = {
+      search: search.trim() || undefined, role: roleFilter ?? undefined,
+      status: statusFilter ?? undefined, kycStatus: kycFilter ?? undefined,
+      pendingAdminRequest: pendingAdminFilter || undefined,
+      registeredFrom: registeredFrom || undefined, registeredTo: registeredTo || undefined,
+    }
+    try {
+      const result: SuperadminUserRow[] = []
+      let nextPage = 1
+      let pages = 1
+      do {
+        const response = await listUsers({ ...params, page: nextPage, limit: 100 })
+        if (response.data.length === 0 && nextPage <= response.meta.totalPages) {
+          throw new Error('The user list changed during export. Please retry.')
+        }
+        result.push(...response.data)
+        pages = response.meta.totalPages
+        if (response.meta.total > 25000 || result.length > 25000) {
+          throw new Error('Please narrow your filters to export 25,000 users or fewer.')
+        }
+        nextPage++
+      } while (nextPage <= pages)
+      if (!result.length) throw new Error('No users match these filters.')
+      const summary = [
+        params.search && `Search: ${params.search}`, params.role && `Role: ${params.role}`,
+        params.status && `Status: ${params.status}`, params.kycStatus && `KYC: ${params.kycStatus}`,
+        pendingAdminFilter && 'Pending admin requests',
+        registeredFrom && `Registered from: ${registeredFrom}`, registeredTo && `Registered to: ${registeredTo}`,
+      ].filter(Boolean).join(' | ') || 'All users'
+      const filename = `ajoti-users-${new Date().toISOString().slice(0, 10)}`
+      if (format === 'csv') downloadUsersCsv(result, filename)
+      else await downloadUsersPdf(result, summary, filename)
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Unable to export users.')
+    } finally {
+      setExporting(null)
+    }
+  }
 
   return (
     <Stack gap="md">
@@ -452,6 +506,25 @@ export function ManageUsers() {
         <Button variant={pendingAdminFilter ? 'filled' : 'light'} color="orange" size="sm" onClick={() => { setPendingAdminFilter((v) => !v); setPage(1) }}>Pending Admin Requests</Button>
         {hasFilters && <Button variant="subtle" size="sm" color="gray" onClick={handleFiltersReset}>Clear filters</Button>}
       </Group>
+
+      <Card withBorder radius="md" p="md" style={{ background: '#f4f8ef', borderColor: '#d9e8cf' }}>
+        <Group justify="space-between" align="flex-end" wrap="wrap">
+          <div>
+            <Text fw={700} c="#0b5140">Download users report</Text>
+            <Text size="sm" c="dimmed">Exports include all users matching your filters, across every page.</Text>
+            <Group mt="sm" gap="sm">
+              <TextInput type="date" label="Registered from" value={registeredFrom} onChange={e => { setRegisteredFrom(e.currentTarget.value); setPage(1) }} />
+              <TextInput type="date" label="Registered to" min={registeredFrom || undefined} value={registeredTo} onChange={e => { setRegisteredTo(e.currentTarget.value); setPage(1) }} />
+            </Group>
+          </div>
+          <Group gap="sm">
+            <Button color="#0b5140" variant="outline" leftSection={<IconDownload size={16} />} loading={exporting === 'csv'} disabled={exporting !== null || loading || !!error || total === 0 || search !== debouncedSearch} onClick={() => handleExport('csv')}>Download CSV</Button>
+            <Button color="#0b5140" leftSection={<IconDownload size={16} />} loading={exporting === 'pdf'} disabled={exporting !== null || loading || !!error || total === 0 || search !== debouncedSearch} onClick={() => handleExport('pdf')}>Download PDF</Button>
+          </Group>
+        </Group>
+        <Text size="xs" c="dimmed" mt="sm">PDF includes the Ajoti logo and colours. CSV is formatted for spreadsheets. Maximum 25,000 users per export.</Text>
+      </Card>
+      {exportError && <Alert color="red" role="alert">{exportError}</Alert>}
 
       {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md">{error}</Alert>}
 

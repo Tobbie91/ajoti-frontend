@@ -1,3 +1,5 @@
+import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
+import '@/components/MyDashBoard/dashboard-theme.css';
 import { useCircleDeadline } from '@/hooks/useCircleDeadline';
 import { circleDeadlineLabel, getCircleDeadlineState } from '@/utils/circle-deadline';
 import { watDate } from '@/utils/wat-date';
@@ -126,7 +128,7 @@ export function Home() {
   const allPlanned = participations.length > 0 && participations.every(circle => circle.status === 'DRAFT');
   const deadlineState = getCircleDeadlineState({ circleStatus: allCompleted ? 'COMPLETED' : allPlanned ? 'DRAFT' : undefined, deadline: deadline?.deadline, failed: membershipError || deadlineError });
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-4 sm:px-6 sm:py-6">
+    <div className="growth-dashboard mx-auto w-full max-w-[1200px] px-4 py-4 sm:px-6 sm:py-6">
       <div className="flex flex-col gap-5 sm:gap-7">
         <MyDashboard
           userName={userName}
@@ -135,11 +137,11 @@ export function Home() {
         />
 
         {/* ─── Wallet trio (matches admin Dashboard) ───────────────────── */}
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+        <CirclesOverview circles={participations} loading={membershipLoading} error={membershipError}>
           <SummaryCard
             title="Total Balance"
             amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.total) : "Loading…"}
-            gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
+            gradient="linear-gradient(125deg, #d9efd8 0%, #b9e5bd 100%)"
             hideable
             hidden={hidden}
             onToggleHidden={toggle}
@@ -147,16 +149,16 @@ export function Home() {
           <SummaryCard
             title="Available"
             amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.available) : "Loading…"}
-            gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
+            gradient="linear-gradient(125deg, #ffe4ef 0%, #f9bfdb 100%)"
             hidden={hidden}
           />
           <SummaryCard
             title="Reserved"
             amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.reserved) : "Loading…"}
-            gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
+            gradient="linear-gradient(125deg, #fff1b8 0%, #ffe69a 100%)"
             hidden={hidden}
           />
-        </SimpleGrid>
+        </CirclesOverview>
 
         {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}
         <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs">

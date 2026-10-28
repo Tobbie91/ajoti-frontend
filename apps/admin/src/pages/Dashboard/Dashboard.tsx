@@ -1,3 +1,6 @@
+import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
+import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
+import '@/components/MyDashBoard/dashboard-theme.css'
 import { useCircleDeadline } from '@/hooks/useCircleDeadline'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -173,23 +176,16 @@ export function Dashboard() {
     : null
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" className="growth-dashboard">
       {/* ─── Greeting ─────────────────────────────────────────────── */}
-      <Box>
-        <Text fz={22} fw={700}>
-          Hi, {adminName || 'there'}
-        </Text>
-        <Text fz="sm" c="dimmed">
-          Here's today's ajo snapshot
-        </Text>
-      </Box>
+      <MyDashboard userName={adminName || "there"} />
 
       {/* ─── Wallet trio ──────────────────────────────────────────── */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+      <CirclesOverview circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError}>
         <SummaryCard
           title="Total Balance"
           amount={wallet ? money(wallet.total) : '-'}
-          gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
+          gradient="linear-gradient(125deg, #d9efd8 0%, #b9e5bd 100%)"
           hideable
           hidden={hidden}
           onToggleHidden={toggle}
@@ -197,16 +193,16 @@ export function Dashboard() {
         <SummaryCard
           title="Available"
           amount={wallet ? money(wallet.available) : '-'}
-          gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
+          gradient="linear-gradient(125deg, #ffe4ef 0%, #f9bfdb 100%)"
           hidden={hidden}
         />
         <SummaryCard
           title="Reserved"
           amount={wallet ? money(wallet.reserved) : '-'}
-          gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
+          gradient="linear-gradient(125deg, #fff1b8 0%, #ffe69a 100%)"
           hidden={hidden}
         />
-      </SimpleGrid>
+      </CirclesOverview>
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm">
