@@ -10,7 +10,17 @@ export default defineConfig({
     port: 5176,
     strictPort: true,
     proxy: {
-      '/api': { target: 'https://api.ajoti.com', changeOrigin: true },
+      '/api': {
+        target: 'https://api.ajoti.com',
+        changeOrigin: true,
+        // The hosted cookie-auth service validates Origin independently of Host.
+        // These headers apply only to requests through this local dev proxy.
+        headers: {
+          Origin: 'https://app.ajoti.com',
+          Referer: 'https://app.ajoti.com/',
+        },
+        cookieDomainRewrite: '',
+      },
     },
   },
   resolve: {
