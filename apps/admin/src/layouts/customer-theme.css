@@ -1,0 +1,49 @@
+/* Shared customer colours, including routes opened directly outside the dashboard. */
+.customer-shell {
+  --customer-forest: #084535;
+  --customer-cream: #fcfaf3;
+  --customer-lime: #d6f6a8;
+  --customer-border: #e5eadf;
+}
+.customer-shell .customer-sidebar {
+  background: #084535;
+  color: #e8f4e9;
+}
+.customer-shell .customer-sidebar .mantine-NavLink-root {
+  color: #e8f4e9;
+  border-radius: 10px;
+  margin-bottom: 3px;
+}
+.customer-shell .customer-sidebar .mantine-NavLink-root:hover {
+  background: #ffffff12;
+}
+.customer-shell .customer-sidebar .mantine-NavLink-root[data-active] {
+  background: #d6f6a8;
+  color: #123c2b;
+}
+
+.customer-shell .customer-sidebar .mantine-Divider-root {
+  border-color: #ffffff30;
+}
+.customer-shell .mantine-AppShell-header {
+  border-bottom-color: var(--customer-border);
+}
+.customer-shell .mantine-Card-root,
+.customer-shell .mantine-Paper-root {
+  border-color: var(--customer-border);
+}
+.customer-shell .mantine-Title-root {
+  color: var(--customer-forest);
+}
+.customer-shell .mantine-Tabs-list {
+  border-color: var(--customer-border);
+}
+.customer-shell .mantine-Tabs-tab[data-active] {
+  color: var(--customer-forest);
+  border-color: #0b6b55;
+  background-color: #edf7e7;
+}
+.customer-shell .mantine-Table-thead {
+  background-color: #f4f7ed;
+  color: var(--customer-forest);
+}

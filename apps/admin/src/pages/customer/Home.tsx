@@ -1,7 +1,10 @@
+import { NextContribution } from '@/components/MyDashBoard/DashboardHighlights';
+import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
+import '@/components/MyDashBoard/dashboard-theme.css';
 import { useCircleDeadline } from '@/hooks/useCircleDeadline';
 import { circleDeadlineLabel, getCircleDeadlineState } from '@/utils/circle-deadline';
 import { watDate } from '@/utils/wat-date';
-import { formatKobo } from '@/utils/kobo';
+import { formatKobo, sumKobo } from '@/utils/kobo';
 import { Title, Text, Card, Box, Modal, Paper, SimpleGrid, UnstyledButton } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconCompass, IconGauge, IconLock, IconLockOpen, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
@@ -14,6 +17,7 @@ import { TrustScoreCard, CreditScoreCard } from "@/components/ScoreCards";
 import Rosca from "@/assets/Rosca.svg";
 import { useNavigate } from "react-router-dom";
 import {
+  getCircleContributions,
   getWalletBalance,
   getWalletTransactions,
   getTrustScore,
@@ -37,6 +41,8 @@ export function Home() {
     reserved: string;
     available: string;
   } | null>(null);
+  const [personalAjoTotal, setPersonalAjoTotal] = useState<string | null>(null);
+  const [personalAjoLoading, setPersonalAjoLoading] = useState(true);
   const [recentTxns, setRecentTxns] = useState<WalletTransaction[]>([]);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const [trustData, setTrustData] = useState<TrustScore | null>(null);
@@ -96,6 +102,23 @@ export function Home() {
     ]);
   }, []);
 
+  useEffect(() => {
+    if (membershipLoading) return;
+    let active = true;
+    setPersonalAjoLoading(true);
+    setPersonalAjoTotal(null);
+    if (membershipError) { setPersonalAjoLoading(false); return; }
+    const unique = [...new Map(participations.map(circle => [circle.id, circle])).values()];
+    Promise.all(unique.map(circle => getCircleContributions(circle.id)))
+      .then(histories => {
+        const total = sumKobo(histories.flatMap(rows => rows.map(row => row.amount)));
+        if (active) setPersonalAjoTotal(total?.toString() ?? null);
+      })
+      .catch(() => { if (active) setPersonalAjoTotal(null); })
+      .finally(() => { if (active) setPersonalAjoLoading(false); });
+    return () => { active = false; };
+  }, [participations, membershipLoading, membershipError]);
+
   // ─── Stat tile derivations ─────────────────────────────────────────
   const stats = (() => {
     const joined = participations.length;
@@ -128,7 +151,7 @@ export function Home() {
   const allPlanned = participations.length > 0 && participations.every(circle => circle.status === 'DRAFT');
   const deadlineState = getCircleDeadlineState({ circleStatus: allCompleted ? 'COMPLETED' : allPlanned ? 'DRAFT' : undefined, deadline: deadline?.deadline, failed: membershipError || deadlineError });
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-4 sm:px-6 sm:py-6">
+    <div className="growth-dashboard mx-auto w-full max-w-[1200px] px-4 py-4 sm:px-6 sm:py-6">
       <div className="flex flex-col gap-5 sm:gap-7">
         <MyDashboard
           userName={userName}
@@ -136,12 +159,45 @@ export function Home() {
           onTransfer={() => navigate("/withdraw")}
         />
 
+        {/* ─── Advert board — rotates between 3 slides ────────────────── */}
+        <AdvertRotator
+          slides={[
+            {
+              icon: <IconUsersGroup size={28} />,
+              title: "Ready to run your own ajo?",
+              body: "Become an Ajo admin to create groups, invite members, and manage contributions.",
+              cta: "Become an Ajo admin",
+              to: "/rosca/become-admin",
+              gradient: "linear-gradient(135deg,#043F32 0%,#02A36E 100%)",
+            },
+            {
+              icon: <IconTarget size={28} />,
+              title: "Save towards a goal",
+              body: "Lock in funds for school fees, rent, or that holiday. Earn as you save.",
+              cta: "Open Target Savings",
+              to: "/target-savings",
+              gradient: "linear-gradient(135deg,#1E3A8A 0%,#3B82F6 100%)",
+            },
+            {
+              icon: <IconCash size={28} />,
+              title: "Need cash sooner?",
+              body: "Request an early payout from your active ajo circle, with no paperwork.",
+              cta: "Request an early payout",
+              to: "/loans",
+              gradient: "linear-gradient(135deg,#7C2D12 0%,#F97316 100%)",
+            },
+          ]}
+          onCta={(to) => navigate(to)}
+        />
+
         {/* ─── Wallet trio (matches admin Dashboard) ───────────────────── */}
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+        <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={participations} loading={membershipLoading} error={membershipError}>
+          <NextContribution heading="Next deadline" deadline={deadline} circles={participations} loading={deadlineLoading} error={membershipError || deadlineError} hidden={hidden} />
+          <div className="growth-wallet-group">
           <SummaryCard
             title="Total Balance"
             amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.total) : "Loading…"}
-            gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
+            gradient="linear-gradient(125deg, #d9efd8 0%, #b9e5bd 100%)"
             hideable
             hidden={hidden}
             onToggleHidden={toggle}
@@ -149,16 +205,17 @@ export function Home() {
           <SummaryCard
             title="Available"
             amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.available) : "Loading…"}
-            gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
+            gradient="linear-gradient(125deg, #ffe4ef 0%, #f9bfdb 100%)"
             hidden={hidden}
           />
           <SummaryCard
             title="Reserved"
             amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.reserved) : "Loading…"}
-            gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
+            gradient="linear-gradient(125deg, #fff1b8 0%, #ffe69a 100%)"
             hidden={hidden}
           />
-        </SimpleGrid>
+          </div>
+        </CirclesOverview>
 
         <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
@@ -265,36 +322,6 @@ export function Home() {
           </Card>
         </SimpleGrid>
 
-        {/* ─── Advert board — rotates between 3 slides ────────────────── */}
-        <AdvertRotator
-          slides={[
-            {
-              icon: <IconUsersGroup size={28} />,
-              title: "Ready to run your own ajo?",
-              body: "Become an Ajo admin to create groups, invite members, and manage contributions.",
-              cta: "Become an Ajo admin",
-              to: "/rosca/become-admin",
-              gradient: "linear-gradient(135deg,#043F32 0%,#02A36E 100%)",
-            },
-            {
-              icon: <IconTarget size={28} />,
-              title: "Save towards a goal",
-              body: "Lock in funds for school fees, rent, or that holiday. Earn as you save.",
-              cta: "Open Target Savings",
-              to: "/target-savings",
-              gradient: "linear-gradient(135deg,#1E3A8A 0%,#3B82F6 100%)",
-            },
-            {
-              icon: <IconCash size={28} />,
-              title: "Need cash sooner?",
-              body: "Request an early payout from your active ajo circle, with no paperwork.",
-              cta: "Request an early payout",
-              to: "/loans",
-              gradient: "linear-gradient(135deg,#7C2D12 0%,#F97316 100%)",
-            },
-          ]}
-          onCta={(to) => navigate(to)}
-        />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-7">
             <div>

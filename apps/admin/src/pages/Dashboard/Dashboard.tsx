@@ -1,3 +1,8 @@
+import { formatKobo, sumKobo } from '@/utils/kobo'
+import { DashboardHighlights, NextContribution } from '@/components/MyDashBoard/DashboardHighlights'
+import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
+import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
+import '@/components/MyDashBoard/dashboard-theme.css'
 import { useCircleDeadline } from '@/hooks/useCircleDeadline'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -38,6 +43,9 @@ import { SummaryCard } from '@/components/SumaryCard'
 import { PersonalSavingsWidgets } from '@/components/PersonalSavingsWidgets'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 import {
+  getCircleContributions,
+  getWalletTransactions,
+  type WalletTransaction,
   getTrustScore,
   getWalletBalance,
   getCreditScore,
@@ -76,6 +84,13 @@ export function Dashboard() {
   const [joinedCircles, setJoinedCircles] = useState<RoscaCircle[]>([])
   const [joinedCirclesLoading, setJoinedCirclesLoading] = useState(true)
   const [joinedCirclesError, setJoinedCirclesError] = useState(false)
+  const [personalAjoTotal, setPersonalAjoTotal] = useState<string | null>(null)
+  const [personalAjoLoading, setPersonalAjoLoading] = useState(true)
+  const [recentTransactions, setRecentTransactions] = useState<WalletTransaction[]>([])
+  const [activityLoading, setActivityLoading] = useState(true)
+  const [activityError, setActivityError] = useState(false)
+  const [plansLoading, setPlansLoading] = useState(true)
+  const [plansError, setPlansError] = useState(false)
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([])
   const [targetSavingsError, setTargetSavingsError] = useState(false)
 
@@ -131,17 +146,37 @@ export function Dashboard() {
         .then(setJoinedCircles)
         .catch(() => setJoinedCirclesError(true))
         .finally(() => setJoinedCirclesLoading(false)),
+      getWalletTransactions().then(setRecentTransactions).catch(() => setActivityError(true)).finally(() => setActivityLoading(false)),
       getMyTargetSavings()
         .then((res) => setTargetPlans(Array.isArray(res) ? res : []))
-        .catch(() => { setTargetPlans([]); setTargetSavingsError(true) }),
+        .catch(() => { setTargetPlans([]); setTargetSavingsError(true); setPlansError(true) }).finally(() => setPlansLoading(false)),
     ])
   }, [])
+
+  useEffect(() => {
+    if (joinedCirclesLoading) return
+    let active = true
+    setPersonalAjoLoading(true)
+    setPersonalAjoTotal(null)
+    if (joinedCirclesError) { setPersonalAjoLoading(false); return }
+    const unique = [...new Map(joinedCircles.map(circle => [circle.id, circle])).values()]
+    Promise.all(unique.map(circle => getCircleContributions(circle.id)))
+      .then(histories => {
+        const total = sumKobo(histories.flatMap(rows => rows.map(row => row.amount)))
+        if (active) setPersonalAjoTotal(total?.toString() ?? null)
+      })
+      .catch(() => { if (active) setPersonalAjoTotal(null) })
+      .finally(() => { if (active) setPersonalAjoLoading(false) })
+    return () => { active = false }
+  }, [joinedCircles, joinedCirclesLoading, joinedCirclesError])
 
   const deadlineCircles = useMemo(
     () => [...new Map([...joinedCircles, ...circles].map(circle => [circle.id, circle])).values()],
     [circles, joinedCircles],
   )
   const { deadline: nextCircleDeadline, loading: deadlineLoading, error: deadlineError } = useCircleDeadline(deadlineCircles, !circlesLoading && !joinedCirclesLoading)
+
+  const { deadline: myNextDeadline, loading: myDeadlineLoading, error: myDeadlineError } = useCircleDeadline(joinedCircles, !joinedCirclesLoading)
 
   const bucketCounts = useMemo(() => {
     const counts = { Active: 0, 'Not Ready': 0, Ready: 0, Completed: 0 } as Record<string, number>
@@ -175,23 +210,18 @@ export function Dashboard() {
     : null
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" className="growth-dashboard">
       {/* ─── Greeting ─────────────────────────────────────────────── */}
-      <Box>
-        <Text fz={22} fw={700}>
-          Hi, {adminName || 'there'}
-        </Text>
-        <Text fz="sm" c="dimmed">
-          Here's today's ajo snapshot
-        </Text>
-      </Box>
+      <MyDashboard userName={adminName || "there"} onCreateCircle={() => navigate('/create-group')} />
 
       {/* ─── Wallet trio ──────────────────────────────────────────── */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+      <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError}>
+        <NextContribution deadline={myNextDeadline} circles={joinedCircles} loading={myDeadlineLoading} error={joinedCirclesError || myDeadlineError} hidden={hidden} />
+        <div className="growth-wallet-group">
         <SummaryCard
           title="Total Balance"
           amount={wallet ? money(wallet.total) : '-'}
-          gradient="linear-gradient(135deg, #1F4037 0%, #99F2C8 100%)"
+          gradient="linear-gradient(125deg, #d9efd8 0%, #b9e5bd 100%)"
           hideable
           hidden={hidden}
           onToggleHidden={toggle}
@@ -199,16 +229,18 @@ export function Dashboard() {
         <SummaryCard
           title="Available"
           amount={wallet ? money(wallet.available) : '-'}
-          gradient="linear-gradient(135deg, #9EB6E5 0%, #D6E4FF 100%)"
+          gradient="linear-gradient(125deg, #ffe4ef 0%, #f9bfdb 100%)"
           hidden={hidden}
         />
         <SummaryCard
           title="Reserved"
           amount={wallet ? money(wallet.reserved) : '-'}
-          gradient="linear-gradient(135deg, #A8D8B9 0%, #DFF3E7 100%)"
+          gradient="linear-gradient(125deg, #fff1b8 0%, #ffe69a 100%)"
           hidden={hidden}
         />
-      </SimpleGrid>
+        </div>
+      </CirclesOverview>
+      <DashboardHighlights plans={targetPlans} plansLoading={plansLoading} plansError={plansError} transactions={recentTransactions} activityLoading={activityLoading} activityError={activityError} hidden={hidden} />
 
       <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
@@ -309,7 +341,6 @@ export function Dashboard() {
           title="Total Groups"
           value={circlesLoading ? unavailableValue : circlesError ? unavailableValue : String(bucketCounts.total)}
           subtitle={circlesError ? 'Failed to load' : 'Admin circles · excl. cancelled'}
-          withBar
         />
         <StatsCard
           title="Joined Groups"

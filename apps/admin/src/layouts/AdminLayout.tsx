@@ -1,3 +1,4 @@
+import './customer-theme.css'
 import { AppShell } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { Outlet } from 'react-router-dom'
@@ -9,6 +10,7 @@ export function AdminLayout() {
 
   return (
     <AppShell
+      className="customer-shell"
       header={{ height: 60 }}
       navbar={{
         width: 240,
@@ -18,10 +20,11 @@ export function AdminLayout() {
       padding="md"
       styles={{
         main: {
-          backgroundColor: '#F8F9FA',
+          backgroundColor: 'var(--customer-cream)',
         },
         navbar: {
-          borderRight: '1px solid #e9ecef',
+          backgroundColor: 'var(--customer-forest)',
+          borderRight: '1px solid var(--customer-forest)',
         },
       }}
     >
