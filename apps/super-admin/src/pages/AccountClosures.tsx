@@ -1,3 +1,5 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { buildReport } from '@/utils/report-builders'
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, Group, Loader, SimpleGrid, Stack, Text, TextInput, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
@@ -17,6 +19,7 @@ export function AccountClosures() {
   }
   if (loading) return <Loader />
   return <Stack>
+    <ReportDownloads title="Account closures report" filename="account-closures" scope="Current account closure queue." load={async () => [buildReport('closures', await listAccountClosures(), 'Closure requests')]} />
     <Title order={2}>Account closure queue</Title>
     <Alert color="orange">Closing customer access does not erase identity, KYC, transaction, ledger, fraud, or audit records. A legal hold closes access while preserving the case; it is not a rejection of the customer’s request.</Alert>
     {items.length === 0 && <Text c="dimmed">No closure requests.</Text>}

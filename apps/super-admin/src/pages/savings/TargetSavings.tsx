@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import { Alert, Badge, Card, Group, Pagination, Select, SimpleGrid, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { IconAlertCircle, IconSearch } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -55,6 +59,7 @@ export function TargetSavings() {
 
   return (
     <Stack gap="lg" p="xl">
+      <ReportDownloads title="Target Savings report" filename="target-savings" disabled={loading || !!error} filters={{ Search: search, Status: status, Type: type }} load={async () => [buildReport('savings', await collectReportPages((page, limit) => reportApi.getTargetSavingsOversight({ page, limit, search: search.trim() || undefined, status: (status || undefined) as TargetSavingsStatus | undefined, type: (type || undefined) as TargetSavingsType | undefined })), 'Target savings plans')]} />
       <div>
         <Title order={2} fw={700}>Target Savings</Title>
         <Text c="dimmed" size="sm" mt={4}>

@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   ActionIcon,
   Badge,
@@ -480,6 +484,7 @@ function CirclesTab() {
 
   return (
     <>
+      <ReportDownloads title="Circles report" filename="circles" disabled={loading || !!error} filters={{ Search: search, Status: status, Mode: showAll ? 'All circles' : 'Filtered list' }} load={async () => [buildReport('circles', showAll ? (await reportApi.getAllRoscaCircles({ status: status || undefined })).data : await collectReportPages((page, limit) => reportApi.listCircles({ page, limit, status: status || undefined, search: search.trim() || undefined })), 'Ajo circles')]} />
       {/* Filters */}
       <Group mb="md" gap="sm">
         {!showAll && (
@@ -644,6 +649,7 @@ function DefaultersTab() {
 
   return (
     <>
+      <ReportDownloads title="Defaulters report" filename="defaulters" disabled={loading || !!error} load={async () => [buildReport('defaulters', (await collectReportPages((page, limit) => reportApi.getDefaulters(page, limit))).map(item => { const row = item as Record<string, unknown>; return { ...row, amountOwedKobo: row.amountOwedKobo ?? row.amount, missedCycles: row.missedCycles ?? row.missedPayments }; }), 'Defaulters')]} />
       {error && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" mb="md">
           {error}

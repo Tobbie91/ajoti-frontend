@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Badge,
   Button,
@@ -550,6 +554,7 @@ export function StaffManagement() {
 
   return (
     <Stack>
+      <ReportDownloads title="Staff report" filename="staff" disabled={loading || !!error} filters={{ Role: roleFilter, Status: statusFilter }} load={async () => [buildReport('staff', await collectReportPages((page, limit) => reportApi.listStaff({ page, limit, staffRole: roleFilter || undefined, status: statusFilter || undefined })), 'Staff accounts and invitations')]} />
       <Group justify="space-between" align="center">
         <Title order={2}>Staff Management</Title>
         {isSuperadmin && (
@@ -725,6 +730,7 @@ export function StaffManagement() {
 
         {/* ── Audit Log ── */}
         <Tabs.Panel value="audit" pt="md">
+            <ReportDownloads title="Staff audit report" filename="staff-audit" scope="All staff audit records across every page." load={async () => [buildReport('audit', await collectReportPages((page, limit) => reportApi.getStaffAuditLog({ page, limit })), 'Staff audit log')]} />
           <Stack>
             <Card withBorder p={0}>
               <Table striped>

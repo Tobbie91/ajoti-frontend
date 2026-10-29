@@ -1,3 +1,6 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { settingsReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Alert,
   Button,
@@ -135,6 +138,7 @@ export function CircleRulesSettings() {
 
   return (
     <Stack mt="xl" gap="lg" maw={640}>
+      <ReportDownloads title="Circle rules settings report" filename="circle-rules-settings" scope="Current saved settings, excluding unsaved edits." disabled={loading || !!loadError || !current} load={async () => [settingsReport('Saved settings', (await reportApi.getCircleRulesSettings()).data)]} />
       <Title order={3}>Circle Rules</Title>
       <Text size="sm" c="dimmed">
         Platform-wide rules for savings circles - collateral, late penalty, the minimum trust

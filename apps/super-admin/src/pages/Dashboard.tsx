@@ -1,3 +1,6 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { reportTable } from '@/utils/report-export'
+import { metricReport } from '@/utils/report-builders'
 import { useEffect, useState } from 'react'
 import { SimpleGrid, Grid, Stack, Skeleton, Alert, Card, Group, Text, Badge, ThemeIcon } from '@mantine/core'
 import { IconUsers, IconTopologyRing, IconWallet, IconAlertCircle, IconCurrencyNaira } from '@tabler/icons-react'
@@ -71,6 +74,7 @@ export function Dashboard() {
 
   return (
     <Stack gap="lg">
+      <ReportDownloads title="Dashboard report" filename="dashboard" scope="Dashboard snapshot and the displayed 30-day growth window." disabled={loading || !!error} load={() => [metricReport('Dashboard overview', stats, [['Total users', 'users.total'], ['Active users', 'users.active'], ['New users this week', 'users.newThisWeek'], ['Total circles', 'circles.total'], ['Active circles', 'circles.active'], ['Completed circles', 'circles.completed'], ['Pending KYC', 'kyc.pending'], ['Approved KYC', 'kyc.approved'], ['Wallet balances (NGN)', 'wallet.totalUserBalanceKobo', 'money'], ['Platform pool (NGN)', 'wallet.platformPoolKobo', 'money'], ['Outstanding debts count', 'defaulters.outstandingDebts']]), metricReport('Wallet summary', walletSummary, [['User balances (NGN)', 'totalUserBalanceKobo', 'money'], ['Platform pool (NGN)', 'platformPoolKobo', 'money'], ['Active wallets', 'walletCounts.active'], ['Frozen wallets', 'walletCounts.frozen'], ['Suspended wallets', 'walletCounts.suspended']]), reportTable('User growth (30 days)', growth?.timeSeries.users ?? [], [['Date', 'date'], ['Users', 'count']]), reportTable('Circle growth (30 days)', growth?.timeSeries.circles ?? [], [['Date', 'date'], ['Circles', 'count']])]} />
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <StatsCard
           title="Total Users"

@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Alert,
   Badge,
@@ -222,6 +226,7 @@ export function LoansList() {
 
   return (
     <Stack gap="lg" p="xl">
+      <ReportDownloads title="Loans report" filename="loans" disabled={loading || !!error} filters={{ Status: status, Circle: circleId, Stranded: strandedOnly }} load={async () => [buildReport('loans', await collectReportPages((page, limit) => reportApi.getLoans({ page, limit, status: (status || undefined) as LoanStatus | undefined, circleId: circleId.trim() || undefined, stranded: strandedOnly || undefined })), 'Early payout loans')]} />
       <div>
         <Title order={2} fw={700}>Loans</Title>
         <Text c="dimmed" size="sm" mt={4}>

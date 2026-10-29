@@ -1,3 +1,7 @@
+import { reportTable } from '@/utils/report-export'
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Stack,
   Title,
@@ -157,6 +161,7 @@ export function SystemAccounts() {
 
   return (
     <Stack mt="xl" gap="lg">
+      <ReportDownloads title="Platform accounts report" filename="platform-accounts" scope="Current platform balances and funding receipts." disabled={loading || !!loadError} load={async () => { const [accounts, receipts] = await Promise.all([reportApi.listSystemAccounts(), reportApi.getLoanFloatFundingReceipts()]); return [buildReport('accounts', accounts.data, 'Platform accounts'), reportTable('Funding receipts', receipts.data, [['Reference', 'providerReference'], ['Environment', 'environment'], ['Amount (NGN)', 'amountMinor', 'money'], ['Currency', 'currency'], ['Provider status', 'providerStatus'], ['Status', 'status'], ['Received', 'receivedAt', 'date'], ['Applied', 'appliedAt', 'date']])]; }} />
       {loadError && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" withCloseButton onClose={() => setLoadError(null)}>
           {loadError}

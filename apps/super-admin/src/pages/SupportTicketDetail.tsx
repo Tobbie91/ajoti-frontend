@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { reportTable } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Badge,
   Button,
@@ -186,6 +190,7 @@ export function SupportTicketDetail() {
 
   return (
     <Stack gap="md" p="md" style={{ maxWidth: 900 }}>
+      <ReportDownloads title="Support ticket report" filename="support-ticket" disabled={loading || !!error || !ticket} scope="Selected ticket and its conversation." filters={{ Ticket: ticketId }} load={async () => { const detail = await reportApi.getSupportTicketDetail(ticketId!); return [buildReport('support', [detail], 'Ticket details'), reportTable('Conversation', detail.messages, [['Date', 'createdAt', 'date'], ['Sender role', 'senderRole'], ['Message', 'body']])]; }} />
       <Group>
         <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => navigate('/support')} size="sm">
           Back to inbox

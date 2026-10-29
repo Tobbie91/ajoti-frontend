@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Alert,
   Badge,
@@ -171,6 +175,7 @@ export function DebtsList() {
 
   return (
     <Stack gap="lg" p="xl">
+      <ReportDownloads title="Debts report" filename="debts" disabled={loading || !!error} filters={{ Status: status, Circle: circleId, User: userId }} load={async () => [buildReport('debts', await collectReportPages((page, limit) => reportApi.getDebts({ page, limit, status: (status || undefined) as DebtStatus | undefined, circleId: circleId.trim() || undefined, userId: userId.trim() || undefined })), 'Customer debts')]} />
       <div>
         <Title order={2} fw={700}>Debts</Title>
         <Text c="dimmed" size="sm" mt={4}>
