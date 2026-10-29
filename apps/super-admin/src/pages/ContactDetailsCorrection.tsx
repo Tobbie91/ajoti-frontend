@@ -1,3 +1,6 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { reportTable } from '@/utils/report-export'
+import * as reportApi from '@/utils/api'
 import { useState } from 'react'
 import { Alert, Button, Card, Group, Stack, Text, TextInput, Textarea, Title } from '@mantine/core'
 import { IconAlertCircle, IconCheck } from '@tabler/icons-react'
@@ -147,6 +150,7 @@ export function ContactDetailsCorrection() {
 
   return (
     <Stack gap="lg" maw={760} mx="auto">
+      <ReportDownloads title="Customer contact report" filename="customer-contact" disabled={loading || saving || !userId || !!error} scope="Saved contact details for the selected customer." load={async () => { const detail = await reportApi.getUserDetail(userId); return [reportTable('Saved contact details', [detail.user], [['First name', 'firstName'], ['Last name', 'lastName'], ['Email', 'email'], ['Phone', 'phone'], ['Status', 'status']])]; }} />
       <div>
         <Title order={2}>Verified User Detail Correction</Title>
         <Text c="dimmed" fz="sm" mt={4}>

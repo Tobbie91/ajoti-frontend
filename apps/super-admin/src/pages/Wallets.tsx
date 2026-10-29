@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Stack,
   Title,
@@ -129,6 +133,7 @@ export function Wallets() {
 
   return (
     <Stack mt="xl" gap="lg">
+      <ReportDownloads title="Wallets report" filename="wallets" disabled={loading || !!loadError || search !== debouncedSearch} filters={{ Search: debouncedSearch, Status: statusFilter }} load={async () => [buildReport('wallets', await collectReportPages((page, limit) => reportApi.listWallets({ page, limit, search: debouncedSearch || undefined, status: statusFilter || undefined })), 'Customer wallets')]} />
       {loadError && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" withCloseButton onClose={() => setLoadError(null)}>
           {loadError}

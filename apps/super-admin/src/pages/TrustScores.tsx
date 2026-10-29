@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   ActionIcon,
   Alert,
@@ -355,6 +359,7 @@ export function TrustScores() {
 
   return (
     <Stack gap="lg" p="xl">
+      <ReportDownloads title="Trust scores report" filename="trust-scores" disabled={loading || !!error} filters={{ 'Minimum score': minScore, 'Maximum score': maxScore }} load={async () => [buildReport('trust', await collectReportPages((page, limit) => reportApi.getAllTrustStats({ page, limit, minScore: minScore === '' ? undefined : Number(minScore), maxScore: maxScore === '' ? undefined : Number(maxScore) })), 'Trust scores')]} />
       <Group justify="space-between">
         <div>
           <Title order={2} fw={700}>Trust Scores</Title>

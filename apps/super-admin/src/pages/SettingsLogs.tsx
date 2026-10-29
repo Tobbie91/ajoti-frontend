@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   ActionIcon,
   Alert,
@@ -271,6 +275,7 @@ function AuditLogsTab() {
 
   return (
     <Stack gap="md" pt="md">
+      <ReportDownloads title="Audit logs report" filename="audit-logs" disabled={loading || !!error} filters={{ Actor: search, Entity: entityType, Action: action }} load={async () => [buildReport('audit', await collectReportPages((page, limit) => reportApi.getAuditLogs({ page, limit, actorId: search.trim() || undefined, entityType: entityType || undefined, action: action || undefined })), 'Audit logs')]} />
       <Group gap="sm">
         <TextInput
           placeholder="Search by actor ID..."

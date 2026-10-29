@@ -1,3 +1,6 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { settingsReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Alert,
   Button,
@@ -138,6 +141,7 @@ export function PayoutFeeSettings() {
 
   return (
     <Stack mt="xl" gap="lg" maw={640}>
+      <ReportDownloads title="Payout fee settings report" filename="payout-fee-settings" scope="Current saved settings, excluding unsaved edits." disabled={loading || !!loadError || !current} load={async () => [settingsReport('Saved settings', (await reportApi.getPayoutFeeSettings()).data)]} />
       <Title order={3}>Payout Fee Settings</Title>
       <Text size="sm" c="dimmed">
         The flat fee charged per ajo payout, split between the Group Admin and Ajoti, plus the

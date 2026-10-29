@@ -1,3 +1,7 @@
+import { hasPermission, getStaffRoleFromStorage } from '@/utils/permissions'
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
 import {
   ActionIcon,
   Alert,
@@ -25,13 +29,11 @@ import {
   IconCheck,
   IconCopy,
   IconCurrencyNaira,
-  IconDownload,
   IconRefresh,
   IconSearch,
 } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  exportCsv,
   getLedger,
   getTransactionAnalytics,
   reconcileFunding,
@@ -160,8 +162,6 @@ export function Transactions() {
   const [minAmount, setMinAmount] = useState('')
   const [maxAmount, setMaxAmount] = useState('')
 
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [reconcileRef, setReconcileRef] = useState('')
@@ -224,29 +224,6 @@ export function Transactions() {
     debounceRef.current = setTimeout(fetchLedger, 400)
   }
 
-  async function handleExport() {
-    if (!analytics) return
-    setExporting(true)
-    setExportError(null)
-    try {
-      const blob = await exportCsv({
-        type: 'transactions',
-        startDate: analytics.period.start.split('T')[0],
-        endDate: analytics.period.end.split('T')[0],
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `transactions-${period}.csv`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Failed to export CSV')
-    } finally {
-      setExporting(false)
-    }
-  }
-
   const rows = ledger?.data ?? []
   const totalPages = ledger?.meta.totalPages ?? 1
 
@@ -263,6 +240,10 @@ export function Transactions() {
 
   return (
     <Stack gap="lg" p="xl">
+      <ReportDownloads title="Transactions report" filename="transactions" disabled={ledgerLoading || !!ledgerError} filters={{ Reference: search, Source: sourceType, Status: status, 'Start date': startDate, 'End date': endDate, 'Minimum NGN': minAmount, 'Maximum NGN': maxAmount }} allowed={hasPermission(getStaffRoleFromStorage(), 'EXPORT_LEDGER')} load={async () => {
+        if (startDate && endDate && startDate > endDate) throw new Error('Start date must be before end date.');
+        return [buildReport('ledger', await collectReportPages((page, limit) => getLedger({ page, limit, reference: search.trim() || undefined, sourceType: sourceType || undefined, status: (status || undefined) as 'PENDING' | 'SUCCESS' | 'FAILED' | 'STOPPED' | undefined, startDate: startDate || undefined, endDate: endDate || undefined, minAmountKobo: amountToKobo(minAmount) || undefined, maxAmountKobo: amountToKobo(maxAmount) || undefined })), 'Ledger transactions')];
+      }} />
       {/* Header */}
       <Group justify="space-between">
         <div>
@@ -276,15 +257,7 @@ export function Transactions() {
             onChange={(v) => setPeriod(v as '7d' | '30d' | '90d')}
             size="xs"
           />
-          <Button
-            leftSection={<IconDownload size={16} />}
-            variant="outline"
-            loading={exporting}
-            onClick={handleExport}
-            size="sm"
-          >
-            Export CSV
-          </Button>
+
         </Group>
       </Group>
 
@@ -293,11 +266,7 @@ export function Transactions() {
           {analyticsError}
         </Alert>
       )}
-      {exportError && (
-        <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light" withCloseButton onClose={() => setExportError(null)}>
-          Export failed: {exportError}
-        </Alert>
-      )}
+
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

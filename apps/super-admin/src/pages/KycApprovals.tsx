@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import { useEffect, useRef, useState } from 'react'
 import {
   Title,
@@ -733,6 +737,7 @@ export function KycApprovals() {
 
   return (
     <Stack gap="md">
+      <ReportDownloads title="KYC report" filename="kyc" disabled={loading || !!error || search !== debouncedSearch} filters={{ Tab: activeTab, Search: debouncedSearch }} load={async () => { const rows = await collectReportPages((page, limit) => activeTab === 'ISSUES' ? reportApi.listKycIssues({ page, limit }) : reportApi.listKycQueue({ page, limit, status: activeTab })); const query = debouncedSearch.toLowerCase(); return [buildReport('kyc', rows.filter(row => !query || `${row.user.firstName} ${row.user.lastName} ${row.user.email}`.toLowerCase().includes(query)), 'KYC queue')]; }} />
       <Group justify="space-between" align="center">
         <Title order={2}>KYC Approvals</Title>
         <Text fz="sm" c="dimmed">{total} record{total !== 1 ? 's' : ''}</Text>

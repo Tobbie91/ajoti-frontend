@@ -1,3 +1,7 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { collectReportPages } from '@/utils/report-export'
+import { buildReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Badge,
   Button,
@@ -87,6 +91,7 @@ export function SupportInbox() {
 
   return (
     <Stack gap="md" p="md">
+      <ReportDownloads title="Support tickets report" filename="support-tickets" disabled={loading || !!error || search !== searchInput} filters={{ Search: search, Status: status, Category: category }} load={async () => [buildReport('support', await collectReportPages((page, limit) => reportApi.listSupportTickets({ page, limit, search: search || undefined, status: status || undefined, category: category || undefined })), 'Support tickets')]} />
       <Group justify="space-between" align="center">
         <Title order={3}>Support Inbox</Title>
         <Text size="sm" c="dimmed">{data?.meta.total ?? 0} tickets</Text>

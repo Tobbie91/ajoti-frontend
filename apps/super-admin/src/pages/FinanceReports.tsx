@@ -1,3 +1,6 @@
+import { reportTable } from '@/utils/report-export'
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { buildReport, metricReport } from '@/utils/report-builders'
 import {
   Alert,
   Badge,
@@ -290,6 +293,7 @@ export function FinanceReports() {
 
   return (
     <Stack mt="xl" gap="lg">
+      <ReportDownloads title="Finance report" filename="finance" disabled={loading || !!error || !report} filters={{ 'Start date': dateWindow.startDate, 'End date': dateWindow.endDate, 'As of': dateWindow.asOf }} scope="Loaded finance report and expenses for the selected date window." load={() => [metricReport('Finance summary', report, [['Revenue credits (NGN)', 'platformRevenueCreditsKobo', 'money'], ['Revenue debits (NGN)', 'platformRevenueDebitsKobo', 'money'], ['Net revenue (NGN)', 'platformRevenueNetKobo', 'money'], ['Expenses (NGN)', 'reportedExpensesKobo', 'money'], ['Operating result (NGN)', 'operatingResultKobo', 'money'], ['As of', 'asOf', 'date']]), buildReport('expenses', expenses, 'Expense records'), buildReport('campaigns', report?.campaigns ?? [], 'Campaign acquisition costs'), reportTable('Expenses by category', report?.expensesByCategory ?? [], [['Category', 'categoryName'], ['Amount (NGN)', 'amountKobo', 'money']])]} />
       <Group justify="space-between" align="flex-end">
         <div>
           <Title order={3}>Finance Reports</Title>

@@ -1,3 +1,6 @@
+import { ReportDownloads } from '@/components/ReportDownloads'
+import { settingsReport } from '@/utils/report-builders'
+import * as reportApi from '@/utils/api'
 import {
   Alert,
   Button,
@@ -121,6 +124,7 @@ export function LoanSettings() {
 
   return (
     <Stack mt="xl" gap="lg" maw={640}>
+      <ReportDownloads title="Loan settings report" filename="loan-settings" scope="Current saved settings, excluding unsaved edits." disabled={loading || !!loadError || !current} load={async () => [settingsReport('Saved settings', (await reportApi.getLoanSettings()).data)]} />
       <Title order={3}>Loan Settings</Title>
       <Text size="sm" c="dimmed">
         The maximum early-payout advance (as a share of a member's expected payout) and the
