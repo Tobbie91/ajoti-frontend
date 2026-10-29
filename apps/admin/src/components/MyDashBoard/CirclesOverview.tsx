@@ -14,9 +14,18 @@ type Props = {
   loading: boolean;
   error: boolean;
   children: ReactNode;
+  detailed?: boolean;
+  orbitSummary?: ReactNode;
 };
 
-export function CirclesOverview({ circles, loading, error, children }: Props) {
+export function CirclesOverview({
+  circles,
+  loading,
+  error,
+  children,
+  detailed = false,
+  orbitSummary,
+}: Props) {
   const visible = [
     ...new Map(
       circles
@@ -32,7 +41,10 @@ export function CirclesOverview({ circles, loading, error, children }: Props) {
   ).length;
   const value = (count: number) => (loading ? "…" : error ? "—" : count);
   return (
-    <section className="growth-overview" aria-label="Your savings overview">
+    <section
+      className={`growth-overview${detailed ? " growth-reference" : ""}`}
+      aria-label="Your savings overview"
+    >
       <div className="growth-community">
         <div className="growth-community-copy">
           <p className="growth-eyebrow">Your savings community</p>
@@ -73,15 +85,19 @@ export function CirclesOverview({ circles, loading, error, children }: Props) {
             View your circles <IconArrowRight size={17} />
           </Link>
         </div>
-        <div className="growth-orbit" aria-hidden="true">
+        <div className="growth-orbit">
           <div className="growth-orbit-inner">
-            <IconPlant2 size={35} stroke={1.3} />
-            <strong>
-              Growing
-              <br />
-              together.
-            </strong>
-            <span>One circle at a time</span>
+            {orbitSummary ?? (
+              <>
+                <IconPlant2 size={35} stroke={1.3} />
+                <strong>
+                  Growing
+                  <br />
+                  together.
+                </strong>
+                <span>One circle at a time</span>
+              </>
+            )}
           </div>
           {visible.slice(0, 6).map((circle, index) => (
             <span
@@ -117,6 +133,23 @@ export function CirclesOverview({ circles, loading, error, children }: Props) {
                   <small>
                     {circle.status.replaceAll("_", " ").toLowerCase()}
                   </small>
+                  {detailed && (
+                    <>
+                      <small>
+                        {circle.filledSlots ?? 0} filled slots · Cycle{" "}
+                        {circle.currentCycle ?? 0} of {circle.durationCycles}
+                      </small>
+                      {circle.durationCycles > 0 && (
+                        <span className="growth-progress" aria-hidden="true">
+                          <span
+                            style={{
+                              width: `${circle.status === "COMPLETED" ? 100 : Math.max(0, Math.min(100, ((circle.currentCycle ?? 0) / circle.durationCycles) * 100))}%`,
+                            }}
+                          />
+                        </span>
+                      )}
+                    </>
+                  )}
                 </span>
                 <IconArrowRight size={18} />
               </Link>

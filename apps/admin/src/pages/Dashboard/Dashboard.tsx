@@ -1,3 +1,5 @@
+import { formatKobo, sumKobo } from '@/utils/kobo'
+import { DashboardHighlights, NextContribution } from '@/components/MyDashBoard/DashboardHighlights'
 import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
 import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
 import '@/components/MyDashBoard/dashboard-theme.css'
@@ -40,6 +42,9 @@ import { QuickActions } from '@/components/QuickActions'
 import { SummaryCard } from '@/components/SumaryCard'
 import { useWalletPrivacy } from '@/hooks/useWalletPrivacy'
 import {
+  getCircleContributions,
+  getWalletTransactions,
+  type WalletTransaction,
   getTrustScore,
   getWalletBalance,
   getCreditScore,
@@ -78,6 +83,13 @@ export function Dashboard() {
   const [joinedCircles, setJoinedCircles] = useState<RoscaCircle[]>([])
   const [joinedCirclesLoading, setJoinedCirclesLoading] = useState(true)
   const [joinedCirclesError, setJoinedCirclesError] = useState(false)
+  const [personalAjoTotal, setPersonalAjoTotal] = useState<string | null>(null)
+  const [personalAjoLoading, setPersonalAjoLoading] = useState(true)
+  const [recentTransactions, setRecentTransactions] = useState<WalletTransaction[]>([])
+  const [activityLoading, setActivityLoading] = useState(true)
+  const [activityError, setActivityError] = useState(false)
+  const [plansLoading, setPlansLoading] = useState(true)
+  const [plansError, setPlansError] = useState(false)
   const [targetPlans, setTargetPlans] = useState<TargetSavingsPlan[]>([])
 
   const [trustOpen, setTrustOpen] = useState(false)
@@ -132,17 +144,37 @@ export function Dashboard() {
         .then(setJoinedCircles)
         .catch(() => setJoinedCirclesError(true))
         .finally(() => setJoinedCirclesLoading(false)),
+      getWalletTransactions().then(setRecentTransactions).catch(() => setActivityError(true)).finally(() => setActivityLoading(false)),
       getMyTargetSavings()
         .then((res) => setTargetPlans(Array.isArray(res) ? res : []))
-        .catch(() => setTargetPlans([])),
+        .catch(() => { setTargetPlans([]); setPlansError(true) }).finally(() => setPlansLoading(false)),
     ])
   }, [])
+
+  useEffect(() => {
+    if (joinedCirclesLoading) return
+    let active = true
+    setPersonalAjoLoading(true)
+    setPersonalAjoTotal(null)
+    if (joinedCirclesError) { setPersonalAjoLoading(false); return }
+    const unique = [...new Map(joinedCircles.map(circle => [circle.id, circle])).values()]
+    Promise.all(unique.map(circle => getCircleContributions(circle.id)))
+      .then(histories => {
+        const total = sumKobo(histories.flatMap(rows => rows.map(row => row.amount)))
+        if (active) setPersonalAjoTotal(total?.toString() ?? null)
+      })
+      .catch(() => { if (active) setPersonalAjoTotal(null) })
+      .finally(() => { if (active) setPersonalAjoLoading(false) })
+    return () => { active = false }
+  }, [joinedCircles, joinedCirclesLoading, joinedCirclesError])
 
   const deadlineCircles = useMemo(
     () => [...new Map([...joinedCircles, ...circles].map(circle => [circle.id, circle])).values()],
     [circles, joinedCircles],
   )
   const { deadline: nextCircleDeadline, loading: deadlineLoading, error: deadlineError } = useCircleDeadline(deadlineCircles, !circlesLoading && !joinedCirclesLoading)
+
+  const { deadline: myNextDeadline, loading: myDeadlineLoading, error: myDeadlineError } = useCircleDeadline(joinedCircles, !joinedCirclesLoading)
 
   const bucketCounts = useMemo(() => {
     const counts = { Active: 0, 'Not Ready': 0, Ready: 0, Completed: 0 } as Record<string, number>
@@ -178,10 +210,12 @@ export function Dashboard() {
   return (
     <Stack gap="lg" className="growth-dashboard">
       {/* ─── Greeting ─────────────────────────────────────────────── */}
-      <MyDashboard userName={adminName || "there"} />
+      <MyDashboard userName={adminName || "there"} onCreateCircle={() => navigate('/create-group')} />
 
       {/* ─── Wallet trio ──────────────────────────────────────────── */}
-      <CirclesOverview circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError}>
+      <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError}>
+        <NextContribution deadline={myNextDeadline} circles={joinedCircles} loading={myDeadlineLoading} error={joinedCirclesError || myDeadlineError} hidden={hidden} />
+        <div className="growth-wallet-group">
         <SummaryCard
           title="Total Balance"
           amount={wallet ? money(wallet.total) : '-'}
@@ -202,7 +236,9 @@ export function Dashboard() {
           gradient="linear-gradient(125deg, #fff1b8 0%, #ffe69a 100%)"
           hidden={hidden}
         />
+        </div>
       </CirclesOverview>
+      <DashboardHighlights plans={targetPlans} plansLoading={plansLoading} plansError={plansError} transactions={recentTransactions} activityLoading={activityLoading} activityError={activityError} hidden={hidden} />
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm">

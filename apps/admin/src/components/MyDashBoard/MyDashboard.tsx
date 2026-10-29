@@ -4,12 +4,14 @@ type MyDashboardProps = {
   userName?: string;
   onFundWallet?: () => void;
   onTransfer?: () => void;
+  onCreateCircle?: () => void;
 };
 
 export function MyDashboard({
   userName = "Osho",
   onFundWallet,
   onTransfer,
+  onCreateCircle,
 }: MyDashboardProps) {
   return (
     <section className={styles.wrap}>
@@ -21,6 +23,7 @@ export function MyDashboard({
           <div className={styles.subRow}>
             <div className={styles.subText}>Your circles, savings and goals — moving you closer to a brighter tomorrow.</div>
           </div>
+          {onCreateCircle && <button type="button" className={styles.createBtn} onClick={onCreateCircle}>＋ Create a circle</button>}
         </div>
       </div>
 
