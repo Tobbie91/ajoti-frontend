@@ -286,28 +286,6 @@
 .growth-circle-2 .growth-circle-avatar {
   background: #ffebaa;
 }
-.mantine-AppShell-root:has(.growth-dashboard) .customer-sidebar {
-  background: #084535;
-  color: #e8f4e9;
-}
-.mantine-AppShell-root:has(.growth-dashboard)
-  .customer-sidebar
-  .mantine-NavLink-root {
-  color: #e8f4e9;
-  border-radius: 10px;
-  margin-bottom: 3px;
-}
-.mantine-AppShell-root:has(.growth-dashboard)
-  .customer-sidebar
-  .mantine-NavLink-root:hover {
-  background: #ffffff12;
-}
-.mantine-AppShell-root:has(.growth-dashboard)
-  .customer-sidebar
-  .mantine-NavLink-root[data-active] {
-  background: #d6f6a8;
-  color: #123c2b;
-}
 @media (max-width: 1200px) {
   .growth-orbit {
     flex-basis: 175px;
