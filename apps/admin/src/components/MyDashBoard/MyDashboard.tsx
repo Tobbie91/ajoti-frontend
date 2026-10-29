@@ -1,3 +1,4 @@
+import { HeroLandscape } from './HeroLandscape';
 import styles from "./MyDashboard.module.css";
 
 type MyDashboardProps = {
@@ -46,7 +47,7 @@ export function MyDashboard({
           </button>
         </div>
       </div>}
-      <div className={styles.landscape} aria-hidden="true"><span className={styles.sun} /><span className={styles.hillBack} /><span className={styles.hillFront} /></div>
+      <div className={styles.landscape} aria-hidden="true"><HeroLandscape /></div>
     </section>
   );
 }

@@ -26,25 +26,24 @@ export function NextContribution({
   loading,
   error,
   hidden,
+  heading = "Next contribution",
 }: {
   deadline: CircleDeadline | null;
   circles: RoscaCircle[];
   loading: boolean;
   error: boolean;
   hidden: boolean;
+  heading?: string;
 }) {
   const circle = deadline
     ? circles.find((circle) => circle.id === deadline.circleId)
     : null;
   return (
-    <section
-      className="growth-next-contribution"
-      aria-label="Next contribution"
-    >
+    <section className="growth-next-contribution" aria-label={heading}>
       <span className="growth-calendar" aria-hidden="true">
         <IconCalendar size={30} />
       </span>
-      <p className="growth-eyebrow">Next contribution</p>
+      <p className="growth-eyebrow">{heading}</p>
       <h2>
         {loading
           ? "Loading…"

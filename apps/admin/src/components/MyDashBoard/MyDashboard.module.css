@@ -77,33 +77,6 @@
   inset: 0;
   pointer-events: none;
 }
-.sun {
-  position: absolute;
-  right: 12%;
-  top: 48px;
-  width: 145px;
-  height: 145px;
-  border-radius: 50%;
-  background: #ffdf78;
-}
-.hillBack,
-.hillFront {
-  position: absolute;
-  width: 65%;
-  height: 190px;
-  right: -12%;
-  bottom: -100px;
-  border-radius: 50% 50% 0 0;
-  background: #85ba8c;
-  transform: rotate(-14deg);
-}
-.hillFront {
-  width: 58%;
-  right: -6%;
-  bottom: -130px;
-  background: #154e40;
-  transform: rotate(9deg);
-}
 @media (max-width: 600px) {
   .wrap {
     padding: 24px;
@@ -112,13 +85,8 @@
   .rightSide {
     width: 100%;
   }
-  .sun {
-    right: -50px;
-    opacity: 0.35;
-  }
-  .hillBack,
-  .hillFront {
-    opacity: 0.35;
+  .landscape {
+    opacity: 0.42;
   }
   .headline {
     letter-spacing: -1px;
