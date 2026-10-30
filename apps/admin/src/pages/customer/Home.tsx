@@ -184,7 +184,6 @@ export function Home() {
         </div>
         <NextContribution heading="Next deadline" deadline={deadline} circles={participations} loading={deadlineLoading} error={membershipError || deadlineError} hidden={hidden} />
 
-        <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
         {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}
         <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs" component="section" aria-label="Quick actions">
@@ -264,6 +263,8 @@ export function Home() {
         />
 
         <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={participations} loading={membershipLoading} error={membershipError} />
+
+        <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
         {membershipError && <Text role="alert" c="red">Unable to load joined-circle counts. Refresh to try again.</Text>}
         {deadlineError && <Text role="alert" c="red">Unable to load circle deadlines. Refresh to try again.</Text>}

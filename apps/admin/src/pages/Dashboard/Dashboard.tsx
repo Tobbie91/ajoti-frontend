@@ -237,7 +237,6 @@ export function Dashboard() {
       </div>
       <NextContribution deadline={myNextDeadline} circles={joinedCircles} loading={myDeadlineLoading} error={joinedCirclesError || myDeadlineError} hidden={hidden} />
 
-      <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
       <Paper withBorder radius="md" p="sm" component="section" aria-label="Quick actions">
@@ -300,6 +299,8 @@ export function Dashboard() {
 
       <DashboardHighlights plans={targetPlans} plansLoading={plansLoading} plansError={plansError} transactions={recentTransactions} activityLoading={activityLoading} activityError={activityError} hidden={hidden} />
       <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError} />
+
+      <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
       {walletError && <Text role="alert" c="red">Unable to load wallet balances. Refresh to try again.</Text>}
       {dashboardError && <Text role="alert" c="red">Unable to load group dashboard and deadlines. Refresh to try again.</Text>}
