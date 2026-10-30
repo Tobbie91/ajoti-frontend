@@ -24,8 +24,20 @@ test(`${screen} uses personal receipts while preserving privacy`, async ({ page 
     return route.fulfill({ json: { data: [] } })
   })
   await page.goto(`/${screen}`)
-  if (screen === 'dashboard') await expect(page.getByRole('button', { name: 'Create a circle' })).toBeVisible()
-  else expect(await page.getByRole('heading', { name: 'Everything grows together.' }).evaluate(el => el.closest('section')?.nextElementSibling?.textContent)).toContain('Ready to run your own ajo?')
+  await expect(page.getByRole('button', { name: 'Create a circle' })).toHaveCount(0)
+  const order = await page.getByRole('heading', { name: 'Everything grows together.' }).evaluate(el => {
+    const hero = el.closest('section')!
+    const siblings = Array.from(hero.parentElement!.children).filter(node => node.tagName !== 'STYLE')
+    return siblings.slice(siblings.indexOf(hero) + 1, siblings.indexOf(hero) + 4).map(node => node.getAttribute('aria-label'))
+  })
+  expect(order).toEqual(['Wallet balances', screen === 'home' ? 'Next deadline' : 'Next contribution', 'Quick actions'])
+  if (screen === 'dashboard') {
+    await expect(page.getByRole('button', { name: 'Groups I manage', exact: true })).toHaveCount(1)
+    await expect(page.getByText('Create New Group', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Join Groups', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Send Group Notification', { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Quick actions' }).getByRole('button', { name: 'Explore', exact: true })).toHaveCount(1)
+  }
   const orbit = page.locator('.growth-orbit-inner')
   await expect(orbit).toContainText('₦25,000.00')
   expect([...new Set(contributionRequests)]).toEqual(['/api/rosca/joined/contributions'])
@@ -38,13 +50,13 @@ test(`${screen} uses personal receipts while preserving privacy`, async ({ page 
   await expect(savings).toContainText('₦432,000.00 of ₦600,000.00')
   await expect(savings).toContainText('72%')
   await expect(savings).toContainText('₦168,000.00')
-  await expect(page.getByRole('region', { name: 'Recent activity' })).toContainText('Ajo contribution')
+  await expect(page.getByRole('region', { name: 'Recent transactions' })).toContainText('Ajo contribution')
   }
   await page.getByRole('button', { name: 'Hide wallet balance and transactions' }).click()
   await expect(orbit).not.toContainText('₦25,000.00')
   if (screen === 'dashboard') {
     await expect(page.getByRole('region', { name: 'Latest savings goal' })).not.toContainText('₦432,000.00')
-    await expect(page.getByRole('region', { name: 'Recent activity' })).toContainText('Transaction history hidden')
+    await expect(page.getByRole('region', { name: 'Recent transactions' })).toContainText('Transaction history hidden')
   }
   await page.getByRole('button', { name: 'Show wallet balance and transactions' }).click()
   failHistory = true

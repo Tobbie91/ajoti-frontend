@@ -157,41 +157,8 @@ export function Home() {
           onTransfer={() => navigate("/withdraw")}
         />
 
-        {/* ─── Advert board — rotates between 3 slides ────────────────── */}
-        <AdvertRotator
-          slides={[
-            {
-              icon: <IconUsersGroup size={28} />,
-              title: "Ready to run your own ajo?",
-              body: "Become an Ajo admin to create groups, invite members, and manage contributions.",
-              cta: "Become an Ajo admin",
-              to: "/rosca/become-admin",
-              gradient: "linear-gradient(135deg,#043F32 0%,#02A36E 100%)",
-            },
-            {
-              icon: <IconTarget size={28} />,
-              title: "Save towards a goal",
-              body: "Lock in funds for school fees, rent, or that holiday. Earn as you save.",
-              cta: "Open Target Savings",
-              to: "/target-savings",
-              gradient: "linear-gradient(135deg,#1E3A8A 0%,#3B82F6 100%)",
-            },
-            {
-              icon: <IconCash size={28} />,
-              title: "Need cash sooner?",
-              body: "Request an early payout from your active ajo circle, with no paperwork.",
-              cta: "Request an early payout",
-              to: "/loans",
-              gradient: "linear-gradient(135deg,#7C2D12 0%,#F97316 100%)",
-            },
-          ]}
-          onCta={(to) => navigate(to)}
-        />
-
         {/* ─── Wallet trio (matches admin Dashboard) ───────────────────── */}
-        <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={participations} loading={membershipLoading} error={membershipError}>
-          <NextContribution heading="Next deadline" deadline={deadline} circles={participations} loading={deadlineLoading} error={membershipError || deadlineError} hidden={hidden} />
-          <div className="growth-wallet-group">
+        <div className="growth-wallet-group" role="region" aria-label="Wallet balances">
           <SummaryCard
             title="Total Balance"
             amount={walletError ? "Unavailable" : walletBalance ? formatKobo(walletBalance.total) : "Loading…"}
@@ -212,11 +179,11 @@ export function Home() {
             gradient="linear-gradient(125deg, #fff1b8 0%, #ffe69a 100%)"
             hidden={hidden}
           />
-          </div>
-        </CirclesOverview>
+        </div>
+        <NextContribution heading="Next deadline" deadline={deadline} circles={participations} loading={deadlineLoading} error={membershipError || deadlineError} hidden={hidden} />
 
         {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}
-        <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs">
+        <SimpleGrid cols={{ base: 3, sm: 4, md: 8 }} spacing="xs" component="section" aria-label="Quick actions">
           <HomeQuickTile
             icon={<IconCompass size={22} />}
             label="Explore"
@@ -260,6 +227,39 @@ export function Home() {
             onClick={() => setCreditOpen(true)}
           />
         </SimpleGrid>
+
+        {/* ─── Advert board — rotates between 3 slides ────────────────── */}
+        <AdvertRotator
+          slides={[
+            {
+              icon: <IconUsersGroup size={28} />,
+              title: "Ready to run your own ajo?",
+              body: "Become an Ajo admin to create groups, invite members, and manage contributions.",
+              cta: "Become an Ajo admin",
+              to: "/rosca/become-admin",
+              gradient: "linear-gradient(135deg,#043F32 0%,#02A36E 100%)",
+            },
+            {
+              icon: <IconTarget size={28} />,
+              title: "Save towards a goal",
+              body: "Lock in funds for school fees, rent, or that holiday. Earn as you save.",
+              cta: "Open Target Savings",
+              to: "/target-savings",
+              gradient: "linear-gradient(135deg,#1E3A8A 0%,#3B82F6 100%)",
+            },
+            {
+              icon: <IconCash size={28} />,
+              title: "Need cash sooner?",
+              body: "Request an early payout from your active ajo circle, with no paperwork.",
+              cta: "Request an early payout",
+              to: "/loans",
+              gradient: "linear-gradient(135deg,#7C2D12 0%,#F97316 100%)",
+            },
+          ]}
+          onCta={(to) => navigate(to)}
+        />
+
+        <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={participations} loading={membershipLoading} error={membershipError} />
 
         {membershipError && <Text role="alert" c="red">Unable to load joined-circle counts. Refresh to try again.</Text>}
         {deadlineError && <Text role="alert" c="red">Unable to load circle deadlines. Refresh to try again.</Text>}

@@ -9,7 +9,6 @@ import {
   Badge,
   Box,
   Button,
-  Grid,
   Group,
   Modal,
   Paper,
@@ -24,7 +23,6 @@ import {
   IconBookmarks,
   IconCash,
   IconCheck,
-  IconChevronRight,
   IconClockPause,
   IconCompass,
   IconGauge,
@@ -210,12 +208,10 @@ export function Dashboard() {
   return (
     <Stack gap="lg" className="growth-dashboard">
       {/* ─── Greeting ─────────────────────────────────────────────── */}
-      <MyDashboard userName={adminName || "there"} onCreateCircle={() => navigate('/create-group')} />
+      <MyDashboard userName={adminName || "there"} />
 
       {/* ─── Wallet trio ──────────────────────────────────────────── */}
-      <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError}>
-        <NextContribution deadline={myNextDeadline} circles={joinedCircles} loading={myDeadlineLoading} error={joinedCirclesError || myDeadlineError} hidden={hidden} />
-        <div className="growth-wallet-group">
+      <div className="growth-wallet-group" role="region" aria-label="Wallet balances">
         <SummaryCard
           title="Total Balance"
           amount={wallet ? money(wallet.total) : '-'}
@@ -236,13 +232,12 @@ export function Dashboard() {
           gradient="linear-gradient(125deg, #fff1b8 0%, #ffe69a 100%)"
           hidden={hidden}
         />
-        </div>
-      </CirclesOverview>
-      <DashboardHighlights plans={targetPlans} plansLoading={plansLoading} plansError={plansError} transactions={recentTransactions} activityLoading={activityLoading} activityError={activityError} hidden={hidden} />
+      </div>
+      <NextContribution deadline={myNextDeadline} circles={joinedCircles} loading={myDeadlineLoading} error={joinedCirclesError || myDeadlineError} hidden={hidden} />
 
       {/* ─── Icon action strip ────────────────────────────────────── */}
-      <Paper withBorder radius="md" p="sm">
-        <SimpleGrid cols={{ base: 3, sm: 5, md: 10 }} spacing="xs">
+      <Paper withBorder radius="md" p="sm" component="section" aria-label="Quick actions">
+        <SimpleGrid cols={{ base: 3, sm: 4, md: 6 }} spacing="xs">
           <IconTile
             icon={<IconPlus size={20} />}
             label="Fund wallet"
@@ -295,40 +290,12 @@ export function Dashboard() {
             badge={creditScore !== null ? String(creditScore) : undefined}
             onClick={() => setCreditOpen(true)}
           />
+          <IconTile icon={<IconUsersGroup size={20} />} label="Groups I manage" onClick={() => navigate('/rosca/groups')} />
         </SimpleGrid>
       </Paper>
 
-      {/* ─── Create-pair + jump-to My Groups ──────────────────────── */}
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-        <CreateCard
-          icon={<IconUsersGroup size={22} />}
-          title="Create an Ajo group"
-          subtitle="Set up a new rotating savings circle"
-          cta="Create"
-          onClick={() => navigate('/create-group')}
-        />
-        <CreateCard
-          icon={<IconTarget size={22} />}
-          title="Create Target Savings"
-          subtitle="Lock funds toward a specific goal"
-          cta="Create"
-          onClick={() => navigate('/target-savings?create=1')}
-        />
-        <CreateCard
-          icon={<IconBookmarks size={22} />}
-          title="Groups I manage"
-          subtitle="View circles you administer"
-          cta="Open"
-          onClick={() => navigate('/rosca/groups')}
-        />
-        <CreateCard
-          icon={<IconUsersGroup size={22} />}
-          title="Groups I’ve joined"
-          subtitle="Open joined circles and completed history"
-          cta="View"
-          onClick={() => navigate('/rosca?tab=joined')}
-        />
-      </SimpleGrid>
+      <DashboardHighlights plans={targetPlans} plansLoading={plansLoading} plansError={plansError} transactions={recentTransactions} activityLoading={activityLoading} activityError={activityError} hidden={hidden} />
+      <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError} />
 
       {walletError && <Text role="alert" c="red">Unable to load wallet balances. Refresh to try again.</Text>}
       {dashboardError && <Text role="alert" c="red">Unable to load group dashboard and deadlines. Refresh to try again.</Text>}
@@ -358,7 +325,7 @@ export function Dashboard() {
       </SimpleGrid>
 
       {deadlineError && <Text role="alert" c="red">Unable to load group schedules and deadlines. Refresh to try again.</Text>}
-      {nextCircleDeadline && <Button component={Link} to={`/rosca/${nextCircleDeadline.circleId}`}>View next deadline · Cycle {nextCircleDeadline.cycleNumber}</Button>}
+      {nextCircleDeadline && nextCircleDeadline.circleId !== myNextDeadline?.circleId && <Button component={Link} to={`/rosca/${nextCircleDeadline.circleId}`}>View next deadline · Cycle {nextCircleDeadline.cycleNumber}</Button>}
       {circlesError && <Text role="alert" c="red">Unable to load administered circle counts. Try refreshing the page.</Text>}
       {/* ─── Group buckets ────────────────────────────────────────── */}
       <Box>
@@ -377,7 +344,7 @@ export function Dashboard() {
             Tap a tile to drill in
           </Text>
         </Group>
-        <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs">
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs">
           <BucketTile
             tone="active"
             icon={<IconPlayerPlay size={14} />}
@@ -410,53 +377,11 @@ export function Dashboard() {
             context="Finished cycles"
             onClick={() => navigate('/rosca/groups?status=completed')}
           />
-          <BucketTile
-            tone="target"
-            icon={<IconTarget size={14} />}
-            label="Target Savings"
-            count={bucketCounts.targetSavings}
-            context="Goal-based plans"
-            onClick={() => navigate('/target-savings')}
-          />
+
         </SimpleGrid>
       </Box>
 
-      {/* ─── Sidebar — QuickActions ───────────────────────────────── */}
-      <Grid>
-        <Grid.Col span={{ base: 12, md: 7 }}>
-          <Paper withBorder p="lg" radius="md">
-            <Group justify="space-between" align="center" wrap="wrap" gap="md">
-              <Box>
-                <Text fw={700} fz="sm">Manage your groups and incoming requests</Text>
-                <Text fz="xs" c="dimmed">These are groups you administer. Member groups and your own join requests are separate.</Text>
-              </Box>
-              <Button
-                component={Link}
-                to="/rosca/groups"
-                size="sm"
-                variant="light"
-                color="green"
-                rightSection={<IconChevronRight size={16} />}
-              >
-                Groups I manage
-              </Button>
-              <Button
-                component={Link}
-                to="/manage-join-request"
-                size="sm"
-                variant="subtle"
-                color="green"
-                rightSection={<IconChevronRight size={16} />}
-              >
-                People requesting to join
-              </Button>
-            </Group>
-          </Paper>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5 }}>
-          <QuickActions />
-        </Grid.Col>
-      </Grid>
+      <QuickActions />
 
       {/* ─── Modals (icon-strip targets) ──────────────────────────── */}
       <Modal
@@ -561,54 +486,6 @@ function IconTile({
         {label}
       </Text>
     </UnstyledButton>
-  )
-}
-
-function CreateCard({
-  icon,
-  title,
-  subtitle,
-  cta,
-  onClick,
-}: {
-  icon: React.ReactNode
-  title: string
-  subtitle: string
-  cta: string
-  onClick: () => void
-}) {
-  return (
-    <Paper withBorder radius="md" p="md">
-      <Group gap="md" wrap="nowrap">
-        <Box
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 10,
-            background: '#E7F4EE',
-            color: PRIMARY,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          {icon}
-        </Box>
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <Text fw={700} fz="sm" lh={1.2}>{title}</Text>
-          <Text fz="xs" c="dimmed" mt={2} lh={1.4}>{subtitle}</Text>
-        </Box>
-        <Button
-          size="xs"
-          onClick={onClick}
-          style={{ background: PRIMARY, flexShrink: 0 }}
-          leftSection={<IconPlus size={14} />}
-        >
-          {cta}
-        </Button>
-      </Group>
-    </Paper>
   )
 }
 
