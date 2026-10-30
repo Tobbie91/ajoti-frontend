@@ -394,38 +394,7 @@ export function Home() {
               </div>
             </div>
 
-            {/* Become an Ajo admin — persistent promo below QuickCards */}
-            <button
-              type="button"
-              onClick={() => navigate("/rosca/become-admin")}
-              className="group flex w-full cursor-pointer flex-col items-start gap-3 overflow-hidden rounded-2xl p-5 text-left text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6"
-              style={{ background: "linear-gradient(135deg,#043F32 0%,#02A36E 100%)" }}
-            >
-              <div className="flex items-start gap-4 sm:items-center">
-                <div
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{ background: "rgba(255,255,255,0.15)" }}
-                  aria-hidden
-                >
-                  <IconUsersGroup size={26} />
-                </div>
-                <div>
-                  <Text fw={700} className="text-[18px] sm:text-[20px] text-white">
-                    Become an Ajo admin
-                  </Text>
-                  <Text size="sm" className="mt-0.5 max-w-[520px] text-white/85">
-                    Create your own circles, invite members, and manage contributions.
-                  </Text>
-                </div>
-              </div>
-              <span
-                className="flex items-center gap-2 self-stretch rounded-xl bg-white px-5 py-2.5 text-[13px] font-semibold text-[#026A4B] sm:self-auto"
-                style={{ justifyContent: "center" }}
-              >
-                Get started
-                <IconArrowRight size={16} />
-              </span>
-            </button>
+
           </div>
           <Card
             withBorder

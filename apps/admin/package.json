@@ -20,6 +20,8 @@
     "@smileid/web-components": "11.6.2",
     "@tabler/icons-react": "^3.46.0",
     "dayjs": "^1.11.23",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",

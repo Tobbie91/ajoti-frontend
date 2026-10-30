@@ -1,3 +1,4 @@
+import { ScrollToTop } from '@ajoti/shared/components'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from '@/layouts'
 import { RequireAuth, RequirePermission } from '@/components/RequireAuth/RequireAuth'
@@ -13,6 +14,7 @@ import { TargetSavings } from '@/pages/savings/TargetSavings'
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/login" element={<Login />} />
