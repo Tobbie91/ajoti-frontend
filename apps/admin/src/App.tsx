@@ -1,4 +1,5 @@
-﻿import React from 'react'
+import { ScrollToTop } from '@ajoti/shared/components'
+import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from '@/layouts'
 import { KycGate } from '@/components/KycGate'
@@ -45,6 +46,7 @@ function HomeRedirect() {
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="/maintenance" element={<Maintenance />} />

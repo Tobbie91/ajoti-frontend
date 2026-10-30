@@ -13,7 +13,7 @@ type Props = {
   circles: RoscaCircle[];
   loading: boolean;
   error: boolean;
-  children: ReactNode;
+  children?: ReactNode;
   detailed?: boolean;
   orbitSummary?: ReactNode;
 };
@@ -42,7 +42,7 @@ export function CirclesOverview({
   const value = (count: number) => (loading ? "…" : error ? "—" : count);
   return (
     <section
-      className={`growth-overview${detailed ? " growth-reference" : ""}`}
+      className={`growth-overview${detailed ? " growth-reference" : ""}${!children ? " growth-overview-standalone" : ""}`}
       aria-label="Your savings overview"
     >
       <div className="growth-community">
@@ -109,14 +109,12 @@ export function CirclesOverview({
           ))}
         </div>
       </div>
-      <div className="growth-wallets">{children}</div>
+      {children && <div className="growth-wallets">{children}</div>}
       {!loading && !error && visible.length > 0 && (
         <div className="growth-circles-strip">
           <div className="growth-strip-heading">
             <h2>Your circles</h2>
-            <Link to="/rosca">
-              See all circles <IconArrowRight size={15} />
-            </Link>
+
           </div>
           <div className="growth-circle-list">
             {visible.slice(0, 3).map((circle, index) => (

@@ -114,9 +114,9 @@ export function DashboardHighlights({
     .slice(0, 4);
   return (
     <div className="growth-highlights">
-      <section className="growth-activity" aria-label="Recent activity">
+      <section className="growth-activity" aria-label="Recent transactions">
         <div className="growth-strip-heading">
-          <h2>Recent activity</h2>
+          <h2>Recent transactions</h2>
           <Link to="/transactions">
             View all transactions <IconArrowRight size={15} />
           </Link>

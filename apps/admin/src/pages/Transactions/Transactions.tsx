@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react'
+import { downloadTransactionPdf } from '@/utils/transaction-report'
+import { useState, useEffect } from 'react'
 import { ActionIcon, Text, TextInput, Select, Loader, Modal, Badge, Divider } from '@mantine/core'
 import {
   IconArrowLeft,
@@ -190,6 +191,15 @@ export function Transactions() {
   const [exportJob, setExportJob] = useState<TransactionExportStatus | null>(null)
   const [exportRequesting, setExportRequesting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [pdfDownloading, setPdfDownloading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  async function downloadRecentPdf() {
+    setPdfDownloading(true); setPdfError(null)
+    try { await downloadTransactionPdf(transactions.map(transaction => transaction.raw)) }
+    catch (error) { setPdfError(error instanceof Error ? error.message : 'Unable to download the PDF.') }
+    finally { setPdfDownloading(false) }
+  }
 
   function downloadRecentTransactions() {
     const csvCell = (value: unknown) => {
@@ -332,20 +342,19 @@ export function Transactions() {
 
       <div className="mb-6 flex items-center justify-between gap-3">
         <Text fw={700} className="text-[24px] text-[#0F172A]">Transactions</Text>
-        {!hidden && (
-          <button
-            type="button"
-            onClick={downloadRecentTransactions}
-            disabled={loading || transactions.length === 0}
-            className="flex items-center gap-2 rounded-lg border border-[#02A36E] px-3 py-2 text-sm font-medium text-[#02A36E] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <IconDownload size={16} /> Download recent (up to 50)
-          </button>
-        )}
+
       </div>
 
       {!hidden && (
-        <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-4">
+        <div className="mb-6 rounded-2xl border border-[#d9e8cf] bg-[#f4f8ef] p-5">
+          <div className="mb-4 flex flex-col gap-4 border-b border-[#d9e8cf] pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3"><img src="/favicon.png" alt="Ajoti logo" className="h-10 w-10 object-contain" /><div><Text fw={700} c="#0b5140">Download transaction history</Text><Text size="xs" c="dimmed">PDF with the Ajoti logo and colours. CSV for spreadsheets.</Text></div></div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={downloadRecentTransactions} disabled={loading || !transactions.length} className="flex items-center gap-2 rounded-xl border border-[#0b5140] bg-white px-4 py-2 text-sm font-semibold text-[#0b5140] disabled:opacity-50"><IconDownload size={16} /> Download recent CSV (up to 50)</button>
+              <button type="button" onClick={downloadRecentPdf} disabled={loading || !transactions.length || pdfDownloading} className="flex items-center gap-2 rounded-xl bg-[#0b5140] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><IconDownload size={16} /> {pdfDownloading ? 'Preparing PDF…' : 'Download recent PDF (up to 50)'}</button>
+            </div>
+          </div>
+          {pdfError && <Text role="alert" c="red" fz={12} mb={8}>{pdfError}</Text>}
           <Text fw={600} fz={14} c="#0F172A">Email a larger transaction history</Text>
           <Text fz={12} c="dimmed" mt={4}>
             Leave dates blank for all history. Exports are limited to 25,000 rows or 10 MB; choose a narrower date range if your history is larger. The private download link expires after 24 hours and the file is deleted after 48 hours.
@@ -376,7 +385,7 @@ export function Transactions() {
             type="button"
             onClick={emailTransactionHistory}
             disabled={exportRequesting || Boolean(exportJob && ['QUEUED', 'PROCESSING'].includes(exportJob.status))}
-            className="mt-3 rounded-lg bg-[#02A36E] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-3 rounded-lg bg-[#0b5140] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {exportRequesting ? 'Requesting export…' : 'Email my CSV'}
           </button>

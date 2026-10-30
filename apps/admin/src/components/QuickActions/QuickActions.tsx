@@ -4,12 +4,9 @@ import { Paper, Text, Box, Group, ThemeIcon, Divider, Modal, ScrollArea, Loader 
 import { useMediaQuery } from '@mantine/hooks'
 import {
   IconMessage2,
-  IconTopologyRing,
   IconUserCheck,
   IconBell,
   IconX,
-  IconUsersGroup,
-  IconCompass,
 } from '@tabler/icons-react'
 import {
   getNotifications,
@@ -71,29 +68,9 @@ export function QuickActions() {
       onClick: () => navigate('/messages'),
     },
     {
-      label: 'Create New Group',
-      icon: IconTopologyRing,
-      onClick: () => navigate('/create-group'),
-    },
-    {
-      label: 'Join Groups',
-      icon: IconUsersGroup,
-      onClick: () => navigate('/rosca'),
-    },
-    {
-      label: 'Explore',
-      icon: IconCompass,
-      onClick: () => navigate('/rosca/how-it-works'),
-    },
-    {
       label: 'Review people requesting to join',
       icon: IconUserCheck,
       onClick: () => navigate('/manage-join-request'),
-    },
-    {
-      label: 'Send Group Notification',
-      icon: IconBell,
-      onClick: () => navigate('/rosca/groups'),
     },
   ]
 

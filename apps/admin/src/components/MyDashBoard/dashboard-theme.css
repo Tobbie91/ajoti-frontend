@@ -721,3 +721,6 @@
     line-height: 1.25;
   }
 }
+
+.growth-overview-standalone { grid-template-columns: minmax(0, 1fr); }
+.growth-dashboard > .growth-wallet-group, .growth-dashboard > div > .growth-wallet-group { width: 100%; }
