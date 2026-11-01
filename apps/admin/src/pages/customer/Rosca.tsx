@@ -983,6 +983,7 @@ export function Rosca() {
         amountAlreadyPaidKobo={payPlan?.nextContributionPaidKobo ?? "0"}
         nextDeadline={payPlan?.nextDeadlineRaw}
         nextPaymentFallback={payPlan?.nextContribution}
+        onBalanceChanged={() => setRefreshVersion(value => value + 1)}
         onPaid={() => {
           setPayPlan(null);
           setRefreshVersion((v) => v + 1);

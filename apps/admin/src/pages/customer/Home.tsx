@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconCompass, IconGauge, IconLock, IconLockOpen, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
 import transctionIcon from "@/assets/Transaction_Icon.svg";
 import { MyDashboard } from "@/components/MyDashBoard/MyDashboard";
+import { OwnDebtNotice } from "@/components/OwnDebtNotice";
 import { QuickCard } from "@/components/QuickCard";
 import { SummaryCard } from "@/components/SumaryCard";
 import { PersonalSavingsWidgets } from "@/components/PersonalSavingsWidgets";
@@ -159,6 +160,7 @@ export function Home() {
           onTransfer={() => navigate("/withdraw")}
         />
 
+        <OwnDebtNotice hidden={hidden} />
         {/* ─── Wallet trio (matches admin Dashboard) ───────────────────── */}
         <div className="growth-wallet-group" role="region" aria-label="Wallet balances">
           <SummaryCard

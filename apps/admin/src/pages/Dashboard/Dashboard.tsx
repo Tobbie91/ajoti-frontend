@@ -2,6 +2,7 @@ import { formatKobo, sumKobo } from '@/utils/kobo'
 import { DashboardHighlights, NextContribution } from '@/components/MyDashBoard/DashboardHighlights'
 import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
 import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
+import { OwnDebtNotice } from '@/components/OwnDebtNotice'
 import '@/components/MyDashBoard/dashboard-theme.css'
 import { useCircleDeadline } from '@/hooks/useCircleDeadline'
 import { useEffect, useMemo, useState } from 'react'
@@ -211,6 +212,7 @@ export function Dashboard() {
     <Stack gap="lg" className="growth-dashboard">
       {/* ─── Greeting ─────────────────────────────────────────────── */}
       <MyDashboard userName={adminName || "there"} />
+      <OwnDebtNotice hidden={hidden} />
 
       {/* ─── Wallet trio ──────────────────────────────────────────── */}
       <div className="growth-wallet-group" role="region" aria-label="Wallet balances">

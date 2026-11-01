@@ -426,6 +426,7 @@ export function GrowthActivities() {
         amountAlreadyPaidKobo={selectedCyclePaid?.toString() ?? "Unavailable"}
         nextDeadline={nextUnpaidSchedule?.contributionDeadline as string | undefined}
         nextPaymentFallback={nextContributionDate}
+        onBalanceChanged={() => setRefreshVersion(value => value + 1)}
         onPaid={(contribution) => {
           setContributions((prev) => [contribution, ...prev.filter(existing => existing.id !== contribution.id)]);
           setRefreshVersion(version => version + 1);

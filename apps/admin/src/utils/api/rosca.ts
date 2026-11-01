@@ -702,15 +702,26 @@ export async function getAdminCircleContributions(
   return data;
 }
 
+export interface DebtRecoverySummary {
+  repaidAmount: string;
+  remainingDebt: string;
+  repayments: unknown[];
+  blockedReason?: string;
+}
+
+export type ContributionPaymentResult =
+  | (CircleContribution & { status?: string; debtRecovery?: DebtRecoverySummary })
+  | { status: 'DEBT_REPAYMENT'; amount: '0'; cycleNumber: number; debtRecovery: DebtRecoverySummary };
+
 export async function makeContribution(
   circleId: string,
   cycleNumber: number,
-): Promise<CircleContribution> {
+): Promise<ContributionPaymentResult> {
   const res = await authRequest<
-    { data?: CircleContribution } | CircleContribution
+    { data?: ContributionPaymentResult } | ContributionPaymentResult
   >(`/api/rosca/${circleId}/contributions`, {
     method: "POST",
     body: JSON.stringify({ cycleNumber }),
   });
-  return ("data" in res && res.data ? res.data : res) as CircleContribution;
+  return ("data" in res && res.data ? res.data : res) as ContributionPaymentResult;
 }

@@ -116,6 +116,7 @@ export function GrowthTab({
         amountAlreadyPaidKobo={contributedAmount?.toString() ?? "Unavailable"}
         nextDeadline={nextDeadline}
         nextPaymentFallback={nextContributionDate}
+        onBalanceChanged={onContributionPaid}
         onPaid={(contribution) => {
           setContributions((prev) => [
             contribution,
