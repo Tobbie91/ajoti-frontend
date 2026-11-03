@@ -1,8 +1,9 @@
 import { formatKobo, sumKobo } from '@/utils/kobo'
-import { DashboardHighlights, NextContribution } from '@/components/MyDashBoard/DashboardHighlights'
+import { DashboardHighlights } from '@/components/MyDashBoard/DashboardHighlights'
 import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
 import { MyDashboard } from '@/components/MyDashBoard/MyDashboard'
-import { OwnDebtNotice } from '@/components/OwnDebtNotice'
+import { ContributionStatusNotice, PersonalContributionCard } from '@/components/ContributionStatusNotice'
+import { useContributionStatus } from '@/hooks/useContributionStatus'
 import '@/components/MyDashBoard/dashboard-theme.css'
 import { useCircleDeadline } from '@/hooks/useCircleDeadline'
 import { useEffect, useMemo, useState } from 'react'
@@ -175,7 +176,7 @@ export function Dashboard() {
   )
   const { deadline: nextCircleDeadline, loading: deadlineLoading, error: deadlineError } = useCircleDeadline(deadlineCircles, !circlesLoading && !joinedCirclesLoading)
 
-  const { deadline: myNextDeadline, loading: myDeadlineLoading, error: myDeadlineError } = useCircleDeadline(joinedCircles, !joinedCirclesLoading)
+  const { deadline: myNextDeadline } = useCircleDeadline(joinedCircles, !joinedCirclesLoading)
 
   const bucketCounts = useMemo(() => {
     const counts = { Active: 0, 'Not Ready': 0, Ready: 0, Completed: 0 } as Record<string, number>
@@ -208,11 +209,12 @@ export function Dashboard() {
       })
     : null
 
+  const contributionStatus = useContributionStatus(joinedCircles, !joinedCirclesLoading, joinedCirclesError)
   return (
     <Stack gap="lg" className="growth-dashboard">
       {/* ─── Greeting ─────────────────────────────────────────────── */}
+      <ContributionStatusNotice status={contributionStatus} hidden={hidden} />
       <MyDashboard userName={adminName || "there"} />
-      <OwnDebtNotice hidden={hidden} />
 
       {/* ─── Wallet trio ──────────────────────────────────────────── */}
       <div className="growth-wallet-group" role="region" aria-label="Wallet balances">
@@ -237,7 +239,7 @@ export function Dashboard() {
           hidden={hidden}
         />
       </div>
-      <NextContribution deadline={myNextDeadline} circles={joinedCircles} loading={myDeadlineLoading} error={joinedCirclesError || myDeadlineError} hidden={hidden} />
+      <PersonalContributionCard heading="Next contribution" status={contributionStatus} hidden={hidden} />
 
 
       {/* ─── Icon action strip ────────────────────────────────────── */}

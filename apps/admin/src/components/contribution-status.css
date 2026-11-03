@@ -1,0 +1,176 @@
+.contribution-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid #f5dfaf;
+  border-radius: 18px;
+  background: #fff5dc;
+  color: #35260e;
+  min-width: 0;
+}
+.contribution-notice--overdue {
+  background: #ffecde;
+  border-color: #ffd4b7;
+  color: #712c16;
+}
+.contribution-notice--debt {
+  background: #ffe8e8;
+  border-color: #ffd0d0;
+  color: #6b171b;
+}
+.contribution-notice-icon {
+  flex: 0 0 auto;
+  color: #df8d00;
+}
+.contribution-notice--overdue .contribution-notice-icon {
+  color: #ee5a19;
+}
+.contribution-notice--debt .contribution-notice-icon {
+  color: #df2638;
+}
+.contribution-notice h2 {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 750;
+  margin: 0 0 5px;
+  color: #171b17;
+}
+.contribution-notice p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.contribution-notice-copy {
+  flex: 1 1 210px;
+  min-width: 0;
+}
+.contribution-notice-amount {
+  flex: 1 1 190px;
+  font-size: 14px;
+}
+.contribution-notice-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 0 0 170px;
+}
+.contribution-primary,
+.contribution-secondary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.contribution-primary {
+  background: #00513f;
+  color: #fff;
+  border: 1px solid #00513f;
+}
+.contribution-secondary {
+  background: transparent;
+  color: #004939;
+  border: 1px solid #42776a;
+}
+.contribution-primary:hover {
+  background: #00674f;
+  color: #fff;
+}
+.contribution-secondary:hover {
+  background: #ffffff80;
+}
+.contribution-primary:focus-visible,
+.contribution-secondary:focus-visible {
+  outline: 3px solid #078b70;
+  outline-offset: 3px;
+}
+.contribution-notice-explanation {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-basis: 100%;
+  padding-left: 48px;
+}
+.contribution-notice-explanation svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.contribution-debt-amounts {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.contribution-debt-amounts dt {
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.contribution-debt-amounts dd {
+  font-size: 15px;
+  font-weight: 750;
+  margin: 0;
+}
+.contribution-personal-card .growth-contribution-amount {
+  font-size: clamp(20px, 3vw, 28px);
+  line-height: 1.4;
+}
+@media (max-width: 640px) {
+  .contribution-notice {
+    padding: 18px 14px;
+    gap: 12px;
+    align-items: flex-start;
+    border-radius: 16px;
+  }
+  .contribution-notice-icon {
+    width: 27px;
+    height: 27px;
+  }
+  .contribution-notice-copy {
+    flex: 1 1 calc(100% - 42px);
+  }
+  .contribution-notice h2 {
+    font-size: 16px;
+  }
+  .contribution-notice-amount {
+    flex-basis: 100%;
+    padding-left: 39px;
+  }
+  .contribution-notice-actions {
+    flex-basis: 100%;
+  }
+  .contribution-primary,
+  .contribution-secondary {
+    min-height: 44px;
+  }
+  .contribution-notice-explanation {
+    padding-left: 0;
+    order: 3;
+  }
+  .contribution-debt-amounts {
+    width: 100%;
+    justify-content: space-between;
+    padding-left: 39px;
+    gap: 12px;
+  }
+  .contribution-debt-total {
+    flex-basis: 100%;
+    text-align: center;
+    background: #ffdbdb;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  .contribution-debt-total dt {
+    margin-bottom: 3px;
+  }
+}

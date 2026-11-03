@@ -1,4 +1,3 @@
-import { NextContribution } from '@/components/MyDashBoard/DashboardHighlights';
 import { CirclesOverview } from '@/components/MyDashBoard/CirclesOverview'
 import '@/components/MyDashBoard/dashboard-theme.css';
 import { useCircleDeadline } from '@/hooks/useCircleDeadline';
@@ -10,7 +9,8 @@ import { useState, useEffect, useRef } from "react";
 import { IconAlertTriangle, IconArrowDownLeft, IconArrowRight, IconArrowUpRight, IconCash, IconCompass, IconGauge, IconLock, IconLockOpen, IconShieldCheck, IconTarget, IconUsersGroup } from "@tabler/icons-react";
 import transctionIcon from "@/assets/Transaction_Icon.svg";
 import { MyDashboard } from "@/components/MyDashBoard/MyDashboard";
-import { OwnDebtNotice } from "@/components/OwnDebtNotice";
+import { ContributionStatusNotice, PersonalContributionCard } from '@/components/ContributionStatusNotice';
+import { useContributionStatus } from '@/hooks/useContributionStatus';
 import { QuickCard } from "@/components/QuickCard";
 import { SummaryCard } from "@/components/SumaryCard";
 import { PersonalSavingsWidgets } from "@/components/PersonalSavingsWidgets";
@@ -151,16 +151,17 @@ export function Home() {
   const allCompleted = participations.length > 0 && participations.every(circle => circle.status === 'COMPLETED');
   const allPlanned = participations.length > 0 && participations.every(circle => circle.status === 'DRAFT');
   const deadlineState = getCircleDeadlineState({ circleStatus: allCompleted ? 'COMPLETED' : allPlanned ? 'DRAFT' : undefined, deadline: deadline?.deadline, failed: membershipError || deadlineError });
+  const contributionStatus = useContributionStatus(participations, !membershipLoading, membershipError);
   return (
     <div className="growth-dashboard mx-auto w-full max-w-[1200px] px-4 py-4 sm:px-6 sm:py-6">
       <div className="flex flex-col gap-5 sm:gap-7">
+        <ContributionStatusNotice status={contributionStatus} hidden={hidden} />
         <MyDashboard
           userName={userName}
           onFundWallet={() => navigate("/create-wallet")}
           onTransfer={() => navigate("/withdraw")}
         />
 
-        <OwnDebtNotice hidden={hidden} />
         {/* ─── Wallet trio (matches admin Dashboard) ───────────────────── */}
         <div className="growth-wallet-group" role="region" aria-label="Wallet balances">
           <SummaryCard
@@ -184,7 +185,7 @@ export function Home() {
             hidden={hidden}
           />
         </div>
-        <NextContribution heading="Next deadline" deadline={deadline} circles={participations} loading={deadlineLoading} error={membershipError || deadlineError} hidden={hidden} />
+        <PersonalContributionCard heading="Next deadline" status={contributionStatus} hidden={hidden} />
 
 
         {/* ─── Quick action icon strip (matches admin Dashboard) ───── */}

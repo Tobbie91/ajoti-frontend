@@ -245,6 +245,8 @@ export interface Debt {
   category: DebtCategory;
   categoryLabel: string;
   outstandingTotal: string;
+  outstandingPrincipal?: string;
+  outstandingPenalty?: string;
   outstandingBreakdown: {
     contribution: string;
     interest: string;

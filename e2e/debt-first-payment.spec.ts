@@ -86,9 +86,9 @@ for (const role of ['MEMBER', 'CIRCLE_ADMIN']) {
     await page.goto(role === 'MEMBER' ? '/home' : '/dashboard', { waitUntil: 'domcontentloaded' })
     const notice = page.getByRole('region', { name: 'Your outstanding debt' })
     await expect(notice).toContainText('₦323.45')
-    await expect(notice).toContainText(/before.*cycle contributions/i)
+    await expect(notice).toContainText(/Only money left afterward can pay a new cycle/i)
     await page.screenshot({ path: testInfo.outputPath('own-debt-dashboard.png'), fullPage: true })
-    await notice.getByRole('link', { name: 'View your debts' }).click()
+    await notice.getByRole('link', { name: 'View and repay debt' }).click()
     await expect(page).toHaveURL(/\/debts$/)
   })
 }
