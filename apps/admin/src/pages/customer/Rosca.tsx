@@ -135,7 +135,7 @@ function JoinedGroupCard({ group, onView, onPay, onChat, onSupport }: JoinedGrou
 
   const cycleStripSubtle = (() => {
     if (group.progressUnavailable) return "Schedule and contribution progress unavailable. Refresh to try again.";
-    if (paidForNow) return "Current cycle paid · Further payments unlock as the group advances.";
+    if (paidForNow) return "All scheduled contributions paid";
     const deadlineState = getCircleDeadlineState({ circleStatus: group.circleStatus, deadline: group.nextDeadlineRaw });
     if (deadlineState === "upcoming") return `Upcoming · Pay by ${group.nextContribution}`;
     if (deadlineState === "overdue") return `Overdue · Due ${group.nextContribution}`;
@@ -514,7 +514,7 @@ export function Rosca() {
             }
             const nextSchedule = schedules
               .filter((schedule) => ['IN_PROGRESS', 'UPCOMING'].includes((schedule.status ?? '').toUpperCase()))
-              .filter((schedule) => schedule.cycleNumber != null && schedule.cycleNumber >= group.currentCycle && schedule.cycleNumber <= group.currentCycle + 1)
+              .filter((schedule) => schedule.cycleNumber != null && schedule.cycleNumber >= group.currentCycle)
               .sort((a, b) => (a.cycleNumber ?? 0) - (b.cycleNumber ?? 0))
               .find((schedule) =>
                 schedule.cycleNumber != null &&
