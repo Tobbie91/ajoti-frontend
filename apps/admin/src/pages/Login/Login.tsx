@@ -1,3 +1,4 @@
+import { validateEmail } from '@ajoti/shared'
 import { useState } from 'react'
 import { Alert, Button, Card, Group, PasswordInput, Text, TextInput } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
@@ -12,13 +13,16 @@ export function Login() {
   const [searchParams] = useSearchParams()
   const verified = searchParams.get('verified') === 'true'
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | undefined>()
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [forgotOpen, setForgotOpen] = useState(false)
 
   async function handleLogin() {
-    if (!email.trim() || !password) return
+    const validationError = validateEmail(email)
+    setEmailError(validationError)
+    if (validationError || !password) return
     setError(null)
     setLoading(true)
     try {
@@ -96,7 +100,8 @@ export function Login() {
                 {verified && <Alert color="green" radius="md" variant="light">Email verified! You can now log in.</Alert>}
                 {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">{error}</Alert>}
                 <TextInput label="Email" placeholder="you@example.com" radius="md" value={email}
-                  onChange={(e) => setEmail(e.currentTarget.value)} styles={{ input: { borderColor: '#BFEBD1' } }} />
+                  onChange={(e) => { setEmail(e.currentTarget.value); setEmailError(undefined) }}
+                  onBlur={() => setEmailError(validateEmail(email))} error={emailError} type="email" autoComplete="email" styles={{ input: { borderColor: '#BFEBD1' } }} />
                 <PasswordInput label="Password" placeholder="••••••••" radius="md" value={password}
                   onChange={(e) => setPassword(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   styles={{ input: { borderColor: '#BFEBD1' } }} />

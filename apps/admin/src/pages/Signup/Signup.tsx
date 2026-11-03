@@ -19,6 +19,7 @@ import {
   earliestReasonableDob,
   isAdultDob,
   parseCalendarDate,
+  validateEmail,
   validatePersonName,
   validatePassword,
   validatePhone,
@@ -126,11 +127,7 @@ export function Signup() {
   const fieldErrors: SignupErrors = {
     firstName: validatePersonName(firstName, "First name"),
     lastName: validatePersonName(lastName, "Last name"),
-    email: !email.trim()
-      ? "Email is required."
-      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-        ? "Enter a valid email address."
-        : undefined,
+    email: validateEmail(email),
     phone: validatePhone(phone),
     dob: !dob
       ? dobStarted
@@ -373,6 +370,8 @@ export function Signup() {
               </Group>
               <TextInput
                 label="Email"
+                type="email"
+                autoComplete="email"
                 placeholder="you@example.com"
                 radius="md"
                 value={email}

@@ -1,3 +1,22 @@
+/** Email syntax validation only; the backend remains responsible for verification. */
+export function validateEmail(value: string): string | undefined {
+  const email = value.trim();
+  if (!email) return "Email is required.";
+  const parts = email.split("@");
+  const local = parts[0] ?? "";
+  const domain = parts[1] ?? "";
+  const labels = domain.split(".");
+  if (email.length > 254 || parts.length !== 2 || local.length > 64
+    || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    || !/^[\p{L}\p{M}\p{N}!#$%&'*+\/=?^_`{|}~.-]+$/u.test(local)
+    || local.startsWith(".") || local.endsWith(".") || local.includes("..")
+    || labels.some(label => !/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(label))
+    || /^\d+$/.test(labels[labels.length - 1] ?? "")) {
+    return "Enter a valid email address.";
+  }
+  return undefined;
+}
+
 export const PERSON_NAME_REGEX = /^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u;
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
