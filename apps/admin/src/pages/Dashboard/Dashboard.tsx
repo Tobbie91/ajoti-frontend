@@ -301,8 +301,8 @@ export function Dashboard() {
         </SimpleGrid>
       </Paper>
 
-      <DashboardHighlights plans={targetPlans} plansLoading={plansLoading} plansError={plansError} transactions={recentTransactions} activityLoading={activityLoading} activityError={activityError} hidden={hidden} />
       <CirclesOverview detailed orbitSummary={<><span>My total Ajo contributed</span><strong className="growth-orbit-amount">{hidden ? '••••••' : personalAjoLoading ? 'Loading…' : personalAjoTotal === null ? 'Unavailable' : formatKobo(personalAjoTotal)}</strong><span>Across your joined circles</span></>} circles={deadlineCircles} loading={circlesLoading || joinedCirclesLoading} error={circlesError || joinedCirclesError} />
+      <DashboardHighlights plans={targetPlans} plansLoading={plansLoading} plansError={plansError} transactions={recentTransactions} activityLoading={activityLoading} activityError={activityError} hidden={hidden} />
 
       <PersonalSavingsWidgets targetPlans={targetPlans} targetSavingsError={targetSavingsError} hidden={hidden} />
 
