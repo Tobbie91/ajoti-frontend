@@ -857,11 +857,21 @@ export function TargetSavings() {
   );
 }
 
+// Both collapsed and expanded actions use the existing contribution eligibility rule.
+function targetContributionAvailable(plan: TargetSavingsPlan) {
+  const mine = plan.myMembership?.status === "ACTIVE" ? plan.myMembership : null;
+  const maturityReached = new Date(plan.maturityDate).getTime() <= Date.now();
+  const targetReached = !mine || Number(mine.remainingAmountKobo) <= 0;
+  return plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached && !investmentActionsUnavailable(plan.investment);
+}
+
 // Compact one-line row that reveals the full CustomerTargetCard below on click.
 // Default is collapsed so the My Savings tab shows a scannable list even when
 // the user has many plans.
 function TargetPlanRow({ plan, onChanged, kycReady, kycKnown, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; kycKnown: boolean; showAmounts: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const [openContribution, setOpenContribution] = useState(false);
+  const canAdd = targetContributionAvailable(plan) && kycReady;
   const savedKobo = BigInt(plan.myMembership?.savedAmountKobo ?? "0");
   const targetKobo = BigInt(plan.targetAmountKobo ?? "0");
   const pct = targetKobo > 0n ? Math.min(100, Number((savedKobo * 100n) / targetKobo)) : 0;
@@ -886,7 +896,7 @@ function TargetPlanRow({ plan, onChanged, kycReady, kycKnown, showAmounts }: { p
     <div id={`target-plan-${plan.id}`} className="overflow-hidden rounded-xl border border-[#E4E6E1] bg-white">
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => { setOpenContribution(false); setExpanded((v) => !v); }}
         aria-expanded={expanded}
         className="flex w-full cursor-pointer items-center gap-3 p-4 text-left transition-colors hover:bg-[#F8FAF9]"
       >
@@ -925,16 +935,21 @@ function TargetPlanRow({ plan, onChanged, kycReady, kycKnown, showAmounts }: { p
           style={{ color: "#9CA3AF", transition: "transform 0.15s", transform: expanded ? "rotate(180deg)" : "none", flexShrink: 0 }}
         />
       </button>
+      {!expanded && canAdd && (
+        <div className="px-4 pb-4">
+          <Button size="sm" fullWidth onClick={() => { setOpenContribution(true); setExpanded(true); }}>Add to savings</Button>
+        </div>
+      )}
       {expanded && (
         <div className="border-t border-[#F1F3EF] bg-[#FAFAF7] p-4">
-          <CustomerTargetCard plan={plan} onChanged={onChanged} kycReady={kycReady} kycKnown={kycKnown} showAmounts={showAmounts} />
+          <CustomerTargetCard plan={plan} onChanged={onChanged} kycReady={kycReady} kycKnown={kycKnown} showAmounts={showAmounts} initialContributionOpen={openContribution} />
         </div>
       )}
     </div>
   );
 }
 
-function CustomerTargetCard({ plan, onChanged, kycReady, kycKnown, showAmounts }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; kycKnown: boolean; showAmounts: boolean }) {
+function CustomerTargetCard({ plan, onChanged, kycReady, kycKnown, showAmounts, initialContributionOpen = false }: { plan: TargetSavingsPlan; onChanged: () => Promise<unknown>; kycReady: boolean; kycKnown: boolean; showAmounts: boolean; initialContributionOpen?: boolean }) {
   const mine = plan.myMembership?.status === "ACTIVE" ? plan.myMembership : null;
   const providerActionsUnavailable = investmentActionsUnavailable(plan.investment);
   const savedKobo = BigInt(mine?.savedAmountKobo ?? "0");
@@ -943,7 +958,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, kycKnown, showAmounts }
   const plannedAmount = toNaira(plan.contributionAmountKobo);
   const remaining = toNaira(mine?.remainingAmountKobo ?? "0");
   const [amount, setAmount] = useState(Math.min(plannedAmount, remaining || plannedAmount));
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialContributionOpen);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -958,7 +973,7 @@ function CustomerTargetCard({ plan, onChanged, kycReady, kycKnown, showAmounts }
 
   const maturityReached = new Date(plan.maturityDate).getTime() <= Date.now();
   const targetReached = !mine || Number(mine.remainingAmountKobo) <= 0;
-  const contributionAvailable = plan.status === "ACTIVE" && Boolean(mine) && !maturityReached && !targetReached && !providerActionsUnavailable;
+  const contributionAvailable = targetContributionAvailable(plan);
   const canContribute = contributionAvailable && kycReady;
   const provider = plan.investment.provider ?? "Ajoti";
   const savingsType = plan.investment.productType ?? (plan.type === "GROUP" ? "Group Target Savings" : "Target Savings");

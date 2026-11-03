@@ -43,8 +43,10 @@ test('retries a target contribution with the same idempotency key after an uncer
 
   await page.goto('/target-savings')
   await expect(page.getByText('School fees', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: /School fees/ }).click()
-  await page.getByRole('button', { name: 'Start saving' }).click()
+  await expect(page.getByRole('button', { name: /School fees/ })).toHaveAttribute('aria-expanded', 'false')
+  await page.getByRole('button', { name: 'Add to savings', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Start saving' })).toBeVisible()
+  expect(contributionRequests).toHaveLength(0)
   await page.getByRole('button', { name: 'Add money' }).click()
   await expect(page.getByText('Response lost; contribution outcome is unknown').first()).toBeVisible()
   await page.getByRole('button', { name: 'Add money' }).click()
