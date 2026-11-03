@@ -40,7 +40,7 @@ import {
   type PaginatedResponse,
   ApiError,
 } from '@/utils/api'
-import { PASSWORD_POLICY_DESCRIPTION, PhoneInputField, isAdultDob, parseCalendarDate, validatePassword, validatePersonName, validatePhone } from '@ajoti/shared'
+import { validateEmail, PASSWORD_POLICY_DESCRIPTION, PhoneInputField, isAdultDob, parseCalendarDate, validatePassword, validatePersonName, validatePhone } from '@ajoti/shared'
 import { getStaffRoleFromStorage } from '@/utils/permissions'
 import { SortableTh } from '@/components/SortableTh'
 import { useSortState, sortRows, rowNumber } from '@/utils/sorting'
@@ -113,6 +113,8 @@ function InviteModal({ opened, onClose, onSuccess }: { opened: boolean; onClose:
       setError('First name, last name, email, and role are required.')
       return
     }
+    const emailError = validateEmail(email)
+    if (emailError) { setError(emailError); return }
     setLoading(true)
     setError('')
     try {
@@ -257,7 +259,7 @@ function CreateStaffModal({ opened, onClose, onSuccess }: { opened: boolean; onC
   const fieldErrors: Record<string, string | undefined> = {
     firstName: validatePersonName(firstName, 'First name'),
     lastName: validatePersonName(lastName, 'Last name'),
-    email: !email.trim() ? 'Email is required.' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? 'Enter a valid email address.' : undefined,
+    email: validateEmail(email),
     staffRole: !role ? 'Role is required.' : undefined,
     phone: validatePhone(phone),
     dob: !dob ? 'Date of birth is required.' : !parsedDob || !isAdultDob(parsedDob) ? 'Staff must be at least 18 years old.' : undefined,

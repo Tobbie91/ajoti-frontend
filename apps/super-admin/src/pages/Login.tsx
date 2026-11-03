@@ -1,3 +1,4 @@
+import { validateEmail } from '@ajoti/shared'
 import { useState } from 'react'
 import { Button, Card, PasswordInput, Text, TextInput, Alert } from '@mantine/core'
 import { Link, useNavigate } from 'react-router-dom'
@@ -9,16 +10,15 @@ export function Login() {
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | undefined>()
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleLogin() {
-    if (!email.trim() || !password) return
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Please enter a valid email address.')
-      return
-    }
+    const validationError = validateEmail(email)
+    setEmailError(validationError)
+    if (validationError || !password) return
     setError(null)
     setLoading(true)
     try {
@@ -124,7 +124,8 @@ export function Login() {
                   placeholder="you@example.com"
                   radius="md"
                   value={email}
-                  onChange={(e) => setEmail(e.currentTarget.value)}
+                  onChange={(e) => { setEmail(e.currentTarget.value); setEmailError(undefined) }}
+                  onBlur={() => setEmailError(validateEmail(email))} error={emailError} type="email" autoComplete="email"
                   styles={{ input: { borderColor: '#BFEBD1', backgroundColor: '#FFFFFF' } }}
                 />
                 <PasswordInput
