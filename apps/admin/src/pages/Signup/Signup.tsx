@@ -328,6 +328,10 @@ export function Signup() {
                 </Alert>
               )}
 
+              <Text size="sm" c="#0B6B55">
+                Please enter your first and last names exactly as they appear on
+                your government-issued ID. This helps us verify your identity.
+              </Text>
               <Group grow gap="sm">
                 <TextInput
                   label="First name"
