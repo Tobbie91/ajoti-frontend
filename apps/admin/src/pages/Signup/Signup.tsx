@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Badge,
   Button,
   Card,
   Group,
@@ -10,7 +11,7 @@ import {
   Alert,
 } from "@mantine/core";
 import { Link, useNavigate } from "react-router-dom";
-import { IconAlertCircle, IconCheck, IconX } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconSparkles, IconX } from "@tabler/icons-react";
 import { register } from "@/utils/api";
 import { ApiError } from "@/utils/api";
 import { PhoneInputField } from "@/components";
@@ -315,6 +316,9 @@ export function Signup() {
                 <Text size="sm" className="text-[#6B7280]">
                   Save, join, and manage your money with Ajoti.
                 </Text>
+                <Badge mt="sm" size="sm" variant="light" color="#0B6B55" tt="none" leftSection={<IconSparkles size={12} aria-hidden="true" />}>
+                  AI-powered trust score
+                </Badge>
               </div>
 
               {error && (

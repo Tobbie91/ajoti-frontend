@@ -1,7 +1,7 @@
 import { validateEmail } from '@ajoti/shared'
 import { useState } from 'react'
-import { Alert, Button, Card, Group, PasswordInput, Text, TextInput } from '@mantine/core'
-import { IconAlertCircle } from '@tabler/icons-react'
+import { Alert, Badge, Button, Card, Group, PasswordInput, Text, TextInput } from '@mantine/core'
+import { IconAlertCircle, IconSparkles } from '@tabler/icons-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { login as loginApi } from '@/utils/api'
 import { defaultAuthenticatedPath } from '@/utils/auth-role'
@@ -96,6 +96,9 @@ export function Login() {
                 <div>
                   <Text fw={700} size="lg" className="text-[#0F172A]">Log in</Text>
                   <Text size="sm" className="text-[#6B7280]">Enter your Ajoti credentials to continue.</Text>
+                  <Badge mt="sm" size="sm" variant="light" color="#0B6B55" tt="none" leftSection={<IconSparkles size={12} aria-hidden="true" />}>
+                    AI-powered trust score
+                  </Badge>
                 </div>
                 {verified && <Alert color="green" radius="md" variant="light">Email verified! You can now log in.</Alert>}
                 {error && <Alert icon={<IconAlertCircle size={16} />} color="red" radius="md" variant="light">{error}</Alert>}
